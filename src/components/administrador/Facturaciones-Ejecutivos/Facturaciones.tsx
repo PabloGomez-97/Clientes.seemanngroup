@@ -1,20 +1,57 @@
-// src/components/administrador/natalia/InvoicesXEjecutivo.tsx
-import { useEffect, useState } from "react";
+// src/components/administrador/Facturaciones-Ejecutivos/Facturaciones.tsx
+// Facturación por Ejecutivo — Seemann Group
+import { useEffect, useState, useMemo } from "react";
 import { useOutletContext } from "react-router-dom";
 import { useAuth } from "../../../auth/AuthContext";
-import { Modal, Table } from "react-bootstrap";
+import { Modal } from "react-bootstrap";
+import {
+  type InvoiceData,
+  type InvoiceStats,
+  type ExecutiveInvoiceComparison,
+  type PeriodPreset,
+  getPeriodRange,
+  filterInvoices,
+  calculateInvoiceStats,
+  groupInvoicesByMonth,
+  formatInvoiceCurrency,
+  formatFetchedAt,
+  fetchLinbisInvoicesAll,
+  buildExecutiveComparisons,
+} from "./invoiceUtils";
+import {
+  C,
+  FONT,
+  base,
+  styles,
+  pageWrap,
+  btnPrimary,
+  btnOutline,
+  inputStyle,
+  selectStyle,
+  tabBase,
+  tabActive,
+  Metric,
+  PeriodPresetSelect,
+  DataSourceBanner,
+  EmptyState,
+  ErrorBanner,
+  InvoiceStatusDot,
+  StatusBar,
+  CardSection,
+  SortableTh,
+  InvoiceIndividualSkeleton,
+  ComparativeSkeleton,
+  DoubleComparisonSkeleton,
+} from "./executiveReportingUi";
 import {
   Chart as ChartJS,
   CategoryScale,
   LinearScale,
   BarElement,
-  LineElement,
-  PointElement,
   ArcElement,
   Title,
   Tooltip,
   Legend,
-  Filler,
 } from "chart.js";
 import { Bar, Doughnut } from "react-chartjs-2";
 
@@ -22,13 +59,10 @@ ChartJS.register(
   CategoryScale,
   LinearScale,
   BarElement,
-  LineElement,
-  PointElement,
   ArcElement,
   Title,
   Tooltip,
   Legend,
-  Filler,
 );
 
 interface OutletContext {
@@ -44,97 +78,7 @@ type Ejecutivo = {
   telefono: string;
 };
 
-// Interface para Invoice del API
-interface Invoice {
-  id: number;
-  number: string;
-  type: string;
-  divisionId: number | null;
-  divisionName: string | null;
-  billToId: number;
-  billToName: string;
-  operationFlow: string;
-  billToAddress: string;
-  paymentTermsId: number;
-  paymentTerms: string;
-  dueDays: number;
-  date: string;
-  dueDate: string;
-  status: string;
-  notes: string | null;
-  statementMemo: string;
-  currencyId: number;
-  currency: string;
-  currencyCode: string;
-  baseCurrencyId: number;
-  baseCurrency: string;
-  amount: number;
-  taxAmount: number;
-  totalAmount: number;
-  homeCurrencyId: number;
-  homeCurrency: string;
-  homeCurrencyCode: string;
-  homeAmount: number;
-  homeTaxAmount: number;
-  homeTotalAmount: number;
-  balanceDue: number;
-  baseAmount: number;
-  charges: Charge[];
-  totalCargoValue: number;
-  amountPaid: number;
-  paymentDate: string | null;
-  salesRep: string | null;
-  moduleNumber: string;
-  moduleType: string;
-  view: string;
-  viewModule: string;
-}
-
-interface Charge {
-  description: string;
-  rosterLineNumber: number;
-  notes: string | null;
-  quantity: number;
-  unit: string;
-  rate: number;
-  amount: number;
-  exchangeRate: number;
-}
-
-// Interface para trabajar internamente
-interface InvoiceData {
-  moduleNumber: string;
-  invoiceNumber: string;
-  billToName: string;
-  salesRep: string;
-  type: string;
-  status: string;
-  date: string;
-  dueDate: string;
-  amount: number;
-  totalAmount: number;
-  homeTotalAmount: number;
-  balanceDue: number;
-  amountPaid: number;
-  paymentDate: string | null;
-}
-
-interface InvoiceStats {
-  totalInvoices: number;
-  invoicedCount: number;
-  postedCount: number;
-  totalAmount: number;
-  totalHomeTotalAmount: number;
-  totalBalanceDue: number;
-  totalAmountPaid: number;
-  averagePerInvoice: number;
-  uniqueClients: number;
-}
-
-interface ExecutiveComparison {
-  nombre: string;
-  stats: InvoiceStats;
-}
+type ExecutiveComparison = ExecutiveInvoiceComparison;
 
 type TabType = "individual" | "comparativa" | "doble";
 type SortField =
@@ -150,27 +94,124 @@ type SortField =
   | "uniqueClients";
 type SortDirection = "asc" | "desc";
 
+interface MonthlyInvoiceBreakdown {
+  month: string;
+  label: string;
+  invoices: number;
+  invoiced: number;
+  posted: number;
+  homeTotal: number;
+  balanceDue: number;
+  amountPaid: number;
+  clients: number;
+}
+
+const M_NAMES = [
+  "Ene", "Feb", "Mar", "Abr", "May", "Jun",
+  "Jul", "Ago", "Sep", "Oct", "Nov", "Dic",
+];
+
+const fmt = (n: number) => formatInvoiceCurrency(n);
+
+const chartPrimary = "rgba(255, 98, 0, 0.85)";
+const chartNegative = "rgba(220, 38, 38, 0.85)";
+
+const makeBarChartOptions = (showLegend = true) => ({
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: {
+      display: showLegend,
+      labels: { font: { family: FONT }, color: C.textMuted },
+    },
+    tooltip: {
+      callbacks: {
+        label: (context: { dataset: { label?: string }; parsed: { y: number | null } }) => {
+          const y = context.parsed.y ?? 0;
+          return `${context.dataset.label}: ${fmt(y)}`;
+        },
+      },
+    },
+  },
+  scales: {
+    x: { ticks: { font: { family: FONT }, color: C.textMuted } },
+    y: {
+      beginAtZero: true,
+      ticks: {
+        font: { family: FONT },
+        color: C.textMuted,
+        callback: (value: string | number) => fmt(Number(value)),
+      },
+    },
+  },
+});
+
+const getMonthlyInvoiceBreakdown = (
+  arr: InvoiceData[],
+): MonthlyInvoiceBreakdown[] => {
+  const monthMap = groupInvoicesByMonth(arr);
+  return Object.keys(monthMap)
+    .sort()
+    .map((month) => {
+      const items = monthMap[month];
+      const st = calculateInvoiceStats(items);
+      const [year, m] = month.split("-");
+      return {
+        month,
+        label: `${M_NAMES[parseInt(m, 10) - 1]} ${year}`,
+        invoices: st.totalInvoices,
+        invoiced: st.invoicedCount,
+        posted: st.postedCount,
+        homeTotal: st.totalHomeTotalAmount,
+        balanceDue: st.totalBalanceDue,
+        amountPaid: st.totalAmountPaid,
+        clients: st.uniqueClients,
+      };
+    });
+};
+
+const getTopInvoiceClients = (arr: InvoiceData[], limit = 10) => {
+  const map = new Map<string, { count: number; homeTotal: number }>();
+  arr.forEach((inv) => {
+    const c = inv.billToName?.trim();
+    if (!c) return;
+    const ex = map.get(c) || { count: 0, homeTotal: 0 };
+    map.set(c, {
+      count: ex.count + 1,
+      homeTotal: ex.homeTotal + inv.homeTotalAmount,
+    });
+  });
+  return Array.from(map.entries())
+    .map(([name, d]) => ({ name, ...d }))
+    .sort((a, b) => b.homeTotal - a.homeTotal)
+    .slice(0, limit);
+};
+
 function InvoicesXEjecutivo() {
-  const { accessToken } = useOutletContext<OutletContext>();
+  const { accessToken, refreshAccessToken } = useOutletContext<OutletContext>();
   const { user, getEjecutivos } = useAuth();
 
-  // Estados generales
   const [activeTab, setActiveTab] = useState<TabType>("individual");
   const [ejecutivos, setEjecutivos] = useState<Ejecutivo[]>([]);
   const [loadingEjecutivos, setLoadingEjecutivos] = useState(true);
 
-  // Estados para Análisis Individual
-  const [selectedEjecutivo, setSelectedEjecutivo] = useState<string>("");
-  const [startDate, setStartDate] = useState<string>("");
-  const [endDate, setEndDate] = useState<string>("");
+  const [selectedEjecutivo, setSelectedEjecutivo] = useState("");
+  const [individualPreset, setIndividualPreset] =
+    useState<PeriodPreset>("this-year");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [invoices, setInvoices] = useState<InvoiceData[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
+  const [individualFetchedAt, setIndividualFetchedAt] = useState<string | null>(
+    null,
+  );
+  const [rawInvoiceCount, setRawInvoiceCount] = useState(0);
 
-  // Estados para Análisis Comparativa
-  const [compStartDate, setCompStartDate] = useState<string>("");
-  const [compEndDate, setCompEndDate] = useState<string>("");
+  const [compPreset, setCompPreset] = useState<PeriodPreset>("this-year");
+  const [compStartDate, setCompStartDate] = useState("");
+  const [compEndDate, setCompEndDate] = useState("");
   const [comparativeData, setComparativeData] = useState<ExecutiveComparison[]>(
     [],
   );
@@ -180,169 +221,63 @@ function InvoicesXEjecutivo() {
   const [loadingComparative, setLoadingComparative] = useState(false);
   const [errorComparative, setErrorComparative] = useState<string | null>(null);
   const [hasSearchedComparative, setHasSearchedComparative] = useState(false);
+  const [compFetchedAt, setCompFetchedAt] = useState<string | null>(null);
   const [sortField, setSortField] = useState<SortField>("totalHomeTotalAmount");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
 
   const [showInvoicesModal, setShowInvoicesModal] = useState(false);
   const [invoicesDetalle, setInvoicesDetalle] = useState<InvoiceData[]>([]);
 
-  // Estados para Análisis Doble
-  const [ejecutivo1, setEjecutivo1] = useState<string>("");
-  const [ejecutivo2, setEjecutivo2] = useState<string>("");
-  const [doubleStartDate, setDoubleStartDate] = useState<string>("");
-  const [doubleEndDate, setDoubleEndDate] = useState<string>("");
+  const [ejecutivo1, setEjecutivo1] = useState("");
+  const [ejecutivo2, setEjecutivo2] = useState("");
+  const [doublePreset, setDoublePreset] = useState<PeriodPreset>("this-year");
+  const [doubleStartDate, setDoubleStartDate] = useState("");
+  const [doubleEndDate, setDoubleEndDate] = useState("");
   const [doubleData, setDoubleData] = useState<ExecutiveComparison[]>([]);
   const [allDoubleInvoices, setAllDoubleInvoices] = useState<InvoiceData[]>([]);
   const [loadingDouble, setLoadingDouble] = useState(false);
   const [errorDouble, setErrorDouble] = useState<string | null>(null);
   const [hasSearchedDouble, setHasSearchedDouble] = useState(false);
+  const [doubleFetchedAt, setDoubleFetchedAt] = useState<string | null>(null);
 
-  // Cargar ejecutivos al montar
+  const applyPeriodPreset = (
+    preset: PeriodPreset,
+    setStart: (v: string) => void,
+    setEnd: (v: string) => void,
+  ) => {
+    if (preset === "custom") return;
+    const range = getPeriodRange(preset);
+    setStart(range.startDate);
+    setEnd(range.endDate);
+  };
+
+  useEffect(() => {
+    applyPeriodPreset(individualPreset, setStartDate, setEndDate);
+  }, [individualPreset]);
+
+  useEffect(() => {
+    applyPeriodPreset(compPreset, setCompStartDate, setCompEndDate);
+  }, [compPreset]);
+
+  useEffect(() => {
+    applyPeriodPreset(doublePreset, setDoubleStartDate, setDoubleEndDate);
+  }, [doublePreset]);
+
   useEffect(() => {
     const fetchEjecutivos = async () => {
       try {
         setLoadingEjecutivos(true);
         const data = await getEjecutivos();
-        const activeEjecutivos = data.filter((e): e is Ejecutivo => e !== null);
-        setEjecutivos(activeEjecutivos);
+        setEjecutivos(data.filter((e): e is Ejecutivo => e !== null));
       } catch (err) {
         console.error("Error cargando ejecutivos:", err);
       } finally {
         setLoadingEjecutivos(false);
       }
     };
-
     fetchEjecutivos();
   }, []);
 
-  useEffect(() => {
-    const tooltipTriggerList = document.querySelectorAll(
-      '[data-bs-toggle="tooltip"]',
-    );
-    tooltipTriggerList.forEach((el) => {
-      new (window as any).bootstrap.Tooltip(el);
-    });
-  }, []);
-
-  // Función para convertir fecha MM/DD/YYYY (del API) a Date object
-  const parseDate = (dateStr: string): Date | null => {
-    if (!dateStr) return null;
-    const parts = dateStr.split("/");
-    if (parts.length !== 3) return null;
-    // MM/DD/YYYY -> new Date(YYYY, MM-1, DD)
-    return new Date(
-      parseInt(parts[2]),
-      parseInt(parts[0]) - 1,
-      parseInt(parts[1]),
-    );
-  };
-
-  // Función para convertir fecha del input (YYYY-MM-DD) a Date object
-  const parseInputDate = (dateStr: string): Date | null => {
-    if (!dateStr) return null;
-    const parts = dateStr.split("-");
-    if (parts.length !== 3) return null;
-    // YYYY-MM-DD -> new Date(YYYY, MM-1, DD)
-    return new Date(
-      parseInt(parts[0]),
-      parseInt(parts[1]) - 1,
-      parseInt(parts[2]),
-    );
-  };
-
-  // Función para convertir Invoice a InvoiceData
-  const mapInvoiceToData = (invoice: Invoice): InvoiceData => {
-    return {
-      moduleNumber: invoice.statementMemo || invoice.moduleNumber,
-      invoiceNumber: invoice.number,
-      billToName: invoice.billToName || "",
-      salesRep: invoice.salesRep || "",
-      type: invoice.type || "",
-      status: invoice.status || "",
-      date: invoice.date || "",
-      dueDate: invoice.dueDate || "",
-      amount: invoice.amount || 0,
-      totalAmount: invoice.totalAmount || 0,
-      homeTotalAmount: invoice.homeTotalAmount || 0,
-      balanceDue: invoice.balanceDue || 0,
-      amountPaid: invoice.amountPaid || 0,
-      paymentDate: invoice.paymentDate,
-    };
-  };
-
-  // Función para calcular estadísticas de un array de invoices
-  const calculateStats = (invoicesArray: InvoiceData[]): InvoiceStats => {
-    const totalInvoices = invoicesArray.length;
-    const invoicedCount = invoicesArray.filter(
-      (i) => i.status === "Invoiced",
-    ).length;
-    const postedCount = invoicesArray.filter(
-      (i) => i.status === "Posted",
-    ).length;
-    const totalAmount = invoicesArray.reduce(
-      (sum, i) => sum + (i.amount || 0),
-      0,
-    );
-    const totalHomeTotalAmount = invoicesArray.reduce(
-      (sum, i) => sum + (i.homeTotalAmount || 0),
-      0,
-    );
-    const totalBalanceDue = invoicesArray.reduce(
-      (sum, i) => sum + (i.balanceDue || 0),
-      0,
-    );
-    const totalAmountPaid = invoicesArray.reduce(
-      (sum, i) => sum + (i.amountPaid || 0),
-      0,
-    );
-
-    // Calcular clientes únicos
-    const uniqueClientsSet = new Set(
-      invoicesArray
-        .map((i) => i.billToName?.trim())
-        .filter((c) => c && c.length > 0),
-    );
-    const uniqueClients = uniqueClientsSet.size;
-
-    return {
-      totalInvoices,
-      invoicedCount,
-      postedCount,
-      totalAmount,
-      totalHomeTotalAmount,
-      totalBalanceDue,
-      totalAmountPaid,
-      averagePerInvoice:
-        totalInvoices > 0 ? totalHomeTotalAmount / totalInvoices : 0,
-      uniqueClients,
-    };
-  };
-
-  // Función para agrupar invoices por mes
-  const groupByMonth = (invoicesArray: InvoiceData[]) => {
-    const monthMap: { [key: string]: InvoiceData[] } = {};
-
-    invoicesArray.forEach((invoice) => {
-      if (!invoice.date) return;
-
-      const parts = invoice.date.split("/");
-      if (parts.length !== 3) return;
-
-      const month = parseInt(parts[0]);
-      const year = parseInt(parts[2]);
-      const key = `${year}-${month.toString().padStart(2, "0")}`;
-
-      if (!monthMap[key]) {
-        monthMap[key] = [];
-      }
-
-      monthMap[key].push(invoice);
-    });
-
-    return monthMap;
-  };
-
-  // Fetch para análisis individual
   const fetchIndividualData = async () => {
     if (!selectedEjecutivo) {
       setError("Debes seleccionar un ejecutivo");
@@ -357,7 +292,14 @@ function InvoicesXEjecutivo() {
 
     if (cached && timestamp && now - parseInt(timestamp) < fiveMinutes) {
       const parsedData = JSON.parse(cached);
-      setInvoices(parsedData);
+      const cachedInvoices = Array.isArray(parsedData)
+        ? parsedData
+        : parsedData.invoices;
+      setInvoices(cachedInvoices || []);
+      setRawInvoiceCount(
+        Array.isArray(parsedData) ? 0 : parsedData.rawCount || 0,
+      );
+      setIndividualFetchedAt(timestamp);
       setHasSearched(true);
       setError(null);
       return;
@@ -366,77 +308,31 @@ function InvoicesXEjecutivo() {
     try {
       setLoading(true);
       setError(null);
-
-      const response = await fetch("https://api.linbis.com/invoices/all", {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
+      const { mapped, fetchedAt, raw } = await fetchLinbisInvoicesAll(
+        accessToken,
+        refreshAccessToken,
+      );
+      setRawInvoiceCount(raw.length);
+      const filteredInvoices = filterInvoices(mapped, {
+        salesRep: selectedEjecutivo,
+        startDate,
+        endDate,
       });
-
-      if (!response.ok) {
-        throw new Error(`Error al obtener invoices: ${response.statusText}`);
-      }
-
-      const data: Invoice[] = await response.json();
-
-      // Convertir a InvoiceData
-      const mappedData = data.map(mapInvoiceToData);
-
-      // Eliminar duplicados basándose en el moduleNumber
-      const uniqueData = Array.from(
-        new Map(mappedData.map((item) => [item.moduleNumber, item])).values(),
-      );
-
-      // Filtrar facturas donde moduleNumber NO comience con SOG
-      const filteredData = uniqueData.filter(
-        (item) => !item.moduleNumber.startsWith("SOG"),
-      );
-
-      // Filtrar por ejecutivo (con validación de null)
-      let filteredInvoices = filteredData.filter(
-        (i) =>
-          i.salesRep &&
-          i.salesRep.toLowerCase() === selectedEjecutivo.toLowerCase(),
-      );
-
-      // Filtrar por rango de fechas si están definidas
-      if (startDate || endDate) {
-        filteredInvoices = filteredInvoices.filter((invoice) => {
-          const invoiceDate = parseDate(invoice.date);
-          if (!invoiceDate) return false;
-
-          const start = startDate ? parseInputDate(startDate) : null;
-          const end = endDate ? parseInputDate(endDate) : null;
-
-          if (start && end) {
-            return invoiceDate >= start && invoiceDate <= end;
-          } else if (start) {
-            return invoiceDate >= start;
-          } else if (end) {
-            return invoiceDate <= end;
-          }
-          return true;
-        });
-      }
-
       setInvoices(filteredInvoices);
+      setIndividualFetchedAt(String(fetchedAt));
       setHasSearched(true);
-
-      // Guardar en caché
-      localStorage.setItem(cacheKey, JSON.stringify(filteredInvoices));
+      localStorage.setItem(
+        cacheKey,
+        JSON.stringify({ invoices: filteredInvoices, rawCount: raw.length }),
+      );
       localStorage.setItem(`${cacheKey}_timestamp`, now.toString());
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error desconocido");
-      console.error("Error fetching invoices:", err);
     } finally {
       setLoading(false);
     }
   };
 
-  // Fetch para análisis comparativa
   const fetchComparativeData = async () => {
     const cacheKey = `invoicesComparative_${compStartDate}_${compEndDate}`;
     const cached = localStorage.getItem(cacheKey);
@@ -448,6 +344,7 @@ function InvoicesXEjecutivo() {
       const parsedData = JSON.parse(cached);
       setComparativeData(parsedData.comparativeData);
       setAllComparativeInvoices(parsedData.allInvoices);
+      setCompFetchedAt(timestamp);
       setHasSearchedComparative(true);
       setErrorComparative(null);
       return;
@@ -456,81 +353,22 @@ function InvoicesXEjecutivo() {
     try {
       setLoadingComparative(true);
       setErrorComparative(null);
-
-      const response = await fetch("https://api.linbis.com/invoices/all", {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Error al obtener invoices: ${response.statusText}`);
-      }
-
-      const data: Invoice[] = await response.json();
-
-      // Convertir a InvoiceData
-      const mappedData = data.map(mapInvoiceToData);
-
-      // Eliminar duplicados basándose en el moduleNumber
-      const uniqueData = Array.from(
-        new Map(mappedData.map((item) => [item.moduleNumber, item])).values(),
+      const { mapped, fetchedAt } = await fetchLinbisInvoicesAll(
+        accessToken,
+        refreshAccessToken,
       );
-
-      // Filtrar facturas donde moduleNumber NO comience con SOG
-      const filteredData = uniqueData.filter(
-        (item) => !item.moduleNumber.startsWith("SOG"),
-      );
-
-      // Filtrar por rango de fechas
-      let filteredInvoices = filteredData;
-      if (compStartDate || compEndDate) {
-        filteredInvoices = filteredData.filter((invoice) => {
-          const invoiceDate = parseDate(invoice.date);
-          if (!invoiceDate) return false;
-
-          const start = compStartDate ? parseInputDate(compStartDate) : null;
-          const end = compEndDate ? parseInputDate(compEndDate) : null;
-
-          if (start && end) {
-            return invoiceDate >= start && invoiceDate <= end;
-          } else if (start) {
-            return invoiceDate >= start;
-          } else if (end) {
-            return invoiceDate <= end;
-          }
-          return true;
-        });
-      }
-
-      // Agrupar por ejecutivo (filtrar salesRep nulos primero)
-      const groupedByExecutive: { [key: string]: InvoiceData[] } = {};
-      filteredInvoices.forEach((invoice) => {
-        const exec = invoice.salesRep;
-        if (!exec || exec.trim().length === 0) return;
-
-        if (!groupedByExecutive[exec]) {
-          groupedByExecutive[exec] = [];
-        }
-        groupedByExecutive[exec].push(invoice);
+      const filteredInvoices = filterInvoices(mapped, {
+        startDate: compStartDate,
+        endDate: compEndDate,
       });
-
-      // Calcular stats para cada ejecutivo
-      const comparativeResults: ExecutiveComparison[] = Object.keys(
-        groupedByExecutive,
-      ).map((exec) => ({
-        nombre: exec,
-        stats: calculateStats(groupedByExecutive[exec]),
-      }));
-
+      const comparativeResults = buildExecutiveComparisons(
+        filteredInvoices,
+        ejecutivos.map((e) => e.nombre),
+      );
       setComparativeData(comparativeResults);
       setAllComparativeInvoices(filteredInvoices);
+      setCompFetchedAt(String(fetchedAt));
       setHasSearchedComparative(true);
-
-      // Guardar en caché
       localStorage.setItem(
         cacheKey,
         JSON.stringify({
@@ -543,19 +381,16 @@ function InvoicesXEjecutivo() {
       setErrorComparative(
         err instanceof Error ? err.message : "Error desconocido",
       );
-      console.error("Error fetching comparative invoices:", err);
     } finally {
       setLoadingComparative(false);
     }
   };
 
-  // Fetch para análisis doble
   const fetchDoubleData = async () => {
     if (!ejecutivo1 || !ejecutivo2) {
       setErrorDouble("Debes seleccionar dos ejecutivos");
       return;
     }
-
     if (ejecutivo1 === ejecutivo2) {
       setErrorDouble("Debes seleccionar dos ejecutivos diferentes");
       return;
@@ -571,6 +406,7 @@ function InvoicesXEjecutivo() {
       const parsedData = JSON.parse(cached);
       setDoubleData(parsedData.doubleData);
       setAllDoubleInvoices(parsedData.allInvoices);
+      setDoubleFetchedAt(timestamp);
       setHasSearchedDouble(true);
       setErrorDouble(null);
       return;
@@ -579,112 +415,49 @@ function InvoicesXEjecutivo() {
     try {
       setLoadingDouble(true);
       setErrorDouble(null);
-
-      const response = await fetch("https://api.linbis.com/invoices/all", {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
+      const { mapped, fetchedAt } = await fetchLinbisInvoicesAll(
+        accessToken,
+        refreshAccessToken,
+      );
+      const exec1Invoices = filterInvoices(mapped, {
+        salesRep: ejecutivo1,
+        startDate: doubleStartDate,
+        endDate: doubleEndDate,
       });
-
-      if (!response.ok) {
-        throw new Error(`Error al obtener invoices: ${response.statusText}`);
-      }
-
-      const data: Invoice[] = await response.json();
-
-      // Convertir a InvoiceData
-      const mappedData = data.map(mapInvoiceToData);
-
-      // Eliminar duplicados basándose en el moduleNumber
-      const uniqueData = Array.from(
-        new Map(mappedData.map((item) => [item.moduleNumber, item])).values(),
-      );
-
-      // Filtrar facturas donde moduleNumber NO comience con SOG
-      const filteredData = uniqueData.filter(
-        (item) => !item.moduleNumber.startsWith("SOG"),
-      );
-
-      // Filtrar por los dos ejecutivos (con validación de null)
-      let filteredInvoices = filteredData.filter(
-        (i) =>
-          i.salesRep &&
-          (i.salesRep.toLowerCase() === ejecutivo1.toLowerCase() ||
-            i.salesRep.toLowerCase() === ejecutivo2.toLowerCase()),
-      );
-
-      // Filtrar por rango de fechas
-      if (doubleStartDate || doubleEndDate) {
-        filteredInvoices = filteredInvoices.filter((invoice) => {
-          const invoiceDate = parseDate(invoice.date);
-          if (!invoiceDate) return false;
-
-          const start = doubleStartDate
-            ? parseInputDate(doubleStartDate)
-            : null;
-          const end = doubleEndDate ? parseInputDate(doubleEndDate) : null;
-
-          if (start && end) {
-            return invoiceDate >= start && invoiceDate <= end;
-          } else if (start) {
-            return invoiceDate >= start;
-          } else if (end) {
-            return invoiceDate <= end;
-          }
-          return true;
-        });
-      }
-
-      // Agrupar por ejecutivo (con validación de null)
-      const exec1Invoices = filteredInvoices.filter(
-        (i) =>
-          i.salesRep && i.salesRep.toLowerCase() === ejecutivo1.toLowerCase(),
-      );
-      const exec2Invoices = filteredInvoices.filter(
-        (i) =>
-          i.salesRep && i.salesRep.toLowerCase() === ejecutivo2.toLowerCase(),
-      );
-
+      const exec2Invoices = filterInvoices(mapped, {
+        salesRep: ejecutivo2,
+        startDate: doubleStartDate,
+        endDate: doubleEndDate,
+      });
       const doubleResults: ExecutiveComparison[] = [
-        { nombre: ejecutivo1, stats: calculateStats(exec1Invoices) },
-        { nombre: ejecutivo2, stats: calculateStats(exec2Invoices) },
+        {
+          nombre: ejecutivo1,
+          stats: calculateInvoiceStats(exec1Invoices),
+        },
+        {
+          nombre: ejecutivo2,
+          stats: calculateInvoiceStats(exec2Invoices),
+        },
       ];
-
       setDoubleData(doubleResults);
-      setAllDoubleInvoices(filteredInvoices);
+      setAllDoubleInvoices([...exec1Invoices, ...exec2Invoices]);
+      setDoubleFetchedAt(String(fetchedAt));
       setHasSearchedDouble(true);
-
-      // Guardar en caché
       localStorage.setItem(
         cacheKey,
         JSON.stringify({
           doubleData: doubleResults,
-          allInvoices: filteredInvoices,
+          allInvoices: [...exec1Invoices, ...exec2Invoices],
         }),
       );
       localStorage.setItem(`${cacheKey}_timestamp`, now.toString());
     } catch (err) {
       setErrorDouble(err instanceof Error ? err.message : "Error desconocido");
-      console.error("Error fetching double invoices:", err);
     } finally {
       setLoadingDouble(false);
     }
   };
 
-  // Función para formatear moneda
-  const formatCurrency = (value: number): string => {
-    return new Intl.NumberFormat("es-CL", {
-      style: "currency",
-      currency: "CLP",
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(value);
-  };
-
-  // Función para manejar ordenamiento
   const handleSort = (field: SortField) => {
     if (sortField === field) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");
@@ -694,396 +467,209 @@ function InvoicesXEjecutivo() {
     }
   };
 
-  // Función para obtener datos ordenados
-  const getSortedData = (data: ExecutiveComparison[]) => {
-    return [...data].sort((a, b) => {
+  const sortedComparativeData = useMemo(() => {
+    return [...comparativeData].sort((a, b) => {
       let aValue: number | string;
       let bValue: number | string;
-
       if (sortField === "nombre") {
         aValue = a.nombre;
         bValue = b.nombre;
       } else {
-        aValue = a.stats[sortField];
-        bValue = b.stats[sortField];
+        aValue = a.stats[sortField as keyof InvoiceStats];
+        bValue = b.stats[sortField as keyof InvoiceStats];
       }
-
       if (typeof aValue === "string" && typeof bValue === "string") {
         return sortDirection === "asc"
           ? aValue.localeCompare(bValue)
           : bValue.localeCompare(aValue);
       }
-
       return sortDirection === "asc"
         ? (aValue as number) - (bValue as number)
         : (bValue as number) - (aValue as number);
     });
-  };
+  }, [comparativeData, sortField, sortDirection]);
 
-  // Función para renderizar indicador de ordenamiento
-  const renderSortIndicator = (field: SortField) => {
-    if (sortField !== field) return null;
-    return sortDirection === "asc" ? " ▲" : " ▼";
-  };
+  const stats = useMemo(() => calculateInvoiceStats(invoices), [invoices]);
+  const monthlyData = useMemo(
+    () => getMonthlyInvoiceBreakdown(invoices),
+    [invoices],
+  );
+  const topClients = useMemo(
+    () => getTopInvoiceClients(invoices),
+    [invoices],
+  );
 
-  // Función para mostrar modal de detalle
-  const handleShowInvoicesDetail = (invoicesList: InvoiceData[]) => {
-    setInvoicesDetalle(invoicesList);
+  const globalStats = useMemo(
+    () => calculateInvoiceStats(allComparativeInvoices),
+    [allComparativeInvoices],
+  );
+
+  const handleShowInvoicesDetail = (list: InvoiceData[]) => {
+    setInvoicesDetalle(list);
     setShowInvoicesModal(true);
   };
 
-  // Renderizar gráficos individuales
-  const renderIndividualCharts = () => {
-    if (invoices.length === 0) return null;
-
-    const stats = calculateStats(invoices);
-    const monthlyData = groupByMonth(invoices);
-    const sortedMonths = Object.keys(monthlyData).sort();
-
-    // Datos para gráfico de barras mensual
-    const monthlyChartData = {
-      labels: sortedMonths.map((m) => {
-        const [year, month] = m.split("-");
-        return `${month}/${year}`;
-      }),
-      datasets: [
-        {
-          label: "Total Facturado (CLP)",
-          data: sortedMonths.map((m) => {
-            const monthInvoices = monthlyData[m];
-            return monthInvoices.reduce((sum, i) => sum + i.homeTotalAmount, 0);
-          }),
-          backgroundColor: "rgba(59, 130, 246, 0.8)",
-          borderColor: "rgb(59, 130, 246)",
-          borderWidth: 1,
-        },
-      ],
-    };
-
-    // Datos para gráfico de status
-    const statusChartData = {
-      labels: ["Invoiced", "Posted"],
-      datasets: [
-        {
-          data: [stats.invoicedCount, stats.postedCount],
-          backgroundColor: [
-            "rgba(251, 191, 36, 0.8)",
-            "rgba(34, 197, 94, 0.8)",
-          ],
-          borderColor: ["rgb(251, 191, 36)", "rgb(34, 197, 94)"],
-          borderWidth: 1,
-        },
-      ],
-    };
-
-    return (
-      <div className="row g-4 mb-4">
-        <div className="col-md-8">
-          <div
-            style={{
-              backgroundColor: "white",
-              borderRadius: "12px",
-              border: "1px solid #e5e7eb",
-              padding: "24px",
-              boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
-            }}
-          >
-            <h5
-              style={{
-                fontSize: "16px",
-                fontWeight: "600",
-                color: "#1f2937",
-                marginBottom: "20px",
-              }}
-            >
-              📈 Facturación Mensual
-            </h5>
-            <div style={{ height: "280px", maxHeight: "35vh" }}>
-              <Bar
-                data={monthlyChartData}
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                      callbacks: {
-                        label: (context) =>
-                          formatCurrency(Number(context.parsed.y)),
-                      },
-                    },
-                  },
-                  scales: {
-                    y: {
-                      beginAtZero: true,
-                      ticks: {
-                        callback: (value) => formatCurrency(Number(value)),
-                      },
-                    },
-                  },
-                }}
-              />
-            </div>
-          </div>
-        </div>
-        <div className="col-md-4">
-          <div
-            style={{
-              backgroundColor: "white",
-              borderRadius: "12px",
-              border: "1px solid #e5e7eb",
-              padding: "24px",
-              boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
-            }}
-          >
-            <h5
-              style={{
-                fontSize: "16px",
-                fontWeight: "600",
-                color: "#1f2937",
-                marginBottom: "20px",
-              }}
-            >
-              📊 Status de Facturas
-            </h5>
-            <div
-              style={{
-                height: "220px",
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-              }}
-            >
-              <Doughnut
-                data={statusChartData}
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  plugins: {
-                    legend: {
-                      position: "bottom",
-                    },
-                  },
-                }}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+  const exportComparativeToCSV = (
+    data: ExecutiveComparison[],
+    filename: string,
+  ) => {
+    const headers = [
+      "Ejecutivo",
+      "Total Facturas",
+      "Invoiced",
+      "Posted",
+      "Facturado CLP",
+      "Saldo Pendiente",
+      "Total Pagado",
+      "Promedio/Factura",
+      "Clientes Únicos",
+    ];
+    const rows = data.map((ex) => [
+      ex.nombre,
+      ex.stats.totalInvoices,
+      ex.stats.invoicedCount,
+      ex.stats.postedCount,
+      ex.stats.totalHomeTotalAmount,
+      ex.stats.totalBalanceDue,
+      ex.stats.totalAmountPaid,
+      ex.stats.averagePerInvoice,
+      ex.stats.uniqueClients,
+    ]);
+    const csv = [
+      headers.join(","),
+      ...rows.map((r) => r.map((c) => `"${c}"`).join(",")),
+    ].join("\n");
+    const blob = new Blob(["\ufeff" + csv], {
+      type: "text/csv;charset=utf-8;",
+    });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `${filename}.csv`;
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
-  // Renderizar gráficos comparativos
-  const renderComparativeCharts = () => {
-    if (comparativeData.length === 0) return null;
-
-    const sortedData = getSortedData(comparativeData);
-
-    // Gráfico de barras comparativo
-    const compareChartData = {
-      labels: sortedData.map((d) => d.nombre),
-      datasets: [
+  const doubleMetrics = doubleData.length === 2
+    ? [
         {
-          label: "Total Facturado (CLP)",
-          data: sortedData.map((d) => d.stats.totalHomeTotalAmount),
-          backgroundColor: "rgba(59, 130, 246, 0.8)",
-          borderColor: "rgb(59, 130, 246)",
-          borderWidth: 1,
+          label: "Total Facturas",
+          v1: doubleData[0].stats.totalInvoices,
+          v2: doubleData[1].stats.totalInvoices,
+          format: (v: number) => String(v),
         },
         {
-          label: "Saldo Pendiente (CLP)",
-          data: sortedData.map((d) => d.stats.totalBalanceDue),
-          backgroundColor: "rgba(239, 68, 68, 0.8)",
-          borderColor: "rgb(239, 68, 68)",
-          borderWidth: 1,
+          label: "Invoiced",
+          v1: doubleData[0].stats.invoicedCount,
+          v2: doubleData[1].stats.invoicedCount,
+          format: (v: number) => String(v),
         },
-      ],
-    };
-
-    return (
-      <div className="mb-4">
-        <div
-          style={{
-            backgroundColor: "white",
-            borderRadius: "12px",
-            border: "1px solid #e5e7eb",
-            padding: "24px",
-            boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
-          }}
-        >
-          <h5
-            style={{
-              fontSize: "16px",
-              fontWeight: "600",
-              color: "#1f2937",
-              marginBottom: "20px",
-            }}
-          >
-            📊 Comparación por Ejecutivo
-          </h5>
-          <div style={{ height: "280px", maxHeight: "35vh" }}>
-            <Bar
-              data={compareChartData}
-              options={{
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                  legend: {
-                    position: "top",
-                  },
-                  tooltip: {
-                    callbacks: {
-                      label: (context) =>
-                        `${context.dataset.label}: ${formatCurrency(Number(context.parsed.y))}`,
-                    },
-                  },
-                },
-                scales: {
-                  y: {
-                    beginAtZero: true,
-                    ticks: {
-                      callback: (value) => formatCurrency(Number(value)),
-                    },
-                  },
-                },
-              }}
-            />
-          </div>
-        </div>
-      </div>
-    );
-  };
+        {
+          label: "Posted",
+          v1: doubleData[0].stats.postedCount,
+          v2: doubleData[1].stats.postedCount,
+          format: (v: number) => String(v),
+        },
+        {
+          label: "Clientes Únicos",
+          v1: doubleData[0].stats.uniqueClients,
+          v2: doubleData[1].stats.uniqueClients,
+          format: (v: number) => String(v),
+        },
+        {
+          label: "Facturado (CLP)",
+          v1: doubleData[0].stats.totalHomeTotalAmount,
+          v2: doubleData[1].stats.totalHomeTotalAmount,
+          format: fmt,
+        },
+        {
+          label: "Saldo Pendiente",
+          v1: doubleData[0].stats.totalBalanceDue,
+          v2: doubleData[1].stats.totalBalanceDue,
+          format: fmt,
+        },
+        {
+          label: "Total Pagado",
+          v1: doubleData[0].stats.totalAmountPaid,
+          v2: doubleData[1].stats.totalAmountPaid,
+          format: fmt,
+        },
+        {
+          label: "Promedio / Factura",
+          v1: doubleData[0].stats.averagePerInvoice,
+          v2: doubleData[1].stats.averagePerInvoice,
+          format: fmt,
+        },
+      ]
+    : [];
 
   return (
-    <div className="container-fluid">
-      {/* Header */}
-      <div className="row mb-4">
-        <div className="col">
-          <h2
-            style={{
-              fontSize: "28px",
-              fontWeight: "700",
-              color: "#1f2937",
-              marginBottom: "8px",
-              letterSpacing: "-0.5px",
-            }}
-          >
-            Reportería de Facturación por Ejecutivo
-          </h2>
-          <p
-            style={{
-              fontSize: "15px",
-              color: "#6b7280",
-              margin: 0,
-            }}
-          >
-            Bienvenida {user?.nombreuser}
-          </p>
-        </div>
+    <div style={pageWrap}>
+      <div style={{ marginBottom: 24 }}>
+        <h1
+          style={{
+            ...base,
+            fontSize: 22,
+            fontWeight: 700,
+            color: C.secondary,
+            margin: 0,
+            letterSpacing: "-0.3px",
+          }}
+        >
+          Reportería de Facturación
+        </h1>
+        <p style={{ ...base, fontSize: 13, color: C.textMuted, margin: "4px 0 0" }}>
+          {user?.nombreuser || ""}
+        </p>
       </div>
 
-      {/* Tabs */}
       <div
         style={{
-          backgroundColor: "white",
-          borderRadius: "12px",
-          padding: "8px",
-          marginBottom: "24px",
           display: "flex",
-          gap: "8px",
-          boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
+          borderBottom: `1px solid ${C.border}`,
+          marginBottom: 24,
         }}
       >
-        {[
-          {
-            key: "individual" as TabType,
-            label: "👤 Análisis Individual",
-            icon: "📊",
-          },
-          {
-            key: "comparativa" as TabType,
-            label: "📊 Análisis Comparativa",
-            icon: "📈",
-          },
-          { key: "doble" as TabType, label: "⚖️ Análisis Doble", icon: "🔄" },
-        ].map((tab) => (
+        {(
+          [
+            { key: "individual" as TabType, label: "Análisis Individual" },
+            { key: "comparativa" as TabType, label: "Análisis Comparativo" },
+            { key: "doble" as TabType, label: "Comparación Doble" },
+          ] as const
+        ).map((tab) => (
           <button
             key={tab.key}
+            type="button"
             onClick={() => setActiveTab(tab.key)}
-            style={{
-              flex: 1,
-              padding: "12px 24px",
-              border: "none",
-              borderRadius: "8px",
-              fontSize: "14px",
-              fontWeight: "600",
-              cursor: "pointer",
-              transition: "all 0.2s",
-              backgroundColor:
-                activeTab === tab.key
-                  ? "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
-                  : "transparent",
-              background:
-                activeTab === tab.key
-                  ? "linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)"
-                  : "transparent",
-              color: activeTab === tab.key ? "white" : "#6b7280",
-            }}
+            style={activeTab === tab.key ? tabActive : tabBase}
           >
             {tab.label}
           </button>
         ))}
       </div>
 
-      {/* Tab Individual */}
+      {/* ── INDIVIDUAL ── */}
       {activeTab === "individual" && (
         <>
-          {/* Filtros */}
-          <div
-            style={{
-              backgroundColor: "white",
-              borderRadius: "12px",
-              border: "1px solid #e5e7eb",
-              padding: "24px",
-              marginBottom: "24px",
-              boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
-            }}
-          >
-            <h4
+          <div style={{ ...styles.cardPad, marginBottom: 20 }}>
+            <div
               style={{
-                fontSize: "18px",
-                fontWeight: "600",
-                color: "#1f2937",
-                marginBottom: "20px",
+                display: "flex",
+                gap: 12,
+                alignItems: "end",
+                flexWrap: "wrap",
               }}
             >
-              🔍 Filtros de Búsqueda
-            </h4>
-            <div className="row g-3">
-              <div className="col-md-4">
-                <label
-                  style={{
-                    display: "block",
-                    fontSize: "14px",
-                    fontWeight: "500",
-                    color: "#374151",
-                    marginBottom: "8px",
-                  }}
-                >
-                  Ejecutivo
-                </label>
+              <div style={{ flex: "1 1 200px" }}>
+                <label style={styles.label}>Ejecutivo</label>
                 <select
-                  className="form-select"
                   value={selectedEjecutivo}
                   onChange={(e) => setSelectedEjecutivo(e.target.value)}
                   disabled={loadingEjecutivos}
-                  style={{
-                    borderRadius: "8px",
-                    border: "1px solid #d1d5db",
-                    padding: "10px 12px",
-                  }}
+                  style={selectStyle}
                 >
-                  <option value="">Selecciona un ejecutivo...</option>
+                  <option value="">Seleccionar ejecutivo...</option>
                   {ejecutivos.map((ej) => (
                     <option key={ej.id} value={ej.nombre}>
                       {ej.nombre}
@@ -1091,1582 +677,865 @@ function InvoicesXEjecutivo() {
                   ))}
                 </select>
               </div>
-              <div className="col-md-3">
-                <label
-                  style={{
-                    display: "block",
-                    fontSize: "14px",
-                    fontWeight: "500",
-                    color: "#374151",
-                    marginBottom: "8px",
-                  }}
-                >
-                  Fecha Inicio
-                </label>
+              <PeriodPresetSelect
+                value={individualPreset}
+                onChange={setIndividualPreset}
+              />
+              <div style={{ flex: "0 1 160px" }}>
+                <label style={styles.label}>Desde</label>
                 <input
                   type="date"
-                  className="form-control"
                   value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  style={{
-                    borderRadius: "8px",
-                    border: "1px solid #d1d5db",
-                    padding: "10px 12px",
+                  onChange={(e) => {
+                    setIndividualPreset("custom");
+                    setStartDate(e.target.value);
                   }}
+                  style={inputStyle}
                 />
               </div>
-              <div className="col-md-3">
-                <label
-                  style={{
-                    display: "block",
-                    fontSize: "14px",
-                    fontWeight: "500",
-                    color: "#374151",
-                    marginBottom: "8px",
-                  }}
-                >
-                  Fecha Fin
-                </label>
+              <div style={{ flex: "0 1 160px" }}>
+                <label style={styles.label}>Hasta</label>
                 <input
                   type="date"
-                  className="form-control"
                   value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  style={{
-                    borderRadius: "8px",
-                    border: "1px solid #d1d5db",
-                    padding: "10px 12px",
+                  onChange={(e) => {
+                    setIndividualPreset("custom");
+                    setEndDate(e.target.value);
                   }}
+                  style={inputStyle}
                 />
               </div>
-              <div className="col-md-2">
-                <label
-                  style={{
-                    display: "block",
-                    fontSize: "14px",
-                    fontWeight: "500",
-                    color: "transparent",
-                    marginBottom: "8px",
-                  }}
-                >
-                  .
-                </label>
+              <div>
                 <button
+                  type="button"
                   onClick={fetchIndividualData}
-                  disabled={loading}
+                  disabled={loading || !selectedEjecutivo}
                   style={{
-                    width: "100%",
-                    padding: "10px 16px",
-                    border: "none",
-                    borderRadius: "8px",
-                    fontSize: "14px",
-                    fontWeight: "600",
-                    cursor: loading ? "not-allowed" : "pointer",
-                    background:
-                      "linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)",
-                    color: "white",
-                    opacity: loading ? 0.6 : 1,
+                    ...btnPrimary,
+                    opacity: loading || !selectedEjecutivo ? 0.5 : 1,
                   }}
                 >
-                  {loading ? "Buscando..." : "🔍 Buscar"}
+                  {loading ? "Buscando..." : "Buscar"}
                 </button>
               </div>
             </div>
-            {error && (
-              <div
-                style={{
-                  marginTop: "16px",
-                  padding: "12px 16px",
-                  backgroundColor: "#fef2f2",
-                  border: "1px solid #fecaca",
-                  borderRadius: "8px",
-                  color: "#991b1b",
-                  fontSize: "14px",
-                }}
-              >
-                ⚠️ {error}
-              </div>
-            )}
           </div>
 
-          {/* Resultados */}
-          {loading && (
-            <div
-              style={{
-                backgroundColor: "white",
-                borderRadius: "12px",
-                border: "1px solid #e5e7eb",
-                padding: "60px 20px",
-                textAlign: "center",
-              }}
-            >
-              <div className="spinner-border text-primary" role="status">
-                <span className="visually-hidden">Cargando...</span>
-              </div>
-              <p className="mt-3 text-muted">Cargando datos...</p>
-            </div>
+          {error && <ErrorBanner message={error} />}
+
+          {loading && <InvoiceIndividualSkeleton />}
+
+          {hasSearched && !loading && invoices.length === 0 && !error && (
+            <EmptyState
+              title="Sin resultados"
+              sub="No se encontraron facturas para los filtros seleccionados"
+            />
           )}
 
-          {!loading && hasSearched && invoices.length === 0 && (
-            <div
-              style={{
-                backgroundColor: "white",
-                borderRadius: "12px",
-                border: "1px solid #e5e7eb",
-                padding: "60px 20px",
-                textAlign: "center",
-              }}
-            >
-              <div
-                style={{
-                  width: "64px",
-                  height: "64px",
-                  backgroundColor: "#fef3c7",
-                  borderRadius: "16px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  margin: "0 auto 24px",
-                }}
-              >
-                <svg width="32" height="32" fill="#f59e0b" viewBox="0 0 16 16">
-                  <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z" />
-                  <path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0zM7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 4.995z" />
-                </svg>
-              </div>
-              <h4
-                style={{
-                  fontSize: "18px",
-                  fontWeight: "600",
-                  color: "#1f2937",
-                  marginBottom: "8px",
-                }}
-              >
-                No se encontraron facturas
-              </h4>
-              <p style={{ fontSize: "14px", color: "#6b7280", margin: 0 }}>
-                Intenta ajustar los filtros de búsqueda
-              </p>
-            </div>
-          )}
-
-          {!loading && hasSearched && invoices.length > 0 && (
+          {hasSearched && !loading && invoices.length > 0 && (
             <>
-              {/* KPIs */}
-              {(() => {
-                const stats = calculateStats(invoices);
-                return (
-                  <div className="row g-4 mb-4">
-                    <div className="col-md-3">
-                      <div
-                        style={{
-                          backgroundColor: "white",
-                          borderRadius: "12px",
-                          border: "1px solid #e5e7eb",
-                          padding: "20px",
-                          boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
-                        }}
-                      >
-                        <p
-                          style={{
-                            fontSize: "12px",
-                            color: "#6b7280",
-                            margin: 0,
-                            fontWeight: "500",
-                          }}
-                        >
-                          Total Facturas
-                        </p>
-                        <h3
-                          style={{
-                            fontSize: "28px",
-                            fontWeight: "700",
-                            color: "#1f2937",
-                            margin: "8px 0 0 0",
-                          }}
-                        >
-                          {stats.totalInvoices}
-                        </h3>
-                      </div>
-                    </div>
-                    <div className="col-md-3">
-                      <div
-                        style={{
-                          backgroundColor: "white",
-                          borderRadius: "12px",
-                          border: "1px solid #e5e7eb",
-                          padding: "20px",
-                          boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
-                        }}
-                      >
-                        <p
-                          style={{
-                            fontSize: "12px",
-                            color: "#6b7280",
-                            margin: 0,
-                            fontWeight: "500",
-                          }}
-                        >
-                          Total Facturado (CLP)
-                        </p>
-                        <h3
-                          style={{
-                            fontSize: "24px",
-                            fontWeight: "700",
-                            color: "#10b981",
-                            margin: "8px 0 0 0",
-                          }}
-                        >
-                          {formatCurrency(stats.totalHomeTotalAmount)}
-                        </h3>
-                      </div>
-                    </div>
-                    <div className="col-md-3">
-                      <div
-                        style={{
-                          backgroundColor: "white",
-                          borderRadius: "12px",
-                          border: "1px solid #e5e7eb",
-                          padding: "20px",
-                          boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
-                        }}
-                      >
-                        <p
-                          style={{
-                            fontSize: "12px",
-                            color: "#6b7280",
-                            margin: 0,
-                            fontWeight: "500",
-                          }}
-                        >
-                          Saldo Pendiente (CLP)
-                        </p>
-                        <h3
-                          style={{
-                            fontSize: "24px",
-                            fontWeight: "700",
-                            color: "#ef4444",
-                            margin: "8px 0 0 0",
-                          }}
-                        >
-                          {formatCurrency(stats.totalBalanceDue)}
-                        </h3>
-                      </div>
-                    </div>
-                    <div className="col-md-3">
-                      <div
-                        style={{
-                          backgroundColor: "white",
-                          borderRadius: "12px",
-                          border: "1px solid #e5e7eb",
-                          padding: "20px",
-                          boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
-                        }}
-                      >
-                        <p
-                          style={{
-                            fontSize: "12px",
-                            color: "#6b7280",
-                            margin: 0,
-                            fontWeight: "500",
-                          }}
-                        >
-                          Clientes Únicos
-                        </p>
-                        <h3
-                          style={{
-                            fontSize: "28px",
-                            fontWeight: "700",
-                            color: "#2563eb",
-                            margin: "8px 0 0 0",
-                          }}
-                        >
-                          {stats.uniqueClients}
-                        </h3>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
+              <DataSourceBanner>
+                {selectedEjecutivo ? `Ejecutivo: ${selectedEjecutivo} · ` : ""}
+                {invoices.length} facturas
+                {rawInvoiceCount > 0
+                  ? ` · ${rawInvoiceCount} en origen (invoices/all)`
+                  : ""}
+                {formatFetchedAt(individualFetchedAt)
+                  ? ` · Actualizado ${formatFetchedAt(individualFetchedAt)}`
+                  : ""}
+                <br />
+                Montos en <strong>CLP</strong> vía <code>homeTotalAmount</code>.
+                Esta vista es <strong>facturación</strong>, no profit de
+                cotizaciones.
+              </DataSourceBanner>
 
-              {/* Gráficos */}
-              {renderIndividualCharts()}
-
-              {/* Tabla de facturas */}
               <div
                 style={{
-                  backgroundColor: "white",
-                  borderRadius: "12px",
-                  border: "1px solid #e5e7eb",
-                  padding: "24px",
-                  boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                  gap: 12,
+                  marginBottom: 20,
                 }}
               >
-                <h5
-                  style={{
-                    fontSize: "16px",
-                    fontWeight: "600",
-                    color: "#1f2937",
-                    marginBottom: "20px",
-                  }}
-                >
-                  📋 Detalle de Facturas ({invoices.length})
-                </h5>
-                <div style={{ overflowX: "auto" }}>
-                  <Table striped bordered hover>
-                    <thead>
-                      <tr>
-                        <th>N° Factura</th>
-                        <th>N° Operación</th>
-                        <th>Cliente</th>
-                        <th>Fecha</th>
-                        <th>Status</th>
-                        <th>Total (CLP)</th>
-                        <th>Saldo Pendiente</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {invoices.map((invoice, idx) => (
-                        <tr key={idx}>
-                          <td>{invoice.invoiceNumber}</td>
-                          <td>{invoice.moduleNumber}</td>
-                          <td>{invoice.billToName}</td>
-                          <td>{invoice.date}</td>
-                          <td>
-                            <span
-                              style={{
-                                padding: "4px 8px",
-                                borderRadius: "4px",
-                                fontSize: "12px",
-                                fontWeight: "600",
-                                backgroundColor:
-                                  invoice.status === "Posted"
-                                    ? "#d1fae5"
-                                    : "#fef3c7",
-                                color:
-                                  invoice.status === "Posted"
-                                    ? "#065f46"
-                                    : "#92400e",
-                              }}
-                            >
-                              {invoice.status}
-                            </span>
-                          </td>
-                          <td style={{ fontWeight: "600", color: "#10b981" }}>
-                            {formatCurrency(invoice.homeTotalAmount)}
-                          </td>
-                          <td style={{ fontWeight: "600", color: "#ef4444" }}>
-                            {formatCurrency(invoice.balanceDue)}
-                          </td>
+                <Metric
+                  label="Total Facturas"
+                  value={stats.totalInvoices}
+                  sub={`${stats.invoicedCount} invoiced · ${stats.postedCount} posted`}
+                />
+                <Metric
+                  label="Facturado (CLP)"
+                  value={fmt(stats.totalHomeTotalAmount)}
+                  sub={`Promedio ${fmt(stats.averagePerInvoice)} / factura`}
+                  color={C.positive}
+                />
+                <Metric
+                  label="Saldo Pendiente"
+                  value={fmt(stats.totalBalanceDue)}
+                  color={C.negative}
+                />
+                <Metric
+                  label="Total Pagado"
+                  value={fmt(stats.totalAmountPaid)}
+                  color={C.primary}
+                />
+                <Metric
+                  label="Clientes Únicos"
+                  value={stats.uniqueClients}
+                />
+              </div>
+
+              <div style={{ marginBottom: 20 }}>
+                <StatusBar
+                  invoiced={stats.invoicedCount}
+                  posted={stats.postedCount}
+                  total={stats.totalInvoices}
+                />
+              </div>
+
+              {monthlyData.length > 0 && (
+                <CardSection title="Desglose Mensual">
+                  <div style={{ overflowX: "auto" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                      <thead>
+                        <tr>
+                          <th style={styles.th}>Mes</th>
+                          <th style={{ ...styles.th, textAlign: "center" }}>Facturas</th>
+                          <th style={{ ...styles.th, textAlign: "center" }}>Invoiced</th>
+                          <th style={{ ...styles.th, textAlign: "center" }}>Posted</th>
+                          <th style={{ ...styles.th, textAlign: "right" }}>Facturado</th>
+                          <th style={{ ...styles.th, textAlign: "right" }}>Saldo</th>
+                          <th style={{ ...styles.th, textAlign: "right" }}>Pagado</th>
+                          <th style={{ ...styles.th, textAlign: "center" }}>Clientes</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </Table>
+                      </thead>
+                      <tbody>
+                        {monthlyData.map((m) => (
+                          <tr key={m.month}>
+                            <td style={{ ...styles.td, fontWeight: 600 }}>{m.label}</td>
+                            <td style={{ ...styles.td, textAlign: "center" }}>{m.invoices}</td>
+                            <td style={{ ...styles.td, textAlign: "center" }}>{m.invoiced}</td>
+                            <td style={{ ...styles.td, textAlign: "center" }}>{m.posted}</td>
+                            <td style={{ ...styles.td, textAlign: "right", color: C.positive, fontWeight: 600 }}>
+                              {fmt(m.homeTotal)}
+                            </td>
+                            <td style={{ ...styles.td, textAlign: "right", color: C.negative }}>
+                              {fmt(m.balanceDue)}
+                            </td>
+                            <td style={{ ...styles.td, textAlign: "right" }}>{fmt(m.amountPaid)}</td>
+                            <td style={{ ...styles.td, textAlign: "center" }}>{m.clients}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardSection>
+              )}
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "2fr 1fr",
+                  gap: 12,
+                  marginBottom: 20,
+                }}
+              >
+                <div style={{ ...styles.cardPad, padding: 16 }}>
+                  <div style={{ ...styles.label, marginBottom: 12 }}>Facturación Mensual</div>
+                  <div style={{ height: 260 }}>
+                    <Bar
+                      data={{
+                        labels: monthlyData.map((m) => m.label),
+                        datasets: [
+                          {
+                            label: "Facturado (CLP)",
+                            data: monthlyData.map((m) => m.homeTotal),
+                            backgroundColor: chartPrimary,
+                            borderColor: C.primary,
+                            borderWidth: 1,
+                          },
+                        ],
+                      }}
+                      options={makeBarChartOptions(false)}
+                    />
+                  </div>
                 </div>
+                <div style={{ ...styles.cardPad, padding: 16 }}>
+                  <div style={{ ...styles.label, marginBottom: 12 }}>Status</div>
+                  <div style={{ height: 220, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <Doughnut
+                      data={{
+                        labels: ["Invoiced", "Posted"],
+                        datasets: [
+                          {
+                            data: [stats.invoicedCount, stats.postedCount],
+                            backgroundColor: [C.warning, C.positive],
+                            borderWidth: 0,
+                          },
+                        ],
+                      }}
+                      options={{
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { position: "bottom", labels: { font: { family: FONT } } } },
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 320px",
+                  gap: 12,
+                  marginBottom: 20,
+                }}
+              >
+                <CardSection title={`Detalle de Facturas (${invoices.length})`}>
+                  <div style={{ overflowX: "auto", maxHeight: 480, overflowY: "auto" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                      <thead>
+                        <tr>
+                          <th style={styles.th}>N° Factura</th>
+                          <th style={styles.th}>Ref. Embarque</th>
+                          <th style={styles.th}>Cliente</th>
+                          <th style={styles.th}>Fecha</th>
+                          <th style={styles.th}>Status</th>
+                          <th style={{ ...styles.th, textAlign: "right" }}>Total CLP</th>
+                          <th style={{ ...styles.th, textAlign: "right" }}>Saldo</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {invoices.map((inv) => (
+                          <tr key={inv.id}>
+                            <td style={{ ...styles.td, fontWeight: 600 }}>{inv.invoiceNumber}</td>
+                            <td style={styles.td}>{inv.shipmentRef || inv.moduleNumber}</td>
+                            <td style={{ ...styles.td, fontSize: 12 }}>{inv.billToName}</td>
+                            <td style={styles.td}>{inv.date}</td>
+                            <td style={styles.td}>
+                              <InvoiceStatusDot status={inv.status} />
+                            </td>
+                            <td style={{ ...styles.td, textAlign: "right", color: C.positive, fontWeight: 600 }}>
+                              {fmt(inv.homeTotalAmount)}
+                            </td>
+                            <td style={{ ...styles.td, textAlign: "right", color: C.negative }}>
+                              {fmt(inv.balanceDue)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardSection>
+
+                {topClients.length > 0 && (
+                  <CardSection title="Top Clientes">
+                    <div style={{ overflowX: "auto" }}>
+                      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                        <thead>
+                          <tr>
+                            <th style={{ ...styles.th, width: 32 }}>#</th>
+                            <th style={styles.th}>Cliente</th>
+                            <th style={{ ...styles.th, textAlign: "center" }}>Fact.</th>
+                            <th style={{ ...styles.th, textAlign: "right" }}>CLP</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {topClients.map((c, i) => (
+                            <tr key={c.name}>
+                              <td style={{ ...styles.td, color: C.textLight }}>{i + 1}</td>
+                              <td style={{ ...styles.td, fontWeight: 500, fontSize: 12 }}>{c.name}</td>
+                              <td style={{ ...styles.td, textAlign: "center" }}>{c.count}</td>
+                              <td style={{ ...styles.td, textAlign: "right", fontWeight: 600, color: C.positive }}>
+                                {fmt(c.homeTotal)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </CardSection>
+                )}
               </div>
             </>
           )}
 
           {!hasSearched && !loading && (
-            <div
-              style={{
-                backgroundColor: "white",
-                borderRadius: "12px",
-                border: "1px solid #e5e7eb",
-                padding: "60px 20px",
-                textAlign: "center",
-              }}
-            >
-              <div
-                style={{
-                  width: "64px",
-                  height: "64px",
-                  backgroundColor: "#eff6ff",
-                  borderRadius: "16px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  margin: "0 auto 24px",
-                }}
-              >
-                <svg width="32" height="32" fill="#2563eb" viewBox="0 0 16 16">
-                  <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z" />
-                </svg>
-              </div>
-              <h4
-                style={{
-                  fontSize: "18px",
-                  fontWeight: "600",
-                  color: "#1f2937",
-                  marginBottom: "8px",
-                }}
-              >
-                Selecciona un ejecutivo y busca
-              </h4>
-              <p style={{ fontSize: "14px", color: "#6b7280", margin: 0 }}>
-                Los resultados aparecerán aquí
-              </p>
-            </div>
+            <EmptyState
+              title="Selecciona un ejecutivo para comenzar"
+              sub="Filtra por ejecutivo y rango de fechas para ver la facturación"
+            />
           )}
         </>
       )}
 
-      {/* Tab Comparativa */}
+      {/* ── COMPARATIVA ── */}
       {activeTab === "comparativa" && (
         <>
-          {/* Filtros Comparativa */}
-          <div
-            style={{
-              backgroundColor: "white",
-              borderRadius: "12px",
-              border: "1px solid #e5e7eb",
-              padding: "24px",
-              marginBottom: "24px",
-              boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
-            }}
-          >
-            <h4
+          <div style={{ ...styles.cardPad, marginBottom: 20 }}>
+            <div
               style={{
-                fontSize: "18px",
-                fontWeight: "600",
-                color: "#1f2937",
-                marginBottom: "20px",
+                display: "flex",
+                gap: 12,
+                alignItems: "end",
+                flexWrap: "wrap",
               }}
             >
-              🔍 Filtros de Búsqueda Comparativa
-            </h4>
-            <div className="row g-3">
-              <div className="col-md-4">
-                <label
-                  style={{
-                    display: "block",
-                    fontSize: "14px",
-                    fontWeight: "500",
-                    color: "#374151",
-                    marginBottom: "8px",
-                  }}
-                >
-                  Fecha Inicio
-                </label>
+              <PeriodPresetSelect value={compPreset} onChange={setCompPreset} />
+              <div style={{ flex: "0 1 160px" }}>
+                <label style={styles.label}>Desde</label>
                 <input
                   type="date"
-                  className="form-control"
                   value={compStartDate}
-                  onChange={(e) => setCompStartDate(e.target.value)}
-                  style={{
-                    borderRadius: "8px",
-                    border: "1px solid #d1d5db",
-                    padding: "10px 12px",
+                  onChange={(e) => {
+                    setCompPreset("custom");
+                    setCompStartDate(e.target.value);
                   }}
+                  style={inputStyle}
                 />
               </div>
-              <div className="col-md-4">
-                <label
-                  style={{
-                    display: "block",
-                    fontSize: "14px",
-                    fontWeight: "500",
-                    color: "#374151",
-                    marginBottom: "8px",
-                  }}
-                >
-                  Fecha Fin
-                </label>
+              <div style={{ flex: "0 1 160px" }}>
+                <label style={styles.label}>Hasta</label>
                 <input
                   type="date"
-                  className="form-control"
                   value={compEndDate}
-                  onChange={(e) => setCompEndDate(e.target.value)}
-                  style={{
-                    borderRadius: "8px",
-                    border: "1px solid #d1d5db",
-                    padding: "10px 12px",
+                  onChange={(e) => {
+                    setCompPreset("custom");
+                    setCompEndDate(e.target.value);
                   }}
+                  style={inputStyle}
                 />
               </div>
-              <div className="col-md-4">
-                <label
-                  style={{
-                    display: "block",
-                    fontSize: "14px",
-                    fontWeight: "500",
-                    color: "transparent",
-                    marginBottom: "8px",
-                  }}
-                >
-                  .
-                </label>
+              <div>
                 <button
+                  type="button"
                   onClick={fetchComparativeData}
-                  disabled={loadingComparative}
+                  disabled={loadingComparative || ejecutivos.length === 0}
                   style={{
-                    width: "100%",
-                    padding: "10px 16px",
-                    border: "none",
-                    borderRadius: "8px",
-                    fontSize: "14px",
-                    fontWeight: "600",
-                    cursor: loadingComparative ? "not-allowed" : "pointer",
-                    background:
-                      "linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)",
-                    color: "white",
-                    opacity: loadingComparative ? 0.6 : 1,
+                    ...btnPrimary,
+                    opacity: loadingComparative || ejecutivos.length === 0 ? 0.5 : 1,
                   }}
                 >
-                  {loadingComparative ? "Buscando..." : "🔍 Buscar Todos"}
+                  {loadingComparative ? "Cargando..." : "Comparar todos"}
                 </button>
               </div>
             </div>
-            {errorComparative && (
-              <div
-                style={{
-                  marginTop: "16px",
-                  padding: "12px 16px",
-                  backgroundColor: "#fef2f2",
-                  border: "1px solid #fecaca",
-                  borderRadius: "8px",
-                  color: "#991b1b",
-                  fontSize: "14px",
-                }}
-              >
-                ⚠️ {errorComparative}
-              </div>
-            )}
           </div>
 
-          {/* Loading Comparativa */}
-          {loadingComparative && (
-            <div
-              style={{
-                backgroundColor: "white",
-                borderRadius: "12px",
-                border: "1px solid #e5e7eb",
-                padding: "60px 20px",
-                textAlign: "center",
-              }}
-            >
-              <div className="spinner-border text-primary" role="status">
-                <span className="visually-hidden">Cargando...</span>
-              </div>
-              <p className="mt-3 text-muted">Cargando datos comparativos...</p>
-            </div>
-          )}
+          {errorComparative && <ErrorBanner message={errorComparative} />}
 
-          {/* No data Comparativa */}
-          {!loadingComparative &&
-            hasSearchedComparative &&
-            comparativeData.length === 0 && (
+          {loadingComparative && <ComparativeSkeleton />}
+
+          {hasSearchedComparative && !loadingComparative && comparativeData.length > 0 && (
+            <>
+              <DataSourceBanner>
+                {allComparativeInvoices.length} facturas en el período
+                {formatFetchedAt(compFetchedAt)
+                  ? ` · Actualizado ${formatFetchedAt(compFetchedAt)}`
+                  : ""}
+                <br />
+                Montos en CLP (<code>homeTotalAmount</code>). Incluye ejecutivos
+                con 0 facturas en el período.
+              </DataSourceBanner>
+
               <div
                 style={{
-                  backgroundColor: "white",
-                  borderRadius: "12px",
-                  border: "1px solid #e5e7eb",
-                  padding: "60px 20px",
-                  textAlign: "center",
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                  gap: 12,
+                  marginBottom: 20,
                 }}
               >
-                <div
-                  style={{
-                    width: "64px",
-                    height: "64px",
-                    backgroundColor: "#fef3c7",
-                    borderRadius: "16px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    margin: "0 auto 24px",
-                  }}
-                >
-                  <svg
-                    width="32"
-                    height="32"
-                    fill="#f59e0b"
-                    viewBox="0 0 16 16"
-                  >
-                    <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z" />
-                    <path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0zM7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 4.995z" />
-                  </svg>
-                </div>
-                <h4
-                  style={{
-                    fontSize: "18px",
-                    fontWeight: "600",
-                    color: "#1f2937",
-                    marginBottom: "8px",
-                  }}
-                >
-                  No se encontraron datos
-                </h4>
-                <p style={{ fontSize: "14px", color: "#6b7280", margin: 0 }}>
-                  Intenta ajustar los filtros de búsqueda
-                </p>
+                <Metric label="Total Facturas" value={globalStats.totalInvoices} />
+                <Metric
+                  label="Facturado Global"
+                  value={fmt(globalStats.totalHomeTotalAmount)}
+                  color={C.positive}
+                />
+                <Metric
+                  label="Saldo Global"
+                  value={fmt(globalStats.totalBalanceDue)}
+                  color={C.negative}
+                />
+                <Metric
+                  label="Pagado Global"
+                  value={fmt(globalStats.totalAmountPaid)}
+                  color={C.primary}
+                />
+                <Metric
+                  label="Promedio / Factura"
+                  value={fmt(globalStats.averagePerInvoice)}
+                />
               </div>
-            )}
 
-          {/* Results Comparativa */}
-          {!loadingComparative &&
-            hasSearchedComparative &&
-            comparativeData.length > 0 && (
-              <>
-                {/* Resumen Global */}
-                {(() => {
-                  const globalStats = calculateStats(allComparativeInvoices);
-                  return (
-                    <div className="mb-4">
-                      <h4
-                        style={{
-                          fontSize: "18px",
-                          fontWeight: "700",
-                          color: "#1f2937",
-                          marginBottom: "16px",
-                        }}
-                      >
-                        📊 Resumen General
-                      </h4>
-                      <div className="row g-4">
-                        <div className="col-md-3">
-                          <div
-                            style={{
-                              backgroundColor: "white",
-                              borderRadius: "12px",
-                              border: "1px solid #e5e7eb",
-                              padding: "20px",
-                              boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
-                            }}
-                          >
-                            <p
-                              style={{
-                                fontSize: "12px",
-                                color: "#6b7280",
-                                margin: 0,
-                                fontWeight: "500",
-                              }}
-                            >
-                              Total Facturas
-                            </p>
-                            <h3
-                              style={{
-                                fontSize: "28px",
-                                fontWeight: "700",
-                                color: "#1f2937",
-                                margin: "8px 0 0 0",
-                              }}
-                            >
-                              {globalStats.totalInvoices}
-                            </h3>
-                          </div>
-                        </div>
-                        <div className="col-md-3">
-                          <div
-                            style={{
-                              backgroundColor: "white",
-                              borderRadius: "12px",
-                              border: "1px solid #e5e7eb",
-                              padding: "20px",
-                              boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
-                            }}
-                          >
-                            <p
-                              style={{
-                                fontSize: "12px",
-                                color: "#6b7280",
-                                margin: 0,
-                                fontWeight: "500",
-                              }}
-                            >
-                              Total Facturado (CLP)
-                            </p>
-                            <h3
-                              style={{
-                                fontSize: "24px",
-                                fontWeight: "700",
-                                color: "#10b981",
-                                margin: "8px 0 0 0",
-                              }}
-                            >
-                              {formatCurrency(globalStats.totalHomeTotalAmount)}
-                            </h3>
-                          </div>
-                        </div>
-                        <div className="col-md-3">
-                          <div
-                            style={{
-                              backgroundColor: "white",
-                              borderRadius: "12px",
-                              border: "1px solid #e5e7eb",
-                              padding: "20px",
-                              boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
-                            }}
-                          >
-                            <p
-                              style={{
-                                fontSize: "12px",
-                                color: "#6b7280",
-                                margin: 0,
-                                fontWeight: "500",
-                              }}
-                            >
-                              Saldo Pendiente (CLP)
-                            </p>
-                            <h3
-                              style={{
-                                fontSize: "24px",
-                                fontWeight: "700",
-                                color: "#ef4444",
-                                margin: "8px 0 0 0",
-                              }}
-                            >
-                              {formatCurrency(globalStats.totalBalanceDue)}
-                            </h3>
-                          </div>
-                        </div>
-                        <div className="col-md-3">
-                          <div
-                            style={{
-                              backgroundColor: "white",
-                              borderRadius: "12px",
-                              border: "1px solid #e5e7eb",
-                              padding: "20px",
-                              boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
-                            }}
-                          >
-                            <p
-                              style={{
-                                fontSize: "12px",
-                                color: "#6b7280",
-                                margin: 0,
-                                fontWeight: "500",
-                              }}
-                            >
-                              Promedio por Factura
-                            </p>
-                            <h3
-                              style={{
-                                fontSize: "20px",
-                                fontWeight: "700",
-                                color: "#2563eb",
-                                margin: "8px 0 0 0",
-                              }}
-                            >
-                              {formatCurrency(globalStats.averagePerInvoice)}
-                            </h3>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })()}
-
-                {/* Gráficos Comparativos */}
-                {renderComparativeCharts()}
-
-                {/* Tabla Comparativa */}
-                <div
-                  style={{
-                    backgroundColor: "white",
-                    borderRadius: "12px",
-                    border: "1px solid #e5e7eb",
-                    padding: "24px",
-                    boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
-                  }}
+              <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
+                <button
+                  type="button"
+                  onClick={() =>
+                    exportComparativeToCSV(
+                      comparativeData,
+                      `facturacion_comparativa_${new Date().toISOString().split("T")[0]}`,
+                    )
+                  }
+                  style={btnOutline}
                 >
-                  <h5
-                    style={{
-                      fontSize: "16px",
-                      fontWeight: "600",
-                      color: "#1f2937",
-                      marginBottom: "20px",
-                    }}
-                  >
-                    📊 Comparación Detallada por Ejecutivo
-                  </h5>
-                  <div style={{ overflowX: "auto" }}>
-                    <Table striped bordered hover>
-                      <thead>
-                        <tr>
-                          <th
-                            onClick={() => handleSort("nombre")}
-                            style={{ cursor: "pointer", userSelect: "none" }}
-                          >
-                            Ejecutivo {renderSortIndicator("nombre")}
-                          </th>
-                          <th
-                            onClick={() => handleSort("totalInvoices")}
-                            style={{ cursor: "pointer", userSelect: "none" }}
-                          >
-                            Total Facturas{" "}
-                            {renderSortIndicator("totalInvoices")}
-                          </th>
-                          <th
-                            onClick={() => handleSort("invoicedCount")}
-                            style={{ cursor: "pointer", userSelect: "none" }}
-                          >
-                            Invoiced {renderSortIndicator("invoicedCount")}
-                          </th>
-                          <th
-                            onClick={() => handleSort("postedCount")}
-                            style={{ cursor: "pointer", userSelect: "none" }}
-                          >
-                            Posted {renderSortIndicator("postedCount")}
-                          </th>
-                          <th
-                            onClick={() => handleSort("totalHomeTotalAmount")}
-                            style={{ cursor: "pointer", userSelect: "none" }}
-                          >
-                            Total Facturado (CLP){" "}
-                            {renderSortIndicator("totalHomeTotalAmount")}
-                          </th>
-                          <th
-                            onClick={() => handleSort("totalBalanceDue")}
-                            style={{ cursor: "pointer", userSelect: "none" }}
-                          >
-                            Saldo Pendiente (CLP){" "}
-                            {renderSortIndicator("totalBalanceDue")}
-                          </th>
-                          <th
-                            onClick={() => handleSort("totalAmountPaid")}
-                            style={{ cursor: "pointer", userSelect: "none" }}
-                          >
-                            Total Pagado (CLP){" "}
-                            {renderSortIndicator("totalAmountPaid")}
-                          </th>
-                          <th
-                            onClick={() => handleSort("uniqueClients")}
-                            style={{ cursor: "pointer", userSelect: "none" }}
-                          >
-                            Clientes Únicos{" "}
-                            {renderSortIndicator("uniqueClients")}
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {getSortedData(comparativeData).map((exec, idx) => (
-                          <tr key={idx}>
-                            <td style={{ fontWeight: "600" }}>{exec.nombre}</td>
-                            <td>
-                              <button
-                                onClick={() => {
-                                  const execInvoices =
-                                    allComparativeInvoices.filter(
-                                      (i) =>
-                                        i.salesRep &&
-                                        i.salesRep.toLowerCase() ===
-                                          exec.nombre.toLowerCase(),
-                                    );
-                                  handleShowInvoicesDetail(execInvoices);
-                                }}
-                                style={{
-                                  background: "none",
-                                  border: "none",
-                                  color: "#2563eb",
-                                  cursor: "pointer",
-                                  textDecoration: "underline",
-                                  padding: 0,
-                                }}
-                              >
-                                {exec.stats.totalInvoices}
-                              </button>
-                            </td>
-                            <td>{exec.stats.invoicedCount}</td>
-                            <td>{exec.stats.postedCount}</td>
-                            <td style={{ fontWeight: "600", color: "#10b981" }}>
-                              {formatCurrency(exec.stats.totalHomeTotalAmount)}
-                            </td>
-                            <td style={{ fontWeight: "600", color: "#ef4444" }}>
-                              {formatCurrency(exec.stats.totalBalanceDue)}
-                            </td>
-                            <td style={{ fontWeight: "600", color: "#2563eb" }}>
-                              {formatCurrency(exec.stats.totalAmountPaid)}
-                            </td>
-                            <td>{exec.stats.uniqueClients}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </Table>
+                  Export CSV
+                </button>
+              </div>
+
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ ...styles.cardPad, padding: 16 }}>
+                  <div style={{ ...styles.label, marginBottom: 12 }}>
+                    Comparación por Ejecutivo
+                  </div>
+                  <div style={{ height: 280 }}>
+                    <Bar
+                      data={{
+                        labels: sortedComparativeData.map((d) => d.nombre),
+                        datasets: [
+                          {
+                            label: "Facturado (CLP)",
+                            data: sortedComparativeData.map(
+                              (d) => d.stats.totalHomeTotalAmount,
+                            ),
+                            backgroundColor: chartPrimary,
+                            borderColor: C.primary,
+                            borderWidth: 1,
+                          },
+                          {
+                            label: "Saldo Pendiente",
+                            data: sortedComparativeData.map(
+                              (d) => d.stats.totalBalanceDue,
+                            ),
+                            backgroundColor: chartNegative,
+                            borderColor: C.negative,
+                            borderWidth: 1,
+                          },
+                        ],
+                      }}
+                      options={makeBarChartOptions(true)}
+                    />
                   </div>
                 </div>
-              </>
-            )}
+              </div>
 
-          {/* Initial message Comparativa */}
-          {!hasSearchedComparative && !loadingComparative && (
-            <div
-              style={{
-                backgroundColor: "white",
-                borderRadius: "12px",
-                border: "1px solid #e5e7eb",
-                padding: "60px 20px",
-                textAlign: "center",
-              }}
-            >
-              <div
-                style={{
-                  width: "64px",
-                  height: "64px",
-                  backgroundColor: "#eff6ff",
-                  borderRadius: "16px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  margin: "0 auto 24px",
-                }}
-              >
-                <svg width="32" height="32" fill="#2563eb" viewBox="0 0 16 16">
-                  <path d="M1 11a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1v-3zm5-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V7zm5-5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1V2z" />
-                </svg>
-              </div>
-              <h4
-                style={{
-                  fontSize: "18px",
-                  fontWeight: "600",
-                  color: "#1f2937",
-                  marginBottom: "8px",
-                }}
-              >
-                Compara el desempeño de todos los ejecutivos
-              </h4>
-              <p style={{ fontSize: "14px", color: "#6b7280", margin: 0 }}>
-                Haz clic en "Buscar Todos" para ver el análisis comparativo
-              </p>
-            </div>
-          )}
-        </>
-      )}
-
-      {/* Tab Doble */}
-      {activeTab === "doble" && (
-        <>
-          {/* Filtros Doble */}
-          <div
-            style={{
-              backgroundColor: "white",
-              borderRadius: "12px",
-              border: "1px solid #e5e7eb",
-              padding: "24px",
-              marginBottom: "24px",
-              boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
-            }}
-          >
-            <h4
-              style={{
-                fontSize: "18px",
-                fontWeight: "600",
-                color: "#1f2937",
-                marginBottom: "20px",
-              }}
-            >
-              🔍 Filtros de Comparación Doble
-            </h4>
-            <div className="row g-3">
-              <div className="col-md-3">
-                <label
-                  style={{
-                    display: "block",
-                    fontSize: "14px",
-                    fontWeight: "500",
-                    color: "#374151",
-                    marginBottom: "8px",
-                  }}
-                >
-                  Ejecutivo 1
-                </label>
-                <select
-                  className="form-select"
-                  value={ejecutivo1}
-                  onChange={(e) => setEjecutivo1(e.target.value)}
-                  disabled={loadingEjecutivos}
-                  style={{
-                    borderRadius: "8px",
-                    border: "1px solid #d1d5db",
-                    padding: "10px 12px",
-                  }}
-                >
-                  <option value="">Selecciona...</option>
-                  {ejecutivos.map((ej) => (
-                    <option key={ej.id} value={ej.nombre}>
-                      {ej.nombre}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="col-md-3">
-                <label
-                  style={{
-                    display: "block",
-                    fontSize: "14px",
-                    fontWeight: "500",
-                    color: "#374151",
-                    marginBottom: "8px",
-                  }}
-                >
-                  Ejecutivo 2
-                </label>
-                <select
-                  className="form-select"
-                  value={ejecutivo2}
-                  onChange={(e) => setEjecutivo2(e.target.value)}
-                  disabled={loadingEjecutivos}
-                  style={{
-                    borderRadius: "8px",
-                    border: "1px solid #d1d5db",
-                    padding: "10px 12px",
-                  }}
-                >
-                  <option value="">Selecciona...</option>
-                  {ejecutivos.map((ej) => (
-                    <option key={ej.id} value={ej.nombre}>
-                      {ej.nombre}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="col-md-2">
-                <label
-                  style={{
-                    display: "block",
-                    fontSize: "14px",
-                    fontWeight: "500",
-                    color: "#374151",
-                    marginBottom: "8px",
-                  }}
-                >
-                  Fecha Inicio
-                </label>
-                <input
-                  type="date"
-                  className="form-control"
-                  value={doubleStartDate}
-                  onChange={(e) => setDoubleStartDate(e.target.value)}
-                  style={{
-                    borderRadius: "8px",
-                    border: "1px solid #d1d5db",
-                    padding: "10px 12px",
-                  }}
-                />
-              </div>
-              <div className="col-md-2">
-                <label
-                  style={{
-                    display: "block",
-                    fontSize: "14px",
-                    fontWeight: "500",
-                    color: "#374151",
-                    marginBottom: "8px",
-                  }}
-                >
-                  Fecha Fin
-                </label>
-                <input
-                  type="date"
-                  className="form-control"
-                  value={doubleEndDate}
-                  onChange={(e) => setDoubleEndDate(e.target.value)}
-                  style={{
-                    borderRadius: "8px",
-                    border: "1px solid #d1d5db",
-                    padding: "10px 12px",
-                  }}
-                />
-              </div>
-              <div className="col-md-2">
-                <label
-                  style={{
-                    display: "block",
-                    fontSize: "14px",
-                    fontWeight: "500",
-                    color: "transparent",
-                    marginBottom: "8px",
-                  }}
-                >
-                  .
-                </label>
-                <button
-                  onClick={fetchDoubleData}
-                  disabled={loadingDouble}
-                  style={{
-                    width: "100%",
-                    padding: "10px 16px",
-                    border: "none",
-                    borderRadius: "8px",
-                    fontSize: "14px",
-                    fontWeight: "600",
-                    cursor: loadingDouble ? "not-allowed" : "pointer",
-                    background:
-                      "linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)",
-                    color: "white",
-                    opacity: loadingDouble ? 0.6 : 1,
-                  }}
-                >
-                  {loadingDouble ? "Buscando..." : "🔍 Comparar"}
-                </button>
-              </div>
-            </div>
-            {errorDouble && (
-              <div
-                style={{
-                  marginTop: "16px",
-                  padding: "12px 16px",
-                  backgroundColor: "#fef2f2",
-                  border: "1px solid #fecaca",
-                  borderRadius: "8px",
-                  color: "#991b1b",
-                  fontSize: "14px",
-                }}
-              >
-                ⚠️ {errorDouble}
-              </div>
-            )}
-          </div>
-
-          {/* Loading Doble */}
-          {loadingDouble && (
-            <div
-              style={{
-                backgroundColor: "white",
-                borderRadius: "12px",
-                border: "1px solid #e5e7eb",
-                padding: "60px 20px",
-                textAlign: "center",
-              }}
-            >
-              <div className="spinner-border text-primary" role="status">
-                <span className="visually-hidden">Cargando...</span>
-              </div>
-              <p className="mt-3 text-muted">Comparando ejecutivos...</p>
-            </div>
-          )}
-
-          {/* No data Doble */}
-          {!loadingDouble && hasSearchedDouble && doubleData.length === 0 && (
-            <div
-              style={{
-                backgroundColor: "white",
-                borderRadius: "12px",
-                border: "1px solid #e5e7eb",
-                padding: "60px 20px",
-                textAlign: "center",
-              }}
-            >
-              <div
-                style={{
-                  width: "64px",
-                  height: "64px",
-                  backgroundColor: "#fef3c7",
-                  borderRadius: "16px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  margin: "0 auto 24px",
-                }}
-              >
-                <svg width="32" height="32" fill="#f59e0b" viewBox="0 0 16 16">
-                  <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z" />
-                  <path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0zM7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 4.995z" />
-                </svg>
-              </div>
-              <h4
-                style={{
-                  fontSize: "18px",
-                  fontWeight: "600",
-                  color: "#1f2937",
-                  marginBottom: "8px",
-                }}
-              >
-                No se encontraron datos
-              </h4>
-              <p style={{ fontSize: "14px", color: "#6b7280", margin: 0 }}>
-                Intenta ajustar los filtros de búsqueda
-              </p>
-            </div>
-          )}
-
-          {/* Results Doble */}
-          {!loadingDouble && hasSearchedDouble && doubleData.length > 0 && (
-            <>
-              {/* Comparación lado a lado */}
-              <div className="row g-4 mb-4">
-                {doubleData.map((exec, idx) => (
-                  <div key={idx} className="col-md-6">
-                    <div
-                      style={{
-                        backgroundColor: "white",
-                        borderRadius: "12px",
-                        border: "1px solid #e5e7eb",
-                        padding: "24px",
-                        boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
-                      }}
-                    >
-                      <h4
-                        style={{
-                          fontSize: "20px",
-                          fontWeight: "700",
-                          color: "#1f2937",
-                          marginBottom: "20px",
-                          borderBottom: "2px solid #e5e7eb",
-                          paddingBottom: "12px",
-                        }}
-                      >
-                        {exec.nombre}
-                      </h4>
-                      <div className="row g-3">
-                        <div className="col-6">
-                          <div
-                            style={{
-                              padding: "12px",
-                              backgroundColor: "#f9fafb",
-                              borderRadius: "8px",
-                            }}
-                          >
-                            <p
+              <CardSection title={`Ranking de Ejecutivos (${comparativeData.length})`}>
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <thead>
+                      <tr>
+                        <SortableTh
+                          label="Ejecutivo"
+                          active={sortField === "nombre"}
+                          direction={sortDirection}
+                          onClick={() => handleSort("nombre")}
+                        />
+                        <SortableTh
+                          label="Facturas"
+                          align="center"
+                          active={sortField === "totalInvoices"}
+                          direction={sortDirection}
+                          onClick={() => handleSort("totalInvoices")}
+                        />
+                        <SortableTh
+                          label="Invoiced"
+                          align="center"
+                          active={sortField === "invoicedCount"}
+                          direction={sortDirection}
+                          onClick={() => handleSort("invoicedCount")}
+                        />
+                        <SortableTh
+                          label="Posted"
+                          align="center"
+                          active={sortField === "postedCount"}
+                          direction={sortDirection}
+                          onClick={() => handleSort("postedCount")}
+                        />
+                        <SortableTh
+                          label="Facturado CLP"
+                          align="right"
+                          active={sortField === "totalHomeTotalAmount"}
+                          direction={sortDirection}
+                          onClick={() => handleSort("totalHomeTotalAmount")}
+                        />
+                        <SortableTh
+                          label="Saldo"
+                          align="right"
+                          active={sortField === "totalBalanceDue"}
+                          direction={sortDirection}
+                          onClick={() => handleSort("totalBalanceDue")}
+                        />
+                        <SortableTh
+                          label="Pagado"
+                          align="right"
+                          active={sortField === "totalAmountPaid"}
+                          direction={sortDirection}
+                          onClick={() => handleSort("totalAmountPaid")}
+                        />
+                        <SortableTh
+                          label="Clientes"
+                          align="center"
+                          active={sortField === "uniqueClients"}
+                          direction={sortDirection}
+                          onClick={() => handleSort("uniqueClients")}
+                        />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sortedComparativeData.map((exec) => (
+                        <tr key={exec.nombre}>
+                          <td style={{ ...styles.td, fontWeight: 600 }}>{exec.nombre}</td>
+                          <td style={{ ...styles.td, textAlign: "center" }}>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleShowInvoicesDetail(
+                                  allComparativeInvoices.filter(
+                                    (i) =>
+                                      i.salesRep.toLowerCase() ===
+                                      exec.nombre.toLowerCase(),
+                                  ),
+                                )
+                              }
                               style={{
-                                fontSize: "11px",
-                                color: "#6b7280",
-                                margin: 0,
-                                fontWeight: "500",
-                              }}
-                            >
-                              Total Facturas
-                            </p>
-                            <p
-                              style={{
-                                fontSize: "24px",
-                                fontWeight: "700",
-                                color: "#1f2937",
-                                margin: "4px 0 0 0",
+                                ...base,
+                                background: "none",
+                                border: "none",
+                                color: C.primary,
+                                cursor: "pointer",
+                                textDecoration: "underline",
+                                fontSize: 13,
+                                padding: 0,
                               }}
                             >
                               {exec.stats.totalInvoices}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="col-6">
-                          <div
+                            </button>
+                          </td>
+                          <td style={{ ...styles.td, textAlign: "center" }}>
+                            {exec.stats.invoicedCount}
+                          </td>
+                          <td style={{ ...styles.td, textAlign: "center" }}>
+                            {exec.stats.postedCount}
+                          </td>
+                          <td
                             style={{
-                              padding: "12px",
-                              backgroundColor: "#f9fafb",
-                              borderRadius: "8px",
+                              ...styles.td,
+                              textAlign: "right",
+                              fontWeight: 600,
+                              color: C.positive,
                             }}
                           >
-                            <p
-                              style={{
-                                fontSize: "11px",
-                                color: "#6b7280",
-                                margin: 0,
-                                fontWeight: "500",
-                              }}
-                            >
-                              Clientes Únicos
-                            </p>
-                            <p
-                              style={{
-                                fontSize: "24px",
-                                fontWeight: "700",
-                                color: "#2563eb",
-                                margin: "4px 0 0 0",
-                              }}
-                            >
-                              {exec.stats.uniqueClients}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="col-12">
-                          <div
+                            {fmt(exec.stats.totalHomeTotalAmount)}
+                          </td>
+                          <td
                             style={{
-                              padding: "12px",
-                              backgroundColor: "#f9fafb",
-                              borderRadius: "8px",
+                              ...styles.td,
+                              textAlign: "right",
+                              color: C.negative,
                             }}
                           >
-                            <p
-                              style={{
-                                fontSize: "11px",
-                                color: "#6b7280",
-                                margin: 0,
-                                fontWeight: "500",
-                              }}
-                            >
-                              Total Facturado (CLP)
-                            </p>
-                            <p
-                              style={{
-                                fontSize: "20px",
-                                fontWeight: "700",
-                                color: "#10b981",
-                                margin: "4px 0 0 0",
-                              }}
-                            >
-                              {formatCurrency(exec.stats.totalHomeTotalAmount)}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="col-12">
-                          <div
-                            style={{
-                              padding: "12px",
-                              backgroundColor: "#f9fafb",
-                              borderRadius: "8px",
-                            }}
-                          >
-                            <p
-                              style={{
-                                fontSize: "11px",
-                                color: "#6b7280",
-                                margin: 0,
-                                fontWeight: "500",
-                              }}
-                            >
-                              Saldo Pendiente (CLP)
-                            </p>
-                            <p
-                              style={{
-                                fontSize: "20px",
-                                fontWeight: "700",
-                                color: "#ef4444",
-                                margin: "4px 0 0 0",
-                              }}
-                            >
-                              {formatCurrency(exec.stats.totalBalanceDue)}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="col-6">
-                          <div
-                            style={{
-                              padding: "12px",
-                              backgroundColor: "#f9fafb",
-                              borderRadius: "8px",
-                            }}
-                          >
-                            <p
-                              style={{
-                                fontSize: "11px",
-                                color: "#6b7280",
-                                margin: 0,
-                                fontWeight: "500",
-                              }}
-                            >
-                              Invoiced
-                            </p>
-                            <p
-                              style={{
-                                fontSize: "20px",
-                                fontWeight: "700",
-                                color: "#f59e0b",
-                                margin: "4px 0 0 0",
-                              }}
-                            >
-                              {exec.stats.invoicedCount}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="col-6">
-                          <div
-                            style={{
-                              padding: "12px",
-                              backgroundColor: "#f9fafb",
-                              borderRadius: "8px",
-                            }}
-                          >
-                            <p
-                              style={{
-                                fontSize: "11px",
-                                color: "#6b7280",
-                                margin: 0,
-                                fontWeight: "500",
-                              }}
-                            >
-                              Posted
-                            </p>
-                            <p
-                              style={{
-                                fontSize: "20px",
-                                fontWeight: "700",
-                                color: "#22c55e",
-                                margin: "4px 0 0 0",
-                              }}
-                            >
-                              {exec.stats.postedCount}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                            {fmt(exec.stats.totalBalanceDue)}
+                          </td>
+                          <td style={{ ...styles.td, textAlign: "right" }}>
+                            {fmt(exec.stats.totalAmountPaid)}
+                          </td>
+                          <td style={{ ...styles.td, textAlign: "center" }}>
+                            {exec.stats.uniqueClients}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardSection>
+            </>
+          )}
 
-              {/* Gráfico de comparación */}
-              <div
-                style={{
-                  backgroundColor: "white",
-                  borderRadius: "12px",
-                  border: "1px solid #e5e7eb",
-                  padding: "24px",
-                  boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
-                }}
-              >
-                <h5
+          {!hasSearchedComparative && !loadingComparative && (
+            <EmptyState
+              title="Compara el desempeño de todos los ejecutivos"
+              sub='Haz clic en "Comparar todos" para ver el ranking de facturación'
+            />
+          )}
+        </>
+      )}
+
+      {/* ── DOBLE ── */}
+      {activeTab === "doble" && (
+        <>
+          <div style={{ ...styles.cardPad, marginBottom: 20 }}>
+            <div
+              style={{
+                display: "flex",
+                gap: 12,
+                alignItems: "end",
+                flexWrap: "wrap",
+              }}
+            >
+              <div style={{ flex: "1 1 180px" }}>
+                <label style={styles.label}>Ejecutivo 1</label>
+                <select
+                  value={ejecutivo1}
+                  onChange={(e) => setEjecutivo1(e.target.value)}
+                  disabled={loadingEjecutivos}
+                  style={selectStyle}
+                >
+                  <option value="">Seleccionar...</option>
+                  {ejecutivos.map((ej) => (
+                    <option key={ej.id} value={ej.nombre}>
+                      {ej.nombre}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ flex: "1 1 180px" }}>
+                <label style={styles.label}>Ejecutivo 2</label>
+                <select
+                  value={ejecutivo2}
+                  onChange={(e) => setEjecutivo2(e.target.value)}
+                  disabled={loadingEjecutivos}
+                  style={selectStyle}
+                >
+                  <option value="">Seleccionar...</option>
+                  {ejecutivos
+                    .filter((e) => e.nombre !== ejecutivo1)
+                    .map((ej) => (
+                      <option key={ej.id} value={ej.nombre}>
+                        {ej.nombre}
+                      </option>
+                    ))}
+                </select>
+              </div>
+              <PeriodPresetSelect value={doublePreset} onChange={setDoublePreset} />
+              <div style={{ flex: "0 1 150px" }}>
+                <label style={styles.label}>Desde</label>
+                <input
+                  type="date"
+                  value={doubleStartDate}
+                  onChange={(e) => {
+                    setDoublePreset("custom");
+                    setDoubleStartDate(e.target.value);
+                  }}
+                  style={inputStyle}
+                />
+              </div>
+              <div style={{ flex: "0 1 150px" }}>
+                <label style={styles.label}>Hasta</label>
+                <input
+                  type="date"
+                  value={doubleEndDate}
+                  onChange={(e) => {
+                    setDoublePreset("custom");
+                    setDoubleEndDate(e.target.value);
+                  }}
+                  style={inputStyle}
+                />
+              </div>
+              <div>
+                <button
+                  type="button"
+                  onClick={fetchDoubleData}
+                  disabled={loadingDouble || !ejecutivo1 || !ejecutivo2}
                   style={{
-                    fontSize: "16px",
-                    fontWeight: "600",
-                    color: "#1f2937",
-                    marginBottom: "20px",
+                    ...btnPrimary,
+                    opacity: loadingDouble || !ejecutivo1 || !ejecutivo2 ? 0.5 : 1,
                   }}
                 >
-                  ⚖️ Comparación Visual
-                </h5>
-                <div style={{ height: "280px", maxHeight: "35vh" }}>
+                  {loadingDouble ? "Comparando..." : "Comparar"}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {errorDouble && <ErrorBanner message={errorDouble} />}
+
+          {loadingDouble && <DoubleComparisonSkeleton />}
+
+          {hasSearchedDouble && !loadingDouble && doubleData.length === 2 && (
+            <>
+              <DataSourceBanner>
+                {allDoubleInvoices.length} facturas ·{" "}
+                {doubleData[0].nombre} vs {doubleData[1].nombre}
+                {formatFetchedAt(doubleFetchedAt)
+                  ? ` · Actualizado ${formatFetchedAt(doubleFetchedAt)}`
+                  : ""}
+              </DataSourceBanner>
+
+              <CardSection title={`${doubleData[0].nombre} vs ${doubleData[1].nombre}`}>
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <thead>
+                      <tr>
+                        <th style={styles.th}>Métrica</th>
+                        <th style={{ ...styles.th, textAlign: "right" }}>
+                          {doubleData[0].nombre}
+                        </th>
+                        <th style={{ ...styles.th, textAlign: "right" }}>
+                          {doubleData[1].nombre}
+                        </th>
+                        <th style={{ ...styles.th, textAlign: "right" }}>Delta</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {doubleMetrics.map((row) => {
+                        const delta = row.v1 - row.v2;
+                        const deltaColor =
+                          delta > 0 ? C.positive : delta < 0 ? C.negative : C.textMuted;
+                        return (
+                          <tr key={row.label}>
+                            <td style={{ ...styles.td, fontWeight: 600 }}>{row.label}</td>
+                            <td style={{ ...styles.td, textAlign: "right" }}>
+                              {row.format(row.v1)}
+                            </td>
+                            <td style={{ ...styles.td, textAlign: "right" }}>
+                              {row.format(row.v2)}
+                            </td>
+                            <td
+                              style={{
+                                ...styles.td,
+                                textAlign: "right",
+                                fontWeight: 600,
+                                color: deltaColor,
+                              }}
+                            >
+                              {delta > 0 ? "+" : ""}
+                              {row.format(delta)}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </CardSection>
+
+              <div style={{ ...styles.cardPad, padding: 16, marginBottom: 20 }}>
+                <div style={{ ...styles.label, marginBottom: 12 }}>Comparación Visual</div>
+                <div style={{ height: 280 }}>
                   <Bar
                     data={{
                       labels: doubleData.map((d) => d.nombre),
                       datasets: [
                         {
-                          label: "Total Facturado (CLP)",
-                          data: doubleData.map(
-                            (d) => d.stats.totalHomeTotalAmount,
-                          ),
-                          backgroundColor: "rgba(59, 130, 246, 0.8)",
-                          borderColor: "rgb(59, 130, 246)",
+                          label: "Facturado (CLP)",
+                          data: doubleData.map((d) => d.stats.totalHomeTotalAmount),
+                          backgroundColor: chartPrimary,
+                          borderColor: C.primary,
                           borderWidth: 1,
                         },
                         {
-                          label: "Saldo Pendiente (CLP)",
+                          label: "Saldo Pendiente",
                           data: doubleData.map((d) => d.stats.totalBalanceDue),
-                          backgroundColor: "rgba(239, 68, 68, 0.8)",
-                          borderColor: "rgb(239, 68, 68)",
+                          backgroundColor: chartNegative,
+                          borderColor: C.negative,
                           borderWidth: 1,
                         },
                       ],
                     }}
-                    options={{
-                      responsive: true,
-                      maintainAspectRatio: false,
-                      plugins: {
-                        legend: {
-                          position: "top",
-                        },
-                        tooltip: {
-                          callbacks: {
-                            label: (context) =>
-                              `${context.dataset.label}: ${formatCurrency(Number(context.parsed.y))}`,
-                          },
-                        },
-                      },
-                      scales: {
-                        y: {
-                          beginAtZero: true,
-                          ticks: {
-                            callback: (value) => formatCurrency(Number(value)),
-                          },
-                        },
-                      },
-                    }}
+                    options={makeBarChartOptions(true)}
                   />
                 </div>
+              </div>
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: 12,
+                }}
+              >
+                {doubleData.map((exec) => (
+                  <div
+                    key={exec.nombre}
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+                      gap: 12,
+                    }}
+                  >
+                    <Metric label={`${exec.nombre} — Facturas`} value={exec.stats.totalInvoices} />
+                    <Metric
+                      label="Facturado"
+                      value={fmt(exec.stats.totalHomeTotalAmount)}
+                      color={C.positive}
+                    />
+                    <Metric
+                      label="Saldo"
+                      value={fmt(exec.stats.totalBalanceDue)}
+                      color={C.negative}
+                    />
+                  </div>
+                ))}
               </div>
             </>
           )}
 
-          {/* Initial message Doble */}
           {!hasSearchedDouble && !loadingDouble && (
-            <div
-              style={{
-                backgroundColor: "white",
-                borderRadius: "12px",
-                border: "1px solid #e5e7eb",
-                padding: "60px 20px",
-                textAlign: "center",
-              }}
-            >
-              <div
-                style={{
-                  width: "64px",
-                  height: "64px",
-                  backgroundColor: "#eff6ff",
-                  borderRadius: "16px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  margin: "0 auto 24px",
-                }}
-              >
-                <svg width="32" height="32" fill="#2563eb" viewBox="0 0 16 16">
-                  <path d="M3 14s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1H3zm5-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" />
-                </svg>
-              </div>
-              <h4
-                style={{
-                  fontSize: "18px",
-                  fontWeight: "600",
-                  color: "#1f2937",
-                  marginBottom: "8px",
-                }}
-              >
-                Compara dos ejecutivos directamente
-              </h4>
-              <p style={{ fontSize: "14px", color: "#6b7280", margin: 0 }}>
-                Selecciona dos ejecutivos y haz clic en "Comparar"
-              </p>
-            </div>
+            <EmptyState
+              title="Compara dos ejecutivos directamente"
+              sub="Selecciona dos ejecutivos y haz clic en Comparar"
+            />
           )}
         </>
       )}
 
-      {/* Modal de detalle */}
       <Modal
         show={showInvoicesModal}
         onHide={() => setShowInvoicesModal(false)}
         size="xl"
         centered
       >
-        <Modal.Header closeButton>
-          <Modal.Title>Detalle de Facturas</Modal.Title>
+        <Modal.Header
+          closeButton
+          style={{ ...base, borderBottom: `1px solid ${C.border}` }}
+        >
+          <Modal.Title style={{ ...base, fontSize: 16, fontWeight: 600, color: C.secondary }}>
+            Detalle de Facturas
+          </Modal.Title>
         </Modal.Header>
-        <Modal.Body>
+        <Modal.Body style={{ ...base, padding: 0 }}>
           {invoicesDetalle.length === 0 ? (
-            <p className="text-center">No hay facturas para mostrar</p>
+            <p style={{ ...base, textAlign: "center", padding: 24, color: C.textMuted }}>
+              No hay facturas para mostrar
+            </p>
           ) : (
-            <Table striped bordered hover>
-              <thead>
-                <tr>
-                  <th>N° Factura</th>
-                  <th>N° Operación</th>
-                  <th>Cliente</th>
-                  <th>Fecha</th>
-                  <th>Status</th>
-                  <th>Total (CLP)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {invoicesDetalle.map((invoice, idx) => (
-                  <tr key={idx}>
-                    <td>{invoice.invoiceNumber}</td>
-                    <td>{invoice.moduleNumber}</td>
-                    <td>{invoice.billToName}</td>
-                    <td>{invoice.date}</td>
-                    <td>
-                      <span
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr>
+                    <th style={styles.th}>N° Factura</th>
+                    <th style={styles.th}>Ref. Embarque</th>
+                    <th style={styles.th}>Cliente</th>
+                    <th style={styles.th}>Fecha</th>
+                    <th style={styles.th}>Status</th>
+                    <th style={{ ...styles.th, textAlign: "right" }}>Total CLP</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {invoicesDetalle.map((inv) => (
+                    <tr key={inv.id}>
+                      <td style={{ ...styles.td, fontWeight: 600 }}>{inv.invoiceNumber}</td>
+                      <td style={styles.td}>{inv.shipmentRef || inv.moduleNumber}</td>
+                      <td style={{ ...styles.td, fontSize: 12 }}>{inv.billToName}</td>
+                      <td style={styles.td}>{inv.date}</td>
+                      <td style={styles.td}>
+                        <InvoiceStatusDot status={inv.status} />
+                      </td>
+                      <td
                         style={{
-                          padding: "4px 8px",
-                          borderRadius: "4px",
-                          fontSize: "12px",
-                          fontWeight: "600",
-                          backgroundColor:
-                            invoice.status === "Posted" ? "#d1fae5" : "#fef3c7",
-                          color:
-                            invoice.status === "Posted" ? "#065f46" : "#92400e",
+                          ...styles.td,
+                          textAlign: "right",
+                          fontWeight: 600,
+                          color: C.positive,
                         }}
                       >
-                        {invoice.status}
-                      </span>
-                    </td>
-                    <td style={{ fontWeight: "600", color: "#10b981" }}>
-                      {formatCurrency(invoice.homeTotalAmount)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
+                        {fmt(inv.homeTotalAmount)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </Modal.Body>
       </Modal>

@@ -3,8 +3,32 @@
 import { useEffect, useState, useMemo, type CSSProperties } from "react";
 import { useOutletContext } from "react-router-dom";
 import { useAuth } from "../../../auth/AuthContext";
+import { linbisFetch } from "../../../services/linbisFetch";
 import ChartExecutivo from "./Chartexecutivo.tsx";
+import {
+  QuotesIndividualSkeleton,
+  ComparativeSkeleton,
+  DoubleComparisonSkeleton,
+} from "./executiveReportingUi";
 import type { QuoteStats, ExecutiveComparison } from "./types";
+import {
+  type ExecutiveQuote,
+  type PeriodPreset,
+  PERIOD_PRESET_LABELS,
+  normalizeExecutiveQuote,
+  extractQuotesFromResponse,
+  filterQuotesBySalesRep,
+  filterQuotesByDateRange,
+  getPeriodRange,
+  isQuoteCompleted,
+  isAirMode,
+  isSeaMode,
+  isTruckMode,
+  getTransportShortLabel,
+  buildMonthlyComparison,
+  buildGlobalMonthlySummary,
+  formatExecutiveAmount,
+} from "./quoteUtils";
 export type { QuoteStats, ExecutiveComparison };
 
 // ════════════════════════════════════════════
@@ -23,23 +47,7 @@ type Ejecutivo = {
   telefono: string;
 };
 
-interface Quote {
-  number: string;
-  customer?: string;
-  salesRep: string;
-  shipper: string;
-  consignee: string;
-  modeOfTransportation: string;
-  status: string;
-  date: string;
-  origin: string;
-  destination: string;
-  totalIncome: number;
-  totalExpense: number;
-  profit: number;
-  chargeDetails?: Record<string, unknown>[];
-  [key: string]: unknown;
-}
+type Quote = ExecutiveQuote;
 
 interface MonthlyBreakdown {
   month: string;
@@ -177,12 +185,8 @@ const styles = {
 // ════════════════════════════════════════════
 // HELPERS
 // ════════════════════════════════════════════
-const fmt = (n: number) =>
-  new Intl.NumberFormat("es-CL", {
-    style: "currency",
-    currency: "CLP",
-    minimumFractionDigits: 0,
-  }).format(n);
+const fmt = (n: number, currency?: string | null) =>
+  formatExecutiveAmount(n, currency);
 
 const fmtDate = (d: string) =>
   new Date(d).toLocaleDateString("es-CL", {
@@ -193,56 +197,23 @@ const fmtDate = (d: string) =>
 
 const fmtPct = (v: number) => `${v.toFixed(1)}%`;
 
-const getQuoteDate = (quote: Record<string, unknown>): string => {
-  const candidates = [
-    quote.date,
-    quote.createdAt,
-    quote.created_at,
-    quote.dateCreated,
-    quote.createdDate,
-    quote.creationDate,
-    quote.quoteDate,
-    quote.quotationDate,
-  ];
-
-  for (const candidate of candidates) {
-    if (typeof candidate === "string" && candidate.trim()) {
-      return candidate;
-    }
-
-    if (
-      candidate &&
-      typeof candidate === "object" &&
-      "displayDate" in candidate &&
-      typeof (candidate as { displayDate?: unknown }).displayDate === "string"
-    ) {
-      const displayDate = (candidate as { displayDate: string }).displayDate;
-      if (displayDate.trim()) {
-        return displayDate;
-      }
-    }
-  }
-
-  return "";
+const formatFetchedAt = (value: string | null): string | null => {
+  if (!value) return null;
+  const asNumber = Number(value);
+  const date = Number.isFinite(asNumber)
+    ? new Date(asNumber)
+    : new Date(value);
+  return Number.isNaN(date.getTime())
+    ? null
+    : date.toLocaleString("es-CL");
 };
-
-const normalizeQuote = (quote: Quote): Quote => ({
-  ...quote,
-  date: getQuoteDate(quote),
-});
 
 const calculateStats = (arr: Quote[]): QuoteStats => {
   const n = arr.length;
-  const completed = arr.filter((q) => q.status === "Completed").length;
-  const air = arr.filter((q) => q.modeOfTransportation === "40 - Air").length;
-  const sea = arr.filter(
-    (q) =>
-      q.modeOfTransportation === "11 - Vessel, Containerized" ||
-      q.modeOfTransportation === "10 - Vessel",
-  ).length;
-  const truck = arr.filter(
-    (q) => q.modeOfTransportation === "30 - Truck",
-  ).length;
+  const completed = arr.filter((q) => isQuoteCompleted(q.status)).length;
+  const air = arr.filter((q) => isAirMode(q.modeOfTransportation)).length;
+  const sea = arr.filter((q) => isSeaMode(q.modeOfTransportation)).length;
+  const truck = arr.filter((q) => isTruckMode(q.modeOfTransportation)).length;
   const income = arr.reduce((s, q) => s + (q.totalIncome || 0), 0);
   const expense = arr.reduce((s, q) => s + (q.totalExpense || 0), 0);
   const profit = arr.reduce((s, q) => s + (q.profit || 0), 0);
@@ -317,23 +288,15 @@ const getMonthlyBreakdown = (arr: Quote[]): MonthlyBreakdown[] => {
 
 const getTransportBreakdown = (arr: Quote[]): TransportRow[] => {
   const types = [
-    { key: "Air", fn: (q: Quote) => q.modeOfTransportation === "40 - Air" },
-    {
-      key: "Sea",
-      fn: (q: Quote) =>
-        q.modeOfTransportation === "11 - Vessel, Containerized" ||
-        q.modeOfTransportation === "10 - Vessel",
-    },
-    { key: "Truck", fn: (q: Quote) => q.modeOfTransportation === "30 - Truck" },
+    { key: "Air", fn: (q: Quote) => isAirMode(q.modeOfTransportation) },
+    { key: "Sea", fn: (q: Quote) => isSeaMode(q.modeOfTransportation) },
+    { key: "Truck", fn: (q: Quote) => isTruckMode(q.modeOfTransportation) },
     {
       key: "Other",
       fn: (q: Quote) =>
-        ![
-          "40 - Air",
-          "11 - Vessel, Containerized",
-          "10 - Vessel",
-          "30 - Truck",
-        ].includes(q.modeOfTransportation),
+        !isAirMode(q.modeOfTransportation) &&
+        !isSeaMode(q.modeOfTransportation) &&
+        !isTruckMode(q.modeOfTransportation),
     },
   ];
   return types
@@ -432,13 +395,13 @@ const TransportBar = ({
     },
     ...(other > 0
       ? [
-          {
-            label: "Other",
-            count: other,
-            pct: (other / total) * 100,
-            color: C.textLight,
-          },
-        ]
+        {
+          label: "Other",
+          count: other,
+          pct: (other / total) * 100,
+          color: C.textLight,
+        },
+      ]
       : []),
   ];
   return (
@@ -499,8 +462,18 @@ const TransportBar = ({
   );
 };
 
+const FLOW_LABELS: Record<string, string> = {
+  Requested: "Solicitado",
+  Pricing: "Tarificación",
+  Revision: "Revisión",
+  Sent: "Enviado",
+  Approved: "Aprobado",
+  Completed: "Completado",
+  Canceled: "Cancelado",
+};
+
 const StatusDot = ({ status }: { status: string }) => {
-  const color = status === "Completed" ? C.positive : C.textLight;
+  const color = isQuoteCompleted(status) ? C.positive : C.textLight;
   return (
     <span
       style={{ display: "inline-flex", alignItems: "center", gap: 6, ...base }}
@@ -515,11 +488,78 @@ const StatusDot = ({ status }: { status: string }) => {
         }}
       />
       <span style={{ fontSize: 12, color: C.textMuted }}>
-        {status || "Pending"}
+        {FLOW_LABELS[status] || status || "Sin estado"}
       </span>
     </span>
   );
 };
+
+const DataSourceBanner = ({
+  count,
+  fetchedAt,
+  salesRep,
+}: {
+  count: number;
+  fetchedAt: string | null;
+  salesRep?: string;
+}) => (
+  <div
+    style={{
+      ...base,
+      padding: "10px 16px",
+      backgroundColor: C.primaryLight,
+      border: `1px solid #fed7aa`,
+      borderRadius: 6,
+      fontSize: 12,
+      color: C.textMuted,
+      marginBottom: 16,
+    }}
+  >
+    {salesRep ? `Ejecutivo: ${salesRep}` : ""} · {count} cotizaciones
+    {formatFetchedAt(fetchedAt)
+      ? ` · Actualizado ${formatFetchedAt(fetchedAt)}`
+      : ""}
+    <br />
+    Los montos vienen como números del filter (CLP, USD u otras monedas pueden
+    mezclarse). Los totales son suma aritmética; revisa el detalle por
+    cotización.
+  </div>
+);
+
+const PeriodPresetSelect = ({
+  value,
+  onChange,
+}: {
+  value: PeriodPreset;
+  onChange: (preset: PeriodPreset) => void;
+}) => (
+  <div style={{ flex: "0 1 180px" }}>
+    <label style={styles.label}>Período</label>
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value as PeriodPreset)}
+      style={{
+        ...base,
+        fontSize: 13,
+        padding: "8px 12px",
+        borderRadius: 4,
+        border: `1px solid ${C.border}`,
+        backgroundColor: C.white,
+        color: C.text,
+        height: 38,
+        width: "100%",
+        outline: "none",
+        appearance: "auto" as const,
+      }}
+    >
+      {(Object.keys(PERIOD_PRESET_LABELS) as PeriodPreset[]).map((preset) => (
+        <option key={preset} value={preset}>
+          {PERIOD_PRESET_LABELS[preset]}
+        </option>
+      ))}
+    </select>
+  </div>
+);
 
 const EmptyState = ({ title, sub }: { title: string; sub: string }) => (
   <div style={{ ...styles.cardPad, padding: "60px 24px", textAlign: "center" }}>
@@ -562,7 +602,7 @@ const PAGE_SIZE = 20;
 // MAIN COMPONENT
 // ════════════════════════════════════════════
 function ReportExecutive() {
-  const { accessToken } = useOutletContext<OutletContext>();
+  const { accessToken, refreshAccessToken } = useOutletContext<OutletContext>();
   const { user, getEjecutivos } = useAuth();
 
   // ── State ──
@@ -572,6 +612,8 @@ function ReportExecutive() {
 
   // Individual
   const [selectedEjecutivo, setSelectedEjecutivo] = useState("");
+  const [individualPreset, setIndividualPreset] =
+    useState<PeriodPreset>("this-year");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [quotes, setQuotes] = useState<Quote[]>([]);
@@ -579,8 +621,12 @@ function ReportExecutive() {
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
   const [page, setPage] = useState(1);
+  const [individualFetchedAt, setIndividualFetchedAt] = useState<string | null>(
+    null,
+  );
 
   // Comparativa
+  const [compPreset, setCompPreset] = useState<PeriodPreset>("this-year");
   const [compStartDate, setCompStartDate] = useState("");
   const [compEndDate, setCompEndDate] = useState("");
   const [comparativeData, setComparativeData] = useState<ExecutiveComparison[]>(
@@ -590,19 +636,48 @@ function ReportExecutive() {
   const [loadingComparative, setLoadingComparative] = useState(false);
   const [errorComparative, setErrorComparative] = useState<string | null>(null);
   const [hasSearchedComparative, setHasSearchedComparative] = useState(false);
+  const [compFetchedAt, setCompFetchedAt] = useState<string | null>(null);
   const [sortField, setSortField] = useState<SortField>("totalProfit");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
 
   // Doble
   const [ejecutivo1, setEjecutivo1] = useState("");
   const [ejecutivo2, setEjecutivo2] = useState("");
+  const [doublePreset, setDoublePreset] = useState<PeriodPreset>("this-year");
   const [doubleStartDate, setDoubleStartDate] = useState("");
   const [doubleEndDate, setDoubleEndDate] = useState("");
   const [doubleData, setDoubleData] = useState<ExecutiveComparison[]>([]);
+  const [doubleQuotesByExec, setDoubleQuotesByExec] = useState<
+    Record<string, Quote[]>
+  >({});
   const [allDoubleQuotes, setAllDoubleQuotes] = useState<Quote[]>([]);
   const [loadingDouble, setLoadingDouble] = useState(false);
   const [errorDouble, setErrorDouble] = useState<string | null>(null);
   const [hasSearchedDouble, setHasSearchedDouble] = useState(false);
+  const [doubleFetchedAt, setDoubleFetchedAt] = useState<string | null>(null);
+
+  const applyPeriodPreset = (
+    preset: PeriodPreset,
+    setStart: (v: string) => void,
+    setEnd: (v: string) => void,
+  ) => {
+    if (preset === "custom") return;
+    const range = getPeriodRange(preset);
+    setStart(range.startDate);
+    setEnd(range.endDate);
+  };
+
+  useEffect(() => {
+    applyPeriodPreset(individualPreset, setStartDate, setEndDate);
+  }, [individualPreset]);
+
+  useEffect(() => {
+    applyPeriodPreset(compPreset, setCompStartDate, setCompEndDate);
+  }, [compPreset]);
+
+  useEffect(() => {
+    applyPeriodPreset(doublePreset, setDoubleStartDate, setDoubleEndDate);
+  }, [doublePreset]);
 
   // ── Effects ──
   useEffect(() => {
@@ -668,6 +743,57 @@ function ReportExecutive() {
     [comparativeData],
   );
 
+  const globalMonthlyData = useMemo(
+    () => buildGlobalMonthlySummary(allComparativeQuotes),
+    [allComparativeQuotes],
+  );
+
+  const doubleMonthlyComparison = useMemo(() => {
+    if (!ejecutivo1 || !ejecutivo2) return [];
+    return buildMonthlyComparison(
+      doubleQuotesByExec[ejecutivo1] || [],
+      doubleQuotesByExec[ejecutivo2] || [],
+    );
+  }, [doubleQuotesByExec, ejecutivo1, ejecutivo2]);
+
+  const fetchQuotesForExecutive = async (
+    salesRepName: string,
+    rangeStart: string,
+    rangeEnd: string,
+  ): Promise<Quote[]> => {
+    const params = new URLSearchParams({ SalesRepName: salesRepName });
+    if (rangeStart) params.append("StartDate", rangeStart);
+    if (rangeEnd) params.append("EndDate", rangeEnd);
+
+    const res = await linbisFetch(
+      `https://api.linbis.com/Quotes/filter?${params}`,
+      {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+      },
+      accessToken,
+      refreshAccessToken,
+    );
+
+    if (!res.ok) {
+      if (res.status === 401) throw new Error("Token inválido o expirado");
+      throw new Error(`Error ${res.status}: ${res.statusText}`);
+    }
+
+    const data = await res.json();
+    const normalized = extractQuotesFromResponse(data).map(normalizeExecutiveQuote);
+    const byRep = filterQuotesBySalesRep(normalized, salesRepName);
+    const filtered = filterQuotesByDateRange(byRep, rangeStart, rangeEnd);
+
+    return filtered.sort(
+      (a, b) =>
+        new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime(),
+    );
+  };
+
   // ── API calls ──
   const fetchQuotes = async () => {
     if (!selectedEjecutivo) {
@@ -679,6 +805,7 @@ function ReportExecutive() {
     const ts = localStorage.getItem(`${cacheKey}_timestamp`);
     if (cached && ts && Date.now() - parseInt(ts) < 5 * 60 * 1000) {
       setQuotes(JSON.parse(cached));
+      setIndividualFetchedAt(ts);
       setHasSearched(true);
       setError(null);
       setPage(1);
@@ -689,34 +816,16 @@ function ReportExecutive() {
       setError(null);
       setHasSearched(true);
       setPage(1);
-      const params = new URLSearchParams({ SalesRepName: selectedEjecutivo });
-      if (startDate) params.append("StartDate", startDate);
-      if (endDate) params.append("EndDate", endDate);
-      const res = await fetch(
-        `https://api.linbis.com/Quotes/filter?${params}`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            Accept: "application/json",
-            "Content-Type": "application/json",
-          },
-        },
+      const sorted = await fetchQuotesForExecutive(
+        selectedEjecutivo,
+        startDate,
+        endDate,
       );
-      if (!res.ok) {
-        if (res.status === 401) throw new Error("Token inválido o expirado");
-        throw new Error(`Error ${res.status}: ${res.statusText}`);
-      }
-      const data = await res.json();
-      const sorted: Quote[] = (Array.isArray(data) ? data : [])
-        .map(normalizeQuote)
-        .sort(
-        (a: Quote, b: Quote) =>
-          new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime(),
-      );
+      const now = Date.now().toString();
       setQuotes(sorted);
+      setIndividualFetchedAt(now);
       localStorage.setItem(cacheKey, JSON.stringify(sorted));
-      localStorage.setItem(`${cacheKey}_timestamp`, Date.now().toString());
+      localStorage.setItem(`${cacheKey}_timestamp`, now);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error desconocido");
     } finally {
@@ -732,6 +841,7 @@ function ReportExecutive() {
       const parsed = JSON.parse(cached);
       setComparativeData(parsed.comparisons);
       setAllComparativeQuotes(parsed.allQuotes || []);
+      setCompFetchedAt(ts);
       setHasSearchedComparative(true);
       setErrorComparative(null);
       return;
@@ -742,37 +852,42 @@ function ReportExecutive() {
       setHasSearchedComparative(true);
       const comparisons: ExecutiveComparison[] = [];
       const allQuotes: Quote[] = [];
+      const failures: string[] = [];
+
       for (const ej of ejecutivos) {
-        const params = new URLSearchParams({ SalesRepName: ej.nombre });
-        if (compStartDate) params.append("StartDate", compStartDate);
-        if (compEndDate) params.append("EndDate", compEndDate);
-        const res = await fetch(
-          `https://api.linbis.com/Quotes/filter?${params}`,
-          {
-            method: "GET",
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              Accept: "application/json",
-              "Content-Type": "application/json",
-            },
-          },
-        );
-        if (res.ok) {
-          const data = await res.json();
-          const arr: Quote[] = (Array.isArray(data) ? data : []).map(
-            normalizeQuote,
+        try {
+          const arr = await fetchQuotesForExecutive(
+            ej.nombre,
+            compStartDate,
+            compEndDate,
           );
           allQuotes.push(...arr);
           comparisons.push({ nombre: ej.nombre, stats: calculateStats(arr) });
+        } catch {
+          failures.push(ej.nombre);
+          comparisons.push({
+            nombre: ej.nombre,
+            stats: calculateStats([]),
+          });
         }
       }
+
+      comparisons.sort((a, b) => b.stats.totalProfit - a.stats.totalProfit);
       setComparativeData(comparisons);
       setAllComparativeQuotes(allQuotes);
+      const now = Date.now().toString();
+      setCompFetchedAt(now);
       localStorage.setItem(
         cacheKey,
         JSON.stringify({ comparisons, allQuotes }),
       );
-      localStorage.setItem(`${cacheKey}_timestamp`, Date.now().toString());
+      localStorage.setItem(`${cacheKey}_timestamp`, now);
+
+      if (failures.length > 0) {
+        setErrorComparative(
+          `No se pudieron cargar datos de: ${failures.join(", ")}`,
+        );
+      }
     } catch (err) {
       setErrorComparative(
         err instanceof Error ? err.message : "Error desconocido",
@@ -793,7 +908,9 @@ function ReportExecutive() {
     if (cached && ts && Date.now() - parseInt(ts) < 5 * 60 * 1000) {
       const parsed = JSON.parse(cached);
       setDoubleData(parsed.comparisons);
+      setDoubleQuotesByExec(parsed.quotesByExec || {});
       setAllDoubleQuotes(parsed.allQuotes || []);
+      setDoubleFetchedAt(ts);
       setHasSearchedDouble(true);
       setErrorDouble(null);
       return;
@@ -804,37 +921,29 @@ function ReportExecutive() {
       setHasSearchedDouble(true);
       const comparisons: ExecutiveComparison[] = [];
       const allQuotes: Quote[] = [];
+      const quotesByExec: Record<string, Quote[]> = {};
+
       for (const name of [ejecutivo1, ejecutivo2]) {
-        const params = new URLSearchParams({ SalesRepName: name });
-        if (doubleStartDate) params.append("StartDate", doubleStartDate);
-        if (doubleEndDate) params.append("EndDate", doubleEndDate);
-        const res = await fetch(
-          `https://api.linbis.com/Quotes/filter?${params}`,
-          {
-            method: "GET",
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              Accept: "application/json",
-              "Content-Type": "application/json",
-            },
-          },
+        const arr = await fetchQuotesForExecutive(
+          name,
+          doubleStartDate,
+          doubleEndDate,
         );
-        if (res.ok) {
-          const data = await res.json();
-          const arr: Quote[] = (Array.isArray(data) ? data : []).map(
-            normalizeQuote,
-          );
-          allQuotes.push(...arr);
-          comparisons.push({ nombre: name, stats: calculateStats(arr) });
-        }
+        quotesByExec[name] = arr;
+        allQuotes.push(...arr);
+        comparisons.push({ nombre: name, stats: calculateStats(arr) });
       }
+
       setDoubleData(comparisons);
+      setDoubleQuotesByExec(quotesByExec);
       setAllDoubleQuotes(allQuotes);
+      const now = Date.now().toString();
+      setDoubleFetchedAt(now);
       localStorage.setItem(
         cacheKey,
-        JSON.stringify({ comparisons, allQuotes }),
+        JSON.stringify({ comparisons, allQuotes, quotesByExec }),
       );
-      localStorage.setItem(`${cacheKey}_timestamp`, Date.now().toString());
+      localStorage.setItem(`${cacheKey}_timestamp`, now);
     } catch (err) {
       setErrorDouble(err instanceof Error ? err.message : "Error desconocido");
     } finally {
@@ -1118,12 +1227,19 @@ function ReportExecutive() {
                   ))}
                 </select>
               </div>
+              <PeriodPresetSelect
+                value={individualPreset}
+                onChange={setIndividualPreset}
+              />
               <div style={{ flex: "0 1 160px" }}>
                 <label style={styles.label}>Desde</label>
                 <input
                   type="date"
                   value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
+                  onChange={(e) => {
+                    setIndividualPreset("custom");
+                    setStartDate(e.target.value);
+                  }}
                   style={inputStyle}
                 />
               </div>
@@ -1132,7 +1248,10 @@ function ReportExecutive() {
                 <input
                   type="date"
                   value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
+                  onChange={(e) => {
+                    setIndividualPreset("custom");
+                    setEndDate(e.target.value);
+                  }}
                   style={inputStyle}
                 />
               </div>
@@ -1153,6 +1272,8 @@ function ReportExecutive() {
 
           {error && <ErrorBanner message={error} />}
 
+          {loading && <QuotesIndividualSkeleton />}
+
           {/* Results */}
           {hasSearched && !loading && quotes.length === 0 && !error && (
             <EmptyState
@@ -1163,6 +1284,12 @@ function ReportExecutive() {
 
           {hasSearched && !loading && quotes.length > 0 && (
             <>
+              <DataSourceBanner
+                count={quotes.length}
+                fetchedAt={individualFetchedAt}
+                salesRep={selectedEjecutivo}
+              />
+
               {/* KPI Row */}
               <div
                 style={{
@@ -1302,7 +1429,7 @@ function ReportExecutive() {
               )}
 
               {/* Monthly Breakdown */}
-              {monthlyData.length > 1 && (
+              {monthlyData.length > 0 && (
                 <div
                   style={{
                     ...styles.card,
@@ -1483,6 +1610,9 @@ function ReportExecutive() {
                         <th style={styles.th}>Consignee</th>
                         <th style={styles.th}>Origen</th>
                         <th style={styles.th}>Destino</th>
+                        <th style={{ ...styles.th, textAlign: "center" }}>
+                          Moneda
+                        </th>
                         <th style={{ ...styles.th, textAlign: "right" }}>
                           Income
                         </th>
@@ -1524,15 +1654,7 @@ function ReportExecutive() {
                             <StatusDot status={q.status} />
                           </td>
                           <td style={{ ...styles.td, fontSize: 12 }}>
-                            {q.modeOfTransportation === "40 - Air"
-                              ? "Air"
-                              : q.modeOfTransportation ===
-                                    "11 - Vessel, Containerized" ||
-                                  q.modeOfTransportation === "10 - Vessel"
-                                ? "Sea"
-                                : q.modeOfTransportation === "30 - Truck"
-                                  ? "Truck"
-                                  : q.modeOfTransportation}
+                            {getTransportShortLabel(q.modeOfTransportation)}
                           </td>
                           <td
                             style={{
@@ -1565,12 +1687,22 @@ function ReportExecutive() {
                           <td
                             style={{
                               ...styles.td,
+                              textAlign: "center",
+                              color: C.textMuted,
+                              fontSize: 11,
+                            }}
+                          >
+                            {q.currency || "—"}
+                          </td>
+                          <td
+                            style={{
+                              ...styles.td,
                               textAlign: "right",
                               color: C.positive,
                               fontWeight: 600,
                             }}
                           >
-                            {fmt(q.totalIncome)}
+                            {fmt(q.totalIncome, q.currency)}
                           </td>
                           <td
                             style={{
@@ -1580,7 +1712,7 @@ function ReportExecutive() {
                               fontWeight: 600,
                             }}
                           >
-                            {fmt(q.totalExpense)}
+                            {fmt(q.totalExpense, q.currency)}
                           </td>
                           <td
                             style={{
@@ -1589,7 +1721,7 @@ function ReportExecutive() {
                               fontWeight: 700,
                             }}
                           >
-                            {fmt(q.profit)}
+                            {fmt(q.profit, q.currency)}
                           </td>
                         </tr>
                       ))}
@@ -1824,12 +1956,19 @@ function ReportExecutive() {
                 flexWrap: "wrap",
               }}
             >
+              <PeriodPresetSelect
+                value={compPreset}
+                onChange={setCompPreset}
+              />
               <div style={{ flex: "0 1 160px" }}>
                 <label style={styles.label}>Desde</label>
                 <input
                   type="date"
                   value={compStartDate}
-                  onChange={(e) => setCompStartDate(e.target.value)}
+                  onChange={(e) => {
+                    setCompPreset("custom");
+                    setCompStartDate(e.target.value);
+                  }}
                   style={inputStyle}
                 />
               </div>
@@ -1838,14 +1977,17 @@ function ReportExecutive() {
                 <input
                   type="date"
                   value={compEndDate}
-                  onChange={(e) => setCompEndDate(e.target.value)}
+                  onChange={(e) => {
+                    setCompPreset("custom");
+                    setCompEndDate(e.target.value);
+                  }}
                   style={inputStyle}
                 />
               </div>
               <div>
                 <button
                   onClick={fetchComparativeData}
-                  disabled={loadingComparative}
+                  disabled={loadingComparative || ejecutivos.length === 0}
                   style={{
                     ...btnPrimary,
                     opacity: loadingComparative ? 0.5 : 1,
@@ -1859,10 +2001,17 @@ function ReportExecutive() {
 
           {errorComparative && <ErrorBanner message={errorComparative} />}
 
+          {loadingComparative && <ComparativeSkeleton />}
+
           {hasSearchedComparative &&
             !loadingComparative &&
             comparativeData.length > 0 && (
               <>
+                <DataSourceBanner
+                  count={allComparativeQuotes.length}
+                  fetchedAt={compFetchedAt}
+                />
+
                 {/* Global KPIs */}
                 <div
                   style={{
@@ -1896,7 +2045,7 @@ function ReportExecutive() {
                     value={fmtPct(
                       globalStats.totalIncome > 0
                         ? (globalStats.totalProfit / globalStats.totalIncome) *
-                            100
+                        100
                         : 0,
                     )}
                   />
@@ -2111,6 +2260,83 @@ function ReportExecutive() {
                     comparativeData={comparativeData}
                   />
                 </div>
+
+                {globalMonthlyData.length > 0 && (
+                  <div
+                    style={{
+                      ...styles.card,
+                      marginBottom: 20,
+                      overflow: "hidden",
+                    }}
+                  >
+                    <div
+                      style={{
+                        padding: "14px 20px",
+                        borderBottom: `1px solid ${C.border}`,
+                      }}
+                    >
+                      <div style={styles.sectionTitle}>
+                        Resumen Mensual Global
+                      </div>
+                    </div>
+                    <div style={{ overflowX: "auto" }}>
+                      <table
+                        style={{ width: "100%", borderCollapse: "collapse" }}
+                      >
+                        <thead>
+                          <tr>
+                            <th style={styles.th}>Mes</th>
+                            <th style={{ ...styles.th, textAlign: "center" }}>
+                              Cotizaciones
+                            </th>
+                            <th style={{ ...styles.th, textAlign: "center" }}>
+                              Ejecutivos activos
+                            </th>
+                            <th style={{ ...styles.th, textAlign: "right" }}>
+                              Income
+                            </th>
+                            <th style={{ ...styles.th, textAlign: "right" }}>
+                              Profit
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {globalMonthlyData.map((m) => (
+                            <tr key={m.month}>
+                              <td style={{ ...styles.td, fontWeight: 600 }}>
+                                {m.label}
+                              </td>
+                              <td style={{ ...styles.td, textAlign: "center" }}>
+                                {m.quotes}
+                              </td>
+                              <td style={{ ...styles.td, textAlign: "center" }}>
+                                {m.executives}
+                              </td>
+                              <td
+                                style={{
+                                  ...styles.td,
+                                  textAlign: "right",
+                                  color: C.positive,
+                                }}
+                              >
+                                {fmt(m.income)}
+                              </td>
+                              <td
+                                style={{
+                                  ...styles.td,
+                                  textAlign: "right",
+                                  fontWeight: 600,
+                                }}
+                              >
+                                {fmt(m.profit)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
 
                 {/* Top Clients & Routes (global) */}
                 {allComparativeQuotes.length > 0 && (
@@ -2329,12 +2555,19 @@ function ReportExecutive() {
                     ))}
                 </select>
               </div>
+              <PeriodPresetSelect
+                value={doublePreset}
+                onChange={setDoublePreset}
+              />
               <div style={{ flex: "0 1 150px" }}>
                 <label style={styles.label}>Desde</label>
                 <input
                   type="date"
                   value={doubleStartDate}
-                  onChange={(e) => setDoubleStartDate(e.target.value)}
+                  onChange={(e) => {
+                    setDoublePreset("custom");
+                    setDoubleStartDate(e.target.value);
+                  }}
                   style={inputStyle}
                 />
               </div>
@@ -2343,7 +2576,10 @@ function ReportExecutive() {
                 <input
                   type="date"
                   value={doubleEndDate}
-                  onChange={(e) => setDoubleEndDate(e.target.value)}
+                  onChange={(e) => {
+                    setDoublePreset("custom");
+                    setDoubleEndDate(e.target.value);
+                  }}
                   style={inputStyle}
                 />
               </div>
@@ -2365,8 +2601,16 @@ function ReportExecutive() {
 
           {errorDouble && <ErrorBanner message={errorDouble} />}
 
+          {loadingDouble && <DoubleComparisonSkeleton />}
+
           {hasSearchedDouble && !loadingDouble && doubleData.length === 2 && (
             <>
+              <DataSourceBanner
+                count={allDoubleQuotes.length}
+                fetchedAt={doubleFetchedAt}
+                salesRep={`${doubleData[0].nombre} vs ${doubleData[1].nombre}`}
+              />
+
               {/* Side-by-side comparison table */}
               <div
                 style={{ ...styles.card, marginBottom: 20, overflow: "hidden" }}
@@ -2537,6 +2781,113 @@ function ReportExecutive() {
               <div style={{ marginBottom: 20 }}>
                 <ChartExecutivo type="doble" doubleData={doubleData} />
               </div>
+
+              {doubleMonthlyComparison.length > 0 && (
+                <div
+                  style={{
+                    ...styles.card,
+                    marginBottom: 20,
+                    overflow: "hidden",
+                  }}
+                >
+                  <div
+                    style={{
+                      padding: "14px 20px",
+                      borderBottom: `1px solid ${C.border}`,
+                    }}
+                  >
+                    <div style={styles.sectionTitle}>
+                      Comparativa Mensual · {doubleData[0].nombre} vs{" "}
+                      {doubleData[1].nombre}
+                    </div>
+                  </div>
+                  <div style={{ overflowX: "auto" }}>
+                    <table
+                      style={{ width: "100%", borderCollapse: "collapse" }}
+                    >
+                      <thead>
+                        <tr>
+                          <th style={styles.th}>Mes</th>
+                          <th style={{ ...styles.th, textAlign: "center" }}>
+                            {doubleData[0].nombre} · Cotiz.
+                          </th>
+                          <th style={{ ...styles.th, textAlign: "center" }}>
+                            {doubleData[1].nombre} · Cotiz.
+                          </th>
+                          <th style={{ ...styles.th, textAlign: "right" }}>
+                            {doubleData[0].nombre} · Profit
+                          </th>
+                          <th style={{ ...styles.th, textAlign: "right" }}>
+                            {doubleData[1].nombre} · Profit
+                          </th>
+                          <th style={{ ...styles.th, textAlign: "right" }}>
+                            Δ Profit
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {doubleMonthlyComparison.map((row, i) => {
+                          const delta =
+                            row.executive1Profit - row.executive2Profit;
+                          const deltaColor =
+                            delta > 0
+                              ? C.positive
+                              : delta < 0
+                                ? C.negative
+                                : C.textMuted;
+                          return (
+                            <tr
+                              key={row.month}
+                              style={{
+                                backgroundColor: i % 2 === 0 ? C.white : C.bg,
+                              }}
+                            >
+                              <td style={{ ...styles.td, fontWeight: 600 }}>
+                                {row.label}
+                              </td>
+                              <td style={{ ...styles.td, textAlign: "center" }}>
+                                {row.executive1Quotes}
+                              </td>
+                              <td style={{ ...styles.td, textAlign: "center" }}>
+                                {row.executive2Quotes}
+                              </td>
+                              <td
+                                style={{
+                                  ...styles.td,
+                                  textAlign: "right",
+                                  fontWeight: 600,
+                                }}
+                              >
+                                {fmt(row.executive1Profit)}
+                              </td>
+                              <td
+                                style={{
+                                  ...styles.td,
+                                  textAlign: "right",
+                                  fontWeight: 600,
+                                }}
+                              >
+                                {fmt(row.executive2Profit)}
+                              </td>
+                              <td
+                                style={{
+                                  ...styles.td,
+                                  textAlign: "right",
+                                  color: deltaColor,
+                                  fontWeight: 600,
+                                }}
+                              >
+                                {delta > 0 ? "+" : ""}
+                                {fmt(delta)}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
 
               {/* Top Clients & Routes (combined) */}
               {allDoubleQuotes.length > 0 && (
