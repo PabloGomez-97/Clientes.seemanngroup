@@ -13,6 +13,10 @@ import { MUNDOGAMING_DUMMY_GROUND_SHIPMENTS } from "./Handlers/mundogamingDummyG
 import { DocumentosSectionGround } from "../Sidebar/Documents/DocumentosSectionGround";
 import "./GroundShipmentsView.css";
 import { linbisFetch } from "../../services/linbisFetch";
+import { consigneeMatches } from "../../services/linbisListFetch";
+
+const GROUND_ALL_CACHE_KEY = "groundShipmentsAllCache_v1";
+const GROUND_ALL_CACHE_TS_KEY = "groundShipmentsAllCacheTimestamp_v1";
 
 const DEFAULT_ROWS_PER_PAGE = 10;
 
@@ -171,54 +175,97 @@ function GroundShipmentsView({
     return `${start}-${end} de ${displayedShipments.length}`;
   }, [tablePage, rowsPerPage, displayedShipments.length]);
 
+  const sortGroundShipments = (items: GroundShipment[]) =>
+    [...items].sort((a, b) => {
+      const da = a.departure ? new Date(a.departure) : new Date(0);
+      const db = b.departure ? new Date(b.departure) : new Date(0);
+      return db.getTime() - da.getTime();
+    });
+
+  const applyConsigneeFilter = (arr: GroundShipment[]) =>
+    sortGroundShipments(
+      arr.filter((gs) => consigneeMatches(gs.consignee, filterConsignee)),
+    );
+
+  const readGroundAllCache = (): GroundShipment[] | null => {
+    try {
+      const cached = localStorage.getItem(GROUND_ALL_CACHE_KEY);
+      const ts = localStorage.getItem(GROUND_ALL_CACHE_TS_KEY);
+      if (!cached || !ts) return null;
+      if (Date.now() - parseInt(ts, 10) > 3600000) {
+        localStorage.removeItem(GROUND_ALL_CACHE_KEY);
+        localStorage.removeItem(GROUND_ALL_CACHE_TS_KEY);
+        return null;
+      }
+      const parsed: GroundShipment[] = JSON.parse(cached);
+      return Array.isArray(parsed) ? parsed : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const writeGroundAllCache = (arr: GroundShipment[]) => {
+    try {
+      localStorage.setItem(GROUND_ALL_CACHE_KEY, JSON.stringify(arr));
+      localStorage.setItem(
+        GROUND_ALL_CACHE_TS_KEY,
+        Date.now().toString(),
+      );
+    } catch {
+      /* quota exceeded */
+    }
+  };
+
   /* -- API --------------------------------------------------- */
   const fetchGroundShipments = async () => {
     if (!accessToken) {
       setError("Debes ingresar un token primero");
       return;
     }
+    if (!filterConsignee) {
+      setError("No se pudo obtener el nombre de usuario");
+      return;
+    }
     setLoading(true);
     setError(null);
 
     try {
-      const response = await linbisFetch(
-        "https://api.linbis.com/ground-shipments/all",
-        {
-          method: "GET",
-          headers: {
-            Accept: "application/json",
-            "Content-Type": "application/json",
-          },
-        },
-        accessToken,
-        refreshAccessToken,
-      );
+      const cachedAll = readGroundAllCache();
+      let arr: GroundShipment[];
 
-      if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      if (cachedAll) {
+        arr = cachedAll;
+      } else {
+        const response = await linbisFetch(
+          "https://api.linbis.com/ground-shipments/all",
+          {
+            method: "GET",
+            headers: {
+              Accept: "application/json",
+              "Content-Type": "application/json",
+            },
+          },
+          accessToken,
+          refreshAccessToken,
+        );
+
+        if (!response.ok) {
+          throw new Error(`Error ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        arr = Array.isArray(data) ? data : [];
+        writeGroundAllCache(arr);
       }
 
-      const data = await response.json();
-      const arr: GroundShipment[] = Array.isArray(data) ? data : [];
-      const filtered = arr.filter((gs) => gs.consignee === filterConsignee);
-      const sorted = filtered.sort((a, b) => {
-        const da = a.departure ? new Date(a.departure) : new Date(0);
-        const db = b.departure ? new Date(b.departure) : new Date(0);
-        return db.getTime() - da.getTime();
-      });
-
-      setGroundShipments(sorted);
-      localStorage.setItem("groundShipmentsCache", JSON.stringify(sorted));
-      localStorage.setItem(
-        "groundShipmentsCacheTimestamp",
-        new Date().getTime().toString(),
-      );
-      setDisplayedShipments(sorted);
+      const filtered = applyConsigneeFilter(arr);
+      setGroundShipments(filtered);
+      setDisplayedShipments(filtered);
       setShowingAll(false);
       setTablePage(1);
 
       console.log(
-        `${arr.length} ground shipments totales, ${filtered.length} del consignee`,
+        `${arr.length} ground shipments totales, ${filtered.length} para ${filterConsignee}`,
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error desconocido");
@@ -233,7 +280,7 @@ function GroundShipmentsView({
   }, [displayedShipments, rowsPerPage]);
 
   useEffect(() => {
-    if (!accessToken) return;
+    if (!accessToken || !filterConsignee) return;
 
     // ── Cuenta dummy MundoGaming ──
     if (filterConsignee === "MundoGaming") {
@@ -257,33 +304,23 @@ function GroundShipmentsView({
       return;
     }
 
-    const cached = localStorage.getItem("groundShipmentsCache");
-    const ts = localStorage.getItem("groundShipmentsCacheTimestamp");
-
-    if (cached && ts) {
-      const age = Date.now() - parseInt(ts);
-      if (age < 3600000) {
-        const parsed: GroundShipment[] = JSON.parse(cached);
-        const filtered = parsed.filter(
-          (gs) => gs.consignee === filterConsignee,
-        );
-        setGroundShipments(filtered);
-        setDisplayedShipments(filtered);
-        setShowingAll(false);
-        setTablePage(1);
-        setLoading(false);
-        console.log(
-          "Cargando desde cache -",
-          Math.floor(age / 60000),
-          "minutos",
-        );
-        return;
-      }
+    const cachedAll = readGroundAllCache();
+    if (cachedAll) {
+      const filtered = applyConsigneeFilter(cachedAll);
+      setGroundShipments(filtered);
+      setDisplayedShipments(filtered);
+      setShowingAll(false);
+      setTablePage(1);
+      setLoading(false);
+      console.log(
+        `Ground: ${filtered.length} envíos para ${filterConsignee} (caché global)`,
+      );
+      return;
     }
 
     fetchGroundShipments();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [accessToken]);
+  }, [accessToken, filterConsignee]);
 
   useEffect(() => {
     const locationState = location.state as {
@@ -495,8 +532,8 @@ function GroundShipmentsView({
       return;
     }
 
-    localStorage.removeItem("groundShipmentsCache");
-    localStorage.removeItem("groundShipmentsCacheTimestamp");
+    localStorage.removeItem(GROUND_ALL_CACHE_KEY);
+    localStorage.removeItem(GROUND_ALL_CACHE_TS_KEY);
     setGroundShipments([]);
     setDisplayedShipments([]);
     setTablePage(1);

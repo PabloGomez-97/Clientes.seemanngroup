@@ -27,6 +27,12 @@ import {
 } from "../../services/trackingEmailPreferences";
 import "./OceanShipmentsView.css";
 import { linbisFetch } from "../../services/linbisFetch";
+import {
+  buildLinbisListParams,
+  consigneeMatches,
+  LINBIS_PAGE_SIZE,
+} from "../../services/linbisListFetch";
+import { mapLinbisOceanToShippingOrder } from "../../services/linbisShipmentMappers";
 
 const ITEMS_PER_PAGE = 10;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -34,6 +40,9 @@ const API_BASE_URL =
   import.meta.env.MODE === "development"
     ? "http://localhost:4000"
     : "https://portalclientes.seemanngroup.com";
+
+const OCEAN_ALL_CACHE_KEY = "oceanShipmentsAllCache_v1";
+const OCEAN_ALL_CACHE_TS_KEY = "oceanShipmentsAllCacheTimestamp_v1";
 
 interface OceanShippingOrder {
   id: number;
@@ -498,8 +507,13 @@ function OceanShipmentsView({
       }));
 
       try {
+        const quoteParams = buildLinbisListParams(
+          activeUsername,
+          1,
+          LINBIS_PAGE_SIZE,
+        );
         const resp = await linbisFetch(
-          `https://api.linbis.com/Quotes?ConsigneeName=${encodeURIComponent(activeUsername)}&Page=1&ItemsPerPage=50&SortBy=newest`,
+          `https://api.linbis.com/Quotes?${quoteParams}`,
           {
             method: "GET",
             headers: {
@@ -540,7 +554,33 @@ function OceanShipmentsView({
   );
 
   /* -- API: Fetch ocean shipments via shipping-orders ------- */
-  const fetchOceanShipments = async () => {
+  const readOceanAllCache = (): unknown[] | null => {
+    try {
+      const cached = localStorage.getItem(OCEAN_ALL_CACHE_KEY);
+      const ts = localStorage.getItem(OCEAN_ALL_CACHE_TS_KEY);
+      if (!cached || !ts) return null;
+      if (Date.now() - parseInt(ts, 10) > 3600000) {
+        localStorage.removeItem(OCEAN_ALL_CACHE_KEY);
+        localStorage.removeItem(OCEAN_ALL_CACHE_TS_KEY);
+        return null;
+      }
+      const parsed = JSON.parse(cached);
+      return Array.isArray(parsed) ? parsed : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const writeOceanAllCache = (records: unknown[]) => {
+    try {
+      localStorage.setItem(OCEAN_ALL_CACHE_KEY, JSON.stringify(records));
+      localStorage.setItem(OCEAN_ALL_CACHE_TS_KEY, Date.now().toString());
+    } catch {
+      /* quota exceeded */
+    }
+  };
+
+  const fetchOceanShipments = async (signal?: AbortSignal) => {
     if (!accessToken) {
       setError("Debes ingresar un token primero");
       return;
@@ -556,119 +596,53 @@ function OceanShipmentsView({
     try {
       const cacheKey = `oceanShipmentsCache_${activeUsername}`;
 
-      // Step 1: Fetch shipping orders filtered by ConsigneeName
-      const encodedName = encodeURIComponent(activeUsername);
-      const soResponse = await linbisFetch(
-        `https://api.linbis.com/api/shipping-orders?ConsigneeName=${encodedName}&PageNumber=1&PageSize=999`,
-        {
-          method: "GET",
-          headers: {
-            Accept: "application/json",
-            "Content-Type": "application/json",
+      let allRecords: unknown[] = readOceanAllCache() ?? [];
+
+      if (!allRecords.length) {
+        const allResponse = await linbisFetch(
+          "https://api.linbis.com/ocean-shipments/all",
+          {
+            method: "GET",
+            headers: {
+              Accept: "application/json",
+              "Content-Type": "application/json",
+            },
+            signal,
           },
-        },
-        accessToken,
-        refreshAccessToken,
-      );
-
-      if (!soResponse.ok) {
-        throw new Error(`Error ${soResponse.status}: ${soResponse.statusText}`);
-      }
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const soData: any = await soResponse.json();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const userOrders: any[] = soData.shippingOrders?.items ?? [];
-
-      console.log(
-        `Shipping orders: ${userOrders.length} para ${activeUsername} (ConsigneeName)`,
-      );
-
-      // Step 2: For each order, fetch /api/shipping-orders/{id} to check modeOfTransportation
-      // "10 - Vessel" or "11 - Vessel, Containerized" = ocean shipment, keep it
-      const BATCH_SIZE = 10;
-      const oceanOrders: OceanShippingOrder[] = [];
-      const seenIds = new Set<number>();
-
-      for (let i = 0; i < userOrders.length; i += BATCH_SIZE) {
-        const batch = userOrders.slice(i, i + BATCH_SIZE);
-        const results = await Promise.allSettled(
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          batch.map(async (order: any) => {
-            // Fetch detail to confirm mode and extract all needed data
-            const detailResp = await linbisFetch(
-              `https://api.linbis.com/api/shipping-orders/${order.id}`,
-              {
-                method: "GET",
-                headers: {
-                  Accept: "application/json",
-                  "Content-Type": "application/json",
-                },
-              },
-              accessToken,
-              refreshAccessToken,
-            );
-            if (!detailResp.ok) return null;
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const detail: any = await detailResp.json();
-            const mode: string = detail.modeOfTransportation?.name ?? "";
-            const isOcean =
-              mode === "10 - Vessel" || mode === "11 - Vessel, Containerized";
-            if (!isOcean) return null;
-            // Map full detail so charges/commodities/trackingNumber are available
-            return {
-              id: detail.id,
-              number: detail.number,
-              waybillNumber: detail.waybillNumber ?? null,
-              bookingNumber: detail.bookingNumber ?? null,
-              customerReference: detail.customerReference ?? null,
-              additionalCustomerReference:
-                detail.additionalCustomerReference ?? null,
-              departureDate: detail.departureDate ?? null,
-              arrivalDate: detail.arrivalDate ?? null,
-              cutOffDate: detail.cutOffDate ?? null,
-              cutOffDocsDate: detail.cutOffDocsDate ?? null,
-              notes: detail.notes ?? null,
-              operationFlow: detail.operationFlow ?? null,
-              modeOfTransportation: detail.modeOfTransportation?.name ?? null,
-              rateCategoryId: detail.rateCategoryId ?? null,
-              carrier: detail.carrier ?? null,
-              shipper: detail.shipper ?? null,
-              shipperAddress: detail.shipperAddress ?? null,
-              consignee: detail.consignee ?? null,
-              consigneeAddress: detail.consigneeAddress ?? null,
-              notifyParty: detail.notifyParty ?? null,
-              notifyPartyAddress: detail.notifyPartyAddress ?? null,
-              executedAt: detail.executedAt ?? null,
-              destination: detail.destination ?? null,
-              salesRep: detail.salesRep?.name ?? null,
-              trackingNumber:
-                detail.trackingNumber ||
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (detail.commodities as any[])?.find(
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  (c: any) => c.trackingNumber,
-                )?.trackingNumber ||
-                null,
-              totalCargo: detail.totalCargo ?? null,
-              commodities: detail.commodities ?? [],
-              charges: detail.charges ?? [],
-            } as OceanShippingOrder;
-          }),
+          accessToken,
+          refreshAccessToken,
         );
 
-        for (const result of results) {
-          if (result.status === "fulfilled" && result.value) {
-            const order = result.value as OceanShippingOrder;
-            if (order.id && !seenIds.has(order.id)) {
-              oceanOrders.push(order);
-              seenIds.add(order.id);
-            }
-          }
+        if (!allResponse.ok) {
+          throw new Error(
+            `Error ${allResponse.status}: ${allResponse.statusText}`,
+          );
         }
+
+        const allData = await allResponse.json();
+        allRecords = Array.isArray(allData) ? allData : [];
+        writeOceanAllCache(allRecords);
       }
 
-      console.log(`${oceanOrders.length} ocean shipments identificados`);
+      if (signal?.aborted) return;
+
+      const oceanOrders: OceanShippingOrder[] = allRecords
+        .filter((record) => {
+          if (!record || typeof record !== "object") return false;
+          const raw = record as Record<string, unknown>;
+          return consigneeMatches(raw.consignee, activeUsername);
+        })
+        .map(
+          (record) =>
+            mapLinbisOceanToShippingOrder(
+              record as Record<string, unknown>,
+            ) as OceanShippingOrder,
+        )
+        .filter((order) => order.id && order.number);
+
+      console.log(
+        `${oceanOrders.length} ocean shipments para ${activeUsername}`,
+      );
 
       // Sort by departure date (newest first)
       const sorted = oceanOrders.sort((a, b) => {
@@ -686,10 +660,11 @@ function OceanShipmentsView({
         new Date().getTime().toString(),
       );
     } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
       setError(err instanceof Error ? err.message : "Error desconocido");
       console.error("Error completo:", err);
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
   };
 
@@ -760,7 +735,39 @@ function OceanShipmentsView({
       localStorage.removeItem(`${cacheKey}_timestamp`);
     }
 
-    fetchOceanShipments();
+    const cachedAll = readOceanAllCache();
+    if (cachedAll?.length) {
+      const filtered = cachedAll
+        .filter((record) => {
+          if (!record || typeof record !== "object") return false;
+          const raw = record as Record<string, unknown>;
+          return consigneeMatches(raw.consignee, activeUsername);
+        })
+        .map(
+          (record) =>
+            mapLinbisOceanToShippingOrder(
+              record as Record<string, unknown>,
+            ) as OceanShippingOrder,
+        )
+        .filter((order) => order.id && order.number)
+        .sort((a, b) => {
+          const da = a.departureDate ? new Date(a.departureDate) : new Date(0);
+          const db = b.departureDate ? new Date(b.departureDate) : new Date(0);
+          return db.getTime() - da.getTime();
+        });
+      setOceanShipments(filtered);
+      setDisplayedOceanShipments(filtered);
+      setShowingAll(false);
+      setLoading(false);
+      console.log(
+        `Ocean: ${filtered.length} envíos para ${activeUsername} (caché global)`,
+      );
+      return;
+    }
+
+    const controller = new AbortController();
+    fetchOceanShipments(controller.signal);
+    return () => controller.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accessToken, activeUsername]);
 
@@ -1205,6 +1212,8 @@ function OceanShipmentsView({
     const cacheKey = `oceanShipmentsCache_${activeUsername}`;
     localStorage.removeItem(cacheKey);
     localStorage.removeItem(`${cacheKey}_timestamp`);
+    localStorage.removeItem(OCEAN_ALL_CACHE_KEY);
+    localStorage.removeItem(OCEAN_ALL_CACHE_TS_KEY);
     setOceanShipments([]);
     setDisplayedOceanShipments([]);
     fetchOceanShipments();

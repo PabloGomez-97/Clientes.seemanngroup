@@ -7,6 +7,7 @@ import { imgUrl } from "../../config/images";
 import LoadingTips from "../shipments/LoadingTips";
 import { DocumentosSection } from "./Documents/DocumentosSection";
 import { linbisFetch } from "../../services/linbisFetch";
+import { buildLinbisListParams } from "../../services/linbisListFetch";
 import "./styles/QuotesView.css";
 
 interface OutletContext {
@@ -443,7 +444,11 @@ function QuotesView({
   }, [displayedQuotes]);
 
   /* -- Fetch ------------------------------------------------ */
-  const fetchQuotes = async (page: number = 1, append: boolean = false) => {
+  const fetchQuotes = async (
+    page: number = 1,
+    append: boolean = false,
+    signal?: AbortSignal,
+  ) => {
     if (!accessToken) {
       setError("Debes ingresar un token primero");
       return;
@@ -457,12 +462,11 @@ function QuotesView({
     setError(null);
 
     try {
-      const queryParams = new URLSearchParams({
-        ConsigneeName: activeUsername,
-        Page: page.toString(),
-        ItemsPerPage: ITEMS_PER_PAGE.toString(),
-        SortBy: "newest",
-      });
+      const queryParams = buildLinbisListParams(
+        activeUsername,
+        page,
+        ITEMS_PER_PAGE,
+      );
 
       const response = await linbisFetch(
         `https://api.linbis.com/Quotes?${queryParams}`,
@@ -472,12 +476,21 @@ function QuotesView({
             Accept: "application/json",
             "Content-Type": "application/json",
           },
+          signal,
         },
         accessToken,
         refreshAccessToken,
       );
 
       if (!response.ok) {
+        if (response.status === 400) {
+          if (page === 1 && !append) {
+            setQuotes([]);
+            setDisplayedQuotes([]);
+          }
+          setHasMoreQuotes(false);
+          return;
+        }
         throw new Error(`Error ${response.status}: ${response.statusText}`);
       }
 
@@ -520,12 +533,15 @@ function QuotesView({
         localStorage.setItem(`${cacheKey}_page`, page.toString());
       }
     } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
       setError(
         err instanceof Error ? err.message : t("quotesView.unknownError"),
       );
     } finally {
-      setLoading(false);
-      setLoadingMore(false);
+      if (!signal?.aborted) {
+        setLoading(false);
+        setLoadingMore(false);
+      }
     }
   };
 
@@ -556,7 +572,9 @@ function QuotesView({
       }
     }
     setCurrentPage(1);
-    fetchQuotes(1, false);
+    const controller = new AbortController();
+    fetchQuotes(1, false, controller.signal);
+    return () => controller.abort();
   }, [accessToken, activeUsername]);
 
   /* -- Quick search ----------------------------------------- */

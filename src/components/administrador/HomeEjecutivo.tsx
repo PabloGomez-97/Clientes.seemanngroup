@@ -1,5 +1,5 @@
 // src/components/administrador/HomeEjecutivo.tsx — Torre de Control del Ejecutivo
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, Fragment } from "react";
 import { useNavigate, useOutletContext, useLocation } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import type {
@@ -18,6 +18,11 @@ import AirShipmentDetail from "../Sidebar/shipsgo/AirShipmentDetail";
 import OceanShipmentDetail from "../Sidebar/shipsgo/OceanShipmentDetail";
 import "../Sidebar/styles/Shipsgotracking.css";
 import "./HomeEjecutivo.css";
+import {
+  fetchAllLinbisByConsignee,
+  LINBIS_CLIENT_CONCURRENCY,
+  runWithConcurrency,
+} from "../../services/linbisListFetch";
 
 // ── Behavior-tracking API base (same server as ComportamientoDeClientes) ──
 const BEHAVIOR_API =
@@ -650,7 +655,7 @@ export default function HomeEjecutivo() {
 
   // ── fetchLinbisData: carga con cache localStorage (TTL 4 hrs) ─────────────
   const fetchLinbisData = useCallback(
-    async (force = false) => {
+    async (force = false, signal?: AbortSignal) => {
       if (!accessToken || !clientes.length) {
         setLinbisLoading(false);
         return;
@@ -690,6 +695,8 @@ export default function HomeEjecutivo() {
           ).then((r) => (r.ok ? r.json() : [])),
         ]);
 
+        if (signal?.aborted) return;
+
         const clientUsernames = new Set(clientes.map((c) => c.username));
 
         const oceanAll: LinbisOceanShipment[] =
@@ -706,44 +713,42 @@ export default function HomeEjecutivo() {
               )
             : [];
 
-        const airPromises = clientes.map((c) =>
-          linbisFetchBasic(
-            `https://api.linbis.com/air-shipments?ConsigneeName=${encodeURIComponent(c.username)}&SortBy=newest&ItemsPerPage=100`,
-            accessToken,
-          ).then(async (r) => {
-            if (!r.ok) return [];
-            const d = await r.json();
-            return Array.isArray(d) ? d : [];
-          }),
+        const airByClient = await runWithConcurrency(
+          clientes,
+          LINBIS_CLIENT_CONCURRENCY,
+          async (cliente) => {
+            const rows = await fetchAllLinbisByConsignee(
+              "https://api.linbis.com/air-shipments",
+              cliente.username,
+              { accessToken, signal },
+            );
+            return rows as LinbisAirShipment[];
+          },
+          signal,
         );
 
-        const quotesPromises = clientes.map((c) =>
-          linbisFetchBasic(
-            `https://api.linbis.com/Quotes?ConsigneeName=${encodeURIComponent(c.username)}&SortBy=newest&ItemsPerPage=100`,
-            accessToken,
-          ).then(async (r) => {
-            if (!r.ok) return [];
-            const d = await r.json();
-            return Array.isArray(d) ? d : [];
-          }),
+        if (signal?.aborted) return;
+
+        const quotesByClient = await runWithConcurrency(
+          clientes,
+          LINBIS_CLIENT_CONCURRENCY,
+          async (cliente) => {
+            const rows = await fetchAllLinbisByConsignee(
+              "https://api.linbis.com/Quotes",
+              cliente.username,
+              { accessToken, signal, maxPages: 10 },
+            );
+            return rows as LinbisQuote[];
+          },
+          signal,
         );
 
-        const [airResults, quoteResults] = await Promise.all([
-          Promise.allSettled(airPromises),
-          Promise.allSettled(quotesPromises),
-        ]);
+        if (signal?.aborted) return;
 
-        const allAirShipments: LinbisAirShipment[] = [];
-        airResults.forEach((res) => {
-          if (res.status === "fulfilled") allAirShipments.push(...res.value);
-        });
-
-        const allQuotes: LinbisQuote[] = [];
-        quoteResults.forEach((res) => {
-          if (res.status === "fulfilled") {
-            allQuotes.push(...res.value.map(normalizeLinbisQuote));
-          }
-        });
+        const allAirShipments = airByClient.flat();
+        const allQuotes = quotesByClient
+          .flat()
+          .map((q) => normalizeLinbisQuote(q));
 
         setLinbisAir(allAirShipments);
         setLinbisOcean(oceanAll);
@@ -761,8 +766,10 @@ export default function HomeEjecutivo() {
       } catch {
         /* silent */
       } finally {
-        setLinbisLoading(false);
-        setLinbisRefreshing(false);
+        if (!signal?.aborted) {
+          setLinbisLoading(false);
+          setLinbisRefreshing(false);
+        }
       }
     },
     [accessToken, clientes, user],
@@ -771,7 +778,9 @@ export default function HomeEjecutivo() {
   // ── Disparar carga de Linbis al entrar al home (una vez que clientes esté listo) ─
   useEffect(() => {
     if (loading) return;
-    fetchLinbisData();
+    const controller = new AbortController();
+    fetchLinbisData(false, controller.signal);
+    return () => controller.abort();
   }, [loading, fetchLinbisData]);
 
   // Auto-refresh every 5 minutes
@@ -1317,8 +1326,15 @@ export default function HomeEjecutivo() {
                 ];
 
                 const allItems = [...activityItems, ...delayItems];
-                // Duplicate for infinite loop
-                return [...allItems, ...allItems];
+                // Duplicate for infinite loop (keys únicas por copia)
+                return [
+                  ...allItems.map((item, idx) => (
+                    <Fragment key={`carousel-a-${idx}`}>{item}</Fragment>
+                  )),
+                  ...allItems.map((item, idx) => (
+                    <Fragment key={`carousel-b-${idx}`}>{item}</Fragment>
+                  )),
+                ];
               })()}
             </div>
           </div>

@@ -23,6 +23,15 @@ import {
 } from "../shipments/Handlers/Handlersairshipments";
 import { MUNDOGAMING_DUMMY_SHIPMENTS } from "./Handlers/mundogamingDummyData";
 import { linbisFetch } from "../../services/linbisFetch";
+import {
+  buildLinbisListParams,
+  fetchAllLinbisByConsignee,
+  LINBIS_PAGE_SIZE,
+} from "../../services/linbisListFetch";
+import {
+  flattenAirShipmentRecords,
+  mapLinbisAirToAirShipment,
+} from "../../services/linbisShipmentMappers";
 
 const ITEMS_PER_PAGE = 10;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -411,7 +420,7 @@ function AirShipmentsView({
     return [];
   };
 
-  const fetchAirShipments = async () => {
+  const fetchAirShipments = async (signal?: AbortSignal) => {
     if (!accessToken) {
       setError("Debes ingresar un token primero");
       return;
@@ -427,107 +436,21 @@ function AirShipmentsView({
     try {
       const cacheKey = `airShipmentsCache_${activeUsername}`;
 
-      // Step 1: Fetch shipping orders filtered by ConsigneeName
-      const encodedName = encodeURIComponent(activeUsername);
-      const soResponse = await linbisFetch(
-        `https://api.linbis.com/api/shipping-orders?ConsigneeName=${encodedName}&PageNumber=1&PageSize=999`,
-        {
-          method: "GET",
-          headers: {
-            Accept: "application/json",
-            "Content-Type": "application/json",
-          },
-        },
-        accessToken,
-        refreshAccessToken,
+      const rawRecords = await fetchAllLinbisByConsignee(
+        "https://api.linbis.com/air-shipments",
+        activeUsername,
+        { accessToken, refreshAccessToken, signal },
       );
 
-      if (!soResponse.ok) {
-        throw new Error(`Error ${soResponse.status}: ${soResponse.statusText}`);
-      }
+      if (signal?.aborted) return;
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const soData: any = await soResponse.json();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const userOrders: any[] = soData.shippingOrders?.items ?? [];
+      const airShipments = flattenAirShipmentRecords(rawRecords).map(
+        mapLinbisAirToAirShipment,
+      );
 
       console.log(
-        `Shipping orders: ${userOrders.length} para ${activeUsername} (ConsigneeName)`,
+        `${airShipments.length} air-shipments para ${activeUsername}`,
       );
-
-      // Step 2: For each order, fetch /api/shipping-orders/{id} to check modeOfTransportation
-      // and map the detail data directly to AirShipment shape — no /air-shipments/number needed
-      const BATCH_SIZE = 10;
-      const airShipments: AirShipment[] = [];
-      const seenIds = new Set<number | string>();
-
-      for (let i = 0; i < userOrders.length; i += BATCH_SIZE) {
-        const batch = userOrders.slice(i, i + BATCH_SIZE);
-        const results = await Promise.allSettled(
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          batch.map(async (order: any) => {
-            // Fetch detail to confirm mode and extract all needed data
-            const detailResp = await linbisFetch(
-              `https://api.linbis.com/api/shipping-orders/${order.id}`,
-              {
-                method: "GET",
-                headers: {
-                  Accept: "application/json",
-                  "Content-Type": "application/json",
-                },
-              },
-              accessToken,
-              refreshAccessToken,
-            );
-            if (!detailResp.ok) return null;
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const detail: any = await detailResp.json();
-            // Only process air shipments
-            if (detail.modeOfTransportation?.name !== "40 - Air") return null;
-
-            // Reshape ISO date strings into the {date, displayDate} object shape
-            // that formatDate/formatDateInline expect
-            const departure = detail.departureDate
-              ? {
-                  date: detail.departureDate,
-                  displayDate: detail.departureDate,
-                }
-              : null;
-            const arrival = detail.arrivalDate
-              ? { date: detail.arrivalDate, displayDate: detail.arrivalDate }
-              : null;
-
-            return {
-              id: detail.id,
-              number: detail.number,
-              customerReference: detail.customerReference ?? null,
-              waybillNumber: detail.waybillNumber ?? null,
-              carrier: detail.carrier ?? null,
-              notes: detail.notes ?? null,
-              trackingNumber:
-                detail.trackingNumber ?? order.trackingNumber ?? null,
-              executedAt: detail.executedAt ?? order.executedAt ?? null,
-              origin: detail.origin ?? null,
-              destination: detail.destination ?? null,
-              commodities: detail.commodities ?? [],
-              departure,
-              arrival,
-            } as AirShipment;
-          }),
-        );
-
-        for (const result of results) {
-          if (result.status === "fulfilled" && result.value) {
-            const s = result.value as AirShipment;
-            if (s.id && !seenIds.has(s.id)) {
-              airShipments.push(s);
-              seenIds.add(s.id);
-            }
-          }
-        }
-      }
-
-      console.log(`${airShipments.length} air-shipments identificados`);
 
       // Sort by departure date (newest first)
       const sorted = airShipments.sort((a, b) => {
@@ -545,10 +468,11 @@ function AirShipmentsView({
         new Date().getTime().toString(),
       );
     } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
       setError(err instanceof Error ? err.message : "Error desconocido");
       console.error("Error completo:", err);
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
   };
 
@@ -571,8 +495,13 @@ function AirShipmentsView({
     }));
 
     try {
+      const quoteParams = buildLinbisListParams(
+        activeUsername,
+        1,
+        LINBIS_PAGE_SIZE,
+      );
       const resp = await linbisFetch(
-        `https://api.linbis.com/Quotes?ConsigneeName=${encodeURIComponent(activeUsername)}&Page=1&ItemsPerPage=50&SortBy=newest`,
+        `https://api.linbis.com/Quotes?${quoteParams}`,
         {
           method: "GET",
           headers: {
@@ -764,7 +693,9 @@ function AirShipmentsView({
       localStorage.removeItem(`${cacheKey}_timestamp`);
     }
 
-    fetchAirShipments();
+    const controller = new AbortController();
+    fetchAirShipments(controller.signal);
+    return () => controller.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accessToken, activeUsername]);
 
