@@ -1,4 +1,4 @@
-import type { SelectOption } from "../Selectroute";
+import type { SelectOption } from "../Handlers/Air/HandlerQuoteAir";
 import { AirportSelectorAIR } from "../Selectroute";
 import {
   isAirConnectSpainExwFlow,

@@ -1,6 +1,6 @@
 import { calculateAduanaCharges } from "../../../types/agenciaAduana";
 import type { IAgenciaAduanaConfig } from "../../../types/agenciaAduana";
-import type { SupportedCurrency } from "../../../types/currency";
+import type { SupportedCurrency } from "../../../types/agenciaAduana";
 import { AIR_CONNECT_CURRENCY } from "../../../services/airConnectSpainQuote";
 
 export interface AirConnectStep3ExtrasParams {

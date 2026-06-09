@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import type { SelectOption } from "../Selectroute";
+import type { SelectOption } from "../Handlers/Air/HandlerQuoteAir";
 
 import type { RutaAerea } from "../Handlers/Air/HandlerQuoteAir";
 
