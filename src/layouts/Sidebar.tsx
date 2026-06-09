@@ -57,7 +57,7 @@ function Sidebar({
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { user, activeUsername, setActiveUsername } = useAuth();
-  const [expandedMenus, setExpandedMenus] = useState<string[]>(["reporting"]);
+  const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
 
   // Determinar si se muestra el selector de cuenta
