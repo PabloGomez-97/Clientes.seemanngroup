@@ -207,7 +207,12 @@
       "operational": "Operacional",
       "priceHistory": "Histórico de precios",
       "news": "Novedades",
-      "novedades": "Novedades"
+      "novedades": "Novedades",
+      "myDocuments": "Mis Documentos",
+      "sectionQuote": "Cotización",
+      "sectionShipments": "Mis envíos",
+      "sectionReports": "Reportes",
+      "sectionReference": "Consultas"
     },
     "userLayout": {
       "linbisTokenError": "No se pudo obtener el token de Linbis",

@@ -23,6 +23,7 @@ interface MenuItem {
   path?: string;
   name: string;
   icon: string;
+  menuId?: string;
   badge?: {
     text: string;
     type: "new" | "beta" | "trial" | "try";
@@ -56,7 +57,7 @@ function Sidebar({
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { user, activeUsername, setActiveUsername } = useAuth();
-  const [expandedMenus, setExpandedMenus] = useState<string[]>(["Reports"]);
+  const [expandedMenus, setExpandedMenus] = useState<string[]>(["reporting"]);
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
 
   // Determinar si se muestra el selector de cuenta
@@ -71,8 +72,10 @@ function Sidebar({
       items: [{ path: "/", name: t("home.sidebar.home"), icon: "fa fa-home" }],
     },
     {
+      title: t("home.sidebar.sectionQuote"),
       items: [
         {
+          menuId: "quote",
           name: t("home.sidebar.quote"),
           icon: "fa fa-calculator",
           subItems: [
@@ -87,8 +90,10 @@ function Sidebar({
       ],
     },
     {
+      title: t("home.sidebar.sectionShipments"),
       items: [
         {
+          menuId: "operations",
           name: t("home.sidebar.operations"),
           icon: "fa fa-folder-open",
           subItems: [
@@ -106,20 +111,8 @@ function Sidebar({
             },
           ],
         },
-      ],
-    },
-    {
-      items: [
         {
-          path: "/mis-documentos",
-          name: "Mis Documentos",
-          icon: "fa fa-file",
-        },
-      ],
-    },
-    {
-      items: [
-        {
+          menuId: "track",
           name: t("home.sidebar.track"),
           icon: "fa fa-route",
           subItems: [
@@ -134,11 +127,18 @@ function Sidebar({
             { path: "/trackings", name: t("home.sidebar.myShipments") },
           ],
         },
+        {
+          path: "/mis-documentos",
+          name: t("home.sidebar.myDocuments"),
+          icon: "fa fa-file",
+        },
       ],
     },
     {
+      title: t("home.sidebar.sectionReports"),
       items: [
         {
+          menuId: "reporting",
           name: t("home.sidebar.reporting"),
           icon: "fa fa-chart-bar",
           subItems: [
@@ -149,16 +149,13 @@ function Sidebar({
       ],
     },
     {
+      title: t("home.sidebar.sectionReference"),
       items: [
         {
           path: "/historico-precios",
           name: t("home.sidebar.priceHistory"),
           icon: "fa fa-chart-line",
         },
-      ],
-    },
-    {
-      items: [
         {
           path: "/novedades",
           name: t("home.sidebar.novedades"),
@@ -443,7 +440,9 @@ function Sidebar({
               <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
                 {section.items.map((item, itemIdx) => {
                   const hasSubItems = item.subItems && item.subItems.length > 0;
-                  const isExpanded = expandedMenus.includes(item.name);
+                  const isExpanded = item.menuId
+                    ? expandedMenus.includes(item.menuId)
+                    : false;
                   const isItemActive = item.path
                     ? isActive(item.path)
                     : item.subItems?.some((subItem) =>
@@ -462,7 +461,7 @@ function Sidebar({
                               navigateFromSidebar(e, item.subItems![0].path);
                             } else {
                               e.preventDefault();
-                              toggleMenu(item.name);
+                              toggleMenu(item.menuId!);
                             }
                           } else if (item.path) {
                             navigateFromSidebar(e, item.path);
