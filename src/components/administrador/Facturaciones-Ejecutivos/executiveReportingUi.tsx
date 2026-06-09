@@ -1,9 +1,7 @@
 // Design system compartido — Reportería de Ejecutivos (Seemann Group)
 import type { CSSProperties, ReactNode } from "react";
-import {
-  PERIOD_PRESET_LABELS,
-  type PeriodPreset,
-} from "./quoteUtils";
+import { useTranslation } from "react-i18next";
+import type { PeriodPreset } from "./quoteUtils";
 
 export const FONT =
   '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
@@ -184,28 +182,42 @@ export const Metric = ({
   </div>
 );
 
+const PERIOD_PRESETS: PeriodPreset[] = [
+  "custom",
+  "this-month",
+  "last-month",
+  "this-year",
+  "last-year",
+  "last-12-months",
+];
+
 export const PeriodPresetSelect = ({
   value,
   onChange,
 }: {
   value: PeriodPreset;
   onChange: (preset: PeriodPreset) => void;
-}) => (
-  <div style={{ flex: "0 1 180px" }}>
-    <label style={styles.label}>Período</label>
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value as PeriodPreset)}
-      style={selectStyle}
-    >
-      {(Object.keys(PERIOD_PRESET_LABELS) as PeriodPreset[]).map((preset) => (
-        <option key={preset} value={preset}>
-          {PERIOD_PRESET_LABELS[preset]}
-        </option>
-      ))}
-    </select>
-  </div>
-);
+}) => {
+  const { t } = useTranslation();
+  return (
+    <div style={{ flex: "0 1 180px" }}>
+      <label style={styles.label}>
+        {t("executiveReporting.shared.filters.period")}
+      </label>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value as PeriodPreset)}
+        style={selectStyle}
+      >
+        {PERIOD_PRESETS.map((preset) => (
+          <option key={preset} value={preset}>
+            {t(`executiveReporting.shared.periodPresets.${preset}`)}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+};
 
 export const DataSourceBanner = ({
   children,
@@ -264,7 +276,11 @@ export const ErrorBanner = ({ message }: { message: string }) => (
 );
 
 export const InvoiceStatusDot = ({ status }: { status: string }) => {
+  const { t } = useTranslation();
   const color = status === "Posted" ? C.positive : C.warning;
+  const label = t(`executiveReporting.shared.invoiceStatus.${status}`, {
+    defaultValue: status,
+  });
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 6, ...base }}>
       <span
@@ -276,7 +292,7 @@ export const InvoiceStatusDot = ({ status }: { status: string }) => {
           display: "inline-block",
         }}
       />
-      <span style={{ fontSize: 12, color: C.textMuted }}>{status}</span>
+      <span style={{ fontSize: 12, color: C.textMuted }}>{label}</span>
     </span>
   );
 };
@@ -290,16 +306,17 @@ export const StatusBar = ({
   posted: number;
   total: number;
 }) => {
+  const { t } = useTranslation();
   if (total === 0) return null;
   const items = [
     {
-      label: "Invoiced",
+      label: t("executiveReporting.shared.invoiceStatus.Invoiced"),
       count: invoiced,
       pct: (invoiced / total) * 100,
       color: C.warning,
     },
     {
-      label: "Posted",
+      label: t("executiveReporting.shared.invoiceStatus.Posted"),
       count: posted,
       pct: (posted / total) * 100,
       color: C.positive,
@@ -308,7 +325,9 @@ export const StatusBar = ({
 
   return (
     <div style={styles.cardPad}>
-      <div style={styles.label}>Distribución por Status</div>
+      <div style={styles.label}>
+        {t("executiveReporting.shared.statusDistribution")}
+      </div>
       <div
         style={{
           display: "flex",

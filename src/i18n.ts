@@ -4,6 +4,8 @@ import LanguageDetector from 'i18next-browser-languagedetector';
 
 import enTranslations from './locales/en/translation.json';
 import esTranslations from './locales/es/translation.json';
+import enExecutiveReporting from './locales/en/executiveReporting.json';
+import esExecutiveReporting from './locales/es/executiveReporting.json';
 
 i18n
   .use(LanguageDetector)
@@ -22,10 +24,10 @@ i18n
     },
     resources: {
       en: {
-        translation: enTranslations
+        translation: { ...enTranslations, ...enExecutiveReporting }
       },
       es: {
-        translation: esTranslations
+        translation: { ...esTranslations, ...esExecutiveReporting }
       }
     }
   });

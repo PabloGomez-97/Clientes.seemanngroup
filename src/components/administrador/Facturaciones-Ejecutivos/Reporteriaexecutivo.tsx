@@ -1,20 +1,22 @@
 // src/components/administrador/Facturaciones-Ejecutivos/Reporteriaexecutivo.tsx
 // Executive Reporting Dashboard — Seemann Group
 import { useEffect, useState, useMemo, type CSSProperties } from "react";
+import { useTranslation } from "react-i18next";
 import { useOutletContext } from "react-router-dom";
 import { useAuth } from "../../../auth/AuthContext";
+import i18n from "../../../i18n";
 import { linbisFetch } from "../../../services/linbisFetch";
 import ChartExecutivo from "./Chartexecutivo.tsx";
 import {
   QuotesIndividualSkeleton,
   ComparativeSkeleton,
   DoubleComparisonSkeleton,
+  PeriodPresetSelect,
 } from "./executiveReportingUi";
 import type { QuoteStats, ExecutiveComparison } from "./types";
 import {
   type ExecutiveQuote,
   type PeriodPreset,
-  PERIOD_PRESET_LABELS,
   normalizeExecutiveQuote,
   extractQuotesFromResponse,
   filterQuotesBySalesRep,
@@ -250,20 +252,6 @@ const getMonthlyBreakdown = (arr: Quote[]): MonthlyBreakdown[] => {
     if (!map.has(key)) map.set(key, []);
     map.get(key)!.push(q);
   });
-  const mNames = [
-    "Ene",
-    "Feb",
-    "Mar",
-    "Abr",
-    "May",
-    "Jun",
-    "Jul",
-    "Ago",
-    "Sep",
-    "Oct",
-    "Nov",
-    "Dic",
-  ];
   return Array.from(map.entries())
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([month, qs]) => {
@@ -271,7 +259,7 @@ const getMonthlyBreakdown = (arr: Quote[]): MonthlyBreakdown[] => {
       const [year, m] = month.split("-");
       return {
         month,
-        label: `${mNames[parseInt(m) - 1]} ${year}`,
+        label: `${i18n.t(`executiveReporting.shared.months.${parseInt(m, 10)}`)} ${year}`,
         quotes: st.totalQuotes,
         completed: st.completedQuotes,
         air: st.airQuotes,
@@ -382,13 +370,14 @@ const TransportBar = ({
   truck: number;
   total: number;
 }) => {
+  const { t } = useTranslation();
   if (total === 0) return null;
   const other = total - air - sea - truck;
   const items = [
-    { label: "Air", count: air, pct: (air / total) * 100, color: C.primary },
-    { label: "Sea", count: sea, pct: (sea / total) * 100, color: C.secondary },
+    { label: t("executiveReporting.shared.transport.air"), count: air, pct: (air / total) * 100, color: C.primary },
+    { label: t("executiveReporting.shared.transport.sea"), count: sea, pct: (sea / total) * 100, color: C.secondary },
     {
-      label: "Truck",
+      label: t("executiveReporting.shared.transport.truck"),
       count: truck,
       pct: (truck / total) * 100,
       color: C.textMuted,
@@ -396,7 +385,7 @@ const TransportBar = ({
     ...(other > 0
       ? [
         {
-          label: "Other",
+          label: t("executiveReporting.shared.transport.other"),
           count: other,
           pct: (other / total) * 100,
           color: C.textLight,
@@ -406,7 +395,7 @@ const TransportBar = ({
   ];
   return (
     <div style={styles.cardPad}>
-      <div style={styles.label}>Transport Distribution</div>
+      <div style={styles.label}>{t("executiveReporting.shared.transportDistribution")}</div>
       <div
         style={{
           display: "flex",
@@ -462,17 +451,8 @@ const TransportBar = ({
   );
 };
 
-const FLOW_LABELS: Record<string, string> = {
-  Requested: "Solicitado",
-  Pricing: "Tarificación",
-  Revision: "Revisión",
-  Sent: "Enviado",
-  Approved: "Aprobado",
-  Completed: "Completado",
-  Canceled: "Cancelado",
-};
-
 const StatusDot = ({ status }: { status: string }) => {
+  const { t } = useTranslation();
   const color = isQuoteCompleted(status) ? C.positive : C.textLight;
   return (
     <span
@@ -488,7 +468,7 @@ const StatusDot = ({ status }: { status: string }) => {
         }}
       />
       <span style={{ fontSize: 12, color: C.textMuted }}>
-        {FLOW_LABELS[status] || status || "Sin estado"}
+        {t(`executiveReporting.shared.quoteFlow.${status}`, { defaultValue: t("executiveReporting.shared.quoteFlow.noStatus") })}
       </span>
     </span>
   );
@@ -502,64 +482,33 @@ const DataSourceBanner = ({
   count: number;
   fetchedAt: string | null;
   salesRep?: string;
-}) => (
-  <div
-    style={{
-      ...base,
-      padding: "10px 16px",
-      backgroundColor: C.primaryLight,
-      border: `1px solid #fed7aa`,
-      borderRadius: 6,
-      fontSize: 12,
-      color: C.textMuted,
-      marginBottom: 16,
-    }}
-  >
-    {salesRep ? `Ejecutivo: ${salesRep}` : ""} · {count} cotizaciones
-    {formatFetchedAt(fetchedAt)
-      ? ` · Actualizado ${formatFetchedAt(fetchedAt)}`
-      : ""}
-    <br />
-    Los montos vienen como números del filter (CLP, USD u otras monedas pueden
-    mezclarse). Los totales son suma aritmética; revisa el detalle por
-    cotización.
-  </div>
-);
-
-const PeriodPresetSelect = ({
-  value,
-  onChange,
-}: {
-  value: PeriodPreset;
-  onChange: (preset: PeriodPreset) => void;
-}) => (
-  <div style={{ flex: "0 1 180px" }}>
-    <label style={styles.label}>Período</label>
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value as PeriodPreset)}
+}) => {
+  const { t } = useTranslation();
+  return (
+    <div
       style={{
         ...base,
-        fontSize: 13,
-        padding: "8px 12px",
-        borderRadius: 4,
-        border: `1px solid ${C.border}`,
-        backgroundColor: C.white,
-        color: C.text,
-        height: 38,
-        width: "100%",
-        outline: "none",
-        appearance: "auto" as const,
+        padding: "10px 16px",
+        backgroundColor: C.primaryLight,
+        border: `1px solid #fed7aa`,
+        borderRadius: 6,
+        fontSize: 12,
+        color: C.textMuted,
+        marginBottom: 16,
       }}
     >
-      {(Object.keys(PERIOD_PRESET_LABELS) as PeriodPreset[]).map((preset) => (
-        <option key={preset} value={preset}>
-          {PERIOD_PRESET_LABELS[preset]}
-        </option>
-      ))}
-    </select>
-  </div>
-);
+      {salesRep
+        ? `${t("executiveReporting.shared.executiveLabel", { name: salesRep })} · `
+        : ""}
+      {t("executiveReporting.shared.countQuotes", { count })}
+      {formatFetchedAt(fetchedAt)
+        ? ` · ${t("executiveReporting.shared.updatedAt", { date: formatFetchedAt(fetchedAt) })}`
+        : ""}
+      <br />
+      {t("executiveReporting.quotes.bannerNote")}
+    </div>
+  );
+};
 
 const EmptyState = ({ title, sub }: { title: string; sub: string }) => (
   <div style={{ ...styles.cardPad, padding: "60px 24px", textAlign: "center" }}>
@@ -602,6 +551,7 @@ const PAGE_SIZE = 20;
 // MAIN COMPONENT
 // ════════════════════════════════════════════
 function ReportExecutive() {
+  const { t } = useTranslation();
   const { accessToken, refreshAccessToken } = useOutletContext<OutletContext>();
   const { user, getEjecutivos } = useAuth();
 
@@ -756,6 +706,93 @@ function ReportExecutive() {
     );
   }, [doubleQuotesByExec, ejecutivo1, ejecutivo2]);
 
+  const doubleMetrics = useMemo(
+    () =>
+      doubleData.length === 2
+        ? [
+            {
+              label: t("executiveReporting.quotes.metricTotalQuotes"),
+              v1: doubleData[0].stats.totalQuotes,
+              v2: doubleData[1].stats.totalQuotes,
+              format: (v: number) => String(v),
+            },
+            {
+              label: t("executiveReporting.quotes.metricCompleted"),
+              v1: doubleData[0].stats.completedQuotes,
+              v2: doubleData[1].stats.completedQuotes,
+              format: (v: number) => String(v),
+            },
+            {
+              label: t("executiveReporting.quotes.metricCompletionRate"),
+              v1: doubleData[0].stats.completionRate,
+              v2: doubleData[1].stats.completionRate,
+              format: fmtPct,
+            },
+            {
+              label: t("executiveReporting.shared.transport.air"),
+              v1: doubleData[0].stats.airQuotes,
+              v2: doubleData[1].stats.airQuotes,
+              format: (v: number) => String(v),
+            },
+            {
+              label: t("executiveReporting.shared.transport.sea"),
+              v1: doubleData[0].stats.seaQuotes,
+              v2: doubleData[1].stats.seaQuotes,
+              format: (v: number) => String(v),
+            },
+            {
+              label: t("executiveReporting.shared.transport.truck"),
+              v1: doubleData[0].stats.truckQuotes,
+              v2: doubleData[1].stats.truckQuotes,
+              format: (v: number) => String(v),
+            },
+            {
+              label: t("executiveReporting.billing.kpiUniqueClients"),
+              v1: doubleData[0].stats.uniqueConsignees,
+              v2: doubleData[1].stats.uniqueConsignees,
+              format: (v: number) => String(v),
+            },
+            {
+              label: t("executiveReporting.quotes.metricIncome"),
+              v1: doubleData[0].stats.totalIncome,
+              v2: doubleData[1].stats.totalIncome,
+              format: fmt,
+            },
+            {
+              label: t("executiveReporting.quotes.metricExpense"),
+              v1: doubleData[0].stats.totalExpense,
+              v2: doubleData[1].stats.totalExpense,
+              format: fmt,
+            },
+            {
+              label: t("executiveReporting.quotes.metricProfit"),
+              v1: doubleData[0].stats.totalProfit,
+              v2: doubleData[1].stats.totalProfit,
+              format: fmt,
+            },
+            {
+              label: t("executiveReporting.quotes.metricMargin"),
+              v1: doubleData[0].stats.profitMargin,
+              v2: doubleData[1].stats.profitMargin,
+              format: fmtPct,
+            },
+            {
+              label: t("executiveReporting.quotes.metricAvgIncomeQuote"),
+              v1: doubleData[0].stats.averagePerQuote,
+              v2: doubleData[1].stats.averagePerQuote,
+              format: fmt,
+            },
+            {
+              label: t("executiveReporting.quotes.metricAvgProfitQuote"),
+              v1: doubleData[0].stats.averageProfitPerQuote,
+              v2: doubleData[1].stats.averageProfitPerQuote,
+              format: fmt,
+            },
+          ]
+        : [],
+    [doubleData, t],
+  );
+
   const fetchQuotesForExecutive = async (
     salesRepName: string,
     rangeStart: string,
@@ -779,8 +816,8 @@ function ReportExecutive() {
     );
 
     if (!res.ok) {
-      if (res.status === 401) throw new Error("Token inválido o expirado");
-      throw new Error(`Error ${res.status}: ${res.statusText}`);
+      if (res.status === 401) throw new Error(t("executiveReporting.shared.errors.unknown"));
+      throw new Error(t("executiveReporting.shared.errors.unknown"));
     }
 
     const data = await res.json();
@@ -797,7 +834,7 @@ function ReportExecutive() {
   // ── API calls ──
   const fetchQuotes = async () => {
     if (!selectedEjecutivo) {
-      setError("Debes seleccionar un ejecutivo");
+      setError(t("executiveReporting.shared.errors.selectExecutive"));
       return;
     }
     const cacheKey = `quotesExecutive_${selectedEjecutivo}_${startDate}_${endDate}`;
@@ -827,7 +864,7 @@ function ReportExecutive() {
       localStorage.setItem(cacheKey, JSON.stringify(sorted));
       localStorage.setItem(`${cacheKey}_timestamp`, now);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error desconocido");
+      setError(err instanceof Error ? err.message : t("executiveReporting.shared.errors.unknown"));
     } finally {
       setLoading(false);
     }
@@ -885,12 +922,12 @@ function ReportExecutive() {
 
       if (failures.length > 0) {
         setErrorComparative(
-          `No se pudieron cargar datos de: ${failures.join(", ")}`,
+          `${t("executiveReporting.shared.errors.unknown")}: ${failures.join(", ")}`,
         );
       }
     } catch (err) {
       setErrorComparative(
-        err instanceof Error ? err.message : "Error desconocido",
+        err instanceof Error ? err.message : t("executiveReporting.shared.errors.unknown"),
       );
     } finally {
       setLoadingComparative(false);
@@ -899,7 +936,7 @@ function ReportExecutive() {
 
   const fetchDoubleComparison = async () => {
     if (!ejecutivo1 || !ejecutivo2) {
-      setErrorDouble("Debes seleccionar dos ejecutivos");
+      setErrorDouble(t("executiveReporting.shared.errors.selectTwoExecutives"));
       return;
     }
     const cacheKey = `quotesDouble_${ejecutivo1}_${ejecutivo2}_${doubleStartDate}_${doubleEndDate}`;
@@ -945,7 +982,7 @@ function ReportExecutive() {
       );
       localStorage.setItem(`${cacheKey}_timestamp`, now);
     } catch (err) {
-      setErrorDouble(err instanceof Error ? err.message : "Error desconocido");
+      setErrorDouble(err instanceof Error ? err.message : t("executiveReporting.shared.errors.unknown"));
     } finally {
       setLoadingDouble(false);
     }
@@ -1020,19 +1057,19 @@ function ReportExecutive() {
     filename: string,
   ) => {
     const headers = [
-      "Ejecutivo",
-      "Total Quotes",
-      "Completadas",
-      "% Completado",
-      "Air",
-      "Sea",
-      "Truck",
-      "Clientes Únicos",
-      "Income",
-      "Expense",
-      "Profit",
-      "Margen %",
-      "Promedio/Quote",
+      t("executiveReporting.quotes.csvExecutive"),
+      t("executiveReporting.quotes.csvTotalQuotes"),
+      t("executiveReporting.quotes.csvCompleted"),
+      t("executiveReporting.quotes.csvCompletionRate"),
+      t("executiveReporting.shared.transport.air"),
+      t("executiveReporting.shared.transport.sea"),
+      t("executiveReporting.shared.transport.truck"),
+      t("executiveReporting.billing.kpiUniqueClients"),
+      t("executiveReporting.quotes.metricIncome"),
+      t("executiveReporting.quotes.metricExpense"),
+      t("executiveReporting.quotes.metricProfit"),
+      `${t("executiveReporting.quotes.metricMargin")} %`,
+      t("executiveReporting.quotes.thAvgQuote"),
     ];
     const rows = data.map((ex) => [
       ex.nombre,
@@ -1156,7 +1193,7 @@ function ReportExecutive() {
             letterSpacing: "-0.3px",
           }}
         >
-          Reportería de Ejecutivos
+          {t("executiveReporting.quotes.title")}
         </h1>
         <p
           style={{
@@ -1181,9 +1218,9 @@ function ReportExecutive() {
       >
         {(
           [
-            { key: "individual" as TabType, label: "Análisis Individual" },
-            { key: "comparativa" as TabType, label: "Análisis Comparativo" },
-            { key: "doble" as TabType, label: "Comparación Doble" },
+            { key: "individual" as TabType, label: t("executiveReporting.shared.tabs.individual") },
+            { key: "comparativa" as TabType, label: t("executiveReporting.shared.tabs.comparative") },
+            { key: "doble" as TabType, label: t("executiveReporting.shared.tabs.double") },
           ] as const
         ).map((tab) => (
           <button
@@ -1212,14 +1249,14 @@ function ReportExecutive() {
               }}
             >
               <div style={{ flex: "1 1 200px" }}>
-                <label style={styles.label}>Ejecutivo</label>
+                <label style={styles.label}>{t("executiveReporting.shared.filters.executive")}</label>
                 <select
                   value={selectedEjecutivo}
                   onChange={(e) => setSelectedEjecutivo(e.target.value)}
                   disabled={loadingEjecutivos}
                   style={selectStyle}
                 >
-                  <option value="">Seleccionar ejecutivo...</option>
+                  <option value="">{t("executiveReporting.shared.filters.selectExecutive")}</option>
                   {ejecutivos.map((ej) => (
                     <option key={ej.id} value={ej.nombre}>
                       {ej.nombre}
@@ -1232,7 +1269,7 @@ function ReportExecutive() {
                 onChange={setIndividualPreset}
               />
               <div style={{ flex: "0 1 160px" }}>
-                <label style={styles.label}>Desde</label>
+                <label style={styles.label}>{t("executiveReporting.shared.filters.from")}</label>
                 <input
                   type="date"
                   value={startDate}
@@ -1244,7 +1281,7 @@ function ReportExecutive() {
                 />
               </div>
               <div style={{ flex: "0 1 160px" }}>
-                <label style={styles.label}>Hasta</label>
+                <label style={styles.label}>{t("executiveReporting.shared.filters.to")}</label>
                 <input
                   type="date"
                   value={endDate}
@@ -1264,7 +1301,7 @@ function ReportExecutive() {
                     opacity: loading || !selectedEjecutivo ? 0.5 : 1,
                   }}
                 >
-                  {loading ? "Buscando..." : "Buscar"}
+                  {loading ? t("executiveReporting.shared.buttons.searching") : t("executiveReporting.shared.buttons.search")}
                 </button>
               </div>
             </div>
@@ -1277,8 +1314,8 @@ function ReportExecutive() {
           {/* Results */}
           {hasSearched && !loading && quotes.length === 0 && !error && (
             <EmptyState
-              title="Sin resultados"
-              sub="No se encontraron cotizaciones para los filtros seleccionados"
+              title={t("executiveReporting.shared.noResultsTitle")}
+              sub={t("executiveReporting.quotes.emptyNoQuotes")}
             />
           )}
 
@@ -1300,31 +1337,31 @@ function ReportExecutive() {
                 }}
               >
                 <Metric
-                  label="Total Cotizaciones"
+                  label={t("executiveReporting.quotes.kpiTotalQuotes")}
                   value={stats.totalQuotes}
-                  sub={`${stats.completedQuotes} completadas · ${fmtPct(stats.completionRate)}`}
+                  sub={t("executiveReporting.quotes.kpiCompletedSub", { completed: stats.completedQuotes, rate: fmtPct(stats.completionRate) })}
                 />
                 <Metric
-                  label="Income Total"
+                  label={t("executiveReporting.quotes.kpiIncomeTotal")}
                   value={fmt(stats.totalIncome)}
-                  sub={`Promedio ${fmt(stats.averagePerQuote)} / cotización`}
+                  sub={t("executiveReporting.quotes.kpiAvgPerQuote", { amount: fmt(stats.averagePerQuote) })}
                   color={C.positive}
                 />
                 <Metric
-                  label="Expense Total"
+                  label={t("executiveReporting.quotes.kpiExpenseTotal")}
                   value={fmt(stats.totalExpense)}
                   color={C.negative}
                 />
                 <Metric
-                  label="Profit Total"
+                  label={t("executiveReporting.quotes.kpiProfitTotal")}
                   value={fmt(stats.totalProfit)}
-                  sub={`Promedio ${fmt(stats.averageProfitPerQuote)} / cotización`}
+                  sub={t("executiveReporting.quotes.kpiAvgProfitPerQuote", { amount: fmt(stats.averageProfitPerQuote) })}
                   color={C.primary}
                 />
                 <Metric
-                  label="Margen"
+                  label={t("executiveReporting.quotes.kpiMargin")}
                   value={fmtPct(stats.profitMargin)}
-                  sub={`${stats.uniqueConsignees} clientes únicos`}
+                  sub={t("executiveReporting.quotes.kpiUniqueClientsSub", { count: stats.uniqueConsignees })}
                 />
               </div>
 
@@ -1354,7 +1391,7 @@ function ReportExecutive() {
                     }}
                   >
                     <div style={styles.sectionTitle}>
-                      Revenue by Transport Type
+                      {t("executiveReporting.quotes.sectionRevenueTransport")}
                     </div>
                   </div>
                   <div style={{ overflowX: "auto" }}>
@@ -1363,21 +1400,21 @@ function ReportExecutive() {
                     >
                       <thead>
                         <tr>
-                          <th style={styles.th}>Type</th>
+                          <th style={styles.th}>{t("executiveReporting.shared.thType")}</th>
                           <th style={{ ...styles.th, textAlign: "center" }}>
-                            Quotes
+                            {t("executiveReporting.shared.thQuotes")}
                           </th>
                           <th style={{ ...styles.th, textAlign: "right" }}>
-                            Income
+                            {t("executiveReporting.shared.thIncome")}
                           </th>
                           <th style={{ ...styles.th, textAlign: "right" }}>
-                            Expense
+                            {t("executiveReporting.shared.thExpense")}
                           </th>
                           <th style={{ ...styles.th, textAlign: "right" }}>
-                            Profit
+                            {t("executiveReporting.shared.thProfit")}
                           </th>
                           <th style={{ ...styles.th, textAlign: "right" }}>
-                            Margin
+                            {t("executiveReporting.shared.thMargin")}
                           </th>
                         </tr>
                       </thead>
@@ -1443,7 +1480,7 @@ function ReportExecutive() {
                       borderBottom: `1px solid ${C.border}`,
                     }}
                   >
-                    <div style={styles.sectionTitle}>Monthly Breakdown</div>
+                    <div style={styles.sectionTitle}>{t("executiveReporting.quotes.sectionMonthly")}</div>
                   </div>
                   <div style={{ overflowX: "auto" }}>
                     <table
@@ -1451,36 +1488,36 @@ function ReportExecutive() {
                     >
                       <thead>
                         <tr>
-                          <th style={styles.th}>Month</th>
+                          <th style={styles.th}>{t("executiveReporting.shared.thMonth")}</th>
                           <th style={{ ...styles.th, textAlign: "center" }}>
-                            Quotes
+                            {t("executiveReporting.shared.thQuotes")}
                           </th>
                           <th style={{ ...styles.th, textAlign: "center" }}>
-                            Completed
+                            {t("executiveReporting.quotes.metricCompleted")}
                           </th>
                           <th style={{ ...styles.th, textAlign: "center" }}>
-                            Air
+                            {t("executiveReporting.shared.transport.air")}
                           </th>
                           <th style={{ ...styles.th, textAlign: "center" }}>
-                            Sea
+                            {t("executiveReporting.shared.transport.sea")}
                           </th>
                           <th style={{ ...styles.th, textAlign: "center" }}>
-                            Truck
+                            {t("executiveReporting.shared.transport.truck")}
                           </th>
                           <th style={{ ...styles.th, textAlign: "center" }}>
                             Clients
                           </th>
                           <th style={{ ...styles.th, textAlign: "right" }}>
-                            Income
+                            {t("executiveReporting.shared.thIncome")}
                           </th>
                           <th style={{ ...styles.th, textAlign: "right" }}>
-                            Expense
+                            {t("executiveReporting.shared.thExpense")}
                           </th>
                           <th style={{ ...styles.th, textAlign: "right" }}>
-                            Profit
+                            {t("executiveReporting.shared.thProfit")}
                           </th>
                           <th style={{ ...styles.th, textAlign: "right" }}>
-                            Margin
+                            {t("executiveReporting.shared.thMargin")}
                           </th>
                         </tr>
                       </thead>
@@ -1568,7 +1605,7 @@ function ReportExecutive() {
                   }
                   style={btnOutline}
                 >
-                  Export CSV
+                  {t("executiveReporting.shared.buttons.exportCsv")}
                 </button>
               </div>
 
@@ -1586,10 +1623,10 @@ function ReportExecutive() {
                   }}
                 >
                   <div style={styles.sectionTitle}>
-                    Detalle de Cotizaciones ({quotes.length})
+                    {t("executiveReporting.quotes.sectionQuoteDetail", { count: quotes.length })}
                   </div>
                   <div style={{ ...base, fontSize: 12, color: C.textMuted }}>
-                    Página {page} de {totalPages}
+                    {t("executiveReporting.shared.pageOf", { page, total: totalPages })}
                   </div>
                 </div>
                 <div
@@ -1602,25 +1639,25 @@ function ReportExecutive() {
                   <table style={{ width: "100%", borderCollapse: "collapse" }}>
                     <thead>
                       <tr>
-                        <th style={styles.th}>Número</th>
-                        <th style={styles.th}>Fecha</th>
-                        <th style={styles.th}>Estado</th>
-                        <th style={styles.th}>Tipo</th>
-                        <th style={styles.th}>Shipper</th>
-                        <th style={styles.th}>Consignee</th>
-                        <th style={styles.th}>Origen</th>
-                        <th style={styles.th}>Destino</th>
+                        <th style={styles.th}>{t("executiveReporting.shared.thNumber")}</th>
+                        <th style={styles.th}>{t("executiveReporting.shared.thDate")}</th>
+                        <th style={styles.th}>{t("executiveReporting.shared.thStatus")}</th>
+                        <th style={styles.th}>{t("executiveReporting.shared.thType")}</th>
+                        <th style={styles.th}>{t("executiveReporting.shared.thShipper")}</th>
+                        <th style={styles.th}>{t("executiveReporting.shared.thConsignee")}</th>
+                        <th style={styles.th}>{t("executiveReporting.shared.thOrigin")}</th>
+                        <th style={styles.th}>{t("executiveReporting.shared.thDestination")}</th>
                         <th style={{ ...styles.th, textAlign: "center" }}>
-                          Moneda
+                          {t("executiveReporting.shared.thCurrency")}
                         </th>
                         <th style={{ ...styles.th, textAlign: "right" }}>
-                          Income
+                          {t("executiveReporting.shared.thIncome")}
                         </th>
                         <th style={{ ...styles.th, textAlign: "right" }}>
-                          Expense
+                          {t("executiveReporting.shared.thExpense")}
                         </th>
                         <th style={{ ...styles.th, textAlign: "right" }}>
-                          Profit
+                          {t("executiveReporting.shared.thProfit")}
                         </th>
                       </tr>
                     </thead>
@@ -1740,8 +1777,8 @@ function ReportExecutive() {
                     }}
                   >
                     <span style={{ ...base, fontSize: 12, color: C.textMuted }}>
-                      Mostrando {(page - 1) * PAGE_SIZE + 1}-
-                      {Math.min(page * PAGE_SIZE, quotes.length)} de{" "}
+                      {t("executiveReporting.shared.showing")} {(page - 1) * PAGE_SIZE + 1}-
+                      {Math.min(page * PAGE_SIZE, quotes.length)} {t("executiveReporting.shared.of")}{" "}
                       {quotes.length}
                     </span>
                     <div style={{ display: "flex", gap: 4 }}>
@@ -1756,7 +1793,7 @@ function ReportExecutive() {
                           opacity: page === 1 ? 0.4 : 1,
                         }}
                       >
-                        Anterior
+                        {t("executiveReporting.shared.previous")}
                       </button>
                       <button
                         onClick={() => setPage(Math.min(totalPages, page + 1))}
@@ -1769,7 +1806,7 @@ function ReportExecutive() {
                           opacity: page === totalPages ? 0.4 : 1,
                         }}
                       >
-                        Siguiente
+                        {t("executiveReporting.shared.next")}
                       </button>
                     </div>
                   </div>
@@ -1794,7 +1831,7 @@ function ReportExecutive() {
                     }}
                   >
                     <div style={styles.sectionTitle}>
-                      Top 10 Clients by Income
+                      {t("executiveReporting.quotes.sectionTopClients")}
                     </div>
                   </div>
                   <div style={{ overflowY: "auto", maxHeight: 400 }}>
@@ -1804,15 +1841,15 @@ function ReportExecutive() {
                       <thead>
                         <tr>
                           <th style={{ ...styles.th, width: 32 }}>#</th>
-                          <th style={styles.th}>Client</th>
+                          <th style={styles.th}>{t("executiveReporting.shared.thClient")}</th>
                           <th style={{ ...styles.th, textAlign: "center" }}>
-                            Quotes
+                            {t("executiveReporting.shared.thQuotes")}
                           </th>
                           <th style={{ ...styles.th, textAlign: "right" }}>
-                            Income
+                            {t("executiveReporting.shared.thIncome")}
                           </th>
                           <th style={{ ...styles.th, textAlign: "right" }}>
-                            Profit
+                            {t("executiveReporting.shared.thProfit")}
                           </th>
                         </tr>
                       </thead>
@@ -1876,7 +1913,9 @@ function ReportExecutive() {
                       borderBottom: `1px solid ${C.border}`,
                     }}
                   >
-                    <div style={styles.sectionTitle}>Top 10 Routes</div>
+                    <div style={styles.sectionTitle}>
+                      {t("executiveReporting.quotes.sectionTopRoutes")}
+                    </div>
                   </div>
                   <div style={{ overflowY: "auto", maxHeight: 400 }}>
                     <table
@@ -1885,12 +1924,12 @@ function ReportExecutive() {
                       <thead>
                         <tr>
                           <th style={{ ...styles.th, width: 32 }}>#</th>
-                          <th style={styles.th}>Route</th>
+                          <th style={styles.th}>{t("executiveReporting.shared.thRoute")}</th>
                           <th style={{ ...styles.th, textAlign: "center" }}>
-                            Quotes
+                            {t("executiveReporting.shared.thQuotes")}
                           </th>
                           <th style={{ ...styles.th, textAlign: "right" }}>
-                            Income
+                            {t("executiveReporting.shared.thIncome")}
                           </th>
                         </tr>
                       </thead>
@@ -1934,8 +1973,8 @@ function ReportExecutive() {
           {/* Initial state */}
           {!hasSearched && !loading && (
             <EmptyState
-              title="Selecciona un ejecutivo para comenzar"
-              sub="Filtra por ejecutivo y rango de fechas para ver la reportería completa"
+              title={t("executiveReporting.quotes.emptyStart")}
+              sub={t("executiveReporting.quotes.emptyStartSub")}
             />
           )}
         </>
@@ -1961,7 +2000,7 @@ function ReportExecutive() {
                 onChange={setCompPreset}
               />
               <div style={{ flex: "0 1 160px" }}>
-                <label style={styles.label}>Desde</label>
+                <label style={styles.label}>{t("executiveReporting.shared.filters.from")}</label>
                 <input
                   type="date"
                   value={compStartDate}
@@ -1973,7 +2012,7 @@ function ReportExecutive() {
                 />
               </div>
               <div style={{ flex: "0 1 160px" }}>
-                <label style={styles.label}>Hasta</label>
+                <label style={styles.label}>{t("executiveReporting.shared.filters.to")}</label>
                 <input
                   type="date"
                   value={compEndDate}
@@ -1993,7 +2032,7 @@ function ReportExecutive() {
                     opacity: loadingComparative ? 0.5 : 1,
                   }}
                 >
-                  {loadingComparative ? "Cargando..." : "Comparar todos"}
+                  {loadingComparative ? t("executiveReporting.shared.buttons.loading") : t("executiveReporting.shared.buttons.compareAll")}
                 </button>
               </div>
             </div>
@@ -2022,26 +2061,26 @@ function ReportExecutive() {
                   }}
                 >
                   <Metric
-                    label="Total Cotizaciones"
+                    label={t("executiveReporting.quotes.kpiTotalQuotes")}
                     value={globalStats.totalQuotes}
                   />
                   <Metric
-                    label="Income Global"
+                    label={t("executiveReporting.quotes.kpiGlobalIncome")}
                     value={fmt(globalStats.totalIncome)}
                     color={C.positive}
                   />
                   <Metric
-                    label="Expense Global"
+                    label={t("executiveReporting.quotes.kpiGlobalExpense")}
                     value={fmt(globalStats.totalExpense)}
                     color={C.negative}
                   />
                   <Metric
-                    label="Profit Global"
+                    label={t("executiveReporting.quotes.kpiGlobalProfit")}
                     value={fmt(globalStats.totalProfit)}
                     color={C.primary}
                   />
                   <Metric
-                    label="Margen Global"
+                    label={t("executiveReporting.quotes.kpiGlobalMargin")}
                     value={fmtPct(
                       globalStats.totalIncome > 0
                         ? (globalStats.totalProfit / globalStats.totalIncome) *
@@ -2068,7 +2107,7 @@ function ReportExecutive() {
                     }
                     style={btnOutline}
                   >
-                    Export CSV
+                    {t("executiveReporting.shared.buttons.exportCsv")}
                   </button>
                 </div>
 
@@ -2087,7 +2126,7 @@ function ReportExecutive() {
                     }}
                   >
                     <div style={styles.sectionTitle}>
-                      Ranking de Ejecutivos ({comparativeData.length})
+                      {t("executiveReporting.quotes.sectionRanking", { count: comparativeData.length })}
                     </div>
                   </div>
                   <div style={{ overflowX: "auto" }}>
@@ -2099,67 +2138,67 @@ function ReportExecutive() {
                           {[
                             {
                               field: "nombre" as SortField,
-                              label: "Ejecutivo",
+                              label: t("executiveReporting.shared.thExecutive"),
                               align: "left",
                             },
                             {
                               field: "totalQuotes" as SortField,
-                              label: "Quotes",
+                              label: t("executiveReporting.shared.thQuotes"),
                               align: "center",
                             },
                             {
                               field: "completedQuotes" as SortField,
-                              label: "Compl.",
+                              label: t("executiveReporting.quotes.thCompleted"),
                               align: "center",
                             },
                             {
                               field: "completionRate" as SortField,
-                              label: "% Compl.",
+                              label: t("executiveReporting.quotes.thCompletionRate"),
                               align: "center",
                             },
                             {
                               field: "airQuotes" as SortField,
-                              label: "Air",
+                              label: t("executiveReporting.shared.transport.air"),
                               align: "center",
                             },
                             {
                               field: "seaQuotes" as SortField,
-                              label: "Sea",
+                              label: t("executiveReporting.shared.transport.sea"),
                               align: "center",
                             },
                             {
                               field: "truckQuotes" as SortField,
-                              label: "Truck",
+                              label: t("executiveReporting.shared.transport.truck"),
                               align: "center",
                             },
                             {
                               field: "uniqueConsignees" as SortField,
-                              label: "Clients",
+                              label: t("executiveReporting.shared.thClients"),
                               align: "center",
                             },
                             {
                               field: "totalIncome" as SortField,
-                              label: "Income",
+                              label: t("executiveReporting.shared.thIncome"),
                               align: "right",
                             },
                             {
                               field: "totalExpense" as SortField,
-                              label: "Expense",
+                              label: t("executiveReporting.shared.thExpense"),
                               align: "right",
                             },
                             {
                               field: "totalProfit" as SortField,
-                              label: "Profit",
+                              label: t("executiveReporting.shared.thProfit"),
                               align: "right",
                             },
                             {
                               field: "profitMargin" as SortField,
-                              label: "Margin",
+                              label: t("executiveReporting.shared.thMargin"),
                               align: "right",
                             },
                             {
                               field: "averagePerQuote" as SortField,
-                              label: "Avg/Quote",
+                              label: t("executiveReporting.quotes.thAvgQuote"),
                               align: "right",
                             },
                           ].map((col) => (
@@ -2276,7 +2315,7 @@ function ReportExecutive() {
                       }}
                     >
                       <div style={styles.sectionTitle}>
-                        Resumen Mensual Global
+                        {t("executiveReporting.quotes.sectionMonthlyCompare")}
                       </div>
                     </div>
                     <div style={{ overflowX: "auto" }}>
@@ -2285,18 +2324,18 @@ function ReportExecutive() {
                       >
                         <thead>
                           <tr>
-                            <th style={styles.th}>Mes</th>
+                            <th style={styles.th}>{t("executiveReporting.shared.thMonth")}</th>
                             <th style={{ ...styles.th, textAlign: "center" }}>
-                              Cotizaciones
+                              {t("executiveReporting.shared.thQuotes")}
                             </th>
                             <th style={{ ...styles.th, textAlign: "center" }}>
-                              Ejecutivos activos
+                              {t("executiveReporting.shared.thActiveExecutives")}
                             </th>
                             <th style={{ ...styles.th, textAlign: "right" }}>
-                              Income
+                              {t("executiveReporting.shared.thIncome")}
                             </th>
                             <th style={{ ...styles.th, textAlign: "right" }}>
-                              Profit
+                              {t("executiveReporting.shared.thProfit")}
                             </th>
                           </tr>
                         </thead>
@@ -2356,7 +2395,7 @@ function ReportExecutive() {
                         }}
                       >
                         <div style={styles.sectionTitle}>
-                          Top 10 Clients (Global)
+                          {t("executiveReporting.quotes.sectionTopClientsGlobal")}
                         </div>
                       </div>
                       <div style={{ overflowY: "auto", maxHeight: 400 }}>
@@ -2366,12 +2405,12 @@ function ReportExecutive() {
                           <thead>
                             <tr>
                               <th style={{ ...styles.th, width: 32 }}>#</th>
-                              <th style={styles.th}>Client</th>
+                              <th style={styles.th}>{t("executiveReporting.shared.thClient")}</th>
                               <th style={{ ...styles.th, textAlign: "center" }}>
-                                Quotes
+                                {t("executiveReporting.shared.thQuotes")}
                               </th>
                               <th style={{ ...styles.th, textAlign: "right" }}>
-                                Income
+                                {t("executiveReporting.shared.thIncome")}
                               </th>
                             </tr>
                           </thead>
@@ -2433,7 +2472,7 @@ function ReportExecutive() {
                         }}
                       >
                         <div style={styles.sectionTitle}>
-                          Top 10 Routes (Global)
+                          {t("executiveReporting.quotes.sectionTopRoutesGlobal")}
                         </div>
                       </div>
                       <div style={{ overflowY: "auto", maxHeight: 400 }}>
@@ -2443,12 +2482,12 @@ function ReportExecutive() {
                           <thead>
                             <tr>
                               <th style={{ ...styles.th, width: 32 }}>#</th>
-                              <th style={styles.th}>Route</th>
+                              <th style={styles.th}>{t("executiveReporting.shared.thRoute")}</th>
                               <th style={{ ...styles.th, textAlign: "center" }}>
-                                Quotes
+                                {t("executiveReporting.shared.thQuotes")}
                               </th>
                               <th style={{ ...styles.th, textAlign: "right" }}>
-                                Income
+                                {t("executiveReporting.shared.thIncome")}
                               </th>
                             </tr>
                           </thead>
@@ -2499,8 +2538,8 @@ function ReportExecutive() {
 
           {!hasSearchedComparative && !loadingComparative && (
             <EmptyState
-              title="Carga la comparativa de ejecutivos"
-              sub="Filtra por rango de fechas para comparar el desempeño de todos los ejecutivos"
+              title={t("executiveReporting.quotes.emptyComparativeTitle")}
+              sub={t("executiveReporting.quotes.emptyComparativeSub")}
             />
           )}
         </>
@@ -2522,14 +2561,14 @@ function ReportExecutive() {
               }}
             >
               <div style={{ flex: "1 1 180px" }}>
-                <label style={styles.label}>Ejecutivo 1</label>
+                <label style={styles.label}>{t("executiveReporting.shared.filters.executive1")}</label>
                 <select
                   value={ejecutivo1}
                   onChange={(e) => setEjecutivo1(e.target.value)}
                   disabled={loadingEjecutivos}
                   style={selectStyle}
                 >
-                  <option value="">Seleccionar...</option>
+                  <option value="">{t("executiveReporting.shared.filters.select")}</option>
                   {ejecutivos.map((ej) => (
                     <option key={ej.id} value={ej.nombre}>
                       {ej.nombre}
@@ -2538,14 +2577,14 @@ function ReportExecutive() {
                 </select>
               </div>
               <div style={{ flex: "1 1 180px" }}>
-                <label style={styles.label}>Ejecutivo 2</label>
+                <label style={styles.label}>{t("executiveReporting.shared.filters.executive2")}</label>
                 <select
                   value={ejecutivo2}
                   onChange={(e) => setEjecutivo2(e.target.value)}
                   disabled={loadingEjecutivos}
                   style={selectStyle}
                 >
-                  <option value="">Seleccionar...</option>
+                  <option value="">{t("executiveReporting.shared.filters.select")}</option>
                   {ejecutivos
                     .filter((e) => e.nombre !== ejecutivo1)
                     .map((ej) => (
@@ -2560,7 +2599,7 @@ function ReportExecutive() {
                 onChange={setDoublePreset}
               />
               <div style={{ flex: "0 1 150px" }}>
-                <label style={styles.label}>Desde</label>
+                <label style={styles.label}>{t("executiveReporting.shared.filters.from")}</label>
                 <input
                   type="date"
                   value={doubleStartDate}
@@ -2572,7 +2611,7 @@ function ReportExecutive() {
                 />
               </div>
               <div style={{ flex: "0 1 150px" }}>
-                <label style={styles.label}>Hasta</label>
+                <label style={styles.label}>{t("executiveReporting.shared.filters.to")}</label>
                 <input
                   type="date"
                   value={doubleEndDate}
@@ -2593,7 +2632,7 @@ function ReportExecutive() {
                       loadingDouble || !ejecutivo1 || !ejecutivo2 ? 0.5 : 1,
                   }}
                 >
-                  {loadingDouble ? "Comparando..." : "Comparar"}
+                  {loadingDouble ? t("executiveReporting.shared.buttons.comparing") : t("executiveReporting.shared.buttons.compare")}
                 </button>
               </div>
             </div>
@@ -2629,7 +2668,7 @@ function ReportExecutive() {
                   <table style={{ width: "100%", borderCollapse: "collapse" }}>
                     <thead>
                       <tr>
-                        <th style={styles.th}>Métrica</th>
+                        <th style={styles.th}>{t("executiveReporting.shared.metric")}</th>
                         <th style={{ ...styles.th, textAlign: "right" }}>
                           {doubleData[0].nombre}
                         </th>
@@ -2637,91 +2676,12 @@ function ReportExecutive() {
                           {doubleData[1].nombre}
                         </th>
                         <th style={{ ...styles.th, textAlign: "right" }}>
-                          Delta
+                          {t("executiveReporting.shared.delta")}
                         </th>
                       </tr>
                     </thead>
                     <tbody>
-                      {[
-                        {
-                          label: "Total Quotes",
-                          v1: doubleData[0].stats.totalQuotes,
-                          v2: doubleData[1].stats.totalQuotes,
-                          format: (v: number) => String(v),
-                        },
-                        {
-                          label: "Completadas",
-                          v1: doubleData[0].stats.completedQuotes,
-                          v2: doubleData[1].stats.completedQuotes,
-                          format: (v: number) => String(v),
-                        },
-                        {
-                          label: "Tasa Completado",
-                          v1: doubleData[0].stats.completionRate,
-                          v2: doubleData[1].stats.completionRate,
-                          format: fmtPct,
-                        },
-                        {
-                          label: "Air",
-                          v1: doubleData[0].stats.airQuotes,
-                          v2: doubleData[1].stats.airQuotes,
-                          format: (v: number) => String(v),
-                        },
-                        {
-                          label: "Sea",
-                          v1: doubleData[0].stats.seaQuotes,
-                          v2: doubleData[1].stats.seaQuotes,
-                          format: (v: number) => String(v),
-                        },
-                        {
-                          label: "Truck",
-                          v1: doubleData[0].stats.truckQuotes,
-                          v2: doubleData[1].stats.truckQuotes,
-                          format: (v: number) => String(v),
-                        },
-                        {
-                          label: "Clientes Únicos",
-                          v1: doubleData[0].stats.uniqueConsignees,
-                          v2: doubleData[1].stats.uniqueConsignees,
-                          format: (v: number) => String(v),
-                        },
-                        {
-                          label: "Income",
-                          v1: doubleData[0].stats.totalIncome,
-                          v2: doubleData[1].stats.totalIncome,
-                          format: fmt,
-                        },
-                        {
-                          label: "Expense",
-                          v1: doubleData[0].stats.totalExpense,
-                          v2: doubleData[1].stats.totalExpense,
-                          format: fmt,
-                        },
-                        {
-                          label: "Profit",
-                          v1: doubleData[0].stats.totalProfit,
-                          v2: doubleData[1].stats.totalProfit,
-                          format: fmt,
-                        },
-                        {
-                          label: "Margen",
-                          v1: doubleData[0].stats.profitMargin,
-                          v2: doubleData[1].stats.profitMargin,
-                          format: fmtPct,
-                        },
-                        {
-                          label: "Avg Income/Quote",
-                          v1: doubleData[0].stats.averagePerQuote,
-                          v2: doubleData[1].stats.averagePerQuote,
-                          format: fmt,
-                        },
-                        {
-                          label: "Avg Profit/Quote",
-                          v1: doubleData[0].stats.averageProfitPerQuote,
-                          v2: doubleData[1].stats.averageProfitPerQuote,
-                          format: fmt,
-                        },
-                      ].map((row, i) => {
+                      {doubleMetrics.map((row, i) => {
                         const delta = row.v1 - row.v2;
                         const deltaColor =
                           delta > 0
@@ -2797,7 +2757,7 @@ function ReportExecutive() {
                     }}
                   >
                     <div style={styles.sectionTitle}>
-                      Comparativa Mensual · {doubleData[0].nombre} vs{" "}
+                      {t("executiveReporting.quotes.sectionMonthlyCompare")} · {doubleData[0].nombre} vs{" "}
                       {doubleData[1].nombre}
                     </div>
                   </div>
@@ -2807,21 +2767,21 @@ function ReportExecutive() {
                     >
                       <thead>
                         <tr>
-                          <th style={styles.th}>Mes</th>
+                          <th style={styles.th}>{t("executiveReporting.shared.thMonth")}</th>
                           <th style={{ ...styles.th, textAlign: "center" }}>
-                            {doubleData[0].nombre} · Cotiz.
+                            {doubleData[0].nombre} · {t("executiveReporting.shared.thQuotes")}
                           </th>
                           <th style={{ ...styles.th, textAlign: "center" }}>
-                            {doubleData[1].nombre} · Cotiz.
+                            {doubleData[1].nombre} · {t("executiveReporting.shared.thQuotes")}
                           </th>
                           <th style={{ ...styles.th, textAlign: "right" }}>
-                            {doubleData[0].nombre} · Profit
+                            {doubleData[0].nombre} · {t("executiveReporting.shared.thProfit")}
                           </th>
                           <th style={{ ...styles.th, textAlign: "right" }}>
-                            {doubleData[1].nombre} · Profit
+                            {doubleData[1].nombre} · {t("executiveReporting.shared.thProfit")}
                           </th>
                           <th style={{ ...styles.th, textAlign: "right" }}>
-                            Δ Profit
+                            Δ {t("executiveReporting.shared.thProfit")}
                           </th>
                         </tr>
                       </thead>
@@ -2907,7 +2867,7 @@ function ReportExecutive() {
                       }}
                     >
                       <div style={styles.sectionTitle}>
-                        Top 10 Clients (Combined)
+                        {t("executiveReporting.quotes.sectionTopClients")}
                       </div>
                     </div>
                     <div style={{ overflowY: "auto", maxHeight: 400 }}>
@@ -2917,12 +2877,12 @@ function ReportExecutive() {
                         <thead>
                           <tr>
                             <th style={{ ...styles.th, width: 32 }}>#</th>
-                            <th style={styles.th}>Client</th>
+                            <th style={styles.th}>{t("executiveReporting.shared.thClient")}</th>
                             <th style={{ ...styles.th, textAlign: "center" }}>
-                              Quotes
+                              {t("executiveReporting.shared.thQuotes")}
                             </th>
                             <th style={{ ...styles.th, textAlign: "right" }}>
-                              Income
+                              {t("executiveReporting.shared.thIncome")}
                             </th>
                           </tr>
                         </thead>
@@ -2977,7 +2937,7 @@ function ReportExecutive() {
                       }}
                     >
                       <div style={styles.sectionTitle}>
-                        Top 10 Routes (Combined)
+                        {t("executiveReporting.quotes.sectionTopRoutes")}
                       </div>
                     </div>
                     <div style={{ overflowY: "auto", maxHeight: 400 }}>
@@ -2987,12 +2947,12 @@ function ReportExecutive() {
                         <thead>
                           <tr>
                             <th style={{ ...styles.th, width: 32 }}>#</th>
-                            <th style={styles.th}>Route</th>
+                            <th style={styles.th}>{t("executiveReporting.shared.thRoute")}</th>
                             <th style={{ ...styles.th, textAlign: "center" }}>
-                              Quotes
+                              {t("executiveReporting.shared.thQuotes")}
                             </th>
                             <th style={{ ...styles.th, textAlign: "right" }}>
-                              Income
+                              {t("executiveReporting.shared.thIncome")}
                             </th>
                           </tr>
                         </thead>
@@ -3036,8 +2996,8 @@ function ReportExecutive() {
 
           {!hasSearchedDouble && !loadingDouble && (
             <EmptyState
-              title="Selecciona dos ejecutivos para comparar"
-              sub="Compara el desempeño entre dos ejecutivos específicos"
+              title={t("executiveReporting.quotes.emptyDoubleTitle")}
+              sub={t("executiveReporting.quotes.emptyDoubleSub")}
             />
           )}
         </>

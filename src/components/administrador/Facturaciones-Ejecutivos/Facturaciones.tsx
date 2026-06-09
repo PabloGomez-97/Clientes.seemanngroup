@@ -1,7 +1,9 @@
 // src/components/administrador/Facturaciones-Ejecutivos/Facturaciones.tsx
 // Facturación por Ejecutivo — Seemann Group
 import { useEffect, useState, useMemo } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import { useOutletContext } from "react-router-dom";
+import i18n from "../../../i18n";
 import { useAuth } from "../../../auth/AuthContext";
 import { Modal } from "react-bootstrap";
 import {
@@ -106,12 +108,10 @@ interface MonthlyInvoiceBreakdown {
   clients: number;
 }
 
-const M_NAMES = [
-  "Ene", "Feb", "Mar", "Abr", "May", "Jun",
-  "Jul", "Ago", "Sep", "Oct", "Nov", "Dic",
-];
-
 const fmt = (n: number) => formatInvoiceCurrency(n);
+
+const monthLabel = (month: string, year: string) =>
+  `${i18n.t(`executiveReporting.shared.months.${month}`)} ${year}`;
 
 const chartPrimary = "rgba(255, 98, 0, 0.85)";
 const chartNegative = "rgba(220, 38, 38, 0.85)";
@@ -158,7 +158,7 @@ const getMonthlyInvoiceBreakdown = (
       const [year, m] = month.split("-");
       return {
         month,
-        label: `${M_NAMES[parseInt(m, 10) - 1]} ${year}`,
+        label: monthLabel(m, year),
         invoices: st.totalInvoices,
         invoiced: st.invoicedCount,
         posted: st.postedCount,
@@ -188,6 +188,7 @@ const getTopInvoiceClients = (arr: InvoiceData[], limit = 10) => {
 };
 
 function InvoicesXEjecutivo() {
+  const { t } = useTranslation();
   const { accessToken, refreshAccessToken } = useOutletContext<OutletContext>();
   const { user, getEjecutivos } = useAuth();
 
@@ -280,7 +281,7 @@ function InvoicesXEjecutivo() {
 
   const fetchIndividualData = async () => {
     if (!selectedEjecutivo) {
-      setError("Debes seleccionar un ejecutivo");
+      setError(t("executiveReporting.shared.errors.selectExecutive"));
       return;
     }
 
@@ -327,7 +328,11 @@ function InvoicesXEjecutivo() {
       );
       localStorage.setItem(`${cacheKey}_timestamp`, now.toString());
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error desconocido");
+      setError(
+        err instanceof Error
+          ? err.message
+          : t("executiveReporting.shared.errors.unknown"),
+      );
     } finally {
       setLoading(false);
     }
@@ -379,7 +384,9 @@ function InvoicesXEjecutivo() {
       localStorage.setItem(`${cacheKey}_timestamp`, now.toString());
     } catch (err) {
       setErrorComparative(
-        err instanceof Error ? err.message : "Error desconocido",
+        err instanceof Error
+          ? err.message
+          : t("executiveReporting.shared.errors.unknown"),
       );
     } finally {
       setLoadingComparative(false);
@@ -388,11 +395,13 @@ function InvoicesXEjecutivo() {
 
   const fetchDoubleData = async () => {
     if (!ejecutivo1 || !ejecutivo2) {
-      setErrorDouble("Debes seleccionar dos ejecutivos");
+      setErrorDouble(t("executiveReporting.shared.errors.selectTwoExecutives"));
       return;
     }
     if (ejecutivo1 === ejecutivo2) {
-      setErrorDouble("Debes seleccionar dos ejecutivos diferentes");
+      setErrorDouble(
+        t("executiveReporting.shared.errors.selectDifferentExecutives"),
+      );
       return;
     }
 
@@ -452,7 +461,11 @@ function InvoicesXEjecutivo() {
       );
       localStorage.setItem(`${cacheKey}_timestamp`, now.toString());
     } catch (err) {
-      setErrorDouble(err instanceof Error ? err.message : "Error desconocido");
+      setErrorDouble(
+        err instanceof Error
+          ? err.message
+          : t("executiveReporting.shared.errors.unknown"),
+      );
     } finally {
       setLoadingDouble(false);
     }
@@ -514,15 +527,15 @@ function InvoicesXEjecutivo() {
     filename: string,
   ) => {
     const headers = [
-      "Ejecutivo",
-      "Total Facturas",
-      "Invoiced",
-      "Posted",
-      "Facturado CLP",
-      "Saldo Pendiente",
-      "Total Pagado",
-      "Promedio/Factura",
-      "Clientes Únicos",
+      t("executiveReporting.billing.csvExecutive"),
+      t("executiveReporting.billing.csvTotalInvoices"),
+      t("executiveReporting.shared.thInvoiced"),
+      t("executiveReporting.shared.thPosted"),
+      t("executiveReporting.billing.thBilledClp"),
+      t("executiveReporting.billing.thBalanceClp"),
+      t("executiveReporting.billing.thPaidClp"),
+      t("executiveReporting.billing.csvAvgInvoice"),
+      t("executiveReporting.billing.kpiUniqueClients"),
     ];
     const rows = data.map((ex) => [
       ex.nombre,
@@ -551,58 +564,62 @@ function InvoicesXEjecutivo() {
     document.body.removeChild(link);
   };
 
-  const doubleMetrics = doubleData.length === 2
-    ? [
-        {
-          label: "Total Facturas",
-          v1: doubleData[0].stats.totalInvoices,
-          v2: doubleData[1].stats.totalInvoices,
-          format: (v: number) => String(v),
-        },
-        {
-          label: "Invoiced",
-          v1: doubleData[0].stats.invoicedCount,
-          v2: doubleData[1].stats.invoicedCount,
-          format: (v: number) => String(v),
-        },
-        {
-          label: "Posted",
-          v1: doubleData[0].stats.postedCount,
-          v2: doubleData[1].stats.postedCount,
-          format: (v: number) => String(v),
-        },
-        {
-          label: "Clientes Únicos",
-          v1: doubleData[0].stats.uniqueClients,
-          v2: doubleData[1].stats.uniqueClients,
-          format: (v: number) => String(v),
-        },
-        {
-          label: "Facturado (CLP)",
-          v1: doubleData[0].stats.totalHomeTotalAmount,
-          v2: doubleData[1].stats.totalHomeTotalAmount,
-          format: fmt,
-        },
-        {
-          label: "Saldo Pendiente",
-          v1: doubleData[0].stats.totalBalanceDue,
-          v2: doubleData[1].stats.totalBalanceDue,
-          format: fmt,
-        },
-        {
-          label: "Total Pagado",
-          v1: doubleData[0].stats.totalAmountPaid,
-          v2: doubleData[1].stats.totalAmountPaid,
-          format: fmt,
-        },
-        {
-          label: "Promedio / Factura",
-          v1: doubleData[0].stats.averagePerInvoice,
-          v2: doubleData[1].stats.averagePerInvoice,
-          format: fmt,
-        },
-      ]
-    : [];
+  const doubleMetrics = useMemo(
+    () =>
+      doubleData.length === 2
+        ? [
+            {
+              label: t("executiveReporting.billing.metricTotalInvoices"),
+              v1: doubleData[0].stats.totalInvoices,
+              v2: doubleData[1].stats.totalInvoices,
+              format: (v: number) => String(v),
+            },
+            {
+              label: t("executiveReporting.billing.metricInvoiced"),
+              v1: doubleData[0].stats.invoicedCount,
+              v2: doubleData[1].stats.invoicedCount,
+              format: (v: number) => String(v),
+            },
+            {
+              label: t("executiveReporting.billing.metricPosted"),
+              v1: doubleData[0].stats.postedCount,
+              v2: doubleData[1].stats.postedCount,
+              format: (v: number) => String(v),
+            },
+            {
+              label: t("executiveReporting.billing.metricUniqueClients"),
+              v1: doubleData[0].stats.uniqueClients,
+              v2: doubleData[1].stats.uniqueClients,
+              format: (v: number) => String(v),
+            },
+            {
+              label: t("executiveReporting.billing.metricBilledClp"),
+              v1: doubleData[0].stats.totalHomeTotalAmount,
+              v2: doubleData[1].stats.totalHomeTotalAmount,
+              format: fmt,
+            },
+            {
+              label: t("executiveReporting.billing.metricBalance"),
+              v1: doubleData[0].stats.totalBalanceDue,
+              v2: doubleData[1].stats.totalBalanceDue,
+              format: fmt,
+            },
+            {
+              label: t("executiveReporting.billing.metricPaid"),
+              v1: doubleData[0].stats.totalAmountPaid,
+              v2: doubleData[1].stats.totalAmountPaid,
+              format: fmt,
+            },
+            {
+              label: t("executiveReporting.billing.metricAvgInvoice"),
+              v1: doubleData[0].stats.averagePerInvoice,
+              v2: doubleData[1].stats.averagePerInvoice,
+              format: fmt,
+            },
+          ]
+        : [],
+    [doubleData, t],
+  );
 
   return (
     <div style={pageWrap}>
@@ -617,7 +634,7 @@ function InvoicesXEjecutivo() {
             letterSpacing: "-0.3px",
           }}
         >
-          Reportería de Facturación
+          {t("executiveReporting.billing.title")}
         </h1>
         <p style={{ ...base, fontSize: 13, color: C.textMuted, margin: "4px 0 0" }}>
           {user?.nombreuser || ""}
@@ -633,9 +650,18 @@ function InvoicesXEjecutivo() {
       >
         {(
           [
-            { key: "individual" as TabType, label: "Análisis Individual" },
-            { key: "comparativa" as TabType, label: "Análisis Comparativo" },
-            { key: "doble" as TabType, label: "Comparación Doble" },
+            {
+              key: "individual" as TabType,
+              label: t("executiveReporting.shared.tabs.individual"),
+            },
+            {
+              key: "comparativa" as TabType,
+              label: t("executiveReporting.shared.tabs.comparative"),
+            },
+            {
+              key: "doble" as TabType,
+              label: t("executiveReporting.shared.tabs.double"),
+            },
           ] as const
         ).map((tab) => (
           <button
@@ -662,14 +688,18 @@ function InvoicesXEjecutivo() {
               }}
             >
               <div style={{ flex: "1 1 200px" }}>
-                <label style={styles.label}>Ejecutivo</label>
+                <label style={styles.label}>
+                  {t("executiveReporting.shared.filters.executive")}
+                </label>
                 <select
                   value={selectedEjecutivo}
                   onChange={(e) => setSelectedEjecutivo(e.target.value)}
                   disabled={loadingEjecutivos}
                   style={selectStyle}
                 >
-                  <option value="">Seleccionar ejecutivo...</option>
+                  <option value="">
+                    {t("executiveReporting.shared.filters.selectExecutive")}
+                  </option>
                   {ejecutivos.map((ej) => (
                     <option key={ej.id} value={ej.nombre}>
                       {ej.nombre}
@@ -682,7 +712,9 @@ function InvoicesXEjecutivo() {
                 onChange={setIndividualPreset}
               />
               <div style={{ flex: "0 1 160px" }}>
-                <label style={styles.label}>Desde</label>
+                <label style={styles.label}>
+                  {t("executiveReporting.shared.filters.from")}
+                </label>
                 <input
                   type="date"
                   value={startDate}
@@ -694,7 +726,9 @@ function InvoicesXEjecutivo() {
                 />
               </div>
               <div style={{ flex: "0 1 160px" }}>
-                <label style={styles.label}>Hasta</label>
+                <label style={styles.label}>
+                  {t("executiveReporting.shared.filters.to")}
+                </label>
                 <input
                   type="date"
                   value={endDate}
@@ -715,7 +749,9 @@ function InvoicesXEjecutivo() {
                     opacity: loading || !selectedEjecutivo ? 0.5 : 1,
                   }}
                 >
-                  {loading ? "Buscando..." : "Buscar"}
+                  {loading
+                    ? t("executiveReporting.shared.buttons.searching")
+                    : t("executiveReporting.shared.buttons.search")}
                 </button>
               </div>
             </div>
@@ -727,26 +763,31 @@ function InvoicesXEjecutivo() {
 
           {hasSearched && !loading && invoices.length === 0 && !error && (
             <EmptyState
-              title="Sin resultados"
-              sub="No se encontraron facturas para los filtros seleccionados"
+              title={t("executiveReporting.shared.noResultsTitle")}
+              sub={t("executiveReporting.billing.emptyNoInvoices")}
             />
           )}
 
           {hasSearched && !loading && invoices.length > 0 && (
             <>
               <DataSourceBanner>
-                {selectedEjecutivo ? `Ejecutivo: ${selectedEjecutivo} · ` : ""}
-                {invoices.length} facturas
+                {selectedEjecutivo
+                  ? `${t("executiveReporting.shared.executiveLabel", { name: selectedEjecutivo })} · `
+                  : ""}
+                {t("executiveReporting.shared.countInvoices", {
+                  count: invoices.length,
+                })}
                 {rawInvoiceCount > 0
-                  ? ` · ${rawInvoiceCount} en origen (invoices/all)`
+                  ? ` · ${t("executiveReporting.shared.inOrigin", { count: rawInvoiceCount })}`
                   : ""}
                 {formatFetchedAt(individualFetchedAt)
-                  ? ` · Actualizado ${formatFetchedAt(individualFetchedAt)}`
+                  ? ` · ${t("executiveReporting.shared.updatedAt", { date: formatFetchedAt(individualFetchedAt) })}`
                   : ""}
                 <br />
-                Montos en <strong>CLP</strong> vía <code>homeTotalAmount</code>.
-                Esta vista es <strong>facturación</strong>, no profit de
-                cotizaciones.
+                <Trans
+                  i18nKey="executiveReporting.billing.bannerNote"
+                  components={{ strong: <strong />, code: <code /> }}
+                />
               </DataSourceBanner>
 
               <div
@@ -758,28 +799,33 @@ function InvoicesXEjecutivo() {
                 }}
               >
                 <Metric
-                  label="Total Facturas"
+                  label={t("executiveReporting.billing.kpiTotalInvoices")}
                   value={stats.totalInvoices}
-                  sub={`${stats.invoicedCount} invoiced · ${stats.postedCount} posted`}
+                  sub={t("executiveReporting.billing.kpiInvoicesSub", {
+                    invoiced: stats.invoicedCount,
+                    posted: stats.postedCount,
+                  })}
                 />
                 <Metric
-                  label="Facturado (CLP)"
+                  label={t("executiveReporting.billing.kpiBilledClp")}
                   value={fmt(stats.totalHomeTotalAmount)}
-                  sub={`Promedio ${fmt(stats.averagePerInvoice)} / factura`}
+                  sub={t("executiveReporting.billing.kpiAvgPerInvoice", {
+                    amount: fmt(stats.averagePerInvoice),
+                  })}
                   color={C.positive}
                 />
                 <Metric
-                  label="Saldo Pendiente"
+                  label={t("executiveReporting.billing.kpiBalanceDue")}
                   value={fmt(stats.totalBalanceDue)}
                   color={C.negative}
                 />
                 <Metric
-                  label="Total Pagado"
+                  label={t("executiveReporting.billing.kpiTotalPaid")}
                   value={fmt(stats.totalAmountPaid)}
                   color={C.primary}
                 />
                 <Metric
-                  label="Clientes Únicos"
+                  label={t("executiveReporting.billing.kpiUniqueClients")}
                   value={stats.uniqueClients}
                 />
               </div>
@@ -793,19 +839,19 @@ function InvoicesXEjecutivo() {
               </div>
 
               {monthlyData.length > 0 && (
-                <CardSection title="Desglose Mensual">
+                <CardSection title={t("executiveReporting.billing.sectionMonthly")}>
                   <div style={{ overflowX: "auto" }}>
                     <table style={{ width: "100%", borderCollapse: "collapse" }}>
                       <thead>
                         <tr>
-                          <th style={styles.th}>Mes</th>
-                          <th style={{ ...styles.th, textAlign: "center" }}>Facturas</th>
-                          <th style={{ ...styles.th, textAlign: "center" }}>Invoiced</th>
-                          <th style={{ ...styles.th, textAlign: "center" }}>Posted</th>
-                          <th style={{ ...styles.th, textAlign: "right" }}>Facturado</th>
-                          <th style={{ ...styles.th, textAlign: "right" }}>Saldo</th>
-                          <th style={{ ...styles.th, textAlign: "right" }}>Pagado</th>
-                          <th style={{ ...styles.th, textAlign: "center" }}>Clientes</th>
+                          <th style={styles.th}>{t("executiveReporting.shared.thMonth")}</th>
+                          <th style={{ ...styles.th, textAlign: "center" }}>{t("executiveReporting.shared.thInvoices")}</th>
+                          <th style={{ ...styles.th, textAlign: "center" }}>{t("executiveReporting.shared.thInvoiced")}</th>
+                          <th style={{ ...styles.th, textAlign: "center" }}>{t("executiveReporting.shared.thPosted")}</th>
+                          <th style={{ ...styles.th, textAlign: "right" }}>{t("executiveReporting.shared.thBilled")}</th>
+                          <th style={{ ...styles.th, textAlign: "right" }}>{t("executiveReporting.shared.thBalance")}</th>
+                          <th style={{ ...styles.th, textAlign: "right" }}>{t("executiveReporting.shared.thPaid")}</th>
+                          <th style={{ ...styles.th, textAlign: "center" }}>{t("executiveReporting.shared.thClients")}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -840,14 +886,16 @@ function InvoicesXEjecutivo() {
                 }}
               >
                 <div style={{ ...styles.cardPad, padding: 16 }}>
-                  <div style={{ ...styles.label, marginBottom: 12 }}>Facturación Mensual</div>
+                  <div style={{ ...styles.label, marginBottom: 12 }}>
+                    {t("executiveReporting.billing.chartMonthly")}
+                  </div>
                   <div style={{ height: 260 }}>
                     <Bar
                       data={{
                         labels: monthlyData.map((m) => m.label),
                         datasets: [
                           {
-                            label: "Facturado (CLP)",
+                            label: t("executiveReporting.billing.kpiBilledClp"),
                             data: monthlyData.map((m) => m.homeTotal),
                             backgroundColor: chartPrimary,
                             borderColor: C.primary,
@@ -860,11 +908,16 @@ function InvoicesXEjecutivo() {
                   </div>
                 </div>
                 <div style={{ ...styles.cardPad, padding: 16 }}>
-                  <div style={{ ...styles.label, marginBottom: 12 }}>Status</div>
+                  <div style={{ ...styles.label, marginBottom: 12 }}>
+                    {t("executiveReporting.billing.chartStatus")}
+                  </div>
                   <div style={{ height: 220, display: "flex", alignItems: "center", justifyContent: "center" }}>
                     <Doughnut
                       data={{
-                        labels: ["Invoiced", "Posted"],
+                        labels: [
+                          t("executiveReporting.shared.invoiceStatus.Invoiced"),
+                          t("executiveReporting.shared.invoiceStatus.Posted"),
+                        ],
                         datasets: [
                           {
                             data: [stats.invoicedCount, stats.postedCount],
@@ -891,18 +944,22 @@ function InvoicesXEjecutivo() {
                   marginBottom: 20,
                 }}
               >
-                <CardSection title={`Detalle de Facturas (${invoices.length})`}>
+                <CardSection
+                  title={t("executiveReporting.billing.sectionInvoiceDetail", {
+                    count: invoices.length,
+                  })}
+                >
                   <div style={{ overflowX: "auto", maxHeight: 480, overflowY: "auto" }}>
                     <table style={{ width: "100%", borderCollapse: "collapse" }}>
                       <thead>
                         <tr>
-                          <th style={styles.th}>N° Factura</th>
-                          <th style={styles.th}>Ref. Embarque</th>
-                          <th style={styles.th}>Cliente</th>
-                          <th style={styles.th}>Fecha</th>
-                          <th style={styles.th}>Status</th>
-                          <th style={{ ...styles.th, textAlign: "right" }}>Total CLP</th>
-                          <th style={{ ...styles.th, textAlign: "right" }}>Saldo</th>
+                          <th style={styles.th}>{t("executiveReporting.shared.thInvoiceNumber")}</th>
+                          <th style={styles.th}>{t("executiveReporting.shared.thShipmentRef")}</th>
+                          <th style={styles.th}>{t("executiveReporting.shared.thClient")}</th>
+                          <th style={styles.th}>{t("executiveReporting.shared.thDate")}</th>
+                          <th style={styles.th}>{t("executiveReporting.shared.thStatus")}</th>
+                          <th style={{ ...styles.th, textAlign: "right" }}>{t("executiveReporting.shared.thTotalClp")}</th>
+                          <th style={{ ...styles.th, textAlign: "right" }}>{t("executiveReporting.shared.thBalance")}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -929,14 +986,14 @@ function InvoicesXEjecutivo() {
                 </CardSection>
 
                 {topClients.length > 0 && (
-                  <CardSection title="Top Clientes">
+                  <CardSection title={t("executiveReporting.billing.sectionTopClients")}>
                     <div style={{ overflowX: "auto" }}>
                       <table style={{ width: "100%", borderCollapse: "collapse" }}>
                         <thead>
                           <tr>
-                            <th style={{ ...styles.th, width: 32 }}>#</th>
-                            <th style={styles.th}>Cliente</th>
-                            <th style={{ ...styles.th, textAlign: "center" }}>Fact.</th>
+                            <th style={{ ...styles.th, width: 32 }}>{t("executiveReporting.shared.thCount")}</th>
+                            <th style={styles.th}>{t("executiveReporting.shared.thClient")}</th>
+                            <th style={{ ...styles.th, textAlign: "center" }}>{t("executiveReporting.shared.thFactShort")}</th>
                             <th style={{ ...styles.th, textAlign: "right" }}>CLP</th>
                           </tr>
                         </thead>
@@ -962,8 +1019,8 @@ function InvoicesXEjecutivo() {
 
           {!hasSearched && !loading && (
             <EmptyState
-              title="Selecciona un ejecutivo para comenzar"
-              sub="Filtra por ejecutivo y rango de fechas para ver la facturación"
+              title={t("executiveReporting.billing.emptyStart")}
+              sub={t("executiveReporting.billing.emptyStartSub")}
             />
           )}
         </>
@@ -983,7 +1040,9 @@ function InvoicesXEjecutivo() {
             >
               <PeriodPresetSelect value={compPreset} onChange={setCompPreset} />
               <div style={{ flex: "0 1 160px" }}>
-                <label style={styles.label}>Desde</label>
+                <label style={styles.label}>
+                  {t("executiveReporting.shared.filters.from")}
+                </label>
                 <input
                   type="date"
                   value={compStartDate}
@@ -995,7 +1054,9 @@ function InvoicesXEjecutivo() {
                 />
               </div>
               <div style={{ flex: "0 1 160px" }}>
-                <label style={styles.label}>Hasta</label>
+                <label style={styles.label}>
+                  {t("executiveReporting.shared.filters.to")}
+                </label>
                 <input
                   type="date"
                   value={compEndDate}
@@ -1016,7 +1077,9 @@ function InvoicesXEjecutivo() {
                     opacity: loadingComparative || ejecutivos.length === 0 ? 0.5 : 1,
                   }}
                 >
-                  {loadingComparative ? "Cargando..." : "Comparar todos"}
+                  {loadingComparative
+                    ? t("executiveReporting.shared.buttons.loading")
+                    : t("executiveReporting.shared.buttons.compareAll")}
                 </button>
               </div>
             </div>
@@ -1029,13 +1092,14 @@ function InvoicesXEjecutivo() {
           {hasSearchedComparative && !loadingComparative && comparativeData.length > 0 && (
             <>
               <DataSourceBanner>
-                {allComparativeInvoices.length} facturas en el período
+                {t("executiveReporting.shared.inPeriod", {
+                  count: allComparativeInvoices.length,
+                })}
                 {formatFetchedAt(compFetchedAt)
-                  ? ` · Actualizado ${formatFetchedAt(compFetchedAt)}`
+                  ? ` · ${t("executiveReporting.shared.updatedAt", { date: formatFetchedAt(compFetchedAt) })}`
                   : ""}
                 <br />
-                Montos en CLP (<code>homeTotalAmount</code>). Incluye ejecutivos
-                con 0 facturas en el período.
+                {t("executiveReporting.billing.bannerComparativeNote")}
               </DataSourceBanner>
 
               <div
@@ -1046,24 +1110,27 @@ function InvoicesXEjecutivo() {
                   marginBottom: 20,
                 }}
               >
-                <Metric label="Total Facturas" value={globalStats.totalInvoices} />
                 <Metric
-                  label="Facturado Global"
+                  label={t("executiveReporting.billing.kpiTotalInvoices")}
+                  value={globalStats.totalInvoices}
+                />
+                <Metric
+                  label={t("executiveReporting.billing.kpiGlobalBilled")}
                   value={fmt(globalStats.totalHomeTotalAmount)}
                   color={C.positive}
                 />
                 <Metric
-                  label="Saldo Global"
+                  label={t("executiveReporting.billing.kpiGlobalBalance")}
                   value={fmt(globalStats.totalBalanceDue)}
                   color={C.negative}
                 />
                 <Metric
-                  label="Pagado Global"
+                  label={t("executiveReporting.billing.kpiGlobalPaid")}
                   value={fmt(globalStats.totalAmountPaid)}
                   color={C.primary}
                 />
                 <Metric
-                  label="Promedio / Factura"
+                  label={t("executiveReporting.billing.kpiAvgPerInvoiceShort")}
                   value={fmt(globalStats.averagePerInvoice)}
                 />
               </div>
@@ -1079,14 +1146,14 @@ function InvoicesXEjecutivo() {
                   }
                   style={btnOutline}
                 >
-                  Export CSV
+                  {t("executiveReporting.shared.buttons.exportCsv")}
                 </button>
               </div>
 
               <div style={{ marginBottom: 20 }}>
                 <div style={{ ...styles.cardPad, padding: 16 }}>
                   <div style={{ ...styles.label, marginBottom: 12 }}>
-                    Comparación por Ejecutivo
+                    {t("executiveReporting.billing.chartCompareExecutives")}
                   </div>
                   <div style={{ height: 280 }}>
                     <Bar
@@ -1094,7 +1161,7 @@ function InvoicesXEjecutivo() {
                         labels: sortedComparativeData.map((d) => d.nombre),
                         datasets: [
                           {
-                            label: "Facturado (CLP)",
+                            label: t("executiveReporting.billing.kpiBilledClp"),
                             data: sortedComparativeData.map(
                               (d) => d.stats.totalHomeTotalAmount,
                             ),
@@ -1103,7 +1170,7 @@ function InvoicesXEjecutivo() {
                             borderWidth: 1,
                           },
                           {
-                            label: "Saldo Pendiente",
+                            label: t("executiveReporting.billing.metricBalance"),
                             data: sortedComparativeData.map(
                               (d) => d.stats.totalBalanceDue,
                             ),
@@ -1119,61 +1186,65 @@ function InvoicesXEjecutivo() {
                 </div>
               </div>
 
-              <CardSection title={`Ranking de Ejecutivos (${comparativeData.length})`}>
+              <CardSection
+                title={t("executiveReporting.billing.sectionRanking", {
+                  count: comparativeData.length,
+                })}
+              >
                 <div style={{ overflowX: "auto" }}>
                   <table style={{ width: "100%", borderCollapse: "collapse" }}>
                     <thead>
                       <tr>
                         <SortableTh
-                          label="Ejecutivo"
+                          label={t("executiveReporting.shared.thExecutive")}
                           active={sortField === "nombre"}
                           direction={sortDirection}
                           onClick={() => handleSort("nombre")}
                         />
                         <SortableTh
-                          label="Facturas"
+                          label={t("executiveReporting.shared.thInvoices")}
                           align="center"
                           active={sortField === "totalInvoices"}
                           direction={sortDirection}
                           onClick={() => handleSort("totalInvoices")}
                         />
                         <SortableTh
-                          label="Invoiced"
+                          label={t("executiveReporting.shared.thInvoiced")}
                           align="center"
                           active={sortField === "invoicedCount"}
                           direction={sortDirection}
                           onClick={() => handleSort("invoicedCount")}
                         />
                         <SortableTh
-                          label="Posted"
+                          label={t("executiveReporting.shared.thPosted")}
                           align="center"
                           active={sortField === "postedCount"}
                           direction={sortDirection}
                           onClick={() => handleSort("postedCount")}
                         />
                         <SortableTh
-                          label="Facturado CLP"
+                          label={t("executiveReporting.billing.thBilledClp")}
                           align="right"
                           active={sortField === "totalHomeTotalAmount"}
                           direction={sortDirection}
                           onClick={() => handleSort("totalHomeTotalAmount")}
                         />
                         <SortableTh
-                          label="Saldo"
+                          label={t("executiveReporting.billing.metricBalanceShort")}
                           align="right"
                           active={sortField === "totalBalanceDue"}
                           direction={sortDirection}
                           onClick={() => handleSort("totalBalanceDue")}
                         />
                         <SortableTh
-                          label="Pagado"
+                          label={t("executiveReporting.billing.metricPaidShort")}
                           align="right"
                           active={sortField === "totalAmountPaid"}
                           direction={sortDirection}
                           onClick={() => handleSort("totalAmountPaid")}
                         />
                         <SortableTh
-                          label="Clientes"
+                          label={t("executiveReporting.shared.thClients")}
                           align="center"
                           active={sortField === "uniqueClients"}
                           direction={sortDirection}
@@ -1253,8 +1324,8 @@ function InvoicesXEjecutivo() {
 
           {!hasSearchedComparative && !loadingComparative && (
             <EmptyState
-              title="Compara el desempeño de todos los ejecutivos"
-              sub='Haz clic en "Comparar todos" para ver el ranking de facturación'
+              title={t("executiveReporting.billing.emptyComparativeTitle")}
+              sub={t("executiveReporting.billing.emptyComparativeSub")}
             />
           )}
         </>
@@ -1273,14 +1344,18 @@ function InvoicesXEjecutivo() {
               }}
             >
               <div style={{ flex: "1 1 180px" }}>
-                <label style={styles.label}>Ejecutivo 1</label>
+                <label style={styles.label}>
+                  {t("executiveReporting.shared.filters.executive1")}
+                </label>
                 <select
                   value={ejecutivo1}
                   onChange={(e) => setEjecutivo1(e.target.value)}
                   disabled={loadingEjecutivos}
                   style={selectStyle}
                 >
-                  <option value="">Seleccionar...</option>
+                  <option value="">
+                    {t("executiveReporting.shared.filters.select")}
+                  </option>
                   {ejecutivos.map((ej) => (
                     <option key={ej.id} value={ej.nombre}>
                       {ej.nombre}
@@ -1289,14 +1364,18 @@ function InvoicesXEjecutivo() {
                 </select>
               </div>
               <div style={{ flex: "1 1 180px" }}>
-                <label style={styles.label}>Ejecutivo 2</label>
+                <label style={styles.label}>
+                  {t("executiveReporting.shared.filters.executive2")}
+                </label>
                 <select
                   value={ejecutivo2}
                   onChange={(e) => setEjecutivo2(e.target.value)}
                   disabled={loadingEjecutivos}
                   style={selectStyle}
                 >
-                  <option value="">Seleccionar...</option>
+                  <option value="">
+                    {t("executiveReporting.shared.filters.select")}
+                  </option>
                   {ejecutivos
                     .filter((e) => e.nombre !== ejecutivo1)
                     .map((ej) => (
@@ -1308,7 +1387,9 @@ function InvoicesXEjecutivo() {
               </div>
               <PeriodPresetSelect value={doublePreset} onChange={setDoublePreset} />
               <div style={{ flex: "0 1 150px" }}>
-                <label style={styles.label}>Desde</label>
+                <label style={styles.label}>
+                  {t("executiveReporting.shared.filters.from")}
+                </label>
                 <input
                   type="date"
                   value={doubleStartDate}
@@ -1320,7 +1401,9 @@ function InvoicesXEjecutivo() {
                 />
               </div>
               <div style={{ flex: "0 1 150px" }}>
-                <label style={styles.label}>Hasta</label>
+                <label style={styles.label}>
+                  {t("executiveReporting.shared.filters.to")}
+                </label>
                 <input
                   type="date"
                   value={doubleEndDate}
@@ -1341,7 +1424,9 @@ function InvoicesXEjecutivo() {
                     opacity: loadingDouble || !ejecutivo1 || !ejecutivo2 ? 0.5 : 1,
                   }}
                 >
-                  {loadingDouble ? "Comparando..." : "Comparar"}
+                  {loadingDouble
+                    ? t("executiveReporting.shared.buttons.comparing")
+                    : t("executiveReporting.shared.buttons.compare")}
                 </button>
               </div>
             </div>
@@ -1354,10 +1439,13 @@ function InvoicesXEjecutivo() {
           {hasSearchedDouble && !loadingDouble && doubleData.length === 2 && (
             <>
               <DataSourceBanner>
-                {allDoubleInvoices.length} facturas ·{" "}
-                {doubleData[0].nombre} vs {doubleData[1].nombre}
+                {t("executiveReporting.billing.bannerDouble", {
+                  count: allDoubleInvoices.length,
+                  name1: doubleData[0].nombre,
+                  name2: doubleData[1].nombre,
+                })}
                 {formatFetchedAt(doubleFetchedAt)
-                  ? ` · Actualizado ${formatFetchedAt(doubleFetchedAt)}`
+                  ? ` · ${t("executiveReporting.shared.updatedAt", { date: formatFetchedAt(doubleFetchedAt) })}`
                   : ""}
               </DataSourceBanner>
 
@@ -1366,14 +1454,16 @@ function InvoicesXEjecutivo() {
                   <table style={{ width: "100%", borderCollapse: "collapse" }}>
                     <thead>
                       <tr>
-                        <th style={styles.th}>Métrica</th>
+                        <th style={styles.th}>{t("executiveReporting.shared.metric")}</th>
                         <th style={{ ...styles.th, textAlign: "right" }}>
                           {doubleData[0].nombre}
                         </th>
                         <th style={{ ...styles.th, textAlign: "right" }}>
                           {doubleData[1].nombre}
                         </th>
-                        <th style={{ ...styles.th, textAlign: "right" }}>Delta</th>
+                        <th style={{ ...styles.th, textAlign: "right" }}>
+                          {t("executiveReporting.shared.delta")}
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1410,21 +1500,23 @@ function InvoicesXEjecutivo() {
               </CardSection>
 
               <div style={{ ...styles.cardPad, padding: 16, marginBottom: 20 }}>
-                <div style={{ ...styles.label, marginBottom: 12 }}>Comparación Visual</div>
+                <div style={{ ...styles.label, marginBottom: 12 }}>
+                  {t("executiveReporting.billing.chartVisualCompare")}
+                </div>
                 <div style={{ height: 280 }}>
                   <Bar
                     data={{
                       labels: doubleData.map((d) => d.nombre),
                       datasets: [
                         {
-                          label: "Facturado (CLP)",
+                          label: t("executiveReporting.billing.kpiBilledClp"),
                           data: doubleData.map((d) => d.stats.totalHomeTotalAmount),
                           backgroundColor: chartPrimary,
                           borderColor: C.primary,
                           borderWidth: 1,
                         },
                         {
-                          label: "Saldo Pendiente",
+                          label: t("executiveReporting.billing.metricBalance"),
                           data: doubleData.map((d) => d.stats.totalBalanceDue),
                           backgroundColor: chartNegative,
                           borderColor: C.negative,
@@ -1453,14 +1545,17 @@ function InvoicesXEjecutivo() {
                       gap: 12,
                     }}
                   >
-                    <Metric label={`${exec.nombre} — Facturas`} value={exec.stats.totalInvoices} />
                     <Metric
-                      label="Facturado"
+                      label={`${exec.nombre} — ${t("executiveReporting.shared.thInvoices")}`}
+                      value={exec.stats.totalInvoices}
+                    />
+                    <Metric
+                      label={t("executiveReporting.billing.metricBilled")}
                       value={fmt(exec.stats.totalHomeTotalAmount)}
                       color={C.positive}
                     />
                     <Metric
-                      label="Saldo"
+                      label={t("executiveReporting.billing.metricBalanceShort")}
                       value={fmt(exec.stats.totalBalanceDue)}
                       color={C.negative}
                     />
@@ -1472,8 +1567,8 @@ function InvoicesXEjecutivo() {
 
           {!hasSearchedDouble && !loadingDouble && (
             <EmptyState
-              title="Compara dos ejecutivos directamente"
-              sub="Selecciona dos ejecutivos y haz clic en Comparar"
+              title={t("executiveReporting.billing.emptyDoubleTitle")}
+              sub={t("executiveReporting.billing.emptyDoubleSub")}
             />
           )}
         </>
@@ -1490,25 +1585,25 @@ function InvoicesXEjecutivo() {
           style={{ ...base, borderBottom: `1px solid ${C.border}` }}
         >
           <Modal.Title style={{ ...base, fontSize: 16, fontWeight: 600, color: C.secondary }}>
-            Detalle de Facturas
+            {t("executiveReporting.shared.modalInvoiceDetail")}
           </Modal.Title>
         </Modal.Header>
         <Modal.Body style={{ ...base, padding: 0 }}>
           {invoicesDetalle.length === 0 ? (
             <p style={{ ...base, textAlign: "center", padding: 24, color: C.textMuted }}>
-              No hay facturas para mostrar
+              {t("executiveReporting.shared.modalNoInvoices")}
             </p>
           ) : (
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr>
-                    <th style={styles.th}>N° Factura</th>
-                    <th style={styles.th}>Ref. Embarque</th>
-                    <th style={styles.th}>Cliente</th>
-                    <th style={styles.th}>Fecha</th>
-                    <th style={styles.th}>Status</th>
-                    <th style={{ ...styles.th, textAlign: "right" }}>Total CLP</th>
+                    <th style={styles.th}>{t("executiveReporting.shared.thInvoiceNumber")}</th>
+                    <th style={styles.th}>{t("executiveReporting.shared.thShipmentRef")}</th>
+                    <th style={styles.th}>{t("executiveReporting.shared.thClient")}</th>
+                    <th style={styles.th}>{t("executiveReporting.shared.thDate")}</th>
+                    <th style={styles.th}>{t("executiveReporting.shared.thStatus")}</th>
+                    <th style={{ ...styles.th, textAlign: "right" }}>{t("executiveReporting.shared.thTotalClp")}</th>
                   </tr>
                 </thead>
                 <tbody>
