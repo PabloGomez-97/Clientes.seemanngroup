@@ -1,6 +1,7 @@
 // src/components/administrador/HomeEjecutivo.tsx — Torre de Control del Ejecutivo
 import { useState, useEffect, useMemo, useCallback, Fragment } from "react";
 import { useNavigate, useOutletContext, useLocation } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
 import type {
   AirShipment,
@@ -371,20 +372,135 @@ function clearLinbisCache(username: string) {
 
 function SkeletonMetricStrip() {
   return (
-    <div className="ej-client-metrics-strip" aria-hidden="true">
+    <div className="ej-client-metrics-strip ej-client-metrics-strip--skeleton" aria-hidden="true">
       {Array.from({ length: 4 }).map((_, index) => (
         <div className="ej-client-metrics-strip__item" key={index}>
-          <div
-            className="ej-skeleton"
-            style={{ width: "52%", height: 11, marginBottom: 10 }}
-          />
-          <div
-            className="ej-skeleton"
-            style={{ width: "34%", height: 20, marginBottom: 6 }}
-          />
-          <div className="ej-skeleton" style={{ width: "68%", height: 11 }} />
+          <div className="ej-skeleton ej-skeleton--label" />
+          <div className="ej-skeleton ej-skeleton--value" />
+          <div className="ej-skeleton ej-skeleton--sub" />
         </div>
       ))}
+    </div>
+  );
+}
+
+function BehaviorStatsSkeleton() {
+  return (
+    <div className="ej-panel ej-panel--skeleton" aria-hidden="true">
+      <div className="ej-behavior-stats">
+        {Array.from({ length: 5 }).map((_, index) => (
+          <div className="ej-behavior-stat" key={index}>
+            <div className="ej-skeleton ej-skeleton--stat-value" />
+            <div className="ej-skeleton ej-skeleton--stat-label" />
+          </div>
+        ))}
+      </div>
+      <div className="ej-behavior-types">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div className="ej-behavior-type ej-behavior-type--skeleton" key={index}>
+            <div className="ej-skeleton ej-skeleton--type-badge" />
+            <div className="ej-skeleton ej-skeleton--type-row" />
+            <div className="ej-skeleton ej-skeleton--type-row" />
+            <div className="ej-skeleton ej-skeleton--type-row" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function AttentionPanelSkeleton() {
+  return (
+    <div className="ej-attention-panel__cols" aria-hidden="true">
+      {Array.from({ length: 3 }).map((_, index) => (
+        <div className="ej-attention-col ej-attention-col--skeleton" key={index}>
+          <div className="ej-skeleton ej-skeleton--attention-title" />
+          {Array.from({ length: 3 }).map((__, row) => (
+            <div className="ej-attention-item ej-attention-item--skeleton" key={row}>
+              <div className="ej-skeleton ej-skeleton--avatar" />
+              <div className="ej-attention-item__body">
+                <div className="ej-skeleton ej-skeleton--attention-name" />
+                <div className="ej-skeleton ej-skeleton--attention-sub" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function HomeEjecutivoLoadingSkeleton({
+  loadingMessage,
+  loadingPleaseWait,
+}: {
+  loadingMessage: string;
+  loadingPleaseWait: string;
+}) {
+  const [message, setMessage] = useState(loadingMessage);
+
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      setMessage(loadingPleaseWait);
+    }, 3000);
+    return () => window.clearTimeout(id);
+  }, [loadingPleaseWait]);
+
+  return (
+    <div className="ej-home ej-home--loading">
+      <div className="ej-header">
+        <div className="ej-header__left">
+          <div className="ej-skeleton ej-skeleton--title" />
+          <div className="ej-skeleton ej-skeleton--subtitle" />
+        </div>
+        <div className="ej-header__actions-skeleton">
+          <div className="ej-skeleton ej-skeleton--btn" />
+          <div className="ej-skeleton ej-skeleton--badge" />
+        </div>
+      </div>
+
+      <div className="ej-activity-bar ej-activity-bar--skeleton">
+        <div className="ej-skeleton ej-skeleton--activity-label" />
+        <div className="ej-activity-bar__chips-skeleton">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div className="ej-skeleton ej-skeleton--chip" key={i} />
+          ))}
+        </div>
+      </div>
+
+      <div className="ej-quick-actions-skeleton">
+        <div className="ej-skeleton ej-skeleton--quick-label" />
+        <div className="ej-quick-actions-skeleton__row">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div className="ej-skeleton ej-skeleton--quick-btn" key={i} />
+          ))}
+        </div>
+      </div>
+
+      <div className="ej-section">
+        <div className="ej-skeleton ej-skeleton--section-title" />
+        <BehaviorStatsSkeleton />
+      </div>
+
+      <div className="ej-section-divider" />
+
+      <div className="ej-section">
+        <div className="ej-skeleton ej-skeleton--section-title" />
+        <SkeletonMetricStrip />
+      </div>
+
+      <div className="ej-section">
+        <AttentionPanelSkeleton />
+      </div>
+
+      <div className="ej-loading-overlay">
+        <div className="ej-loading-message">
+          <span className="ej-loading-spinner" aria-hidden="true" />
+          <span className="ej-loading-text" key={message}>
+            {message}
+          </span>
+        </div>
+      </div>
     </div>
   );
 }
@@ -514,6 +630,7 @@ function StatusBar({
 // ═══════════════════════════════════════════════════════════════════════════
 
 export default function HomeEjecutivo() {
+  const { t, i18n } = useTranslation();
   const { user, token } = useAuth();
   const { accessToken } = useOutletContext<OutletContext>();
   const navigate = useNavigate();
@@ -588,7 +705,7 @@ export default function HomeEjecutivo() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state]);
 
-  const displayName = user?.nombreuser || user?.username || "Ejecutivo";
+  const displayName = user?.nombreuser || user?.username || t("admin.homeEjecutivo.defaultName");
 
   // ── Fetch clients & ShipsGo data ──────────────────────────
   const fetchCoreData = useCallback(
@@ -1117,31 +1234,30 @@ export default function HomeEjecutivo() {
   // Greeting
   const greeting = (() => {
     const hour = new Date().getHours();
-    if (hour < 12) return "Buenos días";
-    if (hour < 19) return "Buenas tardes";
-    return "Buenas noches";
+    if (hour < 12) return t("admin.homeEjecutivo.greetingMorning");
+    if (hour < 19) return t("admin.homeEjecutivo.greetingAfternoon");
+    return t("admin.homeEjecutivo.greetingNight");
   })();
 
-  const today = new Date().toLocaleDateString("es-CL", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
+  const today = new Date().toLocaleDateString(
+    i18n.language.startsWith("en") ? "en-US" : "es-CL",
+    {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    },
+  );
 
   // ═══════════════════════════════════════════════════════════════════════
   // Render: Loading
   // ═══════════════════════════════════════════════════════════════════════
   if (loading) {
     return (
-      <div className="ej-home">
-        <div className="ej-header">
-          <div className="ej-header__left">
-            <h1>Cargando Torre de Control...</h1>
-          </div>
-        </div>
-        <SkeletonMetricStrip />
-      </div>
+      <HomeEjecutivoLoadingSkeleton
+        loadingMessage={t("admin.homeEjecutivo.loadingMessage")}
+        loadingPleaseWait={t("admin.homeEjecutivo.loadingPleaseWait")}
+      />
     );
   }
 
@@ -1182,7 +1298,9 @@ export default function HomeEjecutivo() {
               <polyline points="1 20 1 14 7 14" />
               <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
             </svg>
-            {refreshing || linbisRefreshing ? "Actualizando..." : "Actualizar"}
+            {refreshing || linbisRefreshing
+              ? t("admin.homeEjecutivo.refreshing")
+              : t("admin.homeEjecutivo.refresh")}
           </button>
           <div className="ej-header__badge">
             <svg
@@ -1199,7 +1317,7 @@ export default function HomeEjecutivo() {
               <polyline points="12 6 12 12 16 14" />
             </svg>
             <div className="ej-pulse" />
-            TORRE DE CONTROL
+            {t("admin.homeEjecutivo.controlTower")}
           </div>
         </div>
       </div>
@@ -1220,14 +1338,16 @@ export default function HomeEjecutivo() {
             <circle cx="12" cy="12" r="10" />
             <polyline points="12 6 12 12 16 14" />
           </svg>
-          Actividad Reciente
+          {t("admin.homeEjecutivo.recentActivity")}
         </div>
 
         {activityLoading ? (
-          <div className="ej-activity-bar__loading">Cargando actividad...</div>
+          <div className="ej-activity-bar__loading">
+            {t("admin.homeEjecutivo.loadingActivity")}
+          </div>
         ) : activityFeed.length === 0 && totalDelayed === 0 ? (
           <div className="ej-activity-bar__empty">
-            Sin actividad de clientes
+            {t("admin.homeEjecutivo.noActivity")}
           </div>
         ) : (
           <div className="ej-activity-bar__carousel">
@@ -1260,10 +1380,10 @@ export default function HomeEjecutivo() {
                       </span>
                       <span className="ej-activity-bar__chip-action">
                         {item.event === "QUOTE_COMPLETED"
-                          ? "completó"
+                          ? t("admin.homeEjecutivo.activityCompleted")
                           : item.event === "QUOTE_ABANDONED"
-                            ? "abandonó"
-                            : "inició"}
+                            ? t("admin.homeEjecutivo.activityAbandoned")
+                            : t("admin.homeEjecutivo.activityStarted")}
                       </span>
                       <span className="ej-activity-bar__chip-type">
                         {item.quoteType}
@@ -1283,7 +1403,7 @@ export default function HomeEjecutivo() {
                     >
                       <div className="ej-activity-item__dot ej-activity-item__dot--abandon" />
                       <span className="ej-activity-bar__chip-delay-label">
-                        Retraso
+                        {t("admin.homeEjecutivo.delay")}
                       </span>
                       <span className="ej-activity-bar__chip-type ej-activity-bar__chip-type--delay">
                         AIR
@@ -1307,7 +1427,7 @@ export default function HomeEjecutivo() {
                     >
                       <div className="ej-activity-item__dot ej-activity-item__dot--abandon" />
                       <span className="ej-activity-bar__chip-delay-label">
-                        Retraso
+                        {t("admin.homeEjecutivo.delay")}
                       </span>
                       <span className="ej-activity-bar__chip-type ej-activity-bar__chip-type--delay">
                         FCL
@@ -1344,19 +1464,21 @@ export default function HomeEjecutivo() {
           className="ej-activity-bar__see-all"
           onClick={() => setActivityModalOpen(true)}
         >
-          {activityFeed.length > 0 ? "Ver todos →" : ""}
+          {activityFeed.length > 0 ? t("admin.homeEjecutivo.seeAll") : ""}
         </button>
       </div>
 
       {/* ── Acceso Rápido ──────────────────────────────────────────────── */}
       <div className="ops-quick-actions-section">
-        <span className="ops-quick-actions-label">Acceso Rápido</span>
+        <span className="ops-quick-actions-label">
+          {t("admin.homeEjecutivo.quickAccess")}
+        </span>
         <div className="ops-quick-actions">
           <button
             className="ops-quick-action"
             onClick={() => navigate("/admin/cotizador-administrador")}
           >
-            Nueva Cotización
+            {t("admin.homeEjecutivo.newQuote")}
           </button>
           <button
             className="ops-quick-action"
@@ -1366,19 +1488,19 @@ export default function HomeEjecutivo() {
               })
             }
           >
-            Cotización Última Milla
+            {t("admin.homeEjecutivo.lastMileQuote")}
           </button>
           <button
             className="ops-quick-action"
             onClick={() => navigate("/admin/reporteriaclientes")}
           >
-            Mis Clientes
+            {t("admin.homeEjecutivo.myClients")}
           </button>
           <button
             className="ops-quick-action"
             onClick={() => navigate("/admin/trackeos")}
           >
-            Seguimientos
+            {t("admin.homeEjecutivo.trackings")}
           </button>
         </div>
       </div>
@@ -1393,18 +1515,28 @@ export default function HomeEjecutivo() {
           }}
         >
           <span className="ej-delay-banner__icon">⚠</span>
-          <span className="ej-delay-banner__msg">
-            <strong>{totalDelayed}</strong> envío
-            {totalDelayed !== 1 ? "s" : ""} con retraso activo
-          </span>
+          <span
+            className="ej-delay-banner__msg"
+            dangerouslySetInnerHTML={{
+              __html: t("admin.homeEjecutivo.delayBanner", {
+                count: totalDelayed,
+              }),
+            }}
+          />
           <span className="ej-delay-banner__meta">
             {airDelayed.length > 0 &&
-              `${airDelayed.length} aéreo${airDelayed.length !== 1 ? "s" : ""}`}
+              t("admin.homeEjecutivo.delayBannerAir", {
+                count: airDelayed.length,
+              })}
             {airDelayed.length > 0 && oceanDelayed.length > 0 && " · "}
             {oceanDelayed.length > 0 &&
-              `${oceanDelayed.length} marítimo${oceanDelayed.length !== 1 ? "s" : ""}`}
+              t("admin.homeEjecutivo.delayBannerOcean", {
+                count: oceanDelayed.length,
+              })}
           </span>
-          <span className="ej-delay-banner__cta">Ver detalles →</span>
+          <span className="ej-delay-banner__cta">
+            {t("admin.homeEjecutivo.delayBannerDetails")}
+          </span>
         </div>
       )}
 
@@ -1427,23 +1559,18 @@ export default function HomeEjecutivo() {
               <polyline points="23 21 23 15 20 12 17 15 17 21" />
               <line x1="20" y1="12" x2="20" y2="9" />
             </svg>
-            Comportamiento de Clientes
+            {t("admin.homeEjecutivo.behaviorTitle")}
           </h3>
           <button
             className="ej-view-all"
             onClick={() => navigate("/admin/comportamiento-clientes")}
           >
-            Ver análisis completo →
+            {t("admin.homeEjecutivo.viewFullAnalysis")}
           </button>
         </div>
 
         {behaviorLoading ? (
-          <div className="ej-panel">
-            <div
-              className="ej-skeleton"
-              style={{ width: "100%", height: 72, borderRadius: 8 }}
-            />
-          </div>
+          <BehaviorStatsSkeleton />
         ) : behaviorStats ? (
           <div className="ej-panel">
             <div className="ej-behavior-stats">
@@ -1451,51 +1578,40 @@ export default function HomeEjecutivo() {
                 <span className="ej-behavior-stat__value">
                   {behaviorStats.uniqueAccountCount}
                 </span>
-                <span className="ej-behavior-stat__label">Cuentas Activas</span>
+                <span className="ej-behavior-stat__label">
+                  {t("admin.homeEjecutivo.activeAccounts")}
+                </span>
               </div>
               <div className="ej-behavior-stat">
                 <span className="ej-behavior-stat__value">
                   {behaviorStats.totalStarted}
                 </span>
                 <span className="ej-behavior-stat__label">
-                  Cotizaciones Iniciadas
+                  {t("admin.homeEjecutivo.quotesStarted")}
                 </span>
               </div>
-              <div className="ej-behavior-stat">
+              <div className="ej-behavior-stat ej-behavior-stat--success">
                 <span className="ej-behavior-stat__value">
                   {behaviorStats.totalCompleted}
                 </span>
                 <span className="ej-behavior-stat__label">
-                  Cotizaciones Completadas
+                  {t("admin.homeEjecutivo.quotesCompleted")}
                 </span>
               </div>
-              <div className="ej-behavior-stat">
+              <div className="ej-behavior-stat ej-behavior-stat--danger">
                 <span className="ej-behavior-stat__value">
                   {behaviorStats.totalAbandoned}
                 </span>
                 <span className="ej-behavior-stat__label">
-                  Cotizaciones Abandonadas
+                  {t("admin.homeEjecutivo.quotesAbandoned")}
                 </span>
               </div>
-              <div className="ej-behavior-stat">
-                <span className="ej-behavior-stat__value">
-                  {Math.max(
-                    0,
-                    behaviorStats.totalStarted -
-                      behaviorStats.totalCompleted -
-                      behaviorStats.totalAbandoned,
-                  )}
-                </span>
-                <span className="ej-behavior-stat__label">
-                  Cotizaciones En Progreso
-                </span>
-              </div>
-              <div className="ej-behavior-stat">
+              <div className="ej-behavior-stat ej-behavior-stat--accent">
                 <span className="ej-behavior-stat__value">
                   {behaviorStats.overallRate}%
                 </span>
                 <span className="ej-behavior-stat__label">
-                  Tasa global x Cotización
+                  {t("admin.homeEjecutivo.globalQuoteRate")}
                 </span>
               </div>
             </div>
@@ -1515,7 +1631,7 @@ export default function HomeEjecutivo() {
                       <div className="ej-behavior-type__rows">
                         <div className="ej-behavior-type__row">
                           <span className="ej-behavior-type__row-label">
-                            Iniciadas
+                            {t("admin.homeEjecutivo.started")}
                           </span>
                           <span className="ej-behavior-type__row-value">
                             {started}
@@ -1523,7 +1639,7 @@ export default function HomeEjecutivo() {
                         </div>
                         <div className="ej-behavior-type__row">
                           <span className="ej-behavior-type__row-label">
-                            Completadas
+                            {t("admin.homeEjecutivo.completed")}
                           </span>
                           <span className="ej-behavior-type__row-value">
                             {completed}
@@ -1531,7 +1647,7 @@ export default function HomeEjecutivo() {
                         </div>
                         <div className="ej-behavior-type__row">
                           <span className="ej-behavior-type__row-label">
-                            Abandonadas
+                            {t("admin.homeEjecutivo.abandoned")}
                           </span>
                           <span className="ej-behavior-type__row-value">
                             {abandoned}
@@ -1547,7 +1663,7 @@ export default function HomeEjecutivo() {
         ) : null}
       </div>
 
-      <hr />
+      <div className="ej-section-divider" />
       {/* ── Operaciones de Clientes ─────────────────────────────────────── */}
       <div className="ej-section">
         <div className="ej-section-header">
@@ -1567,13 +1683,13 @@ export default function HomeEjecutivo() {
               <polyline points="23 21 23 15 20 12 17 15 17 21" />
               <line x1="20" y1="12" x2="20" y2="9" />
             </svg>
-            Operaciones de Clientes
+            {t("admin.homeEjecutivo.operationsTitle")}
           </h3>
           <button
             className="ej-view-all"
             onClick={() => navigate("/admin/reporteriaclientes")}
           >
-            Ver análisis completo →
+            {t("admin.homeEjecutivo.viewFullAnalysis")}
           </button>
         </div>
         <div className="ej-client-metrics-strip">
@@ -1583,7 +1699,7 @@ export default function HomeEjecutivo() {
             onClick={() => setListModal("all-clients")}
           >
             <div className="ej-kpi__header">
-              <span className="ej-kpi__label">Mis Clientes</span>
+              <span className="ej-kpi__label">{t("admin.homeEjecutivo.myClients")}</span>
               <div
                 className="ej-kpi__icon"
                 style={{ background: "var(--ej-orange-bg)" }}
@@ -1608,8 +1724,8 @@ export default function HomeEjecutivo() {
             <div className="ej-kpi__value">{clientes.length}</div>
             <div className="ej-kpi__sub">
               {newThisMonth > 0
-                ? `+${newThisMonth} este mes`
-                : "Cartera activa"}
+                ? t("admin.homeEjecutivo.newThisMonth", { count: newThisMonth })
+                : t("admin.homeEjecutivo.activePortfolio")}
             </div>
           </div>
 
@@ -1622,7 +1738,7 @@ export default function HomeEjecutivo() {
             }}
           >
             <div className="ej-kpi__header">
-              <span className="ej-kpi__label">Seguimientos</span>
+              <span className="ej-kpi__label">{t("admin.homeEjecutivo.trackings")}</span>
               <div
                 className="ej-kpi__icon"
                 style={{ background: "var(--ej-green-bg)" }}
@@ -1645,7 +1761,10 @@ export default function HomeEjecutivo() {
               {trackingAir.length + trackingOcean.length}
             </div>
             <div className="ej-kpi__sub">
-              {trackingAir.length} aéreos · {trackingOcean.length} marítimos
+              {t("admin.homeEjecutivo.airOceanBreakdown", {
+                air: trackingAir.length,
+                ocean: trackingOcean.length,
+              })}
             </div>
           </div>
 
@@ -1658,7 +1777,7 @@ export default function HomeEjecutivo() {
             }}
           >
             <div className="ej-kpi__header">
-              <span className="ej-kpi__label">En Movimiento</span>
+              <span className="ej-kpi__label">{t("admin.homeEjecutivo.inMotion")}</span>
               <div
                 className="ej-kpi__icon"
                 style={{ background: "var(--ej-amber-bg)" }}
@@ -1682,7 +1801,10 @@ export default function HomeEjecutivo() {
               {airInTransit.length + oceanInTransit.length}
             </div>
             <div className="ej-kpi__sub">
-              {airInTransit.length} aéreos · {oceanInTransit.length} marítimos
+              {t("admin.homeEjecutivo.airOceanBreakdown", {
+                air: airInTransit.length,
+                ocean: oceanInTransit.length,
+              })}
             </div>
           </div>
 
@@ -1695,7 +1817,7 @@ export default function HomeEjecutivo() {
             }}
           >
             <div className="ej-kpi__header">
-              <span className="ej-kpi__label">Retrasos Activos</span>
+              <span className="ej-kpi__label">{t("admin.homeEjecutivo.activeDelays")}</span>
               <div
                 className="ej-kpi__icon"
                 style={{ background: "var(--ej-red-bg)" }}
@@ -1718,7 +1840,10 @@ export default function HomeEjecutivo() {
             </div>
             <div className="ej-kpi__value">{totalDelayed}</div>
             <div className="ej-kpi__sub">
-              {airDelayed.length} aéreos · {oceanDelayed.length} marítimos
+              {t("admin.homeEjecutivo.airOceanBreakdown", {
+                air: airDelayed.length,
+                ocean: oceanDelayed.length,
+              })}
             </div>
           </div>
         </div>
@@ -1727,16 +1852,13 @@ export default function HomeEjecutivo() {
       {/* ── Atención Inmediata ─────────────────────────────────────────── */}
       <div className="ej-section">
         {temperatureLoading ? (
-          <div
-            className="ej-skeleton"
-            style={{ width: "100%", height: 80, borderRadius: 8 }}
-          />
+          <AttentionPanelSkeleton />
         ) : (
           <div className="ej-attention-panel__cols">
             {/* ── Clientes Fríos ── */}
             <div className="ej-attention-col">
               <div className="ej-attention-col__header">
-                <span>Clientes Fríos</span>
+                <span>{t("admin.homeEjecutivo.coldClients")}</span>
                 {temperatureData && temperatureData.counts.frio > 0 && (
                   <span className="ej-attention-col__count">
                     {temperatureData.counts.frio}
@@ -1746,7 +1868,7 @@ export default function HomeEjecutivo() {
               <div className="ej-attention-col__list">
                 {!temperatureData || temperatureData.lists.frio.length === 0 ? (
                   <div className="ej-attention-col__empty">
-                    Sin clientes fríos
+                    {t("admin.homeEjecutivo.noColdClients")}
                   </div>
                 ) : (
                   temperatureData.lists.frio.slice(0, 5).map((r) => (
@@ -1760,8 +1882,10 @@ export default function HomeEjecutivo() {
                         </div>
                         <div className="ej-attention-item__sub">
                           {r.lastActivity
-                            ? `Últ. actividad ${timeAgo(r.lastActivity)}`
-                            : "Nunca cotizó"}
+                            ? t("admin.homeEjecutivo.lastActivity", {
+                                time: timeAgo(r.lastActivity),
+                              })
+                            : t("admin.homeEjecutivo.neverQuoted")}
                         </div>
                       </div>
                       <button
@@ -1772,7 +1896,7 @@ export default function HomeEjecutivo() {
                           )
                         }
                       >
-                        Ver →
+                        {t("admin.homeEjecutivo.viewClient")}
                       </button>
                     </div>
                   ))
@@ -1783,7 +1907,7 @@ export default function HomeEjecutivo() {
                   className="ej-attention-col__view-all"
                   onClick={() => navigate("/admin/comportamiento-clientes")}
                 >
-                  Ver todos →
+                  {t("admin.homeEjecutivo.viewAllClients")}
                 </button>
               )}
             </div>
@@ -1791,7 +1915,7 @@ export default function HomeEjecutivo() {
             {/* ── Clientes Tibios ── */}
             <div className="ej-attention-col">
               <div className="ej-attention-col__header">
-                <span>Clientes Tibios</span>
+                <span>{t("admin.homeEjecutivo.warmClients")}</span>
                 {temperatureData && temperatureData.counts.tibio > 0 && (
                   <span className="ej-attention-col__count">
                     {temperatureData.counts.tibio}
@@ -1802,7 +1926,7 @@ export default function HomeEjecutivo() {
                 {!temperatureData ||
                 temperatureData.lists.tibio.length === 0 ? (
                   <div className="ej-attention-col__empty">
-                    Sin clientes tibios
+                    {t("admin.homeEjecutivo.noWarmClients")}
                   </div>
                 ) : (
                   temperatureData.lists.tibio.slice(0, 5).map((r) => (
@@ -1815,8 +1939,9 @@ export default function HomeEjecutivo() {
                           {r.username}
                         </div>
                         <div className="ej-attention-item__sub">
-                          {r.completed30d} cotizaci
-                          {r.completed30d === 1 ? "ón" : "ones"} en 30d
+                          {t("admin.homeEjecutivo.quotesIn30d", {
+                            count: r.completed30d,
+                          })}
                         </div>
                       </div>
                       <button
@@ -1827,7 +1952,7 @@ export default function HomeEjecutivo() {
                           )
                         }
                       >
-                        Ver →
+                        {t("admin.homeEjecutivo.viewClient")}
                       </button>
                     </div>
                   ))
@@ -1838,7 +1963,7 @@ export default function HomeEjecutivo() {
                   className="ej-attention-col__view-all"
                   onClick={() => navigate("/admin/comportamiento-clientes")}
                 >
-                  Ver todos →
+                  {t("admin.homeEjecutivo.viewAllClients")}
                 </button>
               )}
             </div>
@@ -1846,7 +1971,7 @@ export default function HomeEjecutivo() {
             {/* ── Múltiples Abandonos ── */}
             <div className="ej-attention-col">
               <div className="ej-attention-col__header">
-                <span>Múltiples Abandonos</span>
+                <span>{t("admin.homeEjecutivo.multipleAbandons")}</span>
                 {temperatureData && temperatureData.counts.masAbandonos > 0 && (
                   <span className="ej-attention-col__count">
                     {temperatureData.counts.masAbandonos}
@@ -1857,7 +1982,7 @@ export default function HomeEjecutivo() {
                 {!temperatureData ||
                 temperatureData.lists.masAbandonos.length === 0 ? (
                   <div className="ej-attention-col__empty">
-                    Sin abandonos múltiples
+                    {t("admin.homeEjecutivo.noMultipleAbandons")}
                   </div>
                 ) : (
                   temperatureData.lists.masAbandonos.slice(0, 5).map((r) => (
@@ -1870,8 +1995,9 @@ export default function HomeEjecutivo() {
                           {r.username}
                         </div>
                         <div className="ej-attention-item__sub">
-                          {r.consecutiveAbandons} abandono
-                          {r.consecutiveAbandons !== 1 ? "s" : ""} consecutivos
+                          {t("admin.homeEjecutivo.consecutiveAbandons", {
+                            count: r.consecutiveAbandons,
+                          })}
                         </div>
                       </div>
                       <button
@@ -1882,7 +2008,7 @@ export default function HomeEjecutivo() {
                           )
                         }
                       >
-                        Ver →
+                        {t("admin.homeEjecutivo.viewClient")}
                       </button>
                     </div>
                   ))
@@ -1893,7 +2019,7 @@ export default function HomeEjecutivo() {
                   className="ej-attention-col__view-all"
                   onClick={() => navigate("/admin/comportamiento-clientes")}
                 >
-                  Ver todos →
+                  {t("admin.homeEjecutivo.viewAllClients")}
                 </button>
               )}
             </div>
@@ -1910,7 +2036,7 @@ export default function HomeEjecutivo() {
           <div className="ej-list-modal" onClick={(e) => e.stopPropagation()}>
             <div className="ej-list-modal__header">
               <h2 className="ej-list-modal__title">
-                Actividad Reciente de Clientes
+                {t("admin.homeEjecutivo.activityModalTitle")}
               </h2>
               <button
                 className="ej-list-modal__close"
@@ -1921,7 +2047,7 @@ export default function HomeEjecutivo() {
             </div>
             <div className="ej-list-modal__body">
               {activityFeed.length === 0 ? (
-                <div className="ej-empty">Sin actividad de clientes</div>
+                <div className="ej-empty">{t("admin.homeEjecutivo.noActivity")}</div>
               ) : (
                 <div className="ej-activity-feed">
                   {activityFeed.map((item) => (
