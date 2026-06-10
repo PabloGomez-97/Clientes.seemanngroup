@@ -163,8 +163,8 @@ function CreateShipmentForm({
         };
         setError(
           errorMessages[response.status] ||
-            data.error ||
-            "Error al crear el trackeo.",
+          data.error ||
+          "Error al crear el trackeo.",
         );
         return;
       }
@@ -308,13 +308,12 @@ function CreateShipmentForm({
               <input
                 type="text"
                 id="csf-awb"
-                className={`csf-input csf-input--mono ${
-                  awbNumber
+                className={`csf-input csf-input--mono ${awbNumber
                     ? awbValidation.valid
                       ? "csf-input--valid"
                       : "csf-input--invalid"
                     : ""
-                }`}
+                  }`}
                 placeholder="00000000000"
                 value={awbNumber}
                 onChange={(e) => setAwbNumber(e.target.value)}

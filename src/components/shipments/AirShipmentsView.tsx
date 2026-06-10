@@ -25,6 +25,7 @@ import { MUNDOGAMING_DUMMY_SHIPMENTS } from "./Handlers/mundogamingDummyData";
 import { linbisFetch } from "../../services/linbisFetch";
 import {
   buildLinbisListParams,
+  enrichAirShipmentsWithRouteDetails,
   fetchAllLinbisByConsignee,
   LINBIS_PAGE_SIZE,
 } from "../../services/linbisListFetch";
@@ -35,6 +36,7 @@ import {
 
 const ITEMS_PER_PAGE = 10;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const AIR_SHIPMENTS_CACHE_PREFIX = "airShipmentsCache_v2_";
 
 /*  DetailTabs  */
 interface TabDef {
@@ -364,6 +366,30 @@ function AirShipmentsView({
     }
   };
 
+  const normalizeAirAwbKey = (value?: string | null) =>
+    (value ?? "").replace(/[\s-]/g, "");
+
+  const getAirShipsgoLookupKeys = (shipment: AirShipment): string[] => {
+    const raw = [
+      shipment.trackingNumber,
+      shipment.waybillNumber,
+      shipment.number,
+    ];
+    return [...new Set(raw.map(normalizeAirAwbKey).filter(Boolean))];
+  };
+
+  const findShipsgoAirEta = (shipment: AirShipment): string | undefined => {
+    for (const key of getAirShipsgoLookupKeys(shipment)) {
+      if (shipsgoArrivalByAwb[key]) return shipsgoArrivalByAwb[key];
+    }
+    return undefined;
+  };
+
+  const isAirArrivalFromShipsgo = (shipment: AirShipment): boolean =>
+    getAirShipsgoLookupKeys(shipment).some(
+      (key) => shipsgoArrivalByAwb[key] || trackedAwbs.has(key),
+    );
+
   const renderEtaBadge = () => (
     <span
       style={{
@@ -384,6 +410,22 @@ function AirShipmentsView({
     </span>
   );
 
+  const getOriginAirport = (shipment: AirShipment) =>
+    shipment.executedAt ?? shipment.origin ?? null;
+
+  const getDestinationAirport = (shipment: AirShipment) =>
+    shipment.destination ?? null;
+
+  const formatAirportLabel = (
+    airport?: { code?: string; name?: string } | null,
+  ) => {
+    if (!airport?.name?.trim() && !airport?.code?.trim()) return "-";
+    if (airport.name?.trim()) {
+      return `${airport.name.trim()}${airport.code ? ` (${airport.code})` : ""}`;
+    }
+    return airport.code?.trim() || "-";
+  };
+
   const renderArrivalInline = (displayDate?: string, fromShipsgo = false) => (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
       {fromShipsgo ? renderEtaBadge() : null}
@@ -392,8 +434,8 @@ function AirShipmentsView({
   );
 
   const getEffectiveArrivalDisplayDate = (shipment: AirShipment): string => {
-    const awb = getTrackAwbNumber(shipment).replace(/[\s-]/g, "");
-    if (awb && shipsgoArrivalByAwb[awb]) return shipsgoArrivalByAwb[awb];
+    const shipsgoEta = findShipsgoAirEta(shipment);
+    if (shipsgoEta) return shipsgoEta;
     return shipment.arrival?.date ?? shipment.arrival?.displayDate ?? "";
   };
 
@@ -434,7 +476,7 @@ function AirShipmentsView({
     setError(null);
 
     try {
-      const cacheKey = `airShipmentsCache_${activeUsername}`;
+      const cacheKey = `${AIR_SHIPMENTS_CACHE_PREFIX}${activeUsername}`;
 
       const rawRecords = await fetchAllLinbisByConsignee(
         "https://api.linbis.com/air-shipments",
@@ -444,9 +486,16 @@ function AirShipmentsView({
 
       if (signal?.aborted) return;
 
-      const airShipments = flattenAirShipmentRecords(rawRecords).map(
+      const mappedShipments = flattenAirShipmentRecords(rawRecords).map(
         mapLinbisAirToAirShipment,
       );
+
+      const airShipments = await enrichAirShipmentsWithRouteDetails(
+        mappedShipments,
+        { accessToken, refreshAccessToken, signal },
+      );
+
+      if (signal?.aborted) return;
 
       console.log(
         `${airShipments.length} air-shipments para ${activeUsername}`,
@@ -670,7 +719,11 @@ function AirShipmentsView({
       return;
     }
 
-    const cacheKey = `airShipmentsCache_${activeUsername}`;
+    const cacheKey = `${AIR_SHIPMENTS_CACHE_PREFIX}${activeUsername}`;
+    const legacyCacheKey = `airShipmentsCache_${activeUsername}`;
+    localStorage.removeItem(legacyCacheKey);
+    localStorage.removeItem(`${legacyCacheKey}_timestamp`);
+
     const cached = localStorage.getItem(cacheKey);
     const ts = localStorage.getItem(`${cacheKey}_timestamp`);
 
@@ -820,9 +873,11 @@ function AirShipmentsView({
       return;
     }
 
-    const cacheKey = `airShipmentsCache_${activeUsername}`;
+    const cacheKey = `${AIR_SHIPMENTS_CACHE_PREFIX}${activeUsername}`;
     localStorage.removeItem(cacheKey);
     localStorage.removeItem(`${cacheKey}_timestamp`);
+    localStorage.removeItem(`airShipmentsCache_${activeUsername}`);
+    localStorage.removeItem(`airShipmentsCache_${activeUsername}_timestamp`);
     setShipments([]);
     setDisplayedShipments([]);
     fetchAirShipments();
@@ -831,17 +886,26 @@ function AirShipmentsView({
   /*  Track Modal  */
   const isShipmentAlreadyTracked = (shipment: AirShipment): boolean => {
     if (trackedAwbs.size === 0) return false;
-    const awb = getTrackAwbNumber(shipment).replace(/[\s-]/g, "");
-    return !!awb && trackedAwbs.has(awb);
+    return getAirShipsgoLookupKeys(shipment).some((key) => trackedAwbs.has(key));
   };
 
   const getTrackAwbNumber = (shipment: AirShipment | null) => {
     if (!shipment) return "";
-    return shipment.trackingNumber || shipment.number || "";
+    return (
+      shipment.trackingNumber ||
+      shipment.waybillNumber ||
+      shipment.number ||
+      ""
+    );
   };
 
   const getDisplayedTrackAwbNumber = (shipment: AirShipment) => {
-    return shipment.trackingNumber || shipment.number || "-";
+    return (
+      shipment.trackingNumber ||
+      shipment.waybillNumber ||
+      shipment.number ||
+      "-"
+    );
   };
 
   const isTrackAwbReady = () => true;
@@ -1470,13 +1534,8 @@ function AirShipmentsView({
                   const isExpanded = expandedShipmentId === shipmentId;
                   const effectiveArrivalDisplayDate =
                     getEffectiveArrivalDisplayDate(shipment);
-                  const effectiveArrivalIsShipsgo = (() => {
-                    const awb = getTrackAwbNumber(shipment).replace(
-                      /[\s-]/g,
-                      "",
-                    );
-                    return !!(awb && shipsgoArrivalByAwb[awb]);
-                  })();
+                  const effectiveArrivalIsShipsgo =
+                    isAirArrivalFromShipsgo(shipment);
 
                   return (
                     <React.Fragment key={shipmentId}>
@@ -1499,7 +1558,7 @@ function AirShipmentsView({
                           {shipment.number || "---"}
                         </td>
                         <td className="osv-td osv-td--waybill">
-                          {shipment.executedAt?.name?.trim() || "-"}
+                          {formatAirportLabel(getOriginAirport(shipment))}
                         </td>
                         <td className="asv-td">
                           {shipment.customerReference || "-"}
@@ -1533,9 +1592,9 @@ function AirShipmentsView({
                                     Aeropuerto de Carga
                                   </span>
                                   <span className="asv-route-card__value">
-                                    {shipment.executedAt?.name
-                                      ? `${shipment.executedAt.name}${shipment.executedAt.code ? ` (${shipment.executedAt.code})` : ""}`
-                                      : "-"}
+                                    {formatAirportLabel(
+                                      getOriginAirport(shipment),
+                                    )}
                                   </span>
                                   {shipment.departure?.displayDate && (
                                     <span className="asv-route-card__date">
@@ -1569,9 +1628,9 @@ function AirShipmentsView({
                                     Aeropuerto de Descarga
                                   </span>
                                   <span className="asv-route-card__value">
-                                    {shipment.destination?.name
-                                      ? `${shipment.destination.name}${shipment.destination.code ? ` (${shipment.destination.code})` : ""}`
-                                      : "-"}
+                                    {formatAirportLabel(
+                                      getDestinationAirport(shipment),
+                                    )}
                                   </span>
                                   {effectiveArrivalDisplayDate && (
                                     <span className="asv-route-card__date">

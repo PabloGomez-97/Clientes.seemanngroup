@@ -192,8 +192,8 @@ function CreateOceanShipmentForm({
         };
         setError(
           errorMessages[response.status] ||
-            data.error ||
-            "Error al crear el trackeo.",
+          data.error ||
+          "Error al crear el trackeo.",
         );
         return;
       }
@@ -412,13 +412,12 @@ function CreateOceanShipmentForm({
               <input
                 type="text"
                 id="csf-identifier"
-                className={`csf-input csf-input--mono ${
-                  identifierValue
+                className={`csf-input csf-input--mono ${identifierValue
                     ? identifierValidation.valid
                       ? "csf-input--valid"
                       : "csf-input--invalid"
                     : ""
-                }`}
+                  }`}
                 placeholder={
                   identifierType === "container_number"
                     ? "MSCU1234567"
@@ -622,8 +621,8 @@ function CreateOceanShipmentForm({
               <div className="csf-modal-awb">
                 {String(
                   createdShipment?.container_number ||
-                    createdShipment?.booking_number ||
-                    "—",
+                  createdShipment?.booking_number ||
+                  "—",
                 )}
               </div>
               <p>

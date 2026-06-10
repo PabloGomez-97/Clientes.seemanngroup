@@ -286,6 +286,34 @@ function OceanShipmentsView({
     }
   };
 
+  const normalizeOceanTrackKey = (value?: string | null) =>
+    (value ?? "").replace(/[\s-]/g, "").toUpperCase();
+
+  const getOceanShipsgoLookupKeys = (shipment: OceanShippingOrder): string[] => {
+    const hbli = hbliCache[shipment.number];
+    const raw = [
+      shipment.trackingNumber,
+      shipment.bookingNumber,
+      hbli?.containerNumber,
+      shipment.waybillNumber,
+    ];
+    return [...new Set(raw.map(normalizeOceanTrackKey).filter(Boolean))];
+  };
+
+  const findShipsgoOceanEta = (
+    shipment: OceanShippingOrder,
+  ): string | undefined => {
+    for (const key of getOceanShipsgoLookupKeys(shipment)) {
+      if (shipsgoArrivalByNumber[key]) return shipsgoArrivalByNumber[key];
+    }
+    return undefined;
+  };
+
+  const isOceanArrivalFromShipsgo = (shipment: OceanShippingOrder): boolean =>
+    getOceanShipsgoLookupKeys(shipment).some(
+      (key) => shipsgoArrivalByNumber[key] || trackedOceanNumbers.has(key),
+    );
+
   const renderEtaBadge = () => (
     <span
       style={{
@@ -482,6 +510,19 @@ function OceanShipmentsView({
     },
     [accessToken, refreshAccessToken, hbliCache],
   );
+
+  useEffect(() => {
+    if (!accessToken) return;
+    for (const shipment of paginatedShipments) {
+      if (
+        !shipment.trackingNumber &&
+        !shipment.bookingNumber &&
+        shipment.number
+      ) {
+        void fetchHBLIForShipment(shipment.number);
+      }
+    }
+  }, [accessToken, paginatedShipments, fetchHBLIForShipment]);
 
   /* -- Quote number fetch (lazy on accordion open) ---------- */
   const fetchQuoteNumberForShipment = useCallback(
@@ -866,9 +907,9 @@ function OceanShipmentsView({
   const getTrackOceanNumber = (shipment: OceanShippingOrder | null) => {
     if (!shipment) return "";
     if (shipment.trackingNumber) return shipment.trackingNumber;
+    if (shipment.bookingNumber) return shipment.bookingNumber;
     const hbli = hbliCache[shipment.number];
     if (hbli?.containerNumber) return hbli.containerNumber;
-    if (shipment.bookingNumber) return shipment.bookingNumber;
     if (shipment.waybillNumber) return shipment.waybillNumber;
     return "";
   };
@@ -895,18 +936,17 @@ function OceanShipmentsView({
     shipment: OceanShippingOrder,
   ): boolean => {
     if (trackedOceanNumbers.size === 0) return false;
-    const num = getTrackOceanNumber(shipment).trim().toUpperCase();
-    return !!num && trackedOceanNumbers.has(num);
+    return getOceanShipsgoLookupKeys(shipment).some((key) =>
+      trackedOceanNumbers.has(key),
+    );
   };
 
   /** Fecha llegada: ShipsGo (naviera) si hay tracking activo; si no, Linbis */
   const getEffectiveArrivalDate = (
     shipment: OceanShippingOrder,
   ): string | null | undefined => {
-    const num = getTrackOceanNumber(shipment).trim().toUpperCase();
-    if (num && shipsgoArrivalByNumber[num]) {
-      return shipsgoArrivalByNumber[num];
-    }
+    const shipsgoEta = findShipsgoOceanEta(shipment);
+    if (shipsgoEta) return shipsgoEta;
     return shipment.arrivalDate;
   };
 
@@ -1671,10 +1711,8 @@ function OceanShipmentsView({
                   const shipmentId = shipment.id || shipment.number || index;
                   const isExpanded = expandedShipmentId === shipmentId;
                   const effectiveArrivalDate = getEffectiveArrivalDate(shipment);
-                  const effectiveArrivalIsShipsgo = (() => {
-                    const num = getTrackOceanNumber(shipment).trim().toUpperCase();
-                    return !!(num && shipsgoArrivalByNumber[num]);
-                  })();
+                  const effectiveArrivalIsShipsgo =
+                    isOceanArrivalFromShipsgo(shipment);
 
                   return (
                     <React.Fragment key={shipmentId}>

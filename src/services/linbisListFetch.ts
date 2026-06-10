@@ -1,4 +1,6 @@
+import type { AirShipment } from "../components/shipments/Handlers/Handlersairshipments";
 import { linbisFetch } from "./linbisFetch";
+import { mergeAirShipmentRouteFromDetail } from "./linbisShipmentMappers";
 
 /** Tamaño de página aceptado por la API Linbis (ItemsPerPage=100 devuelve 400). */
 export const LINBIS_PAGE_SIZE = 50;
@@ -135,4 +137,74 @@ export function consigneeMatches(
   if (!username) return false;
   const name = getConsigneeName(consignee);
   return name.toLowerCase() === username.toLowerCase();
+}
+
+function airShipmentHasRoute(shipment: AirShipment): boolean {
+  return !!(
+    shipment.executedAt?.name?.trim() || shipment.destination?.name?.trim()
+  );
+}
+
+/**
+ * El listado /air-shipments no incluye aeropuertos; los trae /air-shipments/details/{id}.
+ */
+export async function enrichAirShipmentsWithRouteDetails(
+  shipments: AirShipment[],
+  options: LinbisFetchOptions & { batchSize?: number },
+): Promise<AirShipment[]> {
+  const { accessToken, refreshAccessToken, signal, batchSize = 10 } = options;
+  const enriched: AirShipment[] = [];
+
+  for (let i = 0; i < shipments.length; i += batchSize) {
+    if (signal?.aborted) {
+      enriched.push(...shipments.slice(i));
+      break;
+    }
+
+    const batch = shipments.slice(i, i + batchSize);
+    const results = await Promise.allSettled(
+      batch.map(async (shipment) => {
+        if (!shipment.id || airShipmentHasRoute(shipment)) return shipment;
+
+        const response = refreshAccessToken
+          ? await linbisFetch(
+              `https://api.linbis.com/air-shipments/details/${shipment.id}`,
+              {
+                method: "GET",
+                headers: {
+                  Accept: "application/json",
+                  "Content-Type": "application/json",
+                },
+                signal,
+              },
+              accessToken,
+              refreshAccessToken,
+            )
+          : await fetch(
+              `https://api.linbis.com/air-shipments/details/${shipment.id}`,
+              {
+                method: "GET",
+                headers: {
+                  Authorization: `Bearer ${accessToken}`,
+                  Accept: "application/json",
+                  "Content-Type": "application/json",
+                },
+                signal,
+              },
+            );
+
+        if (!response.ok) return shipment;
+        const detail = await response.json();
+        return mergeAirShipmentRouteFromDetail(shipment, detail);
+      }),
+    );
+
+    results.forEach((result, index) => {
+      enriched.push(
+        result.status === "fulfilled" ? result.value : batch[index],
+      );
+    });
+  }
+
+  return enriched;
 }

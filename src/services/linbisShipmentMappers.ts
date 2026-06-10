@@ -52,8 +52,31 @@ function normalizeCarrier(
   return null;
 }
 
+/** Aeropuertos de carga/descarga según el shape real de Linbis (lista y detalle). */
+export function resolveAirRouteLocations(raw: RawRecord): {
+  origin: { code?: string; name?: string } | null;
+  destination: { code?: string; name?: string } | null;
+} {
+  const origin = normalizeLocation(
+    raw.executedAt ??
+      raw.airportOfDeparture ??
+      raw.from ??
+      raw.origin ??
+      raw.portOfLoading,
+  );
+  const destination = normalizeLocation(
+    raw.airportOfArrival ??
+      raw.to ??
+      raw.destination ??
+      raw.portOfUnloading,
+  );
+  return { origin, destination };
+}
+
 /** Convierte un registro de air-shipments Linbis al shape usado por AirShipmentsView. */
 export function mapLinbisAirToAirShipment(raw: RawRecord): AirShipment {
+  const { origin, destination } = resolveAirRouteLocations(raw);
+
   return {
     id: raw.id,
     number: raw.number,
@@ -62,14 +85,28 @@ export function mapLinbisAirToAirShipment(raw: RawRecord): AirShipment {
     carrier: normalizeCarrier(raw.carrier ?? raw.carrierBroker),
     notes: raw.notes ?? null,
     trackingNumber: raw.trackingNumber ?? null,
-    executedAt: raw.executedAt ?? null,
-    origin: normalizeLocation(raw.origin ?? raw.from),
-    destination: normalizeLocation(raw.destination ?? raw.to),
+    executedAt: origin,
+    origin,
+    destination,
     commodities: Array.isArray(raw.commodities) ? raw.commodities : [],
     departure: normalizeDateField(raw.departure ?? raw.departureDate),
     arrival: normalizeDateField(raw.arrival ?? raw.arrivalDate),
     cargoDescription: raw.cargoDescription ?? null,
     hazardous: typeof raw.hazardous === "boolean" ? raw.hazardous : null,
+  };
+}
+
+/** Completa origen/destino desde /air-shipments/details/{id}. */
+export function mergeAirShipmentRouteFromDetail(
+  shipment: AirShipment,
+  detail: RawRecord,
+): AirShipment {
+  const { origin, destination } = resolveAirRouteLocations(detail);
+  return {
+    ...shipment,
+    executedAt: origin ?? shipment.executedAt ?? null,
+    origin: origin ?? shipment.origin ?? null,
+    destination: destination ?? shipment.destination ?? null,
   };
 }
 

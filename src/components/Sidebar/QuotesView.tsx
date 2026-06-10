@@ -2,12 +2,22 @@
 import { useOutletContext, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { useClientOverride } from "../../contexts/ClientOverrideContext";
+import { useReporteriaClientesContext } from "../../contexts/ReporteriaClientesContext";
+import { useAuditLog } from "../../hooks/useAuditLog";
+import { useTrackingEmailPreferences } from "../../hooks/useTrackingEmailPreferences";
 import { useTranslation } from "react-i18next";
 import { imgUrl } from "../../config/images";
 import LoadingTips from "../shipments/LoadingTips";
 import { DocumentosSection } from "./Documents/DocumentosSection";
+import TrackingEmailSuggestions from "../tracking/TrackingEmailSuggestions";
 import { linbisFetch } from "../../services/linbisFetch";
 import { buildLinbisListParams } from "../../services/linbisListFetch";
+import {
+  addUniqueEmail,
+  MAX_VISIBLE_TRACK_FOLLOWERS,
+  OPERATIONS_FOLLOWER_EMAIL,
+} from "../../services/trackingEmailPreferences";
+import "../shipments/AirShipmentsView.css";
 import "./styles/QuotesView.css";
 
 interface OutletContext {
@@ -57,10 +67,65 @@ interface Quote {
   currentFlow?: string;
   cargoStatus?: string;
   modeOfTransportation?: string;
+  customFieldValues?: QuoteCustomFieldValue[];
   [key: string]: any;
 }
 
+function getQuoteTransportModeLabel(quote: Quote): string {
+  const mode = quote.modeOfTransportation;
+  if (typeof mode === "string") return mode;
+  if (mode && typeof mode === "object") {
+    const name = (mode as { name?: unknown }).name;
+    if (typeof name === "string") return name;
+  }
+  return "";
+}
+
+function isStrictQuoteAirMode(quote: Quote): boolean {
+  return getQuoteTransportModeLabel(quote)
+    .toLowerCase()
+    .includes("40 - air");
+}
+
+function isStrictQuoteSeaMode(quote: Quote): boolean {
+  const mode = getQuoteTransportModeLabel(quote).toLowerCase();
+  return mode.includes("10 - vessel") || mode.includes("11 - vessel");
+}
+
+function getQuoteTrackType(quote: Quote): "air" | "ocean" | null {
+  if (isStrictQuoteAirMode(quote)) return "air";
+  if (isStrictQuoteSeaMode(quote)) return "ocean";
+  return null;
+}
+
+function getQuoteTrackingNumber(quote: Quote): string {
+  const fields = quote.customFieldValues;
+  if (!Array.isArray(fields)) return "";
+  const entry = fields.find(
+    (field) => field.customFieldId === QUOTE_TRACKING_CUSTOM_FIELD_ID,
+  );
+  const value = entry?.value;
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function shouldShowQuoteTracking(quote: Quote): boolean {
+  return !!getQuoteTrackType(quote) && !!getQuoteTrackingNumber(quote);
+}
+
 const ITEMS_PER_PAGE = 10;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const QUOTE_TRACKING_CUSTOM_FIELD_ID = 14;
+const API_BASE_URL =
+  import.meta.env.MODE === "development"
+    ? "http://localhost:4000"
+    : "https://portalclientes.seemanngroup.com";
+
+interface QuoteCustomFieldValue {
+  customFieldId?: number;
+  fieldName?: string;
+  fieldType?: string;
+  value?: string;
+}
 
 /* -- Helpers ------------------------------------------------ */
 
@@ -275,6 +340,10 @@ function QuotesView({
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useTranslation();
+  const reporteriaClientesContext = useReporteriaClientesContext();
+  const { registrarEvento } = useAuditLog();
+  const { emails: savedTrackingEmails, remember: rememberTrackingEmails } =
+    useTrackingEmailPreferences(activeUsername);
 
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [displayedQuotes, setDisplayedQuotes] = useState<Quote[]>([]);
@@ -330,6 +399,17 @@ function QuotesView({
   const [filterDate, setFilterDate] = useState("");
   const [filterValidUntil, setFilterValidUntil] = useState("");
   const [filterTransit, setFilterTransit] = useState("");
+
+  const [trackedAirAwbs, setTrackedAirAwbs] = useState<Set<string>>(new Set());
+  const [trackedOceanNumbers, setTrackedOceanNumbers] = useState<Set<string>>(
+    new Set(),
+  );
+  const [showTrackModal, setShowTrackModal] = useState(false);
+  const [trackQuote, setTrackQuote] = useState<Quote | null>(null);
+  const [trackType, setTrackType] = useState<"air" | "ocean" | null>(null);
+  const [trackEmails, setTrackEmails] = useState<string[]>([""]);
+  const [trackLoading, setTrackLoading] = useState(false);
+  const [trackError, setTrackError] = useState<string | null>(null);
 
   const activeFilterCount = [
     filterNumber,
@@ -577,6 +657,279 @@ function QuotesView({
     return () => controller.abort();
   }, [accessToken, activeUsername]);
 
+  useEffect(() => {
+    setTrackedAirAwbs(new Set());
+    setTrackedOceanNumbers(new Set());
+  }, [activeUsername]);
+
+  useEffect(() => {
+    if (!activeUsername) return;
+
+    (async () => {
+      try {
+        const [airRes, oceanRes] = await Promise.all([
+          fetch(`${API_BASE_URL}/api/shipsgo/shipments`),
+          fetch(`${API_BASE_URL}/api/shipsgo/ocean/shipments`),
+        ]);
+
+        if (airRes.ok) {
+          const airData = await airRes.json();
+          const awbs = new Set<string>();
+          for (const shipment of airData.shipments ?? []) {
+            if (shipment.reference === activeUsername && shipment.awb_number) {
+              awbs.add(shipment.awb_number.replace(/[\s-]/g, ""));
+            }
+          }
+          setTrackedAirAwbs(awbs);
+        }
+
+        if (oceanRes.ok) {
+          const oceanData = await oceanRes.json();
+          const nums = new Set<string>();
+          for (const shipment of oceanData.shipments ?? []) {
+            if (shipment.reference !== activeUsername) continue;
+            if (shipment.container_number) {
+              nums.add(shipment.container_number.toUpperCase());
+            }
+            if (shipment.booking_number) {
+              nums.add(shipment.booking_number.toUpperCase());
+            }
+          }
+          setTrackedOceanNumbers(nums);
+        }
+      } catch {
+        /* ignore */
+      }
+    })();
+  }, [activeUsername]);
+
+  const isQuoteAlreadyTracked = (quote: Quote): boolean => {
+    const trackingNumber = getQuoteTrackingNumber(quote);
+    if (!trackingNumber) return false;
+
+    const type = getQuoteTrackType(quote);
+    if (type === "air") {
+      return trackedAirAwbs.has(trackingNumber.replace(/[\s-]/g, ""));
+    }
+    if (type === "ocean") {
+      return trackedOceanNumbers.has(trackingNumber.trim().toUpperCase());
+    }
+    return false;
+  };
+
+  const openTrackModal = (quote: Quote) => {
+    const type = getQuoteTrackType(quote);
+    if (!type || !getQuoteTrackingNumber(quote)) return;
+    setTrackQuote(quote);
+    setTrackType(type);
+    setTrackEmails([""]);
+    setTrackError(null);
+    setShowTrackModal(true);
+  };
+
+  const closeTrackModal = () => {
+    setShowTrackModal(false);
+    setTrackQuote(null);
+    setTrackType(null);
+    setTrackEmails([""]);
+    setTrackError(null);
+  };
+
+  const updateTrackEmail = (index: number, value: string) => {
+    setTrackEmails((prev) =>
+      prev.map((email, currentIndex) =>
+        currentIndex === index ? value : email,
+      ),
+    );
+  };
+
+  const addTrackEmailField = () => {
+    setTrackError(null);
+    setTrackEmails((prev) => {
+      if (prev.length >= MAX_VISIBLE_TRACK_FOLLOWERS) return prev;
+      return [...prev, ""];
+    });
+  };
+
+  const removeTrackEmailField = (index: number) => {
+    setTrackError(null);
+    setTrackEmails((prev) => {
+      if (prev.length === 1) return [""];
+      return prev.filter((_, currentIndex) => currentIndex !== index);
+    });
+  };
+
+  const handleSelectSuggestedTrackEmail = (email: string) => {
+    setTrackError(null);
+    setTrackEmails((prev) =>
+      addUniqueEmail(prev, email, MAX_VISIBLE_TRACK_FOLLOWERS),
+    );
+  };
+
+  const handleAddAllSuggestedTrackEmails = () => {
+    setTrackError(null);
+    setTrackEmails((prev) =>
+      savedTrackingEmails.reduce(
+        (currentEmails, email) =>
+          addUniqueEmail(currentEmails, email, MAX_VISIBLE_TRACK_FOLLOWERS),
+        prev,
+      ),
+    );
+  };
+
+  const handleTrackSubmit = async () => {
+    if (!trackQuote || !trackType) return;
+
+    const trackingNumber = getQuoteTrackingNumber(trackQuote).trim();
+    if (!trackingNumber) {
+      setTrackError("No se pudo obtener el número de seguimiento.");
+      return;
+    }
+
+    const normalizedEmails = trackEmails
+      .map((email) => email.trim())
+      .filter(Boolean)
+      .filter(
+        (email) =>
+          email.toLowerCase() !== OPERATIONS_FOLLOWER_EMAIL.toLowerCase(),
+      );
+
+    if (normalizedEmails.length === 0) {
+      setTrackError("Debes ingresar al menos un correo electrónico.");
+      return;
+    }
+
+    if (normalizedEmails.length > MAX_VISIBLE_TRACK_FOLLOWERS) {
+      setTrackError(
+        "Máximo 10 correos electrónicos visibles para seguimiento.",
+      );
+      return;
+    }
+
+    const invalidEmail = normalizedEmails.find(
+      (email) => !EMAIL_REGEX.test(email),
+    );
+    if (invalidEmail) {
+      setTrackError(`El correo ${invalidEmail} no es válido.`);
+      return;
+    }
+
+    const uniqueEmails = new Map<string, string>();
+    for (const email of normalizedEmails) {
+      const key = email.toLowerCase();
+      if (uniqueEmails.has(key)) {
+        setTrackError("No repitas correos electrónicos en el seguimiento.");
+        return;
+      }
+      uniqueEmails.set(key, email);
+    }
+
+    const followers = Array.from(uniqueEmails.values());
+
+    if (!token) {
+      setTrackError("Tu sesión expiró. Vuelve a iniciar sesión.");
+      return;
+    }
+
+    setTrackLoading(true);
+    setTrackError(null);
+
+    try {
+      let response: Response;
+
+      if (trackType === "air") {
+        const cleanAwb = trackingNumber.replace(/[\s-]/g, "");
+        response = await fetch(`${API_BASE_URL}/api/shipsgo/shipments`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            reference: activeUsername,
+            awb_number: cleanAwb,
+            followers,
+            tags: [],
+          }),
+        });
+      } else {
+        response = await fetch(`${API_BASE_URL}/api/shipsgo/ocean/shipments`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            reference: activeUsername,
+            carrier: "SG_XXXX",
+            booking_number: trackingNumber,
+            followers,
+            tags: [],
+          }),
+        });
+      }
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (response.status === 409) {
+          setTrackError("Ya existe un trackeo con este número en tu cuenta.");
+        } else if (response.status === 402) {
+          setTrackError(
+            "No hay créditos disponibles. Contacta a tu ejecutivo de cuenta.",
+          );
+        } else {
+          setTrackError(data.error || "Error al crear el trackeo.");
+        }
+        return;
+      }
+
+      void rememberTrackingEmails(followers).catch((rememberError) => {
+        console.error(
+          "No se pudieron guardar los correos usados en el tracking desde cotizaciones:",
+          rememberError,
+        );
+      });
+
+      if (trackType === "air") {
+        const cleanAwb = trackingNumber.replace(/[\s-]/g, "");
+        setTrackedAirAwbs((prev) => new Set(prev).add(cleanAwb));
+      } else {
+        setTrackedOceanNumbers((prev) =>
+          new Set(prev).add(trackingNumber.trim().toUpperCase()),
+        );
+      }
+
+      closeTrackModal();
+      registrarEvento({
+        accion: "TRACKING_CREADO",
+        categoria: "TRACKING",
+        descripcion: `Tracking ${trackType === "air" ? "aéreo" : "marítimo"} creado desde cotizaciones: ${trackingNumber}`,
+        detalles: {
+          tipo: trackType,
+          numero: trackingNumber,
+          cuenta: activeUsername,
+          quoteNumber: trackQuote.number,
+        },
+        clienteAfectado: activeUsername || undefined,
+      });
+
+      if (reporteriaClientesContext) {
+        reporteriaClientesContext.openTrackingTab(trackType);
+      } else {
+        navigate(
+          trackType === "air" ? "/trackings-aereo" : "/trackings-maritimo",
+        );
+      }
+    } catch {
+      setTrackError(
+        "Error de conexión. Verifica tu internet e intenta nuevamente.",
+      );
+    } finally {
+      setTrackLoading(false);
+    }
+  };
+
   /* -- Quick search ----------------------------------------- */
   useEffect(() => {
     const t = setTimeout(() => {
@@ -808,7 +1161,7 @@ function QuotesView({
         (q) =>
           q.validUntil_Date &&
           new Date(q.validUntil_Date).toISOString().split("T")[0] ===
-            filterValidUntil,
+          filterValidUntil,
       );
     }
     if (filterTransit.trim()) {
@@ -1645,8 +1998,8 @@ function QuotesView({
                                                 value={
                                                   quote.validUntil_Date
                                                     ? formatDateLong(
-                                                        quote.validUntil_Date,
-                                                      )
+                                                      quote.validUntil_Date,
+                                                    )
                                                     : null
                                                 }
                                               />
@@ -1675,6 +2028,72 @@ function QuotesView({
                                                 )}
                                                 value={quote.paymentType}
                                               />
+                                              {shouldShowQuoteTracking(
+                                                quote,
+                                              ) && (
+                                                <>
+                                                  <div
+                                                    className="asv-track-field"
+                                                    style={{
+                                                      gridColumn: "1 / -1",
+                                                    }}
+                                                  >
+                                                    <div className="asv-track-field__label">
+                                                      ¿Quieres trackear tu
+                                                      envío?
+                                                    </div>
+                                                    {isQuoteAlreadyTracked(
+                                                      quote,
+                                                    ) ? (
+                                                      <button
+                                                        className="asv-btn asv-btn--ghost asv-btn--sm"
+                                                        onClick={(e) => {
+                                                          e.stopPropagation();
+                                                          const type =
+                                                            getQuoteTrackType(
+                                                              quote,
+                                                            );
+                                                          if (
+                                                            reporteriaClientesContext &&
+                                                            type
+                                                          ) {
+                                                            reporteriaClientesContext.openTrackingTab(
+                                                              type,
+                                                            );
+                                                          } else {
+                                                            navigate(
+                                                              type === "air"
+                                                                ? "/trackings-aereo"
+                                                                : "/trackings-maritimo",
+                                                            );
+                                                          }
+                                                        }}
+                                                      >
+                                                        ✓ Ya está siendo
+                                                        trackeado — Ver
+                                                        seguimiento
+                                                      </button>
+                                                    ) : (
+                                                      <button
+                                                        className="asv-btn asv-btn--secondary asv-btn--sm"
+                                                        onClick={(e) => {
+                                                          e.stopPropagation();
+                                                          openTrackModal(quote);
+                                                        }}
+                                                      >
+                                                        Trackea tu envío
+                                                      </button>
+                                                    )}
+                                                  </div>
+                                                  <InfoField
+                                                    label="Número de seguimiento"
+                                                    value={getQuoteTrackingNumber(
+                                                      quote,
+                                                    )}
+                                                    fullWidth
+                                                  />
+                                                </>
+                                              )}
                                             </div>
                                           </div>
                                           <div className="qv-card">
@@ -2006,6 +2425,109 @@ function QuotesView({
         <div className="qv-empty">
           <p className="qv-empty__title">{t("quotesView.emptyTitle")}</p>
           <p className="qv-empty__subtitle">{t("quotesView.emptySubtitle")}</p>
+        </div>
+      )}
+
+      {showTrackModal && trackQuote && trackType && (
+        <div className="asv-overlay" onClick={closeTrackModal}>
+          <div
+            className="asv-modal asv-modal--search"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="asv-modal__title">Trackea tu envío</h3>
+
+            <div style={{ marginBottom: 16 }}>
+              <label className="asv-label">
+                {trackType === "air" ? "AWB Number" : "HBL Number"}
+              </label>
+              <input
+                className="asv-input"
+                type="text"
+                value={getQuoteTrackingNumber(trackQuote)}
+                disabled
+              />
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: 8,
+                  gap: 12,
+                }}
+              >
+                <label className="asv-label" style={{ marginBottom: 0 }}>
+                  Correo electrónico para seguimiento
+                </label>
+                <button
+                  type="button"
+                  className="asv-btn asv-btn--ghost asv-btn--sm"
+                  onClick={addTrackEmailField}
+                  disabled={trackEmails.length >= MAX_VISIBLE_TRACK_FOLLOWERS}
+                >
+                  +
+                </button>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {trackEmails.map((email, index) => (
+                  <div
+                    key={`quote-track-email-${index}`}
+                    style={{ display: "flex", gap: 8, alignItems: "center" }}
+                  >
+                    <input
+                      className="asv-input"
+                      type="email"
+                      value={email}
+                      onChange={(e) => updateTrackEmail(index, e.target.value)}
+                      placeholder={`Correo ${index + 1}`}
+                    />
+                    <button
+                      type="button"
+                      className="asv-btn asv-btn--ghost asv-btn--sm"
+                      onClick={() => removeTrackEmailField(index)}
+                      disabled={trackEmails.length === 1}
+                    >
+                      -
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <small className="asv-hint">
+                Puedes agregar hasta 9 correos visibles. El correo de operaciones
+                se agrega automáticamente.
+              </small>
+            </div>
+            <TrackingEmailSuggestions
+              savedEmails={savedTrackingEmails}
+              selectedEmails={trackEmails.filter((email) => email.trim())}
+              onSelectEmail={handleSelectSuggestedTrackEmail}
+              onAddAll={handleAddAllSuggestedTrackEmails}
+            />
+
+            {trackError && <div className="asv-error">{trackError}</div>}
+
+            <p className="asv-modal__question">
+              ¿Deseas generar el nuevo rastreo de tu envío?
+            </p>
+
+            <div className="asv-modal__actions">
+              <button
+                className="asv-btn asv-btn--ghost"
+                onClick={closeTrackModal}
+              >
+                No
+              </button>
+              <button
+                className="asv-btn asv-btn--primary"
+                onClick={handleTrackSubmit}
+                disabled={trackLoading}
+              >
+                {trackLoading ? "Creando" : "Sí"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
