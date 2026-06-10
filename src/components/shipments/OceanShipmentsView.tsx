@@ -30,6 +30,7 @@ import { linbisFetch } from "../../services/linbisFetch";
 import {
   buildLinbisListParams,
   consigneeMatches,
+  fetchShippingOrderTrackingIndex,
   LINBIS_PAGE_SIZE,
 } from "../../services/linbisListFetch";
 import { mapLinbisOceanToShippingOrder } from "../../services/linbisShipmentMappers";
@@ -91,6 +92,12 @@ interface HBLICacheEntry {
   fetched: boolean;
   hbliNumber: string | null;
   containerNumber: string | null;
+}
+
+interface TrackingNumberCacheEntry {
+  loading: boolean;
+  fetched: boolean;
+  byNumber: Record<string, string>;
 }
 
 interface QuoteNumberCacheEntry {
@@ -197,6 +204,54 @@ function OceanShipmentsView({
     {},
   );
 
+  // Tracking Number desde /api/shipping-orders (mismo índice que aéreo)
+  const [trackingIndex, setTrackingIndex] = useState<TrackingNumberCacheEntry>({
+    loading: false,
+    fetched: false,
+    byNumber: {},
+  });
+  const trackingIndexAbortRef = useRef<AbortController | null>(null);
+  const prevTrackingUsernameRef = useRef(activeUsername);
+
+  const loadTrackingIndex = useCallback(
+    (options?: { reset?: boolean }) => {
+      if (!accessToken || !activeUsername) return;
+
+      trackingIndexAbortRef.current?.abort();
+      const controller = new AbortController();
+      trackingIndexAbortRef.current = controller;
+
+      setTrackingIndex((prev) => ({
+        loading: true,
+        fetched: options?.reset ? false : prev.fetched,
+        byNumber: options?.reset ? {} : prev.byNumber,
+      }));
+
+      void (async () => {
+        try {
+          const byNumber = await fetchShippingOrderTrackingIndex(
+            activeUsername,
+            {
+              accessToken,
+              refreshAccessToken,
+              signal: controller.signal,
+            },
+          );
+          if (controller.signal.aborted) return;
+          setTrackingIndex({ loading: false, fetched: true, byNumber });
+        } catch {
+          if (controller.signal.aborted) return;
+          setTrackingIndex((prev) => ({
+            loading: false,
+            fetched: true,
+            byNumber: prev.byNumber,
+          }));
+        }
+      })();
+    },
+    [accessToken, activeUsername, refreshAccessToken],
+  );
+
   // Quote number cache
   const [quoteNumberCache, setQuoteNumberCache] = useState<
     Record<string, QuoteNumberCacheEntry>
@@ -289,10 +344,26 @@ function OceanShipmentsView({
   const normalizeOceanTrackKey = (value?: string | null) =>
     (value ?? "").replace(/[\s-]/g, "").toUpperCase();
 
+  const resolveShippingOrderTracking = (
+    shipment: OceanShippingOrder,
+  ): string | null => {
+    const shipmentNumber = shipment.number?.trim();
+    if (shipmentNumber && trackingIndex.byNumber[shipmentNumber]) {
+      return trackingIndex.byNumber[shipmentNumber];
+    }
+    if (
+      typeof shipment.trackingNumber === "string" &&
+      shipment.trackingNumber.trim()
+    ) {
+      return shipment.trackingNumber.trim();
+    }
+    return null;
+  };
+
   const getOceanShipsgoLookupKeys = (shipment: OceanShippingOrder): string[] => {
     const hbli = hbliCache[shipment.number];
     const raw = [
-      shipment.trackingNumber,
+      resolveShippingOrderTracking(shipment),
       shipment.bookingNumber,
       hbli?.containerNumber,
       shipment.waybillNumber,
@@ -515,14 +586,14 @@ function OceanShipmentsView({
     if (!accessToken) return;
     for (const shipment of paginatedShipments) {
       if (
-        !shipment.trackingNumber &&
+        !resolveShippingOrderTracking(shipment) &&
         !shipment.bookingNumber &&
         shipment.number
       ) {
         void fetchHBLIForShipment(shipment.number);
       }
     }
-  }, [accessToken, paginatedShipments, fetchHBLIForShipment]);
+  }, [accessToken, paginatedShipments, fetchHBLIForShipment, trackingIndex]);
 
   /* -- Quote number fetch (lazy on accordion open) ---------- */
   const fetchQuoteNumberForShipment = useCallback(
@@ -854,6 +925,13 @@ function OceanShipmentsView({
     setShipsgoArrivalByNumber({});
   }, [activeUsername]);
 
+  useEffect(() => {
+    const reset = prevTrackingUsernameRef.current !== activeUsername;
+    prevTrackingUsernameRef.current = activeUsername;
+    loadTrackingIndex({ reset });
+    return () => trackingIndexAbortRef.current?.abort();
+  }, [loadTrackingIndex, activeUsername]);
+
   // Fetch tracked ocean shipments from ShipsGo
   useEffect(() => {
     if (!activeUsername) return;
@@ -906,7 +984,8 @@ function OceanShipmentsView({
   /* -- Tracking helpers ------------------------------------- */
   const getTrackOceanNumber = (shipment: OceanShippingOrder | null) => {
     if (!shipment) return "";
-    if (shipment.trackingNumber) return shipment.trackingNumber;
+    const shippingOrderTracking = resolveShippingOrderTracking(shipment);
+    if (shippingOrderTracking) return shippingOrderTracking;
     if (shipment.bookingNumber) return shipment.bookingNumber;
     const hbli = hbliCache[shipment.number];
     if (hbli?.containerNumber) return hbli.containerNumber;
@@ -915,18 +994,22 @@ function OceanShipmentsView({
   };
 
   const getDisplayedTrackingNumber = (shipment: OceanShippingOrder) => {
-    if (shipment.trackingNumber) return shipment.trackingNumber;
+    const shippingOrderTracking = resolveShippingOrderTracking(shipment);
+    if (shippingOrderTracking) return shippingOrderTracking;
     const hbli = hbliCache[shipment.number];
     if (hbli?.loading) return "Cargando...";
     if (hbli?.fetched && hbli.containerNumber) return hbli.containerNumber;
     if (shipment.bookingNumber) return shipment.bookingNumber;
     if (shipment.waybillNumber) return shipment.waybillNumber;
-    if (!hbli?.fetched) return "Cargando...";
+    if (trackingIndex.loading || !trackingIndex.fetched || !hbli?.fetched) {
+      return "Cargando...";
+    }
     return "-";
   };
 
   const isTrackingReady = (shipment: OceanShippingOrder) => {
-    if (shipment.trackingNumber) return true;
+    if (resolveShippingOrderTracking(shipment)) return true;
+    if (trackingIndex.loading) return false;
     const hbli = hbliCache[shipment.number];
     if (hbli?.loading) return false;
     return !!getTrackOceanNumber(shipment);
@@ -1254,6 +1337,7 @@ function OceanShipmentsView({
     localStorage.removeItem(`${cacheKey}_timestamp`);
     localStorage.removeItem(OCEAN_ALL_CACHE_KEY);
     localStorage.removeItem(OCEAN_ALL_CACHE_TS_KEY);
+    loadTrackingIndex();
     setOceanShipments([]);
     setDisplayedOceanShipments([]);
     fetchOceanShipments();

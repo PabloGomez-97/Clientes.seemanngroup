@@ -27,6 +27,7 @@ import {
   buildLinbisListParams,
   fetchAirShipmentRouteDetail,
   fetchAllLinbisByConsignee,
+  fetchShippingOrderTrackingIndex,
   LINBIS_PAGE_SIZE,
 } from "../../services/linbisListFetch";
 import {
@@ -36,7 +37,7 @@ import {
 
 const ITEMS_PER_PAGE = 10;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const AIR_SHIPMENTS_CACHE_PREFIX = "airShipmentsCache_v2_";
+const AIR_SHIPMENTS_CACHE_PREFIX = "airShipmentsCache_v3_";
 
 /*  DetailTabs  */
 interface TabDef {
@@ -65,6 +66,12 @@ interface AirRouteCacheEntry {
   fetched: boolean;
   executedAt: { code?: string; name?: string } | null;
   destination: { code?: string; name?: string } | null;
+}
+
+interface TrackingNumberCacheEntry {
+  loading: boolean;
+  fetched: boolean;
+  byNumber: Record<string, string>;
 }
 
 function DetailTabs({ tabs }: { tabs: TabDef[] }) {
@@ -273,6 +280,13 @@ function AirShipmentsView({
     Record<string | number, AirRouteCacheEntry>
   >({});
 
+  // Tracking Number (AWB) — índice desde /api/shipping-orders por número SOG
+  const [trackingIndex, setTrackingIndex] = useState<TrackingNumberCacheEntry>({
+    loading: false,
+    fetched: false,
+    byNumber: {},
+  });
+
   // Already-tracked AWBs (from ShipsGo)
   const [trackedAwbs, setTrackedAwbs] = useState<Set<string>>(new Set());
   /** ETA aerolínea (route.destination.date_of_rcf) por AWB, desde ShipsGo */
@@ -290,6 +304,47 @@ function AirShipmentsView({
   const appliedInitialFilterRef = useRef("");
   const routeInFlightRef = useRef<Set<string | number>>(new Set());
   const routeFetchedRef = useRef<Set<string | number>>(new Set());
+  const trackingIndexAbortRef = useRef<AbortController | null>(null);
+  const prevTrackingUsernameRef = useRef(activeUsername);
+
+  const loadTrackingIndex = useCallback(
+    (options?: { reset?: boolean }) => {
+      if (!accessToken || !activeUsername) return;
+
+      trackingIndexAbortRef.current?.abort();
+      const controller = new AbortController();
+      trackingIndexAbortRef.current = controller;
+
+      setTrackingIndex((prev) => ({
+        loading: true,
+        fetched: options?.reset ? false : prev.fetched,
+        byNumber: options?.reset ? {} : prev.byNumber,
+      }));
+
+      void (async () => {
+        try {
+          const byNumber = await fetchShippingOrderTrackingIndex(
+            activeUsername,
+            {
+              accessToken,
+              refreshAccessToken,
+              signal: controller.signal,
+            },
+          );
+          if (controller.signal.aborted) return;
+          setTrackingIndex({ loading: false, fetched: true, byNumber });
+        } catch {
+          if (controller.signal.aborted) return;
+          setTrackingIndex((prev) => ({
+            loading: false,
+            fetched: true,
+            byNumber: prev.byNumber,
+          }));
+        }
+      })();
+    },
+    [accessToken, activeUsername, refreshAccessToken],
+  );
   const [showingAll, setShowingAll] = useState(false);
 
   // Focus states for floating labels
@@ -383,12 +438,19 @@ function AirShipmentsView({
   const normalizeAirAwbKey = (value?: string | null) =>
     (value ?? "").replace(/[\s-]/g, "");
 
+  const resolveTrackingNumber = (shipment: AirShipment): string | null => {
+    const shipmentNumber = shipment.number?.trim();
+    if (shipmentNumber && trackingIndex.byNumber[shipmentNumber]) {
+      return trackingIndex.byNumber[shipmentNumber];
+    }
+    if (typeof shipment.trackingNumber === "string" && shipment.trackingNumber.trim()) {
+      return shipment.trackingNumber.trim();
+    }
+    return null;
+  };
+
   const getAirShipsgoLookupKeys = (shipment: AirShipment): string[] => {
-    const raw = [
-      shipment.trackingNumber,
-      shipment.waybillNumber,
-      shipment.number,
-    ];
+    const raw = [resolveTrackingNumber(shipment), shipment.number];
     return [...new Set(raw.map(normalizeAirAwbKey).filter(Boolean))];
   };
 
@@ -743,6 +805,13 @@ function AirShipmentsView({
     }
   }, [accessToken, paginatedShipments, fetchRouteForShipment]);
 
+  useEffect(() => {
+    const reset = prevTrackingUsernameRef.current !== activeUsername;
+    prevTrackingUsernameRef.current = activeUsername;
+    loadTrackingIndex({ reset });
+    return () => trackingIndexAbortRef.current?.abort();
+  }, [loadTrackingIndex, activeUsername]);
+
   /*  Accordion  */
   const toggleAccordion = (shipmentId: string | number) => {
     if (expandedShipmentId === shipmentId) {
@@ -820,9 +889,11 @@ function AirShipmentsView({
     }
 
     const cacheKey = `${AIR_SHIPMENTS_CACHE_PREFIX}${activeUsername}`;
-    const legacyCacheKey = `airShipmentsCache_${activeUsername}`;
-    localStorage.removeItem(legacyCacheKey);
-    localStorage.removeItem(`${legacyCacheKey}_timestamp`);
+    for (const legacyPrefix of ["airShipmentsCache_", "airShipmentsCache_v2_"]) {
+      const legacyCacheKey = `${legacyPrefix}${activeUsername}`;
+      localStorage.removeItem(legacyCacheKey);
+      localStorage.removeItem(`${legacyCacheKey}_timestamp`);
+    }
 
     const cached = localStorage.getItem(cacheKey);
     const ts = localStorage.getItem(`${cacheKey}_timestamp`);
@@ -981,6 +1052,7 @@ function AirShipmentsView({
     setRouteCache({});
     routeInFlightRef.current.clear();
     routeFetchedRef.current.clear();
+    loadTrackingIndex();
     setShipments([]);
     setDisplayedShipments([]);
     fetchAirShipments();
@@ -994,24 +1066,23 @@ function AirShipmentsView({
 
   const getTrackAwbNumber = (shipment: AirShipment | null) => {
     if (!shipment) return "";
-    return (
-      shipment.trackingNumber ||
-      shipment.waybillNumber ||
-      shipment.number ||
-      ""
-    );
+    const trackingNumber = resolveTrackingNumber(shipment);
+    return trackingNumber || shipment.number || "";
   };
 
   const getDisplayedTrackAwbNumber = (shipment: AirShipment) => {
-    return (
-      shipment.trackingNumber ||
-      shipment.waybillNumber ||
-      shipment.number ||
-      "-"
-    );
+    if (trackingIndex.loading && !resolveTrackingNumber(shipment)) {
+      return "Cargando...";
+    }
+    const trackingNumber = resolveTrackingNumber(shipment);
+    return trackingNumber || shipment.number || "-";
   };
 
-  const isTrackAwbReady = () => true;
+  const isTrackAwbReady = (shipment: AirShipment) => {
+    if (trackingIndex.loading) return !!resolveTrackingNumber(shipment);
+    if (trackingIndex.fetched) return true;
+    return !!getTrackAwbNumber(shipment).trim();
+  };
 
   const openTrackModal = (shipment: AirShipment) => {
     setTrackShipment(shipment);
@@ -1888,7 +1959,7 @@ function AirShipmentsView({
                                                 </div>
                                                 {(() => {
                                                   const isTrackReady =
-                                                    isTrackAwbReady();
+                                                    isTrackAwbReady(shipment);
 
                                                   return isShipmentAlreadyTracked(
                                                     shipment,

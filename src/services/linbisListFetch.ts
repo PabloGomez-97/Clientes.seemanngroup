@@ -199,3 +199,77 @@ export async function fetchAirShipmentRouteDetail(
     destination: enriched.destination ?? null,
   };
 }
+
+/** Índice number → trackingNumber desde /api/shipping-orders (ids distintos a /air-shipments). */
+export async function fetchShippingOrderTrackingIndex(
+  consigneeName: string,
+  options: LinbisFetchOptions,
+): Promise<Record<string, string>> {
+  const { accessToken, refreshAccessToken, signal, maxPages = 40 } = options;
+  const index: Record<string, string> = {};
+  let page = 1;
+  const pageSize = 100;
+
+  while (page <= maxPages) {
+    if (signal?.aborted) break;
+
+    const params = new URLSearchParams({
+      ConsigneeName: consigneeName,
+      PageNumber: page.toString(),
+      PageSize: pageSize.toString(),
+    });
+    const url = `https://api.linbis.com/api/shipping-orders?${params}`;
+
+    const response = refreshAccessToken
+      ? await linbisFetch(
+          url,
+          {
+            method: "GET",
+            headers: {
+              Accept: "application/json",
+              "Content-Type": "application/json",
+            },
+            signal,
+          },
+          accessToken,
+          refreshAccessToken,
+        )
+      : await fetch(url, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: "application/json",
+            "Content-Type": "application/json",
+          },
+          signal,
+        });
+
+    if (!response.ok) {
+      if (page === 1) return index;
+      break;
+    }
+
+    const data = (await response.json()) as {
+      shippingOrders?: { items?: Array<Record<string, unknown>> };
+    };
+    const items = data.shippingOrders?.items ?? [];
+    if (!items.length) break;
+
+    for (const order of items) {
+      const number =
+        typeof order.number === "string" ? order.number.trim() : "";
+      const trackingNumber =
+        typeof order.trackingNumber === "string"
+          ? order.trackingNumber.trim()
+          : "";
+      if (number && trackingNumber) {
+        index[number] = trackingNumber;
+      }
+    }
+
+    if (items.length < pageSize) break;
+    page++;
+  }
+
+  return index;
+}
