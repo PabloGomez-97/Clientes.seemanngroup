@@ -139,72 +139,63 @@ export function consigneeMatches(
   return name.toLowerCase() === username.toLowerCase();
 }
 
+export type AirRouteLocations = {
+  executedAt: { code?: string; name?: string } | null;
+  destination: { code?: string; name?: string } | null;
+};
+
 function airShipmentHasRoute(shipment: AirShipment): boolean {
   return !!(
     shipment.executedAt?.name?.trim() || shipment.destination?.name?.trim()
   );
 }
 
-/**
- * El listado /air-shipments no incluye aeropuertos; los trae /air-shipments/details/{id}.
- */
-export async function enrichAirShipmentsWithRouteDetails(
-  shipments: AirShipment[],
-  options: LinbisFetchOptions & { batchSize?: number },
-): Promise<AirShipment[]> {
-  const { accessToken, refreshAccessToken, signal, batchSize = 10 } = options;
-  const enriched: AirShipment[] = [];
+/** Aeropuertos de un envío vía /air-shipments/details/{id} (el listado no los incluye). */
+export async function fetchAirShipmentRouteDetail(
+  shipment: AirShipment,
+  options: LinbisFetchOptions,
+): Promise<AirRouteLocations> {
+  const fallback: AirRouteLocations = {
+    executedAt: shipment.executedAt ?? shipment.origin ?? null,
+    destination: shipment.destination ?? null,
+  };
 
-  for (let i = 0; i < shipments.length; i += batchSize) {
-    if (signal?.aborted) {
-      enriched.push(...shipments.slice(i));
-      break;
-    }
+  if (!shipment.id || airShipmentHasRoute(shipment)) return fallback;
 
-    const batch = shipments.slice(i, i + batchSize);
-    const results = await Promise.allSettled(
-      batch.map(async (shipment) => {
-        if (!shipment.id || airShipmentHasRoute(shipment)) return shipment;
-
-        const response = refreshAccessToken
-          ? await linbisFetch(
-              `https://api.linbis.com/air-shipments/details/${shipment.id}`,
-              {
-                method: "GET",
-                headers: {
-                  Accept: "application/json",
-                  "Content-Type": "application/json",
-                },
-                signal,
-              },
-              accessToken,
-              refreshAccessToken,
-            )
-          : await fetch(
-              `https://api.linbis.com/air-shipments/details/${shipment.id}`,
-              {
-                method: "GET",
-                headers: {
-                  Authorization: `Bearer ${accessToken}`,
-                  Accept: "application/json",
-                  "Content-Type": "application/json",
-                },
-                signal,
-              },
-            );
-
-        if (!response.ok) return shipment;
-        const detail = await response.json();
-        return mergeAirShipmentRouteFromDetail(shipment, detail);
-      }),
-    );
-
-    results.forEach((result, index) => {
-      enriched.push(
-        result.status === "fulfilled" ? result.value : batch[index],
+  const { accessToken, refreshAccessToken, signal } = options;
+  const response = refreshAccessToken
+    ? await linbisFetch(
+        `https://api.linbis.com/air-shipments/details/${shipment.id}`,
+        {
+          method: "GET",
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+          },
+          signal,
+        },
+        accessToken,
+        refreshAccessToken,
+      )
+    : await fetch(
+        `https://api.linbis.com/air-shipments/details/${shipment.id}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: "application/json",
+            "Content-Type": "application/json",
+          },
+          signal,
+        },
       );
-    });
-  }
 
-  return enriched;
+  if (!response.ok) return fallback;
+
+  const detail = await response.json();
+  const enriched = mergeAirShipmentRouteFromDetail(shipment, detail);
+  return {
+    executedAt: enriched.executedAt ?? null,
+    destination: enriched.destination ?? null,
+  };
 }
