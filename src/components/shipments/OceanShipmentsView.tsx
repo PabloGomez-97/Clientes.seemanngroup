@@ -994,25 +994,33 @@ function OceanShipmentsView({
   };
 
   const getDisplayedTrackingNumber = (shipment: OceanShippingOrder) => {
+    if (isTrackingLoading(shipment)) return "Cargando...";
     const shippingOrderTracking = resolveShippingOrderTracking(shipment);
     if (shippingOrderTracking) return shippingOrderTracking;
     const hbli = hbliCache[shipment.number];
-    if (hbli?.loading) return "Cargando...";
-    if (hbli?.fetched && hbli.containerNumber) return hbli.containerNumber;
+    if (hbli?.containerNumber) return hbli.containerNumber;
     if (shipment.bookingNumber) return shipment.bookingNumber;
     if (shipment.waybillNumber) return shipment.waybillNumber;
-    if (trackingIndex.loading || !trackingIndex.fetched || !hbli?.fetched) {
-      return "Cargando...";
-    }
     return "-";
   };
 
+  const needsHbliResolution = (shipment: OceanShippingOrder) =>
+    !resolveShippingOrderTracking(shipment) && !shipment.bookingNumber?.trim();
+
+  const isTrackingLoading = (shipment: OceanShippingOrder): boolean => {
+    if (resolveShippingOrderTracking(shipment)) return false;
+    if (shipment.bookingNumber?.trim()) return false;
+    if (trackingIndex.loading || !trackingIndex.fetched) return true;
+    if (needsHbliResolution(shipment)) {
+      const hbli = hbliCache[shipment.number];
+      if (!hbli || hbli.loading || !hbli.fetched) return true;
+    }
+    return false;
+  };
+
   const isTrackingReady = (shipment: OceanShippingOrder) => {
-    if (resolveShippingOrderTracking(shipment)) return true;
-    if (trackingIndex.loading) return false;
-    const hbli = hbliCache[shipment.number];
-    if (hbli?.loading) return false;
-    return !!getTrackOceanNumber(shipment);
+    if (isTrackingLoading(shipment)) return false;
+    return !!getTrackOceanNumber(shipment).trim();
   };
 
   const isOceanShipmentAlreadyTracked = (
@@ -1034,6 +1042,7 @@ function OceanShipmentsView({
   };
 
   const openTrackModal = (shipment: OceanShippingOrder) => {
+    if (!isTrackingReady(shipment)) return;
     setTrackShipment(shipment);
     setTrackEmails([""]);
     setTrackError(null);
@@ -2087,6 +2096,8 @@ function OceanShipmentsView({
                                                   ¿Quieres trackear tu envío?
                                                 </div>
                                                 {(() => {
+                                                  const trackLoading =
+                                                    isTrackingLoading(shipment);
                                                   const trackReady =
                                                     isTrackingReady(shipment);
 
@@ -2123,16 +2134,23 @@ function OceanShipmentsView({
                                                           shipment,
                                                         );
                                                       }}
-                                                      disabled={!trackReady}
+                                                      disabled={
+                                                        !trackReady ||
+                                                        trackLoading
+                                                      }
                                                       title={
                                                         trackReady
                                                           ? undefined
-                                                          : "Espera a que se cargue el Número de Seguimiento."
+                                                          : trackLoading
+                                                            ? "Espera a que se cargue el Número de Seguimiento."
+                                                            : "No hay número de seguimiento disponible para este envío."
                                                       }
                                                     >
-                                                      {trackReady
-                                                        ? "Trackea tu envío"
-                                                        : "Cargando número de seg..."}
+                                                      {trackLoading
+                                                        ? "Cargando número de seg..."
+                                                        : trackReady
+                                                          ? "Trackea tu envío"
+                                                          : "Sin número de seguimiento"}
                                                     </button>
                                                   );
                                                 })()}

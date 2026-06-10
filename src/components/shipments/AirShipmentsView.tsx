@@ -1071,20 +1071,28 @@ function AirShipmentsView({
   };
 
   const getDisplayedTrackAwbNumber = (shipment: AirShipment) => {
-    if (trackingIndex.loading && !resolveTrackingNumber(shipment)) {
+    if (isTrackAwbLoading(shipment)) {
       return "Cargando...";
     }
     const trackingNumber = resolveTrackingNumber(shipment);
     return trackingNumber || shipment.number || "-";
   };
 
+  const hasConfirmedAwb = (shipment: AirShipment): boolean =>
+    !!resolveTrackingNumber(shipment);
+
+  const isTrackAwbLoading = (shipment: AirShipment): boolean => {
+    if (hasConfirmedAwb(shipment)) return false;
+    return trackingIndex.loading || !trackingIndex.fetched;
+  };
+
   const isTrackAwbReady = (shipment: AirShipment) => {
-    if (trackingIndex.loading) return !!resolveTrackingNumber(shipment);
-    if (trackingIndex.fetched) return true;
-    return !!getTrackAwbNumber(shipment).trim();
+    if (isTrackAwbLoading(shipment)) return false;
+    return hasConfirmedAwb(shipment);
   };
 
   const openTrackModal = (shipment: AirShipment) => {
+    if (!isTrackAwbReady(shipment)) return;
     setTrackShipment(shipment);
     setTrackEmails([""]);
     setTrackError(null);
@@ -1958,6 +1966,8 @@ function AirShipmentsView({
                                                   ¿Quieres trackear tu envío?
                                                 </div>
                                                 {(() => {
+                                                  const trackLoading =
+                                                    isTrackAwbLoading(shipment);
                                                   const isTrackReady =
                                                     isTrackAwbReady(shipment);
 
@@ -1995,16 +2005,23 @@ function AirShipmentsView({
                                                           shipment,
                                                         );
                                                       }}
-                                                      disabled={!isTrackReady}
+                                                      disabled={
+                                                        !isTrackReady ||
+                                                        trackLoading
+                                                      }
                                                       title={
                                                         isTrackReady
                                                           ? undefined
-                                                          : "Espera a que se cargue el Número de Seguimiento."
+                                                          : trackLoading
+                                                            ? "Espera a que se cargue el Número de Seguimiento."
+                                                            : "No hay número de seguimiento disponible para este envío."
                                                       }
                                                     >
-                                                      {isTrackReady
-                                                        ? "Trackea tu envío"
-                                                        : "Cargando número de seg..."}
+                                                      {trackLoading
+                                                        ? "Cargando número de seg..."
+                                                        : isTrackReady
+                                                          ? "Trackea tu envío"
+                                                          : "Sin número de seguimiento"}
                                                     </button>
                                                   );
                                                 })()}
