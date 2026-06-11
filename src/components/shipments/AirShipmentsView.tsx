@@ -18,8 +18,6 @@ import {
 import {
   type OutletContext,
   type AirShipment,
-  InfoField,
-  CommoditiesSection,
 } from "../shipments/Handlers/Handlersairshipments";
 import { MUNDOGAMING_DUMMY_SHIPMENTS } from "./Handlers/mundogamingDummyData";
 import { linbisFetch } from "../../services/linbisFetch";
@@ -101,122 +99,333 @@ function DetailTabs({ tabs }: { tabs: TabDef[] }) {
   );
 }
 
-/* -- CargoTabContent: lazy-loads cargoDescription + hazardous on mount -- */
-interface CargoTabContentProps {
+function formatFieldValue(value: unknown): string {
+  if (value === null || value === undefined || value === "") return "-";
+  if (typeof value === "boolean") return value ? "Sí" : "No";
+  return String(value);
+}
+
+function FieldGridSection({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="asv-field-section">
+      <h4 className="asv-field-section__title">{title}</h4>
+      <div className="asv-field-grid">{children}</div>
+    </section>
+  );
+}
+
+function FieldGridCell({
+  label,
+  value,
+  accent,
+  onClick,
+  children,
+  action,
+}: {
+  label: string;
+  value?: unknown;
+  accent?: boolean;
+  onClick?: (e: React.MouseEvent) => void;
+  children?: React.ReactNode;
+  action?: boolean;
+}) {
+  const display = formatFieldValue(value);
+  const cellClass = action
+    ? "asv-field-cell asv-field-cell--action"
+    : "asv-field-cell";
+
+  return (
+    <div className={cellClass}>
+      {label ? <span className="asv-field-cell__label">{label}</span> : null}
+      {children ?? (
+        <span
+          className={`asv-field-cell__value${display === "-" ? " asv-field-cell__value--muted" : ""}${accent ? " asv-field-cell__value--accent" : ""}`}
+          onClick={onClick}
+          role={onClick ? "button" : undefined}
+          tabIndex={onClick ? 0 : undefined}
+          onKeyDown={
+            onClick
+              ? (e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onClick(e as unknown as React.MouseEvent);
+                  }
+                }
+              : undefined
+          }
+        >
+          {display}
+        </span>
+      )}
+    </div>
+  );
+}
+
+interface GeneralTabContentProps {
   shipment: AirShipment;
   cargoDetail: CargoDetailCacheEntry | undefined;
-  onMount: (
+  quoteEntry: QuoteNumberCacheEntry | undefined;
+  effectiveArrivalDisplayDate: string;
+  onMountCargo: (
     shipmentId: string | number | undefined,
     number: string | undefined,
   ) => void;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   getAllCommodities: (s: AirShipment) => any[];
+  formatDate: (dateObj: unknown) => string;
+  getDisplayedTrackAwbNumber: (s: AirShipment) => string;
+  isTrackAwbLoading: (s: AirShipment) => boolean;
+  isTrackAwbReady: (s: AirShipment) => boolean;
+  isShipmentAlreadyTracked: (s: AirShipment) => boolean;
+  openTrackModal: (s: AirShipment) => void;
+  onOpenTracking: () => void;
+  onOpenQuote: (quoteNumber: string) => void;
 }
 
-function CargoTabContent({
+function GeneralTabContent({
   shipment,
   cargoDetail,
-  onMount,
+  quoteEntry,
+  effectiveArrivalDisplayDate,
+  onMountCargo,
   getAllCommodities,
-}: CargoTabContentProps) {
+  formatDate,
+  getDisplayedTrackAwbNumber,
+  isTrackAwbLoading,
+  isTrackAwbReady,
+  isShipmentAlreadyTracked,
+  openTrackModal,
+  onOpenTracking,
+  onOpenQuote,
+}: GeneralTabContentProps) {
   useEffect(() => {
-    onMount(shipment.id, shipment.number);
+    onMountCargo(shipment.id, shipment.number);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shipment.id]);
 
+  const comms = getAllCommodities(shipment);
+  const packageTypes = new Set<string>();
+  for (const c of comms) {
+    if (c.packageType?.description) {
+      packageTypes.add(c.packageType.description);
+    }
+  }
+  const totalPieces = comms.reduce(
+    (sum: number, c: { pieces?: number }) => sum + (c.pieces || 0),
+    0,
+  );
+  const totalWeight = comms.reduce(
+    (sum: number, c: { totalWeightValue?: number }) =>
+      sum + (c.totalWeightValue || 0),
+    0,
+  );
+  const totalVolume = comms.reduce(
+    (sum: number, c: { totalVolumeValue?: number }) =>
+      sum + (c.totalVolumeValue || 0),
+    0,
+  );
+
+  const cargoDescription = cargoDetail?.loading
+    ? "Cargando..."
+    : (cargoDetail?.cargoDescription ?? shipment.cargoDescription);
+
+  const hazardousDisplay = cargoDetail?.loading
+    ? "Cargando..."
+    : cargoDetail?.hazardous != null
+      ? cargoDetail.hazardous
+      : undefined;
+
+  const trackLoading = isTrackAwbLoading(shipment);
+  const isTrackReady = isTrackAwbReady(shipment);
+  const alreadyTracked = isShipmentAlreadyTracked(shipment);
+
   return (
-    <div>
-      <div
-        className="asv-cards-grid"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(2, 1fr)",
-          gap: "16px",
-          marginBottom: 16,
-        }}
-      >
-        <div className="asv-card">
-          <h4>Descripción Carga</h4>
-          <div className="asv-info-grid">
-            <InfoField
-              label="Descripción de Carga"
-              value={
-                cargoDetail?.loading
-                  ? "Cargando..."
-                  : (cargoDetail?.cargoDescription ?? null)
+    <div className="asv-field-sections">
+      <FieldGridSection title="Detalles del envío">
+        <FieldGridCell label="Número de envío" value={shipment.number} />
+        <FieldGridCell
+          label="Referencia cliente"
+          value={shipment.customerReference}
+        />
+        {quoteEntry?.loading ? (
+          <FieldGridCell label="Número de cotización" value="Cargando..." />
+        ) : quoteEntry?.quoteNumber ? (
+          <FieldGridCell label="Número de cotización">
+            <span
+              className="asv-field-cell__value asv-field-cell__value--accent"
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenQuote(quoteEntry.quoteNumber!);
+              }}
+              role="button"
+              tabIndex={0}
+              title="Ver cotización"
+            >
+              {quoteEntry.quoteNumber}
+            </span>
+          </FieldGridCell>
+        ) : (
+          <FieldGridCell label="Número de cotización" value={null} />
+        )}
+        <FieldGridCell label="Waybill" value={shipment.waybillNumber} />
+        <FieldGridCell label="Carga" value={cargoDescription} />
+        <FieldGridCell label="ID interno" value={shipment.id} />
+      </FieldGridSection>
+
+      <FieldGridSection title="Seguimiento y operación">
+        <FieldGridCell label="Carrier" value={shipment.carrier?.name} />
+        <FieldGridCell
+          label="Número de seguimiento"
+          value={getDisplayedTrackAwbNumber(shipment)}
+        />
+        <FieldGridCell label="ID interno" value={shipment.id} />
+        <FieldGridCell
+          label="Fecha salida"
+          value={
+            shipment.departure
+              ? formatDate(shipment.departure)
+              : null
+          }
+        />
+        <FieldGridCell
+          label="Fecha llegada"
+          value={
+            effectiveArrivalDisplayDate
+              ? formatDate({
+                  date: effectiveArrivalDisplayDate,
+                  displayDate: effectiveArrivalDisplayDate,
+                })
+              : null
+          }
+        />
+        <FieldGridCell label="" action>
+          {alreadyTracked ? (
+            <button
+              type="button"
+              className="asv-btn asv-accordion-track asv-accordion-track--linked asv-accordion-track--live"
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenTracking();
+              }}
+            >
+              <span className="asv-accordion-track__dot-wrap" aria-hidden>
+                <span className="asv-accordion-track__dot-ring" />
+                <span className="asv-accordion-track__dot" />
+              </span>
+              Ver seguimiento
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="asv-btn asv-accordion-track asv-accordion-track--primary"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (!isTrackReady) return;
+                openTrackModal(shipment);
+              }}
+              disabled={!isTrackReady || trackLoading}
+              title={
+                isTrackReady
+                  ? undefined
+                  : trackLoading
+                    ? "Espera a que se cargue el Número de Seguimiento."
+                    : "No hay número de seguimiento disponible para este envío."
               }
-              fullWidth
-            />
-            <InfoField
-              label="Tipo de Empaque"
-              value={(() => {
-                const comms = getAllCommodities(shipment);
-                const packageTypes = new Set<string>();
-                for (const c of comms) {
-                  if (c.packageType?.description) {
-                    packageTypes.add(c.packageType.description);
-                  }
-                }
-                return packageTypes.size > 0
-                  ? Array.from(packageTypes).join(", ")
-                  : null;
-              })()}
-            />
-          </div>
-        </div>
-        <div className="asv-card">
-          <h4>Medidas y Peso</h4>
-          <div className="asv-info-grid">
-            <InfoField
-              label="Piezas"
-              value={(() => {
-                const comms = getAllCommodities(shipment);
-                const total = comms.reduce(
-                  (sum: number, c: { pieces?: number }) =>
-                    sum + (c.pieces || 0),
-                  0,
-                );
-                return total > 0 ? total : null;
-              })()}
-            />
-            <InfoField
-              label="Peso Total"
-              value={(() => {
-                const comms = getAllCommodities(shipment);
-                const total = comms.reduce(
-                  (sum: number, c: { totalWeightValue?: number }) =>
-                    sum + (c.totalWeightValue || 0),
-                  0,
-                );
-                return total > 0 ? `${total} kg` : null;
-              })()}
-            />
-            <InfoField
-              label="Volumen Total"
-              value={(() => {
-                const comms = getAllCommodities(shipment);
-                const total = comms.reduce(
-                  (sum: number, c: { totalVolumeValue?: number }) =>
-                    sum + (c.totalVolumeValue || 0),
-                  0,
-                );
-                return total > 0 ? `${total} m³` : null;
-              })()}
-            />
-            <InfoField
-              label="¿Carga Peligrosa?"
-              value={
-                cargoDetail?.loading
-                  ? "Cargando..."
-                  : cargoDetail?.hazardous != null
-                    ? cargoDetail.hazardous
+            >
+              {trackLoading
+                ? "Cargando..."
+                : isTrackReady
+                  ? "Trackea tu envío"
+                  : "Sin seguimiento"}
+            </button>
+          )}
+        </FieldGridCell>
+      </FieldGridSection>
+
+      <FieldGridSection title="Información de carga">
+        <FieldGridCell
+          label="Descripción de carga"
+          value={cargoDescription}
+        />
+        <FieldGridCell
+          label="Tipo de empaque"
+          value={
+            packageTypes.size > 0 ? Array.from(packageTypes).join(", ") : null
+          }
+        />
+        <FieldGridCell
+          label="Piezas"
+          value={totalPieces > 0 ? totalPieces : null}
+        />
+        <FieldGridCell
+          label="Peso total"
+          value={totalWeight > 0 ? `${totalWeight} kg` : null}
+        />
+        <FieldGridCell
+          label="Volumen total"
+          value={totalVolume > 0 ? `${totalVolume} m³` : null}
+        />
+        <FieldGridCell
+          label="¿Carga peligrosa?"
+          value={hazardousDisplay}
+        />
+      </FieldGridSection>
+
+      <FieldGridSection title="Detalle por ítem">
+        {comms.length === 0 ? (
+          <FieldGridCell label="Sin ítems" value={null} />
+        ) : (
+          comms.map((commodity, index) => (
+            <React.Fragment key={index}>
+              {comms.length > 1 ? (
+                <div className="asv-field-cell asv-field-cell--item-header">
+                  Ítem {index + 1}
+                </div>
+              ) : null}
+              <FieldGridCell
+                label="Descripción"
+                value={commodity.description}
+              />
+              <FieldGridCell label="Piezas" value={commodity.pieces} />
+              <FieldGridCell
+                label="Peso total"
+                value={
+                  commodity.totalWeightValue
+                    ? `${commodity.totalWeightValue} kg`
                     : null
-              }
-            />
-            <CommoditiesSection commodities={shipment.commodities!} />
-          </div>
-        </div>
-      </div>
+                }
+              />
+              <FieldGridCell
+                label="Volumen total"
+                value={
+                  commodity.totalVolumeValue
+                    ? `${commodity.totalVolumeValue} m³`
+                    : null
+                }
+              />
+              <FieldGridCell
+                label="Tipo de empaque"
+                value={commodity.packageType?.description}
+              />
+              {commodity.poNumber ? (
+                <FieldGridCell label="Número PO" value={commodity.poNumber} />
+              ) : null}
+              {commodity.invoiceNumber ? (
+                <FieldGridCell
+                  label="Número de factura"
+                  value={commodity.invoiceNumber}
+                />
+              ) : null}
+            </React.Fragment>
+          ))
+        )}
+      </FieldGridSection>
     </div>
   );
 }
@@ -641,7 +850,7 @@ function AirShipmentsView({
     }
   };
 
-  // Fetches cargoDescription + hazardous — triggered lazily when "Información de Carga" tab opens
+  // Fetches cargoDescription + hazardous — triggered lazily when accordion general tab opens
   const fetchCargoDetails = async (
     shipmentId: string | number | undefined,
     shipmentNumber: string | undefined,
@@ -1785,20 +1994,13 @@ function AirShipmentsView({
                                     </span>
                                   )}
                                 </div>
-                                <div className="asv-route-card__arrow">
-                                  <svg
-                                    width="24"
-                                    height="24"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="var(--primary-color)"
-                                    strokeWidth="2"
-                                  >
-                                    <line x1="5" y1="12" x2="19" y2="12" />
-                                    <polyline points="12 5 19 12 12 19" />
-                                  </svg>
+                                <div className="asv-route-card__connector">
+                                  <span className="asv-route-card__line" />
                                   {shipment.carrier?.name && (
-                                    <span className="asv-route-card__transit">
+                                    <span
+                                      className="asv-route-card__carrier"
+                                      title={shipment.carrier.name}
+                                    >
                                       {shipment.carrier.name}
                                     </span>
                                   )}
@@ -1854,250 +2056,53 @@ function AirShipmentsView({
                                         </svg>
                                       ),
                                       content: (
-                                        <div className="asv-cards-grid">
-                                          <div className="asv-card">
-                                            <h4>Detalles del Envío</h4>
-                                            <div className="asv-info-grid">
-                                              <InfoField
-                                                label="Número de Envío"
-                                                value={shipment.number}
-                                              />
-                                              <InfoField
-                                                label="Referencia Cliente"
-                                                value={
-                                                  shipment.customerReference
-                                                }
-                                              />
-                                              {(() => {
-                                                const qnEntry =
-                                                  shipment.id != null
-                                                    ? quoteNumberCache[
-                                                        shipment.id
-                                                      ]
-                                                    : undefined;
-                                                if (qnEntry?.loading)
-                                                  return (
-                                                    <InfoField
-                                                      label="Número de Cotización"
-                                                      value="Cargando..."
-                                                    />
-                                                  );
-                                                if (qnEntry?.quoteNumber)
-                                                  return (
-                                                    <div
-                                                      style={{
-                                                        marginBottom: "12px",
-                                                        flex: "1 1 48%",
-                                                        minWidth: "200px",
-                                                      }}
-                                                    >
-                                                      <div
-                                                        style={{
-                                                          fontSize: "0.7rem",
-                                                          fontWeight: "600",
-                                                          color: "#6b7280",
-                                                          textTransform:
-                                                            "uppercase",
-                                                          letterSpacing:
-                                                            "0.5px",
-                                                          marginBottom: "4px",
-                                                        }}
-                                                      >
-                                                        Número de Cotización
-                                                      </div>
-                                                      <div
-                                                        style={{
-                                                          fontSize: "0.875rem",
-                                                          color:
-                                                            "var(--primary-color, #ff6200)",
-                                                          cursor: "pointer",
-                                                          fontWeight: 600,
-                                                          wordBreak:
-                                                            "break-word",
-                                                        }}
-                                                        onClick={(e) => {
-                                                          e.stopPropagation();
-                                                          const qn =
-                                                            qnEntry.quoteNumber!;
-                                                          if (
-                                                            reporteriaClientesContext
-                                                          ) {
-                                                            reporteriaClientesContext.openQuotesTab(
-                                                              qn,
-                                                            );
-                                                          } else {
-                                                            navigate(
-                                                              "/quotes",
-                                                              {
-                                                                state: {
-                                                                  quoteFilter:
-                                                                    qn,
-                                                                },
-                                                              },
-                                                            );
-                                                          }
-                                                        }}
-                                                        title="Ver cotización"
-                                                      >
-                                                        {qnEntry.quoteNumber}
-                                                      </div>
-                                                    </div>
-                                                  );
-                                                return null;
-                                              })()}
-                                              <InfoField
-                                                label="Waybill"
-                                                value={shipment.waybillNumber}
-                                              />
-                                              <InfoField
-                                                label="Carga"
-                                                value={
-                                                  shipment.cargoDescription
-                                                }
-                                              />
-                                            </div>
-                                          </div>
-                                          <div className="asv-card">
-                                            <h4>Seguimiento del Envío</h4>
-                                            <div className="asv-info-grid">
-                                              {/* Track button */}
-                                              <div className="asv-track-field">
-                                                <div className="asv-track-field__label">
-                                                  ¿Quieres trackear tu envío?
-                                                </div>
-                                                {(() => {
-                                                  const trackLoading =
-                                                    isTrackAwbLoading(shipment);
-                                                  const isTrackReady =
-                                                    isTrackAwbReady(shipment);
-
-                                                  return isShipmentAlreadyTracked(
-                                                    shipment,
-                                                  ) ? (
-                                                    <button
-                                                      className="asv-btn asv-btn--ghost asv-btn--sm"
-                                                      onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        if (
-                                                          reporteriaClientesContext
-                                                        ) {
-                                                          reporteriaClientesContext.openTrackingTab(
-                                                            "air",
-                                                          );
-                                                        } else {
-                                                          navigate(
-                                                            "/trackings-aereo",
-                                                          );
-                                                        }
-                                                      }}
-                                                    >
-                                                      ✓ Ya está siendo trackeado
-                                                      — Ver seguimiento
-                                                    </button>
-                                                  ) : (
-                                                    <button
-                                                      className="asv-btn asv-btn--secondary asv-btn--sm"
-                                                      onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        if (!isTrackReady)
-                                                          return;
-                                                        openTrackModal(
-                                                          shipment,
-                                                        );
-                                                      }}
-                                                      disabled={
-                                                        !isTrackReady ||
-                                                        trackLoading
-                                                      }
-                                                      title={
-                                                        isTrackReady
-                                                          ? undefined
-                                                          : trackLoading
-                                                            ? "Espera a que se cargue el Número de Seguimiento."
-                                                            : "No hay número de seguimiento disponible para este envío."
-                                                      }
-                                                    >
-                                                      {trackLoading
-                                                        ? "Cargando número de seg..."
-                                                        : isTrackReady
-                                                          ? "Trackea tu envío"
-                                                          : "Sin número de seguimiento"}
-                                                    </button>
-                                                  );
-                                                })()}
-                                              </div>
-                                              <InfoField
-                                                label="Número de Seguimiento"
-                                                value={getDisplayedTrackAwbNumber(
-                                                  shipment,
-                                                )}
-                                                fullWidth
-                                              />
-                                              <InfoField
-                                                label="ID Interno"
-                                                value={shipment.id}
-                                              />
-                                            </div>
-                                          </div>
-                                          <div className="asv-card">
-                                            <h4>Operación Logística</h4>
-                                            <div className="asv-info-grid">
-                                              <InfoField
-                                                label="Carrier"
-                                                value={shipment.carrier?.name}
-                                              />
-                                              <InfoField
-                                                label="Fecha Salida"
-                                                value={
-                                                  shipment.departure
-                                                    ? formatDate(
-                                                        shipment.departure,
-                                                      )
-                                                    : null
-                                                }
-                                              />
-                                              <InfoField
-                                                label="Fecha Llegada"
-                                                value={
-                                                  effectiveArrivalDisplayDate
-                                                    ? formatDate({
-                                                        date: effectiveArrivalDisplayDate,
-                                                        displayDate:
-                                                          effectiveArrivalDisplayDate,
-                                                      })
-                                                    : null
-                                                }
-                                              />
-                                            </div>
-                                          </div>
-                                        </div>
-                                      ),
-                                    },
-                                    {
-                                      key: "cargo",
-                                      label: "Información de Carga",
-                                      icon: (
-                                        <svg
-                                          width="14"
-                                          height="14"
-                                          viewBox="0 0 24 24"
-                                          fill="none"
-                                          stroke="currentColor"
-                                          strokeWidth="2"
-                                        >
-                                          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-                                        </svg>
-                                      ),
-                                      content: (
-                                        <CargoTabContent
+                                        <GeneralTabContent
                                           shipment={shipment}
                                           cargoDetail={
                                             shipment.id != null
                                               ? cargoDetailsCache[shipment.id]
                                               : undefined
                                           }
-                                          onMount={fetchCargoDetails}
+                                          quoteEntry={
+                                            shipment.id != null
+                                              ? quoteNumberCache[shipment.id]
+                                              : undefined
+                                          }
+                                          effectiveArrivalDisplayDate={
+                                            effectiveArrivalDisplayDate
+                                          }
+                                          onMountCargo={fetchCargoDetails}
                                           getAllCommodities={getAllCommodities}
+                                          formatDate={formatDate}
+                                          getDisplayedTrackAwbNumber={
+                                            getDisplayedTrackAwbNumber
+                                          }
+                                          isTrackAwbLoading={isTrackAwbLoading}
+                                          isTrackAwbReady={isTrackAwbReady}
+                                          isShipmentAlreadyTracked={
+                                            isShipmentAlreadyTracked
+                                          }
+                                          openTrackModal={openTrackModal}
+                                          onOpenTracking={() => {
+                                            if (reporteriaClientesContext) {
+                                              reporteriaClientesContext.openTrackingTab(
+                                                "air",
+                                              );
+                                            } else {
+                                              navigate("/trackings-aereo");
+                                            }
+                                          }}
+                                          onOpenQuote={(qn) => {
+                                            if (reporteriaClientesContext) {
+                                              reporteriaClientesContext.openQuotesTab(
+                                                qn,
+                                              );
+                                            } else {
+                                              navigate("/quotes", {
+                                                state: { quoteFilter: qn },
+                                              });
+                                            }
+                                          }}
                                         />
                                       ),
                                     },

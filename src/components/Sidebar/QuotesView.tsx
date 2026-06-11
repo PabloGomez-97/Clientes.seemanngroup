@@ -17,7 +17,6 @@ import {
   MAX_VISIBLE_TRACK_FOLLOWERS,
   OPERATIONS_FOLLOWER_EMAIL,
 } from "../../services/trackingEmailPreferences";
-import "../shipments/AirShipmentsView.css";
 import "./styles/QuotesView.css";
 
 interface OutletContext {
@@ -323,6 +322,219 @@ function DetailTabs({ tabs }: { tabs: TabDef[] }) {
         ))}
       </div>
       <div className="qv-tabs__panel">{current?.content}</div>
+    </div>
+  );
+}
+
+function formatFieldValue(value: unknown): string {
+  if (value === null || value === undefined || value === "" || value === "N/A")
+    return "-";
+  return String(value);
+}
+
+function FieldGridSection({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="qv-field-section">
+      <h4 className="qv-field-section__title">{title}</h4>
+      <div className="qv-field-grid">{children}</div>
+    </section>
+  );
+}
+
+function FieldGridCell({
+  label,
+  value,
+  children,
+  action,
+}: {
+  label: string;
+  value?: unknown;
+  children?: React.ReactNode;
+  action?: boolean;
+}) {
+  const display = formatFieldValue(value);
+  const cellClass = action
+    ? "qv-field-cell qv-field-cell--action"
+    : "qv-field-cell";
+
+  return (
+    <div className={cellClass}>
+      {label ? <span className="qv-field-cell__label">{label}</span> : null}
+      {children ?? (
+        <span
+          className={`qv-field-cell__value${display === "-" ? " qv-field-cell__value--muted" : ""}`}
+        >
+          {display}
+        </span>
+      )}
+    </div>
+  );
+}
+
+interface QuoteGeneralTabContentProps {
+  quote: Quote;
+  t: (key: string) => string;
+  formatDateLong: (dateString?: string) => string;
+  formatCLP: (priceString?: string) => string | null;
+  shouldShowQuoteTracking: (quote: Quote) => boolean;
+  isQuoteAlreadyTracked: (quote: Quote) => boolean;
+  getQuoteTrackingNumber: (quote: Quote) => string;
+  openTrackModal: (quote: Quote) => void;
+  onOpenTracking: (type: "air" | "ocean") => void;
+}
+
+function QuoteGeneralTabContent({
+  quote,
+  t,
+  formatDateLong,
+  formatCLP,
+  shouldShowQuoteTracking,
+  isQuoteAlreadyTracked,
+  getQuoteTrackingNumber,
+  openTrackModal,
+  onOpenTracking,
+}: QuoteGeneralTabContentProps) {
+  const showTracking = shouldShowQuoteTracking(quote);
+  const alreadyTracked = isQuoteAlreadyTracked(quote);
+  const trackType = getQuoteTrackType(quote);
+
+  return (
+    <div className="qv-field-sections">
+      <FieldGridSection title={t("quotesView.quoteDetails")}>
+        <FieldGridCell label={t("quotesView.quoteNumber")} value={quote.number} />
+        <FieldGridCell
+          label={t("quotesView.issueDate")}
+          value={quote.date ? formatDateLong(quote.date) : null}
+        />
+        <FieldGridCell
+          label={t("quotesView.validUntil")}
+          value={
+            quote.validUntil_Date
+              ? formatDateLong(quote.validUntil_Date)
+              : null
+          }
+        />
+        <FieldGridCell
+          label={t("quotesView.customerRef")}
+          value={quote.customerReference}
+        />
+        <FieldGridCell
+          label={t("quotesView.carrierBroker")}
+          value={quote.carrierBroker}
+        />
+        <FieldGridCell label="ID interno" value={quote.id} />
+      </FieldGridSection>
+
+      <FieldGridSection title={t("quotesView.logistics")}>
+        <FieldGridCell
+          label={t("quotesView.transitDaysLabel")}
+          value={quote.transitDays}
+        />
+        <FieldGridCell
+          label={t("quotesView.transportMode")}
+          value={getQuoteTransportModeLabel(quote) || quote.modeOfTransportation}
+        />
+        <FieldGridCell
+          label={t("quotesView.paymentType")}
+          value={quote.paymentType}
+        />
+        {showTracking ? (
+          <FieldGridCell
+            label="Número de seguimiento"
+            value={getQuoteTrackingNumber(quote)}
+          />
+        ) : null}
+        <FieldGridCell
+          label={t("quotesView.origin")}
+          value={quote.origin}
+        />
+        <FieldGridCell
+          label={t("quotesView.destination")}
+          value={quote.destination}
+        />
+        {showTracking ? (
+          <FieldGridCell label="" action>
+            {alreadyTracked && trackType ? (
+              <button
+                type="button"
+                className="qv-btn qv-accordion-track qv-accordion-track--linked qv-accordion-track--live"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenTracking(trackType);
+                }}
+              >
+                <span className="qv-accordion-track__dot-wrap" aria-hidden>
+                  <span className="qv-accordion-track__dot-ring" />
+                  <span className="qv-accordion-track__dot" />
+                </span>
+                Ver seguimiento
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="qv-btn qv-accordion-track qv-accordion-track--primary"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openTrackModal(quote);
+                }}
+              >
+                Trackea tu envío
+              </button>
+            )}
+          </FieldGridCell>
+        ) : null}
+      </FieldGridSection>
+
+      <FieldGridSection title={t("quotesView.tabCargo")}>
+        <FieldGridCell
+          label={t("quotesView.totalPieces")}
+          value={quote.totalCargo_Pieces}
+        />
+        <FieldGridCell
+          label={t("quotesView.containers")}
+          value={quote.totalCargo_Container}
+        />
+        <FieldGridCell
+          label={t("quotesView.totalWeight")}
+          value={quote.totalCargo_WeightDisplayValue}
+        />
+        <FieldGridCell
+          label={t("quotesView.totalVolume")}
+          value={quote.totalCargo_VolumeDisplayValue}
+        />
+        <FieldGridCell
+          label={t("quotesView.volumeWeight")}
+          value={quote.totalCargo_VolumeWeightDisplayValue}
+        />
+        <FieldGridCell
+          label={t("quotesView.hazardous")}
+          value={quote.hazardous}
+        />
+        <FieldGridCell
+          label={t("quotesView.cargoStatus")}
+          value={quote.cargoStatus}
+        />
+      </FieldGridSection>
+
+      <FieldGridSection title={t("quotesView.tabFinancial")}>
+        <FieldGridCell label={t("quotesView.totalExpense")}>
+          <span className="qv-field-cell__value qv-field-cell__value--finance">
+            {formatCLP(quote.totalCharge_IncomeDisplayValue) || "$0 CLP"}
+          </span>
+        </FieldGridCell>
+        <FieldGridCell
+          label={t("quotesView.estimatedAmount")}
+          value={t("quotesView.estimatedAmount")}
+        />
+        <FieldGridCell label="Flujo actual" value={quote.currentFlow} />
+        <FieldGridCell label="Ejecutivo comercial" value={quote.salesRep} />
+      </FieldGridSection>
     </div>
   );
 }
@@ -1892,20 +2104,10 @@ function QuotesView({
                                     </span>
                                   )}
                                 </div>
-                                <div className="qv-route-card__arrow">
-                                  <svg
-                                    width="24"
-                                    height="24"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="var(--primary-color)"
-                                    strokeWidth="2"
-                                  >
-                                    <line x1="5" y1="12" x2="19" y2="12" />
-                                    <polyline points="12 5 19 12 12 19" />
-                                  </svg>
+                                <div className="qv-route-card__connector">
+                                  <span className="qv-route-card__line" />
                                   {quote.transitDays != null && (
-                                    <span className="qv-route-card__transit">
+                                    <span className="qv-route-card__carrier">
                                       {quote.transitDays}{" "}
                                       {t("quotesView.transitDays")}
                                     </span>
@@ -1971,254 +2173,35 @@ function QuotesView({
                                         </svg>
                                       ),
                                       content: (
-                                        <div className="qv-cards-grid">
-                                          <div className="qv-card">
-                                            <h4>
-                                              {t("quotesView.quoteDetails")}
-                                            </h4>
-                                            <div className="qv-info-grid">
-                                              <InfoField
-                                                label={t(
-                                                  "quotesView.quoteNumber",
-                                                )}
-                                                value={quote.number}
-                                              />
-                                              <InfoField
-                                                label={t(
-                                                  "quotesView.issueDate",
-                                                )}
-                                                value={
-                                                  quote.date
-                                                    ? formatDateLong(quote.date)
-                                                    : null
-                                                }
-                                              />
-                                              <InfoField
-                                                label={t(
-                                                  "quotesView.validUntil",
-                                                )}
-                                                value={
-                                                  quote.validUntil_Date
-                                                    ? formatDateLong(
-                                                      quote.validUntil_Date,
-                                                    )
-                                                    : null
-                                                }
-                                              />
-                                            </div>
-                                          </div>
-                                          <div className="qv-card">
-                                            <h4>{t("quotesView.logistics")}</h4>
-                                            <div className="qv-info-grid">
-                                              <InfoField
-                                                label={t(
-                                                  "quotesView.transitDaysLabel",
-                                                )}
-                                                value={quote.transitDays}
-                                              />
-                                              <InfoField
-                                                label={t(
-                                                  "quotesView.transportMode",
-                                                )}
-                                                value={
-                                                  quote.modeOfTransportation
-                                                }
-                                              />
-                                              <InfoField
-                                                label={t(
-                                                  "quotesView.paymentType",
-                                                )}
-                                                value={quote.paymentType}
-                                              />
-                                              {shouldShowQuoteTracking(
-                                                quote,
-                                              ) && (
-                                                <>
-                                                  <div
-                                                    className="asv-track-field"
-                                                    style={{
-                                                      gridColumn: "1 / -1",
-                                                    }}
-                                                  >
-                                                    <div className="asv-track-field__label">
-                                                      ¿Quieres trackear tu
-                                                      envío?
-                                                    </div>
-                                                    {isQuoteAlreadyTracked(
-                                                      quote,
-                                                    ) ? (
-                                                      <button
-                                                        className="asv-btn asv-btn--ghost asv-btn--sm"
-                                                        onClick={(e) => {
-                                                          e.stopPropagation();
-                                                          const type =
-                                                            getQuoteTrackType(
-                                                              quote,
-                                                            );
-                                                          if (
-                                                            reporteriaClientesContext &&
-                                                            type
-                                                          ) {
-                                                            reporteriaClientesContext.openTrackingTab(
-                                                              type,
-                                                            );
-                                                          } else {
-                                                            navigate(
-                                                              type === "air"
-                                                                ? "/trackings-aereo"
-                                                                : "/trackings-maritimo",
-                                                            );
-                                                          }
-                                                        }}
-                                                      >
-                                                        ✓ Ya está siendo
-                                                        trackeado — Ver
-                                                        seguimiento
-                                                      </button>
-                                                    ) : (
-                                                      <button
-                                                        className="asv-btn asv-btn--secondary asv-btn--sm"
-                                                        onClick={(e) => {
-                                                          e.stopPropagation();
-                                                          openTrackModal(quote);
-                                                        }}
-                                                      >
-                                                        Trackea tu envío
-                                                      </button>
-                                                    )}
-                                                  </div>
-                                                  <InfoField
-                                                    label="Número de seguimiento"
-                                                    value={getQuoteTrackingNumber(
-                                                      quote,
-                                                    )}
-                                                    fullWidth
-                                                  />
-                                                </>
-                                              )}
-                                            </div>
-                                          </div>
-                                          <div className="qv-card">
-                                            <h4>
-                                              {t("quotesView.clientInfo")}
-                                            </h4>
-                                            <div className="qv-info-grid">
-                                              <InfoField
-                                                label={t(
-                                                  "quotesView.carrierBroker",
-                                                )}
-                                                value={quote.carrierBroker}
-                                                fullWidth
-                                              />
-                                              <InfoField
-                                                label={t(
-                                                  "quotesView.customerRef",
-                                                )}
-                                                value={quote.customerReference}
-                                                fullWidth
-                                              />
-                                            </div>
-                                          </div>
-                                        </div>
-                                      ),
-                                    },
-                                    {
-                                      key: "carga",
-                                      label: t("quotesView.tabCargo"),
-                                      icon: (
-                                        <svg
-                                          width="14"
-                                          height="14"
-                                          viewBox="0 0 24 24"
-                                          fill="none"
-                                          stroke="currentColor"
-                                          strokeWidth="2"
-                                        >
-                                          <rect
-                                            x="1"
-                                            y="3"
-                                            width="15"
-                                            height="13"
-                                          />
-                                          <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
-                                          <circle cx="5.5" cy="18.5" r="2.5" />
-                                          <circle cx="18.5" cy="18.5" r="2.5" />
-                                        </svg>
-                                      ),
-                                      content: (
-                                        <div className="qv-cards-grid">
-                                          <div className="qv-card">
-                                            <h4>
-                                              {t("quotesView.quantities")}
-                                            </h4>
-                                            <div className="qv-info-grid">
-                                              <InfoField
-                                                label={t(
-                                                  "quotesView.totalPieces",
-                                                )}
-                                                value={quote.totalCargo_Pieces}
-                                              />
-                                              <InfoField
-                                                label={t(
-                                                  "quotesView.containers",
-                                                )}
-                                                value={
-                                                  quote.totalCargo_Container
-                                                }
-                                              />
-                                            </div>
-                                          </div>
-                                          <div className="qv-card">
-                                            <h4>
-                                              {t("quotesView.weightsVolumes")}
-                                            </h4>
-                                            <div className="qv-info-grid">
-                                              <InfoField
-                                                label={t(
-                                                  "quotesView.totalWeight",
-                                                )}
-                                                value={
-                                                  quote.totalCargo_WeightDisplayValue
-                                                }
-                                              />
-                                              <InfoField
-                                                label={t(
-                                                  "quotesView.totalVolume",
-                                                )}
-                                                value={
-                                                  quote.totalCargo_VolumeDisplayValue
-                                                }
-                                              />
-                                              <InfoField
-                                                label={t(
-                                                  "quotesView.volumeWeight",
-                                                )}
-                                                value={
-                                                  quote.totalCargo_VolumeWeightDisplayValue
-                                                }
-                                              />
-                                            </div>
-                                          </div>
-                                          <div className="qv-card">
-                                            <h4>
-                                              {t("quotesView.statusSecurity")}
-                                            </h4>
-                                            <div className="qv-info-grid">
-                                              <InfoField
-                                                label={t(
-                                                  "quotesView.hazardous",
-                                                )}
-                                                value={quote.hazardous}
-                                              />
-                                              <InfoField
-                                                label={t(
-                                                  "quotesView.cargoStatus",
-                                                )}
-                                                value={quote.cargoStatus}
-                                              />
-                                            </div>
-                                          </div>
-                                        </div>
+                                        <QuoteGeneralTabContent
+                                          quote={quote}
+                                          t={t}
+                                          formatDateLong={formatDateLong}
+                                          formatCLP={formatCLP}
+                                          shouldShowQuoteTracking={
+                                            shouldShowQuoteTracking
+                                          }
+                                          isQuoteAlreadyTracked={
+                                            isQuoteAlreadyTracked
+                                          }
+                                          getQuoteTrackingNumber={
+                                            getQuoteTrackingNumber
+                                          }
+                                          openTrackModal={openTrackModal}
+                                          onOpenTracking={(type) => {
+                                            if (reporteriaClientesContext) {
+                                              reporteriaClientesContext.openTrackingTab(
+                                                type,
+                                              );
+                                            } else {
+                                              navigate(
+                                                type === "air"
+                                                  ? "/trackings-aereo"
+                                                  : "/trackings-maritimo",
+                                              );
+                                            }
+                                          }}
+                                        />
                                       ),
                                     },
                                     {
@@ -2264,43 +2247,6 @@ function QuotesView({
                                             }))
                                           }
                                         />
-                                      ),
-                                    },
-                                    {
-                                      key: "financiero",
-                                      label: t("quotesView.tabFinancial"),
-                                      icon: (
-                                        <svg
-                                          width="14"
-                                          height="14"
-                                          viewBox="0 0 24 24"
-                                          fill="none"
-                                          stroke="currentColor"
-                                          strokeWidth="2"
-                                        >
-                                          <line
-                                            x1="12"
-                                            y1="1"
-                                            x2="12"
-                                            y2="23"
-                                          />
-                                          <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-                                        </svg>
-                                      ),
-                                      content: (
-                                        <div className="qv-finance-card">
-                                          <span className="qv-finance-card__label">
-                                            {t("quotesView.totalExpense")}
-                                          </span>
-                                          <span className="qv-finance-card__amount">
-                                            {formatCLP(
-                                              quote.totalCharge_IncomeDisplayValue,
-                                            ) || "$0 CLP"}
-                                          </span>
-                                          <span className="qv-finance-card__note">
-                                            {t("quotesView.estimatedAmount")}
-                                          </span>
-                                        </div>
                                       ),
                                     },
                                     {
@@ -2431,19 +2377,19 @@ function QuotesView({
       )}
 
       {showTrackModal && trackQuote && trackType && (
-        <div className="asv-overlay" onClick={closeTrackModal}>
+        <div className="qv-overlay" onClick={closeTrackModal}>
           <div
-            className="asv-modal asv-modal--search"
+            className="qv-modal qv-modal--search"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="asv-modal__title">Trackea tu envío</h3>
+            <h3 className="qv-modal__title">Trackea tu envío</h3>
 
             <div style={{ marginBottom: 16 }}>
-              <label className="asv-label">
+              <label className="qv-label">
                 {trackType === "air" ? "AWB Number" : "HBL Number"}
               </label>
               <input
-                className="asv-input"
+                className="qv-input"
                 type="text"
                 value={getQuoteTrackingNumber(trackQuote)}
                 disabled
@@ -2460,12 +2406,12 @@ function QuotesView({
                   gap: 12,
                 }}
               >
-                <label className="asv-label" style={{ marginBottom: 0 }}>
+                <label className="qv-label" style={{ marginBottom: 0 }}>
                   Correo electrónico para seguimiento
                 </label>
                 <button
                   type="button"
-                  className="asv-btn asv-btn--ghost asv-btn--sm"
+                  className="qv-btn qv-btn--ghost qv-btn--sm"
                   onClick={addTrackEmailField}
                   disabled={trackEmails.length >= MAX_VISIBLE_TRACK_FOLLOWERS}
                 >
@@ -2479,7 +2425,7 @@ function QuotesView({
                     style={{ display: "flex", gap: 8, alignItems: "center" }}
                   >
                     <input
-                      className="asv-input"
+                      className="qv-input"
                       type="email"
                       value={email}
                       onChange={(e) => updateTrackEmail(index, e.target.value)}
@@ -2487,7 +2433,7 @@ function QuotesView({
                     />
                     <button
                       type="button"
-                      className="asv-btn asv-btn--ghost asv-btn--sm"
+                      className="qv-btn qv-btn--ghost qv-btn--sm"
                       onClick={() => removeTrackEmailField(index)}
                       disabled={trackEmails.length === 1}
                     >
@@ -2496,7 +2442,7 @@ function QuotesView({
                   </div>
                 ))}
               </div>
-              <small className="asv-hint">
+              <small className="qv-hint">
                 Puedes agregar hasta 9 correos visibles. El correo de operaciones
                 se agrega automáticamente.
               </small>
@@ -2508,21 +2454,18 @@ function QuotesView({
               onAddAll={handleAddAllSuggestedTrackEmails}
             />
 
-            {trackError && <div className="asv-error">{trackError}</div>}
+            {trackError && <div className="qv-error">{trackError}</div>}
 
-            <p className="asv-modal__question">
+            <p className="qv-modal__question">
               ¿Deseas generar el nuevo rastreo de tu envío?
             </p>
 
-            <div className="asv-modal__actions">
-              <button
-                className="asv-btn asv-btn--ghost"
-                onClick={closeTrackModal}
-              >
+            <div className="qv-modal__actions">
+              <button className="qv-btn qv-btn--ghost" onClick={closeTrackModal}>
                 No
               </button>
               <button
-                className="asv-btn asv-btn--primary"
+                className="qv-btn qv-btn--primary"
                 onClick={handleTrackSubmit}
                 disabled={trackLoading}
               >
