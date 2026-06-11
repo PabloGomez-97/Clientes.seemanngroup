@@ -212,7 +212,9 @@
       "sectionQuote": "Quoting",
       "sectionShipments": "My shipments",
       "sectionReports": "Reports",
-      "sectionReference": "Reference"
+      "sectionReference": "Reference",
+      "settings": "Settings",
+      "help": "Help"
     },
     "userLayout": {
       "linbisTokenError": "Could not obtain Linbis token",

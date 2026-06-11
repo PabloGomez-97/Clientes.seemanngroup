@@ -212,7 +212,9 @@
       "sectionQuote": "Cotización",
       "sectionShipments": "Mis envíos",
       "sectionReports": "Reportes",
-      "sectionReference": "Consultas"
+      "sectionReference": "Consultas",
+      "settings": "Configuración",
+      "help": "Ayuda"
     },
     "userLayout": {
       "linbisTokenError": "No se pudo obtener el token de Linbis",

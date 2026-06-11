@@ -20,7 +20,6 @@ import {
 } from "../../services/trackingPhonePreferences";
 import "flag-icons/css/flag-icons.min.css";
 import "./SettingsClient.css";
-import { imgUrl } from "../../config/images";
 
 type SettingsTab = "emails" | "phones" | "password";
 
@@ -33,6 +32,82 @@ interface SettingsClientProps {
   email: string;
   allowPasswordChange?: boolean;
 }
+
+function SaveBar({
+  saving,
+  loading,
+  disabled,
+  onDiscard,
+  onSave,
+}: {
+  saving: boolean;
+  loading: boolean;
+  disabled: boolean;
+  onDiscard: () => void;
+  onSave: () => void;
+}) {
+  return (
+    <div className="sc-save-bar" role="status">
+      <span className="sc-save-bar__label">Cambios pendientes</span>
+      <div className="sc-save-bar__actions">
+        <button
+          type="button"
+          className="sc-btn sc-btn--ghost"
+          onClick={onDiscard}
+          disabled={saving || loading}
+        >
+          Descartar
+        </button>
+        <button
+          type="button"
+          className="sc-btn sc-btn--primary"
+          onClick={onSave}
+          disabled={saving || loading || disabled}
+        >
+          {saving ? "Guardando..." : "Guardar"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+const EmailIcon = () => (
+  <svg
+    className="sc-segment__icon"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+  >
+    <rect x="2" y="4" width="20" height="16" rx="2" />
+    <path d="m2 7 10 7 10-7" />
+  </svg>
+);
+
+const PhoneIcon = () => (
+  <svg
+    className="sc-segment__icon"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+  >
+    <path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 15l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z" />
+  </svg>
+);
+
+const LockIcon = () => (
+  <svg
+    className="sc-segment__icon"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+  >
+    <rect x="5" y="11" width="14" height="10" rx="2" />
+    <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+  </svg>
+);
 
 /* ── Email Settings Section ── */
 function EmailSettings({
@@ -65,6 +140,13 @@ function EmailSettings({
     setEditorValue("");
     setEditingIndex(null);
     setLocalError(null);
+  };
+
+  const handleDiscard = () => {
+    setDraftEmails(emails);
+    resetEditor();
+    setLocalError(null);
+    setSuccessMessage(null);
   };
 
   const handleSubmitEmail = () => {
@@ -132,28 +214,30 @@ function EmailSettings({
   };
 
   return (
-    <>
-      <div className="sc-badge">
-        {draftEmails.length}/{MAX_SAVED_TRACKING_EMAILS} correos guardados
-      </div>
+    <div className="sc-tab-content">
+      <div className="sc-panel">
+        <div className="sc-panel__head">
+          <span className="sc-panel__label">Correos de seguimiento</span>
+          <span className="sc-panel__count">
+            {draftEmails.length} / {MAX_SAVED_TRACKING_EMAILS}
+          </span>
+        </div>
 
-      <div className="sc-card">
-        <h2>Correos configurados</h2>
-        {!hasReference ? (
-          <div className="sc-empty">
-            Selecciona una cuenta para administrar sus correos.
-          </div>
-        ) : loading ? (
-          <div className="sc-empty">Cargando configuración...</div>
-        ) : draftEmails.length > 0 ? (
-          <div className="sc-email-list">
-            {draftEmails.map((savedEmail, index) => (
+        <div className="sc-panel__body">
+          {!hasReference ? (
+            <div className="sc-empty">
+              Selecciona una cuenta para administrar sus correos.
+            </div>
+          ) : loading ? (
+            <div className="sc-empty">Cargando configuración...</div>
+          ) : draftEmails.length > 0 ? (
+            draftEmails.map((savedEmail, index) => (
               <div
                 key={`${savedEmail}-${index}`}
-                className={`sc-email-item ${editingIndex === index ? "sc-email-item--active" : ""}`}
+                className={`sc-row ${editingIndex === index ? "sc-row--active" : ""}`}
               >
-                <span className="sc-email-text">{savedEmail}</span>
-                <div className="sc-email-item-actions">
+                <span className="sc-row__text">{savedEmail}</span>
+                <div className="sc-row__actions">
                   <button
                     type="button"
                     className="sc-btn sc-btn--ghost sc-btn--sm"
@@ -170,53 +254,51 @@ function EmailSettings({
                   </button>
                 </div>
               </div>
-            ))}
-          </div>
-        ) : (
-          <div className="sc-empty">
-            Aún no has configurado correos para esta cuenta.
-          </div>
-        )}
-      </div>
-
-      <div className="sc-card">
-        <h2>{editingIndex === null ? "Agregar correo" : "Editar correo"}</h2>
-        <div className="sc-form-row">
-          <label className="sc-label" htmlFor="sc-email-input">
-            Correo electrónico
-          </label>
-          <input
-            id="sc-email-input"
-            type="email"
-            className="sc-input"
-            value={editorValue}
-            onChange={(e) => setEditorValue(e.target.value)}
-            placeholder="correo@empresa.com"
-            disabled={!hasReference}
-          />
-        </div>
-        <div className="sc-form-actions">
-          <button
-            type="button"
-            className="sc-btn sc-btn--primary"
-            onClick={handleSubmitEmail}
-            disabled={!hasReference}
-          >
-            {editingIndex === null ? "Agregar a la lista" : "Guardar cambio"}
-          </button>
-          {editingIndex !== null && (
-            <button
-              type="button"
-              className="sc-btn sc-btn--ghost"
-              onClick={resetEditor}
-            >
-              Cancelar
-            </button>
+            ))
+          ) : (
+            <div className="sc-empty">
+              Aún no has configurado correos para esta cuenta.
+            </div>
           )}
         </div>
-        <p className="sc-note">
-          Correos del equipo que recibirán eventos de seguimiento.
-        </p>
+
+        <div className="sc-panel__foot">
+          <p className="sc-panel__foot-title">
+            {editingIndex === null ? "Agregar correo" : "Editar correo"}
+          </p>
+          <div className="sc-form-inline">
+            <input
+              id="sc-email-input"
+              type="email"
+              className="sc-input"
+              value={editorValue}
+              onChange={(e) => setEditorValue(e.target.value)}
+              placeholder="correo@empresa.com"
+              disabled={!hasReference}
+              aria-label="Correo electrónico"
+            />
+            <button
+              type="button"
+              className="sc-btn sc-btn--primary"
+              onClick={handleSubmitEmail}
+              disabled={!hasReference}
+            >
+              {editingIndex === null ? "Agregar" : "Guardar"}
+            </button>
+            {editingIndex !== null && (
+              <button
+                type="button"
+                className="sc-btn sc-btn--ghost"
+                onClick={resetEditor}
+              >
+                Cancelar
+              </button>
+            )}
+          </div>
+          <p className="sc-note">
+            Correos del equipo que recibirán eventos de seguimiento.
+          </p>
+        </div>
       </div>
 
       {(error || localError || successMessage) && (
@@ -227,17 +309,16 @@ function EmailSettings({
         </div>
       )}
 
-      <div className="sc-footer">
-        <button
-          type="button"
-          className="sc-btn sc-btn--primary"
-          onClick={handleSave}
-          disabled={saving || loading || !hasChanges || !hasReference}
-        >
-          {saving ? "Guardando..." : "Guardar configuraciones"}
-        </button>
-      </div>
-    </>
+      {hasChanges && (
+        <SaveBar
+          saving={saving}
+          loading={loading}
+          disabled={!hasReference}
+          onDiscard={handleDiscard}
+          onSave={handleSave}
+        />
+      )}
+    </div>
   );
 }
 
@@ -274,6 +355,13 @@ function PhoneSettings({
     setNumberValue("");
     setEditingIndex(null);
     setLocalError(null);
+  };
+
+  const handleDiscard = () => {
+    setDraftPhones(phones);
+    resetEditor();
+    setLocalError(null);
+    setSuccessMessage(null);
   };
 
   const handleSubmitPhone = () => {
@@ -356,30 +444,32 @@ function PhoneSettings({
   };
 
   return (
-    <>
-      <div className="sc-badge">
-        {draftPhones.length}/{MAX_SAVED_TRACKING_PHONES} teléfonos guardados
-      </div>
+    <div className="sc-tab-content">
+      <div className="sc-panel">
+        <div className="sc-panel__head">
+          <span className="sc-panel__label">Teléfonos de contacto</span>
+          <span className="sc-panel__count">
+            {draftPhones.length} / {MAX_SAVED_TRACKING_PHONES}
+          </span>
+        </div>
 
-      <div className="sc-card">
-        <h2>Teléfonos configurados</h2>
-        {!hasReference ? (
-          <div className="sc-empty">
-            Selecciona una cuenta para administrar sus teléfonos.
-          </div>
-        ) : loading ? (
-          <div className="sc-empty">Cargando configuración...</div>
-        ) : draftPhones.length > 0 ? (
-          <div className="sc-email-list">
-            {draftPhones.map((savedPhone, index) => (
+        <div className="sc-panel__body">
+          {!hasReference ? (
+            <div className="sc-empty">
+              Selecciona una cuenta para administrar sus teléfonos.
+            </div>
+          ) : loading ? (
+            <div className="sc-empty">Cargando configuración...</div>
+          ) : draftPhones.length > 0 ? (
+            draftPhones.map((savedPhone, index) => (
               <div
                 key={`${savedPhone}-${index}`}
-                className={`sc-email-item ${editingIndex === index ? "sc-email-item--active" : ""}`}
+                className={`sc-row ${editingIndex === index ? "sc-row--active" : ""}`}
               >
-                <span className="sc-email-text">
+                <span className="sc-row__text">
                   {formatDisplayPhone(savedPhone)}
                 </span>
-                <div className="sc-email-item-actions">
+                <div className="sc-row__actions">
                   <button
                     type="button"
                     className="sc-btn sc-btn--ghost sc-btn--sm"
@@ -396,68 +486,69 @@ function PhoneSettings({
                   </button>
                 </div>
               </div>
-            ))}
-          </div>
-        ) : (
-          <div className="sc-empty">
-            Aún no has configurado teléfonos para esta cuenta.
-          </div>
-        )}
-      </div>
-
-      <div className="sc-card">
-        <h2>
-          {editingIndex === null ? "Agregar teléfono" : "Editar teléfono"}
-        </h2>
-        <div className="sc-phone-fields">
-          <div className="sc-phone-field-prefix">
-            <label className="sc-label" htmlFor="sc-phone-prefix">
-              País
-            </label>
-            <PhonePrefixSelect
-              value={countryCode}
-              onChange={setCountryCode}
-              disabled={!hasReference}
-            />
-          </div>
-          <div className="sc-phone-field-number">
-            <label className="sc-label" htmlFor="sc-phone-number">
-              Número de teléfono
-            </label>
-            <input
-              id="sc-phone-number"
-              type="tel"
-              className="sc-input"
-              value={numberValue}
-              onChange={(e) => setNumberValue(e.target.value)}
-              placeholder={countryCode === "CL" ? "912345678" : "123456789"}
-              disabled={!hasReference}
-              inputMode="numeric"
-              autoComplete="tel-national"
-            />
-            <p className="sc-note sc-note--inline">
-              Solo los dígitos locales, sin el prefijo internacional.
-            </p>
-          </div>
+            ))
+          ) : (
+            <div className="sc-empty">
+              Aún no has configurado teléfonos para esta cuenta.
+            </div>
+          )}
         </div>
-        <div className="sc-form-actions">
-          <button
-            type="button"
-            className="sc-btn sc-btn--primary"
-            onClick={handleSubmitPhone}
-            disabled={!hasReference}
-          >
-            {editingIndex === null ? "Agregar a la lista" : "Guardar cambio"}
-          </button>
-          {editingIndex !== null && (
+
+        <div className="sc-panel__foot">
+          <p className="sc-panel__foot-title">
+            {editingIndex === null ? "Agregar teléfono" : "Editar teléfono"}
+          </p>
+          <div className="sc-phone-fields">
+            <div className="sc-phone-field-prefix">
+              <label className="sc-label" htmlFor="sc-phone-prefix">
+                País
+              </label>
+              <PhonePrefixSelect
+                id="sc-phone-prefix"
+                value={countryCode}
+                onChange={setCountryCode}
+                disabled={!hasReference}
+              />
+            </div>
+            <div className="sc-phone-field-number">
+              <label className="sc-label" htmlFor="sc-phone-number">
+                Número de teléfono
+              </label>
+              <input
+                id="sc-phone-number"
+                type="tel"
+                className="sc-input"
+                value={numberValue}
+                onChange={(e) => setNumberValue(e.target.value)}
+                placeholder={countryCode === "CL" ? "912345678" : "123456789"}
+                disabled={!hasReference}
+                inputMode="numeric"
+                autoComplete="tel-national"
+              />
+              <p className="sc-note sc-note--inline">
+                Solo los dígitos locales, sin el prefijo internacional.
+              </p>
+            </div>
+          </div>
+          <div className="sc-form-actions">
             <button
               type="button"
-              className="sc-btn sc-btn--ghost"
-              onClick={resetEditor}
+              className="sc-btn sc-btn--primary"
+              onClick={handleSubmitPhone}
+              disabled={!hasReference}
             >
-              Cancelar
+              {editingIndex === null ? "Agregar" : "Guardar"}
             </button>
-          )}
+            {editingIndex !== null && (
+              <button
+                type="button"
+                className="sc-btn sc-btn--ghost"
+                onClick={resetEditor}
+              >
+                Cancelar
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -469,17 +560,16 @@ function PhoneSettings({
         </div>
       )}
 
-      <div className="sc-footer">
-        <button
-          type="button"
-          className="sc-btn sc-btn--primary"
-          onClick={handleSave}
-          disabled={saving || loading || !hasChanges || !hasReference}
-        >
-          {saving ? "Guardando..." : "Guardar configuraciones"}
-        </button>
-      </div>
-    </>
+      {hasChanges && (
+        <SaveBar
+          saving={saving}
+          loading={loading}
+          disabled={!hasReference}
+          onDiscard={handleDiscard}
+          onSave={handleSave}
+        />
+      )}
+    </div>
   );
 }
 
@@ -547,61 +637,67 @@ function PasswordSettings() {
   };
 
   return (
-    <>
-      <div className="sc-card">
-        <h2>Cambiar contraseña</h2>
-
-        <div className="sc-form-row">
-          <label className="sc-label" htmlFor="sc-current-pw">
-            Contraseña actual
-          </label>
-          <input
-            id="sc-current-pw"
-            type="password"
-            className="sc-input"
-            value={currentPassword}
-            onChange={(e) => setCurrentPassword(e.target.value)}
-            placeholder="Ingresa tu contraseña actual"
-          />
+    <div className="sc-tab-content">
+      <div className="sc-panel">
+        <div className="sc-panel__head">
+          <span className="sc-panel__label">Seguridad</span>
         </div>
 
-        <div className="sc-form-row">
-          <label className="sc-label" htmlFor="sc-new-pw">
-            Nueva contraseña
-          </label>
-          <input
-            id="sc-new-pw"
-            type="password"
-            className="sc-input"
-            value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-            placeholder="Ingresa la nueva contraseña"
-          />
+        <div className="sc-panel__body">
+          <div className="sc-field-row">
+            <label className="sc-label" htmlFor="sc-current-pw">
+              Contraseña actual
+            </label>
+            <input
+              id="sc-current-pw"
+              type="password"
+              className="sc-input"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              placeholder="Ingresa tu contraseña actual"
+            />
+          </div>
+
+          <div className="sc-field-row">
+            <label className="sc-label" htmlFor="sc-new-pw">
+              Nueva contraseña
+            </label>
+            <input
+              id="sc-new-pw"
+              type="password"
+              className="sc-input"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="Ingresa la nueva contraseña"
+            />
+          </div>
+
+          <div className="sc-field-row">
+            <label className="sc-label" htmlFor="sc-confirm-pw">
+              Confirmar nueva contraseña
+            </label>
+            <input
+              id="sc-confirm-pw"
+              type="password"
+              className="sc-input"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Repite la nueva contraseña"
+            />
+          </div>
         </div>
 
-        <div className="sc-form-row">
-          <label className="sc-label" htmlFor="sc-confirm-pw">
-            Confirmar nueva contraseña
-          </label>
-          <input
-            id="sc-confirm-pw"
-            type="password"
-            className="sc-input"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            placeholder="Repite la nueva contraseña"
-          />
-        </div>
-
-        <div className="sc-form-actions">
-          <button
-            type="button"
-            className="sc-btn sc-btn--primary"
-            onClick={handleChangePassword}
-            disabled={saving}
-          >
-            {saving ? "Guardando..." : "Cambiar contraseña"}
-          </button>
+        <div className="sc-panel__foot">
+          <div className="sc-form-actions" style={{ marginTop: 0 }}>
+            <button
+              type="button"
+              className="sc-btn sc-btn--primary"
+              onClick={handleChangePassword}
+              disabled={saving}
+            >
+              {saving ? "Guardando..." : "Cambiar contraseña"}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -612,7 +708,7 @@ function PasswordSettings() {
           {success || error}
         </div>
       )}
-    </>
+    </div>
   );
 }
 
@@ -625,167 +721,60 @@ function SettingsClient({
   const hasReference = Boolean(reference.trim());
 
   return (
-    <section>
-      {/* Image banner */}
-      <div
-        style={{
-          position: "relative",
-          height: 220,
-          overflow: "hidden",
-          background: "#1a1a1a",
-        }}
-      >
-        <img
-          src={imgUrl("/imo.png")}
-          alt="Operaciones Marítimas"
-          style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            opacity: 0.75,
-          }}
-          onError={(e) => {
-            (e.target as HTMLImageElement).style.display = "none";
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            background:
-              "linear-gradient(to right, rgba(26,26,26,0.85) 0%, rgba(26,26,26,0.35) 100%)",
-            display: "flex",
-            alignItems: "center",
-            padding: "0 32px",
-          }}
-        >
-          <div>
-            <div
-              style={{
-                display: "inline-block",
-                background: "var(--primary-color)",
-                color: "#fff",
-                fontSize: 11,
-                fontWeight: 700,
-                letterSpacing: 1.2,
-                textTransform: "uppercase",
-                padding: "3px 10px",
-                borderRadius: 3,
-                marginBottom: 10,
-              }}
-            >
-              Configuraciones
-            </div>
-            <h2
-              style={{
-                color: "#fff",
-                fontSize: 24,
-                fontWeight: 700,
-                margin: 0,
-                lineHeight: 1.3,
-              }}
-            >
-              Mis Configuraciones
-            </h2>
-            <p
-              style={{
-                color: "rgba(255,255,255,0.78)",
-                fontSize: 14,
-                margin: "8px 0 0",
-                maxWidth: 460,
-              }}
-            >
-              Administra tus preferencias de seguimiento y seguridad de tu
-              cuenta.
-            </p>
-          </div>
-        </div>
-      </div>
+    <section className="sc-page">
+      <div className="sc-shell">
+        <header className="sc-header">
+          <p className="sc-header__eyebrow">Configuraciones</p>
+          <h1 className="sc-header__title">Mis configuraciones</h1>
+          <p className="sc-header__desc">
+            Administra tus preferencias de seguimiento y seguridad de tu cuenta.
+          </p>
+        </header>
 
-      <div
-        className={`sc-tabs mt-3 ${allowPasswordChange ? "sc-tabs--three" : "sc-tabs--two"}`}
-      >
-        <button
-          type="button"
-          className={`sc-tab ${activeTab === "emails" ? "sc-tab--active" : ""}`}
-          onClick={() => setActiveTab("emails")}
-        >
-          <span className="sc-tab__icon">
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
+        <nav className="sc-nav" aria-label="Secciones de configuración">
+          <div className="sc-segmented">
+            <button
+              type="button"
+              className={`sc-segment ${activeTab === "emails" ? "sc-segment--active" : ""}`}
+              onClick={() => setActiveTab("emails")}
+              aria-pressed={activeTab === "emails"}
             >
-              <rect x="2" y="4" width="20" height="16" rx="2" />
-              <path d="m2 7 10 7 10-7" />
-            </svg>
-          </span>
-          <span className="sc-tab__title">Correos de seguimiento</span>
-          <span className="sc-tab__desc">
-            Gestiona tus correos de notificación
-          </span>
-        </button>
-        <button
-          type="button"
-          className={`sc-tab ${activeTab === "phones" ? "sc-tab--active" : ""}`}
-          onClick={() => setActiveTab("phones")}
-        >
-          <span className="sc-tab__icon">
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
+              <EmailIcon />
+              Correos
+            </button>
+            <button
+              type="button"
+              className={`sc-segment ${activeTab === "phones" ? "sc-segment--active" : ""}`}
+              onClick={() => setActiveTab("phones")}
+              aria-pressed={activeTab === "phones"}
             >
-              <path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 15l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z" />
-            </svg>
-          </span>
-          <span className="sc-tab__title">Teléfonos de contacto</span>
-          <span className="sc-tab__desc">
-            Gestiona tus teléfonos de contacto
-          </span>
-        </button>
-        {allowPasswordChange ? (
-          <button
-            type="button"
-            className={`sc-tab ${activeTab === "password" ? "sc-tab--active" : ""}`}
-            onClick={() => setActiveTab("password")}
-          >
-            <span className="sc-tab__icon">
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
+              <PhoneIcon />
+              Teléfonos
+            </button>
+            {allowPasswordChange ? (
+              <button
+                type="button"
+                className={`sc-segment ${activeTab === "password" ? "sc-segment--active" : ""}`}
+                onClick={() => setActiveTab("password")}
+                aria-pressed={activeTab === "password"}
               >
-                <rect x="5" y="11" width="14" height="10" rx="2" />
-                <path d="M8 11V7a4 4 0 0 1 8 0v4" />
-              </svg>
-            </span>
-            <span className="sc-tab__title">Cambiar contraseña</span>
-            <span className="sc-tab__desc">
-              Actualiza tu contraseña de acceso
-            </span>
-          </button>
+                <LockIcon />
+                Contraseña
+              </button>
+            ) : null}
+          </div>
+        </nav>
+
+        {activeTab === "emails" && (
+          <EmailSettings reference={reference} hasReference={hasReference} />
+        )}
+        {activeTab === "phones" && (
+          <PhoneSettings reference={reference} hasReference={hasReference} />
+        )}
+        {allowPasswordChange && activeTab === "password" ? (
+          <PasswordSettings />
         ) : null}
       </div>
-
-      {activeTab === "emails" && (
-        <EmailSettings reference={reference} hasReference={hasReference} />
-      )}
-      {activeTab === "phones" && (
-        <PhoneSettings reference={reference} hasReference={hasReference} />
-      )}
-      {allowPasswordChange && activeTab === "password" ? (
-        <PasswordSettings />
-      ) : null}
     </section>
   );
 }
