@@ -165,18 +165,11 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  /* Keep the table + footer inside the viewport so opening accordions
-     doesn't create a vertical page scrollbar. Adjust the offset if
-     your banner/header is larger/smaller. */
-  max-height: calc(100vh - 260px);
-  min-height: 0;
 }
 
 .qv-table-scroll {
   overflow-x: auto;
-  overflow-y: auto;
-  flex: 1 1 auto;
-  min-height: 0; /* important for flex children to allow proper scrolling */
+  overflow-y: visible;
   -webkit-overflow-scrolling: touch;
 }
 
@@ -297,8 +290,6 @@
   animation: qv-slideDown 0.22s ease-out;
   font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   background: linear-gradient(180deg, #f8f9fb 0%, #f4f5f8 100%);
-  max-height: calc(100vh - 340px);
-  overflow-y: auto;
 }
 
 @keyframes qv-slideDown {
