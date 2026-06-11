@@ -162,11 +162,11 @@ Object.assign(stepLabels, {
 });
 
 const statusColors: Record<string, { bg: string; text: string; dot: string }> =
-  {
-    completed: { bg: "#ecfdf5", text: "#065f46", dot: "#10b981" },
-    abandoned: { bg: "#fef2f2", text: "#991b1b", dot: "#ef4444" },
-    in_progress: { bg: "#fffbeb", text: "#92400e", dot: "#f59e0b" },
-  };
+{
+  completed: { bg: "#ecfdf5", text: "#065f46", dot: "#10b981" },
+  abandoned: { bg: "#fef2f2", text: "#991b1b", dot: "#ef4444" },
+  in_progress: { bg: "#fffbeb", text: "#92400e", dot: "#f59e0b" },
+};
 
 const statusLabels: Record<string, string> = {
   completed: "Completada",
@@ -1245,8 +1245,8 @@ export default function ComportamientoDeClientes({
                   !routeFilter.trim() ||
                   (s.route
                     ? `${s.route.origin} ${s.route.destination}`
-                        .toLowerCase()
-                        .includes(routeFilter.toLowerCase())
+                      .toLowerCase()
+                      .includes(routeFilter.toLowerCase())
                     : false);
                 return tabMatch && routeMatch;
               });
@@ -2540,9 +2540,9 @@ export default function ComportamientoDeClientes({
                     : tempModalType === "frio"
                       ? tc.lastActivity
                         ? `${Math.floor(
-                            (Date.now() - new Date(tc.lastActivity).getTime()) /
-                              86400000,
-                          )} d sin actividad`
+                          (Date.now() - new Date(tc.lastActivity).getTime()) /
+                          86400000,
+                        )} d sin actividad`
                         : "Sin cotizaciones"
                       : `${tc.completed30d} en 30d`;
                 const valColor =

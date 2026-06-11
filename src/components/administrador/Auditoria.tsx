@@ -51,38 +51,38 @@ const CATEGORIAS: {
   icon: string;
   color: string;
 }[] = [
-  { value: "", label: "Todas", icon: "fa fa-layer-group", color: "#6c757d" },
-  {
-    value: "COTIZACION",
-    label: "Cotizaciones",
-    icon: "fa fa-file-invoice",
-    color: "#0d6efd",
-  },
-  {
-    value: "TRACKING",
-    label: "Tracking",
-    icon: "fa fa-route",
-    color: "#198754",
-  },
-  {
-    value: "PRICING",
-    label: "Pricing",
-    icon: "fa fa-dollar-sign",
-    color: "#ffc107",
-  },
-  {
-    value: "GESTION_USUARIOS",
-    label: "Usuarios",
-    icon: "fa fa-users",
-    color: "#6f42c1",
-  },
-  {
-    value: "GESTION_EJECUTIVOS",
-    label: "Ejecutivos",
-    icon: "fa fa-briefcase",
-    color: "#dc3545",
-  },
-];
+    { value: "", label: "Todas", icon: "fa fa-layer-group", color: "#6c757d" },
+    {
+      value: "COTIZACION",
+      label: "Cotizaciones",
+      icon: "fa fa-file-invoice",
+      color: "#0d6efd",
+    },
+    {
+      value: "TRACKING",
+      label: "Tracking",
+      icon: "fa fa-route",
+      color: "#198754",
+    },
+    {
+      value: "PRICING",
+      label: "Pricing",
+      icon: "fa fa-dollar-sign",
+      color: "#ffc107",
+    },
+    {
+      value: "GESTION_USUARIOS",
+      label: "Usuarios",
+      icon: "fa fa-users",
+      color: "#6f42c1",
+    },
+    {
+      value: "GESTION_EJECUTIVOS",
+      label: "Ejecutivos",
+      icon: "fa fa-briefcase",
+      color: "#dc3545",
+    },
+  ];
 
 const ACCION_BADGES: Record<string, { bg: string; text: string }> = {
   // Cotizaciones cliente
