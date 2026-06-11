@@ -793,8 +793,9 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
-/*  Responsive  */
+/*  Responsive — mismos breakpoints que AirShipmentsView  */
 @media (max-width: 1200px) {
+  .osv-accordion-content .osv-field-sections,
   .osv-field-sections {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -804,18 +805,34 @@
   .osv-container {
     padding: 8px;
   }
+
   .osv-toolbar {
     flex-direction: column;
     align-items: stretch;
   }
+
   .osv-toolbar__right {
     justify-content: flex-end;
   }
+
+  .osv-table-footer {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+  }
+
+  .osv-th,
+  .osv-td {
+    padding: 10px 12px;
+    font-size: 0.75rem;
+  }
+
   .osv-map-wrapper iframe {
     height: 240px;
   }
-  .osv-field-sections {
-    grid-template-columns: 1fr;
+
+  .osv-accordion-content {
+    padding: 16px;
   }
 
   .osv-accordion-content .osv-route-card,
@@ -823,6 +840,7 @@
     flex-direction: column;
     gap: 14px;
     text-align: center;
+    padding: 16px;
   }
 
   .osv-accordion-content .osv-route-card__point,
@@ -830,6 +848,7 @@
   .osv-route-card__point,
   .osv-route-card__point--end {
     text-align: center;
+    align-items: center;
   }
 
   .osv-accordion-content .osv-route-card__connector {
@@ -843,25 +862,84 @@
 
   .osv-accordion-content .osv-tabs {
     padding: 4px 12px 16px;
+    border-radius: 8px;
   }
-  .osv-cards-grid {
-    grid-template-columns: 1fr;
-  }
-  .osv-info-grid {
-    grid-template-columns: 1fr;
-  }
+
+  .osv-accordion-content .osv-tabs__btn,
   .osv-tabs__btn {
     padding: 8px 12px;
     font-size: 0.75rem;
   }
-  .osv-accordion-content {
-    padding: 16px;
+
+  .osv-accordion-content .osv-tabs__panel,
+  .osv-tabs__panel {
+    padding: 14px 0 0;
   }
+
+  .osv-accordion-content .osv-field-sections,
+  .osv-field-sections {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .osv-accordion-content .osv-field-cell {
+    padding: 11px 13px;
+  }
+
+  .osv-cards-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .osv-info-grid {
+    grid-template-columns: 1fr;
+  }
+
   .osv-finance-card {
     padding: 24px 16px;
   }
+
   .osv-finance-card__amount {
     font-size: 1.5rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .osv-table thead .osv-th:nth-child(3),
+  .osv-table thead .osv-th:nth-child(4),
+  .osv-table thead .osv-th:nth-child(5),
+  .osv-table tbody .osv-tr:not(.osv-accordion-row) .osv-td:nth-child(3),
+  .osv-table tbody .osv-tr:not(.osv-accordion-row) .osv-td:nth-child(4),
+  .osv-table tbody .osv-tr:not(.osv-accordion-row) .osv-td:nth-child(5) {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .osv-accordion-content {
+    padding: 12px;
+  }
+
+  .osv-accordion-content .osv-route-card {
+    padding: 14px;
+    margin-bottom: 12px;
+  }
+
+  .osv-accordion-content .osv-tabs {
+    padding: 2px 10px 12px;
+  }
+
+  .osv-accordion-content .osv-field-section__title {
+    font-size: 0.5625rem;
+    margin-bottom: 6px;
+  }
+
+  .osv-accordion-content .osv-field-cell {
+    padding: 10px 12px;
+  }
+
+  .osv-accordion-content .osv-accordion-track {
+    font-size: 0.6875rem;
+    padding: 7px 10px;
   }
 }
 

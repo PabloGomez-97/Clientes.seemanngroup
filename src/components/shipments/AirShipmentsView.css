@@ -1151,8 +1151,15 @@
   color: #666; /* opcional: color más tenue */
 }
 
-/*  Responsive  */
+/*  Responsive
+    ≥1201px  → 4 columnas en field grids
+    ≤1200px  → 2 columnas (tablet)
+    ≤768px   → 1 columna, ruta vertical, tabs compactos
+    ≤640px   → tabla simplificada (columnas secundarias ocultas)
+    ≤480px   → acordeón ultra compacto
+*/
 @media (max-width: 1200px) {
+  .asv-accordion-content .asv-field-sections,
   .asv-field-sections {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1174,6 +1181,12 @@
     gap: 8px;
   }
 
+  .asv-th,
+  .asv-td {
+    padding: 10px 12px;
+    font-size: 0.75rem;
+  }
+
   .asv-accordion-content {
     padding: 16px;
   }
@@ -1183,6 +1196,7 @@
     flex-direction: column;
     gap: 14px;
     text-align: center;
+    padding: 16px;
   }
 
   .asv-accordion-content .asv-route-card__point,
@@ -1190,6 +1204,7 @@
   .asv-route-card__point,
   .asv-route-card__point--end {
     text-align: center;
+    align-items: center;
   }
 
   .asv-accordion-content .asv-route-card__connector {
@@ -1203,22 +1218,76 @@
 
   .asv-accordion-content .asv-tabs {
     padding: 4px 12px 16px;
+    border-radius: 8px;
   }
 
+  .asv-accordion-content .asv-tabs__btn,
   .asv-tabs__btn {
     padding: 8px 12px;
     font-size: 0.75rem;
   }
 
+  .asv-accordion-content .asv-tabs__panel,
   .asv-tabs__panel {
-    padding: 16px 0;
+    padding: 14px 0 0;
   }
 
+  .asv-accordion-content .asv-field-sections,
   .asv-field-sections {
     grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .asv-accordion-content .asv-field-cell {
+    padding: 11px 13px;
+  }
+
+  .asv-accordion-content .asv-field-cell__value {
+    font-size: 0.8125rem;
   }
 
   .asv-map-wrapper {
     height: 300px;
+  }
+}
+
+@media (max-width: 640px) {
+  /* Tabla: número, origen y carrier; el detalle completo queda en el acordeón */
+  .asv-table thead .asv-th:nth-child(3),
+  .asv-table thead .asv-th:nth-child(4),
+  .asv-table thead .asv-th:nth-child(5),
+  .asv-table tbody .asv-tr:not(.asv-accordion-row) .asv-td:nth-child(3),
+  .asv-table tbody .asv-tr:not(.asv-accordion-row) .asv-td:nth-child(4),
+  .asv-table tbody .asv-tr:not(.asv-accordion-row) .asv-td:nth-child(5) {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .asv-accordion-content {
+    padding: 12px;
+  }
+
+  .asv-accordion-content .asv-route-card {
+    padding: 14px;
+    margin-bottom: 12px;
+  }
+
+  .asv-accordion-content .asv-tabs {
+    padding: 2px 10px 12px;
+  }
+
+  .asv-accordion-content .asv-field-section__title {
+    font-size: 0.5625rem;
+    margin-bottom: 6px;
+  }
+
+  .asv-accordion-content .asv-field-cell {
+    padding: 10px 12px;
+  }
+
+  .asv-accordion-content .asv-accordion-track {
+    font-size: 0.6875rem;
+    padding: 7px 10px;
   }
 }
