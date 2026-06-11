@@ -30,6 +30,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+mcp-linbis-analyzer/
 
 # Otros
 # quiero colocar la carpeta security que está en la raíz del proyecto
