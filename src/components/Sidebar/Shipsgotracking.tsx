@@ -262,10 +262,6 @@ function ShipsGoTracking({
     );
   }
 
-  const hasSelection =
-    (activeTab === "air" && selectedAir !== null) ||
-    (activeTab === "ocean" && selectedOcean !== null);
-
   const clearSelection = () => {
     setSelectedAir(null);
     setSelectedOcean(null);
@@ -435,10 +431,6 @@ function ShipsGoTracking({
           </button>
         </div>
 
-        <div
-          className={`sg-split-view${hasSelection ? " sg-split-view--active" : ""}`}
-        >
-          <div className="sg-split-list">
         {/* === AIR TAB === */}
         {activeTab === "air" && (
           <>
@@ -508,6 +500,10 @@ function ShipsGoTracking({
                   </div>
                 </div>
 
+                <div
+                  className={`sg-split-view${selectedAir ? " sg-split-view--active" : ""}`}
+                >
+                  <div className="sg-split-list">
                 {/* Delay alerts */}
                 {userAir.filter(isAirDelayed).map((s) => (
                   <div key={`d-${s.id}`} className="sg-delay-banner">
@@ -543,6 +539,10 @@ function ShipsGoTracking({
                                 : undefined
                             }
                             onClick={() => {
+                              if (selectedAir?.id === s.id) {
+                                clearSelection();
+                                return;
+                              }
                               setSelectedAir(s);
                               setSelectedOcean(null);
                             }}
@@ -690,6 +690,26 @@ function ShipsGoTracking({
                   en cargarse. Por favor, no volver a crear el mismo
                   seguimiento.
                 </div>
+                  </div>
+
+                  {selectedAir && (
+                    <aside className="sg-split-detail">
+                      <div className="sg-split-detail-map">
+                        <ShipsGoEmbed
+                          transport="air"
+                          query={selectedAir.awb_number}
+                        />
+                      </div>
+                      <div className="sg-split-detail-info">
+                        <AirShipmentDetails
+                          layout="panel"
+                          shipment={selectedAir}
+                          onClose={clearSelection}
+                        />
+                      </div>
+                    </aside>
+                  )}
+                </div>
               </>
             )}
           </>
@@ -763,6 +783,11 @@ function ShipsGoTracking({
                     </div>
                   </div>
                 </div>
+
+                <div
+                  className={`sg-split-view${selectedOcean ? " sg-split-view--active" : ""}`}
+                >
+                  <div className="sg-split-list">
                 {/* Delay alerts */}
                 {userOcean.filter(isOceanDelayed).map((s) => (
                   <div key={`d-${s.id}`} className="sg-delay-banner">
@@ -799,6 +824,10 @@ function ShipsGoTracking({
                                 : undefined
                             }
                             onClick={() => {
+                              if (selectedOcean?.id === s.id) {
+                                clearSelection();
+                                return;
+                              }
                               setSelectedOcean(s);
                               setSelectedAir(null);
                             }}
@@ -969,51 +998,30 @@ function ShipsGoTracking({
                   en cargarse. Por favor, no volver a crear el mismo
                   seguimiento.
                 </div>
+                  </div>
+
+                  {selectedOcean && (
+                    <aside className="sg-split-detail">
+                      <div className="sg-split-detail-map">
+                        <ShipsGoEmbed
+                          transport="ocean"
+                          query={getOceanEmbedQuery(selectedOcean)}
+                        />
+                      </div>
+                      <div className="sg-split-detail-info">
+                        <OceanShipmentDetail
+                          layout="panel"
+                          shipment={selectedOcean}
+                          onClose={clearSelection}
+                        />
+                      </div>
+                    </aside>
+                  )}
+                </div>
               </>
             )}
           </>
         )}
-          </div>
-
-          {hasSelection && (
-            <aside className="sg-split-detail">
-              {activeTab === "air" && selectedAir && (
-                <>
-                  <div className="sg-split-detail-map">
-                    <ShipsGoEmbed
-                      transport="air"
-                      query={selectedAir.awb_number}
-                    />
-                  </div>
-                  <div className="sg-split-detail-info">
-                    <AirShipmentDetails
-                      layout="panel"
-                      shipment={selectedAir}
-                      onClose={clearSelection}
-                    />
-                  </div>
-                </>
-              )}
-              {activeTab === "ocean" && selectedOcean && (
-                <>
-                  <div className="sg-split-detail-map">
-                    <ShipsGoEmbed
-                      transport="ocean"
-                      query={getOceanEmbedQuery(selectedOcean)}
-                    />
-                  </div>
-                  <div className="sg-split-detail-info">
-                    <OceanShipmentDetail
-                      layout="panel"
-                      shipment={selectedOcean}
-                      onClose={clearSelection}
-                    />
-                  </div>
-                </>
-              )}
-            </aside>
-          )}
-        </div>
       </div>
 
       {deleteTarget && (

@@ -32,6 +32,13 @@ import {
   flattenAirShipmentRecords,
   mapLinbisAirToAirShipment,
 } from "../../services/linbisShipmentMappers";
+import {
+  type ShipsgoEtaEntry,
+  formatShipsgoDateLong,
+  formatShipsgoScheduledLabel,
+  formatShipsgoTime,
+  getShipsgoScheduledInitial,
+} from "../../services/shipsgoEtaHelpers";
 
 const ITEMS_PER_PAGE = 10;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -490,9 +497,9 @@ function AirShipmentsView({
 
   // Already-tracked AWBs (from ShipsGo)
   const [trackedAwbs, setTrackedAwbs] = useState<Set<string>>(new Set());
-  /** ETA aerolínea (route.destination.date_of_rcf) por AWB, desde ShipsGo */
+  /** ETA aerolínea (date_of_rcf + date_of_rcf_initial) por AWB, desde ShipsGo */
   const [shipsgoArrivalByAwb, setShipsgoArrivalByAwb] = useState<
-    Record<string, string>
+    Record<string, ShipsgoEtaEntry>
   >({});
 
   // Filter fields
@@ -636,6 +643,8 @@ function AirShipmentsView({
     }
   };
 
+  const formatShipsgoEtaTime = formatShipsgoTime;
+
   const normalizeAirAwbKey = (value?: string | null) =>
     (value ?? "").replace(/[\s-]/g, "");
 
@@ -655,12 +664,17 @@ function AirShipmentsView({
     return [...new Set(raw.map(normalizeAirAwbKey).filter(Boolean))];
   };
 
-  const findShipsgoAirEta = (shipment: AirShipment): string | undefined => {
+  const findShipsgoAirEtaEntry = (
+    shipment: AirShipment,
+  ): ShipsgoEtaEntry | undefined => {
     for (const key of getAirShipsgoLookupKeys(shipment)) {
       if (shipsgoArrivalByAwb[key]) return shipsgoArrivalByAwb[key];
     }
     return undefined;
   };
+
+  const findShipsgoAirEta = (shipment: AirShipment): string | undefined =>
+    findShipsgoAirEtaEntry(shipment)?.current;
 
   const isAirArrivalFromShipsgo = (shipment: AirShipment): boolean =>
     getAirShipsgoLookupKeys(shipment).some(
@@ -694,16 +708,19 @@ function AirShipmentsView({
 
   const renderAccordionArrivalDate = (shipment: AirShipment) => {
     const linbisDate = getLinbisArrivalDisplayDate(shipment);
-    const shipsgoDate = findShipsgoAirEta(shipment);
+    const shipsgoEntry = findShipsgoAirEtaEntry(shipment);
+    const shipsgoDate = shipsgoEntry?.current;
+    const shipsgoScheduled = getShipsgoScheduledInitial(shipsgoEntry);
     const fromShipsgo = isAirArrivalFromShipsgo(shipment);
 
     if (fromShipsgo && shipsgoDate) {
+      const shipsgoTime = formatShipsgoEtaTime(shipsgoDate);
       return (
         <span
           className="asv-field-cell__value"
           style={{
             display: "inline-flex",
-            alignItems: "center",
+            alignItems: "flex-start",
             gap: 8,
             flexWrap: "wrap",
           }}
@@ -714,10 +731,36 @@ function AirShipmentsView({
             </span>
           ) : null}
           <span
-            style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+            style={{
+              display: "inline-flex",
+              flexDirection: "column",
+              gap: 2,
+            }}
           >
-            {renderEtaBadge("Fecha estimada con IA")}
-            <span>{formatDateInline(shipsgoDate)}</span>
+            <span
+              style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+            >
+              {renderEtaBadge("Fecha estimada con IA")}
+              <span>
+                {formatShipsgoDateLong(shipsgoDate)}
+                {shipsgoTime ? (
+                  <span style={{ marginLeft: 6, fontWeight: 600 }}>
+                    {shipsgoTime}
+                  </span>
+                ) : null}
+              </span>
+            </span>
+            {shipsgoScheduled ? (
+              <span
+                style={{
+                  fontSize: "0.75rem",
+                  color: "#d97706",
+                  fontStyle: "italic",
+                }}
+              >
+                Programado: {formatShipsgoScheduledLabel(shipsgoScheduled)}
+              </span>
+            ) : null}
           </span>
         </span>
       );
@@ -745,7 +788,11 @@ function AirShipmentsView({
   const renderArrivalInline = (displayDate?: string, fromShipsgo = false) => (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
       {fromShipsgo ? renderEtaBadge() : null}
-      <span>{formatDateInline(displayDate)}</span>
+      <span>
+        {fromShipsgo
+          ? formatShipsgoDateLong(displayDate)
+          : formatDateInline(displayDate)}
+      </span>
     </span>
   );
 
@@ -1105,13 +1152,22 @@ function AirShipmentsView({
         if (!res.ok) return;
         const data = await res.json();
         const awbs = new Set<string>();
-        const etaByAwb: Record<string, string> = {};
+        const etaByAwb: Record<string, ShipsgoEtaEntry> = {};
         for (const s of data.shipments ?? []) {
           if (s.reference === activeUsername && s.awb_number) {
             const key = s.awb_number.replace(/[\s-]/g, "");
             awbs.add(key);
-            const eta = s.route?.destination?.date_of_rcf;
-            if (eta) etaByAwb[key] = eta;
+            const current = s.route?.destination?.date_of_rcf;
+            const initial = s.route?.destination?.date_of_rcf_initial;
+            if (current) {
+              etaByAwb[key] = {
+                current,
+                initial:
+                  typeof initial === "string" && initial !== current
+                    ? initial
+                    : undefined,
+              };
+            }
           }
         }
         setTrackedAwbs(awbs);
@@ -2061,9 +2117,13 @@ function AirShipmentsView({
                                   </span>
                                   {effectiveArrivalDisplayDate && (
                                     <span className="asv-route-card__date">
-                                      {formatDateInline(
-                                        effectiveArrivalDisplayDate,
-                                      )}
+                                      {effectiveArrivalIsShipsgo
+                                        ? formatShipsgoDateLong(
+                                            effectiveArrivalDisplayDate,
+                                          )
+                                        : formatDateInline(
+                                            effectiveArrivalDisplayDate,
+                                          )}
                                     </span>
                                   )}
                                 </div>

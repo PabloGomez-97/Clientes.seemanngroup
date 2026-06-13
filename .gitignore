@@ -17,8 +17,6 @@ dist-ssr
 .env.local
 .env.production.local
 
-# Documentación
-*.md
 
 # Editor
 .vscode/*

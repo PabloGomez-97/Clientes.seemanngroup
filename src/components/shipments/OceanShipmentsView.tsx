@@ -31,6 +31,13 @@ import {
   LINBIS_PAGE_SIZE,
 } from "../../services/linbisListFetch";
 import { mapLinbisOceanToShippingOrder } from "../../services/linbisShipmentMappers";
+import {
+  type ShipsgoEtaEntry,
+  formatShipsgoDateLong,
+  formatShipsgoScheduledLabel,
+  formatShipsgoTime,
+  getShipsgoScheduledInitial,
+} from "../../services/shipsgoEtaHelpers";
 
 const ITEMS_PER_PAGE = 10;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -451,9 +458,9 @@ function OceanShipmentsView({
   const [trackedOceanNumbers, setTrackedOceanNumbers] = useState<Set<string>>(
     new Set(),
   );
-  /** ETA naviera (port_of_discharge) por container/booking, desde ShipsGo */
+  /** ETA naviera (date_of_discharge + initial) por container/booking, desde ShipsGo */
   const [shipsgoArrivalByNumber, setShipsgoArrivalByNumber] = useState<
-    Record<string, string>
+    Record<string, ShipsgoEtaEntry>
   >({});
 
   // HBLI cache (tracking number lookup via /commodities chain)
@@ -598,6 +605,8 @@ function OceanShipmentsView({
     }
   };
 
+  const formatShipsgoEtaTime = formatShipsgoTime;
+
   const normalizeOceanTrackKey = (value?: string | null) =>
     (value ?? "").replace(/[\s-]/g, "").toUpperCase();
 
@@ -628,14 +637,18 @@ function OceanShipmentsView({
     return [...new Set(raw.map(normalizeOceanTrackKey).filter(Boolean))];
   };
 
-  const findShipsgoOceanEta = (
+  const findShipsgoOceanEtaEntry = (
     shipment: OceanShippingOrder,
-  ): string | undefined => {
+  ): ShipsgoEtaEntry | undefined => {
     for (const key of getOceanShipsgoLookupKeys(shipment)) {
       if (shipsgoArrivalByNumber[key]) return shipsgoArrivalByNumber[key];
     }
     return undefined;
   };
+
+  const findShipsgoOceanEta = (
+    shipment: OceanShippingOrder,
+  ): string | undefined => findShipsgoOceanEtaEntry(shipment)?.current;
 
   const isOceanArrivalFromShipsgo = (shipment: OceanShippingOrder): boolean =>
     getOceanShipsgoLookupKeys(shipment).some(
@@ -666,16 +679,19 @@ function OceanShipmentsView({
 
   const renderAccordionArrivalDate = (shipment: OceanShippingOrder) => {
     const linbisDate = shipment.arrivalDate;
-    const shipsgoDate = findShipsgoOceanEta(shipment);
+    const shipsgoEntry = findShipsgoOceanEtaEntry(shipment);
+    const shipsgoDate = shipsgoEntry?.current;
+    const shipsgoScheduled = getShipsgoScheduledInitial(shipsgoEntry);
     const fromShipsgo = isOceanArrivalFromShipsgo(shipment);
 
     if (fromShipsgo && shipsgoDate) {
+      const shipsgoTime = formatShipsgoEtaTime(shipsgoDate);
       return (
         <span
           className="osv-field-cell__value"
           style={{
             display: "inline-flex",
-            alignItems: "center",
+            alignItems: "flex-start",
             gap: 8,
             flexWrap: "wrap",
           }}
@@ -686,10 +702,36 @@ function OceanShipmentsView({
             </span>
           ) : null}
           <span
-            style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+            style={{
+              display: "inline-flex",
+              flexDirection: "column",
+              gap: 2,
+            }}
           >
-            {renderEtaBadge("Fecha estimada con IA")}
-            <span>{formatDateLong(shipsgoDate)}</span>
+            <span
+              style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+            >
+              {renderEtaBadge("Fecha estimada con IA")}
+              <span>
+                {formatShipsgoDateLong(shipsgoDate)}
+                {shipsgoTime ? (
+                  <span style={{ marginLeft: 6, fontWeight: 600 }}>
+                    {shipsgoTime}
+                  </span>
+                ) : null}
+              </span>
+            </span>
+            {shipsgoScheduled ? (
+              <span
+                style={{
+                  fontSize: "0.75rem",
+                  color: "#d97706",
+                  fontStyle: "italic",
+                }}
+              >
+                Programado: {formatShipsgoScheduledLabel(shipsgoScheduled)}
+              </span>
+            ) : null}
           </span>
         </span>
       );
@@ -708,7 +750,11 @@ function OceanShipmentsView({
   const renderArrivalInline = (dateString?: string | null, fromShipsgo = false) => (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
       {fromShipsgo ? renderEtaBadge() : null}
-      <span>{formatDateInline(dateString)}</span>
+      <span>
+        {fromShipsgo
+          ? formatShipsgoDateLong(dateString)
+          : formatDateInline(dateString)}
+      </span>
     </span>
   );
 
@@ -1241,19 +1287,30 @@ function OceanShipmentsView({
         if (!res.ok) return;
         const data = await res.json();
         const nums = new Set<string>();
-        const etaByNumber: Record<string, string> = {};
+        const etaByNumber: Record<string, ShipsgoEtaEntry> = {};
         for (const s of data.shipments ?? []) {
           if (s.reference !== activeUsername) continue;
-          const eta = s.route?.port_of_discharge?.date_of_discharge;
+          const current = s.route?.port_of_discharge?.date_of_discharge;
+          const initial = s.route?.port_of_discharge?.date_of_discharge_initial;
+          const storeEta = (key: string) => {
+            if (!current) return;
+            etaByNumber[key] = {
+              current,
+              initial:
+                typeof initial === "string" && initial !== current
+                  ? initial
+                  : undefined,
+            };
+          };
           if (s.container_number) {
             const key = s.container_number.toUpperCase();
             nums.add(key);
-            if (eta) etaByNumber[key] = eta;
+            storeEta(key);
           }
           if (s.booking_number) {
             const key = s.booking_number.toUpperCase();
             nums.add(key);
-            if (eta) etaByNumber[key] = eta;
+            storeEta(key);
           }
         }
         setTrackedOceanNumbers(nums);
@@ -2187,7 +2244,11 @@ function OceanShipmentsView({
                                   </span>
                                   {effectiveArrivalDate && (
                                     <span className="osv-route-card__date">
-                                      {formatDateInline(effectiveArrivalDate)}
+                                      {effectiveArrivalIsShipsgo
+                                        ? formatShipsgoDateLong(
+                                            effectiveArrivalDate,
+                                          )
+                                        : formatDateInline(effectiveArrivalDate)}
                                     </span>
                                   )}
                                 </div>

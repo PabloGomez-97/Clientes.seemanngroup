@@ -17,6 +17,7 @@ import {
 } from "./types";
 import AirShipmentRoute from "./AirShipmentRoute";
 import TrackingEmailSuggestions from "../../tracking/TrackingEmailSuggestions";
+import ShipmentMetaStrip from "./ShipmentMetaStrip";
 
 const API_BASE_URL =
   import.meta.env.MODE === "development"
@@ -323,7 +324,7 @@ function AirShipmentDetails({
             <>
               {/* Route summary */}
               {s.route && (
-                <div className="sg-detail-section">
+                <div className="sg-detail-section sg-detail-section--compact">
                   <div className="sg-detail-title">Ruta</div>
                   <div className="sg-route">
                     <div className="sg-route-point">
@@ -398,33 +399,32 @@ function AirShipmentDetails({
               )}
 
               {/* Cargo */}
-              <div className="sg-detail-section">
-                <div className="sg-detail-title">Carga</div>
-                <div className="sg-cargo-grid">
-                  <div className="sg-cargo-item">
-                    <div className="sg-cargo-value">
+              <div className="sg-detail-section sg-detail-section--compact">
+                <div className="sg-overview-metrics">
+                  <div className="sg-overview-metric">
+                    <span className="sg-overview-metric-value">
                       {s.cargo.pieces ?? "—"}
-                    </div>
-                    <div className="sg-cargo-label">Piezas</div>
+                    </span>
+                    <span className="sg-overview-metric-label">Piezas</span>
                   </div>
-                  <div className="sg-cargo-item">
-                    <div className="sg-cargo-value">
+                  <div className="sg-overview-metric">
+                    <span className="sg-overview-metric-value">
                       {s.cargo.weight ? `${s.cargo.weight} kg` : "—"}
-                    </div>
-                    <div className="sg-cargo-label">Peso</div>
+                    </span>
+                    <span className="sg-overview-metric-label">Peso</span>
                   </div>
-                  <div className="sg-cargo-item">
-                    <div className="sg-cargo-value">
+                  <div className="sg-overview-metric">
+                    <span className="sg-overview-metric-value">
                       {s.cargo.volume ? `${s.cargo.volume} m³` : "—"}
-                    </div>
-                    <div className="sg-cargo-label">Volumen</div>
+                    </span>
+                    <span className="sg-overview-metric-label">Volumen</span>
                   </div>
                 </div>
               </div>
 
               {/* Timeline */}
               {s.route && (
-                <div className="sg-detail-section">
+                <div className="sg-detail-section sg-detail-section--compact">
                   <div className="sg-detail-title">Línea de tiempo</div>
                   <div className="sg-timeline">
                     {s.route.origin.date_of_dep && (
@@ -493,8 +493,7 @@ function AirShipmentDetails({
 
               {/* Tags */}
               {s.tags.length > 0 && (
-                <div className="sg-detail-section">
-                  <div className="sg-detail-title">Etiquetas</div>
+                <div className="sg-detail-section sg-detail-section--compact">
                   <div className="sg-tags">
                     {s.tags.map((t) => (
                       <span key={t.id} className="sg-tag">
@@ -505,29 +504,32 @@ function AirShipmentDetails({
                 </div>
               )}
 
-              {/* Dates */}
-              <div className="sg-detail-section">
-                <div className="sg-detail-title">Información adicional</div>
-                <div className="sg-detail-grid">
-                  <div className="sg-detail-item">
-                    <label>Creado</label>
-                    <span>{formatDateTime(s.created_at)}</span>
-                  </div>
-                  <div className="sg-detail-item">
-                    <label>Actualizado</label>
-                    <span>{formatDateTime(s.updated_at)}</span>
-                  </div>
-                  <div className="sg-detail-item">
-                    <label>Verificado</label>
-                    <span>{formatDateTime(s.checked_at)}</span>
-                  </div>
-                  {s.discarded_at && (
-                    <div className="sg-detail-item">
-                      <label>Descartado</label>
-                      <span>{formatDateTime(s.discarded_at)}</span>
-                    </div>
-                  )}
-                </div>
+              <div className="sg-detail-section sg-detail-section--compact">
+                <ShipmentMetaStrip
+                  items={[
+                    {
+                      label: "Última actualización",
+                      value: formatDateTime(s.updated_at),
+                      emphasis: true,
+                    },
+                    {
+                      label: "Registrado",
+                      value: formatDateTime(s.created_at),
+                    },
+                    {
+                      label: "Verificado",
+                      value: formatDateTime(s.checked_at),
+                    },
+                    ...(s.discarded_at
+                      ? [
+                          {
+                            label: "Descartado",
+                            value: formatDateTime(s.discarded_at),
+                          },
+                        ]
+                      : []),
+                  ]}
+                />
               </div>
             </>
           )}
