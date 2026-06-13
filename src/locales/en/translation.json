@@ -296,6 +296,15 @@
         "badge": "🚚 Ground",
         "comparisonDescription": "Ground transportation service to move your cargo from the port to its final destination within the country."
       },
+      "terrestre": {
+        "title": "Ground Transport",
+        "description": "Domestic and international ground transport quotation",
+        "description1": " Full and consolidated cargo",
+        "description2": " Custom routes",
+        "description3": " Regional coverage",
+        "button": "In development",
+        "badge": "🚛 Ground"
+      },
       "volver": "Back to selection",
       "comparison": {
         "title": "Need help choosing?"

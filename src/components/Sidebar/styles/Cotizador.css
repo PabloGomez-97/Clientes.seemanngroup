@@ -102,6 +102,20 @@
   box-shadow: 0 1px 6px rgba(var(--primary-rgb), 0.08);
 }
 
+.cotizador-card--disabled {
+  cursor: default;
+  opacity: 0.85;
+}
+
+.cotizador-card--disabled:hover {
+  border-color: #e5e7eb;
+  box-shadow: none;
+}
+
+.cotizador-card--disabled:hover .cotizador-card__indicator {
+  background-color: transparent;
+}
+
 .cotizador-card:hover .cotizador-card__indicator {
   background-color: #ff6200;
 }
@@ -228,6 +242,13 @@
 
 .cotizador-card__btn:active {
   background-color: var(--primary-active);
+}
+
+.cotizador-card__btn--disabled,
+.cotizador-card__btn--disabled:hover,
+.cotizador-card__btn--disabled:active {
+  background-color: #9ca3af;
+  cursor: not-allowed;
 }
 
 /* ── Info Banner (replaces comparison section) ── */

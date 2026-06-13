@@ -295,6 +295,15 @@
         "badge": "🚚 Terrestre",
         "comparisonDescription": "Servicio de transporte terrestre para mover tu carga desde el puerto hasta su destino final dentro del país."
       },
+      "terrestre": {
+        "title": "Transporte Terrestre",
+        "description": "Cotización de transporte terrestre nacional e internacional",
+        "description1": "Carga completa y consolidada",
+        "description2": "Rutas personalizadas",
+        "description3": "Cobertura regional",
+        "button": "En desarrollo",
+        "badge": "🚛 Terrestre"
+      },
       "volver": "Volver a selección",
       "comparison": {
         "title": "¿Necesitas ayuda para elegir?"

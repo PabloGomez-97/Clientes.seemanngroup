@@ -37,6 +37,12 @@ function CotizadorFormLayout({ children }: { children: React.ReactNode }) {
 
 type TipoCotizacion = "AEREO" | "FCL" | "LCL" | "LASTMILE" | null;
 
+interface ServiceType {
+  key: "AEREO" | "FCL" | "LCL" | "LASTMILE" | "TERRESTRE";
+  icon: string;
+  inDevelopment?: boolean;
+}
+
 interface ItineraryState {
   tipoEnvio: "AEREO" | "FCL" | "LCL" | "LASTMILE";
   origin: { value: string; label: string };
@@ -44,12 +50,13 @@ interface ItineraryState {
   fecha?: string;
 }
 
-const serviceTypes = [
-  { key: "AEREO" as const, icon: "fa fa-plane" },
-  { key: "FCL" as const, icon: "fa fa-ship" },
-  { key: "LCL" as const, icon: "fa fa-cubes" },
-  { key: "LASTMILE" as const, icon: "fa fa-truck" },
-] as const;
+const serviceTypes: ServiceType[] = [
+  { key: "AEREO", icon: "fa fa-plane" },
+  { key: "FCL", icon: "fa fa-ship" },
+  { key: "LCL", icon: "fa fa-cubes" },
+  { key: "LASTMILE", icon: "fa fa-truck" },
+  { key: "TERRESTRE", icon: "fa fa-road", inDevelopment: true },
+];
 
 const Cotizador: React.FC = () => {
   const location = useLocation();
@@ -70,7 +77,7 @@ const Cotizador: React.FC = () => {
     }
   }, [location.state, navigate, location.pathname]);
 
-  const handleSeleccionTipo = (tipo: TipoCotizacion) => {
+  const handleSeleccionTipo = (tipo: Exclude<TipoCotizacion, null>) => {
     setTipoCotizacion(tipo);
     setPreselectedData(null);
   };
@@ -95,13 +102,17 @@ const Cotizador: React.FC = () => {
 
             {/* Service Cards */}
             <div className="cotizador-grid">
-              {serviceTypes.map(({ key, icon }) => {
+              {serviceTypes.map(({ key, icon, inDevelopment }) => {
                 const k = key.toLowerCase();
                 return (
                   <div
                     key={key}
-                    className="cotizador-card"
-                    onClick={() => handleSeleccionTipo(key)}
+                    className={`cotizador-card${inDevelopment ? " cotizador-card--disabled" : ""}`}
+                    onClick={
+                      inDevelopment
+                        ? undefined
+                        : () => handleSeleccionTipo(key as Exclude<TipoCotizacion, null>)
+                    }
                   >
                     <span className="cotizador-card__indicator" />
 
@@ -128,10 +139,13 @@ const Cotizador: React.FC = () => {
                     </ul>
 
                     <button
-                      className="cotizador-card__btn"
+                      className={`cotizador-card__btn${inDevelopment ? " cotizador-card__btn--disabled" : ""}`}
+                      disabled={inDevelopment}
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleSeleccionTipo(key);
+                        if (!inDevelopment) {
+                          handleSeleccionTipo(key as Exclude<TipoCotizacion, null>);
+                        }
                       }}
                     >
                       {t(`home.cotizador.${k}.button`)}
