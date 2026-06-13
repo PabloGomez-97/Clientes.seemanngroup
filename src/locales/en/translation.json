@@ -1457,9 +1457,18 @@
           "subtitle": "Direct negotiation with carriers for competitive rates and better conditions: free days, drop-off and timely document issuance."
         },
         "features": {
-          "f1": { "title": "Competitive rates", "desc": "Direct negotiation with carriers for better commercial conditions and free days." },
-          "f2": { "title": "Worldwide coverage", "desc": "Positioning in major and secondary ports with certified agents." },
-          "f3": { "title": "FCL and LCL", "desc": "Solutions for full containers and consolidated cargo with operational flexibility." }
+          "f1": {
+            "title": "Competitive rates",
+            "desc": "Direct negotiation with carriers for better commercial conditions and free days."
+          },
+          "f2": {
+            "title": "Worldwide coverage",
+            "desc": "Positioning in major and secondary ports with certified agents."
+          },
+          "f3": {
+            "title": "FCL and LCL",
+            "desc": "Solutions for full containers and consolidated cargo with operational flexibility."
+          }
         },
         "overview": "We commit to rigorous negotiation on maritime contracts, seeking competitive rates and favorable conditions on free days, drop-off and document issuance at destination.",
         "promises": {
@@ -1474,9 +1483,18 @@
           "subtitle": "Express solutions for urgent, high-value or time-critical cargo, with access to major cargo airlines."
         },
         "features": {
-          "f1": { "title": "Speed", "desc": "Reduced transit times for urgent and high-value cargo." },
-          "f2": { "title": "Global network", "desc": "Access to cargo airlines and direct routes at major hubs." },
-          "f3": { "title": "Special cargo", "desc": "Experience in pharma, perishables, dangerous goods and oversize." }
+          "f1": {
+            "title": "Speed",
+            "desc": "Reduced transit times for urgent and high-value cargo."
+          },
+          "f2": {
+            "title": "Global network",
+            "desc": "Access to cargo airlines and direct routes at major hubs."
+          },
+          "f3": {
+            "title": "Special cargo",
+            "desc": "Experience in pharma, perishables, dangerous goods and oversize."
+          }
         },
         "overview": "We evaluate route, airline and conditions based on urgency and cargo characteristics, prioritizing options that balance time, cost and operational safety.",
         "promises": {
@@ -1491,9 +1509,18 @@
           "subtitle": "Partnerships with certified carriers for pickup and delivery with agile, secure service and tracking when available."
         },
         "features": {
-          "f1": { "title": "Regional coverage", "desc": "Partnerships with local carriers in South America and North America." },
-          "f2": { "title": "Secure cargo", "desc": "Security protocols and cargo insurance with certified partners." },
-          "f3": { "title": "Timely delivery", "desc": "Proactive coordination to meet agreed deadlines." }
+          "f1": {
+            "title": "Regional coverage",
+            "desc": "Partnerships with local carriers in South America and North America."
+          },
+          "f2": {
+            "title": "Secure cargo",
+            "desc": "Security protocols and cargo insurance with certified partners."
+          },
+          "f3": {
+            "title": "Timely delivery",
+            "desc": "Proactive coordination to meet agreed deadlines."
+          }
         },
         "overview": "We coordinate pickup and delivery in operations involving ground transit, seeking optimal service conditions and timely delivery.",
         "promises": {
@@ -1508,9 +1535,18 @@
           "subtitle": "Customs management with specialized teams for import, export and special regimes in Chile and international coordination."
         },
         "features": {
-          "f1": { "title": "Technical advice", "desc": "Guidance on documentary and regulatory requirements applicable to your operation." },
-          "f2": { "title": "Full clearance", "desc": "Customs procedure management with progress tracking." },
-          "f3": { "title": "Compliance", "desc": "Focus on transparency and correct goods declaration." }
+          "f1": {
+            "title": "Technical advice",
+            "desc": "Guidance on documentary and regulatory requirements applicable to your operation."
+          },
+          "f2": {
+            "title": "Full clearance",
+            "desc": "Customs procedure management with progress tracking."
+          },
+          "f3": {
+            "title": "Compliance",
+            "desc": "Focus on transparency and correct goods declaration."
+          }
         },
         "overview": "We support you in customs procedures with teams familiar with current regulations, seeking to streamline clearance within the applicable legal framework.",
         "promises": {
@@ -1525,9 +1561,18 @@
           "subtitle": "Route design combining ocean, air and ground under a single coordination to optimize time and cost."
         },
         "features": {
-          "f1": { "title": "End-to-end route", "desc": "A single point of contact for the entire logistics chain." },
-          "f2": { "title": "Optimization", "desc": "Combination of modalities according to cost, deadline and cargo type." },
-          "f3": { "title": "Visibility", "desc": "Centralized tracking of each leg of the operation." }
+          "f1": {
+            "title": "End-to-end route",
+            "desc": "A single point of contact for the entire logistics chain."
+          },
+          "f2": {
+            "title": "Optimization",
+            "desc": "Combination of modalities according to cost, deadline and cargo type."
+          },
+          "f3": {
+            "title": "Visibility",
+            "desc": "Centralized tracking of each leg of the operation."
+          }
         },
         "overview": "We design solutions integrating different modalities, centralizing coordination to simplify your foreign trade operation.",
         "promises": {
@@ -1601,28 +1646,53 @@
   },
   "contactenos": {
     "title": "Contact Us",
-    "subtitle": "We are available to help you with your foreign trade operations.",
-    "generalTitle": "General contact",
-    "visitWebsite": "Visit corporate website",
-    "portalTitle": "Already a client?",
-    "portalText": "From Settings you can view your assigned executive's details and manage your account.",
-    "portalLink": "Go to Settings"
+    "kicker": "Commercial support",
+    "lead": "For quotes, shipments in progress or day-to-day questions, your executive is usually the fastest route. For general company matters, you can also reach Seemann Group directly.",
+    "executiveTitle": "Your executive",
+    "executiveText": "They know your account and coordinate your shipments.",
+    "executiveRole": "Commercial executive",
+    "writeExecutive": "Send email",
+    "callExecutive": "Call",
+    "noExecutive": "We couldn't find an executive assigned to your account. Write to contacto@seemanngroup.com and we'll help.",
+    "generalTitle": "Head office",
+    "generalText": "If you prefer a general channel or don't have your executive's details handy:",
+    "labelEmail": "Email",
+    "labelPhone": "Phone",
+    "labelAddress": "Address",
+    "visitWebsite": "Corporate website",
+    "portalBug": "Something wrong with the portal?",
+    "portalBugLink": "Report an error",
+    "activeAccount": "Account: {{account}}",
+    "asideText": "Business hours: Monday to Friday, 8:30AM–5:30PM (Chile time)."
   },
   "reportarError": {
     "title": "Found an error?",
-    "subtitle": "Help us improve the portal by reporting bugs or inconsistencies.",
-    "description": "If you found an error in the portal, an incorrect quote, a broken link or any unexpected behavior, let us know and we will review it promptly.",
-    "sendEmail": "Send report by email",
-    "directTo": "You can also write directly to",
-    "mailSubject": "Error report - Seemann Group Client Portal",
-    "mailBodyIntro": "Hello, I found an error in the Client Portal:",
-    "mailBodyUrl": "Page where it occurred",
-    "mailBodyDescribe": "Error description",
-    "tips": {
-      "item1": "Indicate what you were doing when the error occurred.",
-      "item2": "If possible, attach screenshots.",
-      "item3": "Mention the approximate date and time of the incident."
-    }
+    "kicker": "Portal support",
+    "lead": "Sometimes a button doesn't respond, a figure doesn't add up, or a screen gets stuck loading. Tell us what you saw and we'll look into it.",
+    "helpTitle": "What helps us fix it",
+    "helpText": "No need for a long report. A couple of lines and a screenshot if you have one is usually enough.",
+    "examples": {
+      "item1": "What you were doing (quoting, tracking, downloading a PDF…).",
+      "item2": "What you expected to happen vs. what actually happened.",
+      "item3": "Approximate time, if you remember.",
+      "item4": "Screenshot if handy — not required."
+    },
+    "contextLabel": "This will be included in your email",
+    "contextAccount": "Active account: {{account}}",
+    "contextNote": "So you don't have to look this up when writing.",
+    "asideLabel": "Direct contact",
+    "asideName": "Platform team",
+    "sendEmail": "Compose email",
+    "copyEmail": "Copy address",
+    "copied": "Copied",
+    "footnote": "We reply on business days. If it's urgent for an operation in progress, also notify your executive.",
+    "mailSubject": "Client portal error",
+    "mailGreeting": "Hi,",
+    "mailBodyDescribe": "I noticed something odd in the portal:",
+    "mailBodyUrl": "Page",
+    "mailAccount": "Account",
+    "mailUser": "User",
+    "mailSignOff": "Thanks."
   },
   "itinerarioPage": {
     "title": "Find an itinerary",
