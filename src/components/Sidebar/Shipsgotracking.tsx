@@ -8,7 +8,6 @@ import OceanShipmentDetail from "./shipsgo/OceanShipmentDetail";
 import type {
   AirShipment,
   AirResponse,
-  AirShipmentDetail,
   OceanShipment,
   OceanResponse,
 } from "./shipsgo/types";
@@ -17,10 +16,10 @@ import {
   OCEAN_STATUS_LABELS,
   getStatusClass,
   formatDate,
-  formatDateTime,
   getFlagUrl,
 } from "./shipsgo/types";
 import AirShipmentDetails from "./shipsgo/AirShipmentDetail";
+import ShipsGoEmbed from "./shipsgo/ShipsGoEmbed";
 
 type TabType = "air" | "ocean";
 
@@ -101,20 +100,16 @@ function ShipsGoTracking({
     ocean?: number;
   }>({});
 
-  // Modal
+  // Inline selection (split panel, no modal)
   const [selectedAir, setSelectedAir] = useState<AirShipment | null>(null);
   const [selectedOcean, setSelectedOcean] = useState<OceanShipment | null>(
     null,
   );
-  const [showModal, setShowModal] = useState(false);
   const [airExpanded, setAirExpanded] = useState(false);
   const [oceanExpanded, setOceanExpanded] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
-
-  // Air map tokens: shipmentId -> map token string
-  const [airMapTokens, setAirMapTokens] = useState<Record<number, string>>({});
   const userAir = useMemo(() => {
     if (!effectiveUsername) return [];
     return allAirShipments.filter(
@@ -259,29 +254,31 @@ function ShipsGoTracking({
     void fetchOcean();
   }, [effectiveUsername, fetchAir, fetchOcean]);
 
-  // Fetch map tokens for air shipments (on-demand)
-  const fetchAirMapToken = useCallback(
-    async (shipmentId: number) => {
-      if (airMapTokens[shipmentId] !== undefined) return;
-      try {
-        const res = await fetch(
-          `${API_BASE_URL}/api/shipsgo/shipments/${shipmentId}`,
-        );
-        if (!res.ok) return;
-        const data: { shipment: AirShipmentDetail } = await res.json();
-        const mapToken = data.shipment?.tokens?.map;
-        if (mapToken) {
-          setAirMapTokens((prev) => ({ ...prev, [shipmentId]: mapToken }));
-        }
-      } catch {
-        // silently ignore – button simply won't show
-      }
-    },
-    [airMapTokens],
-  );
+  function getOceanEmbedQuery(shipment: OceanShipment): string {
+    return (
+      shipment.container_number?.trim() ||
+      shipment.booking_number?.trim() ||
+      ""
+    );
+  }
 
-  // Nota: evitamos prefetch masivo por lista completa para no disparar rate limit.
-  // El token se obtiene al abrir el detalle (click en la fila).
+  const hasSelection =
+    (activeTab === "air" && selectedAir !== null) ||
+    (activeTab === "ocean" && selectedOcean !== null);
+
+  const clearSelection = () => {
+    setSelectedAir(null);
+    setSelectedOcean(null);
+  };
+
+  const handleTabChange = (tab: TabType) => {
+    setActiveTab(tab);
+    if (tab === "air") {
+      setSelectedOcean(null);
+    } else {
+      setSelectedAir(null);
+    }
+  };
 
   function isAirDelayed(s: AirShipment): boolean {
     if (!s.route) return false;
@@ -298,12 +295,6 @@ function ShipsGoTracking({
     if (!eta || transit_percentage >= 100) return false;
     return new Date(s.updated_at) >= new Date(eta) && transit_percentage < 100;
   }
-
-  const closeModal = () => {
-    setShowModal(false);
-    setSelectedAir(null);
-    setSelectedOcean(null);
-  };
 
   const closeDeleteDialog = () => {
     if (deleteLoading) return;
@@ -362,7 +353,7 @@ function ShipsGoTracking({
         );
 
         if (selectedAir && String(selectedAir.id) === deletedId) {
-          closeModal();
+          clearSelection();
         }
       } else {
         const deletedId = String(deleteTarget.id);
@@ -371,7 +362,7 @@ function ShipsGoTracking({
         );
 
         if (selectedOcean && String(selectedOcean.id) === deletedId) {
-          closeModal();
+          clearSelection();
         }
       }
 
@@ -389,8 +380,8 @@ function ShipsGoTracking({
 
   // Main
   return (
-    <div className="sg-wrapper">
-      <div className="sg-container">
+    <div className="sg-wrapper sg-wrapper--fluid">
+      <div className="sg-container sg-container--fluid">
         {/* Header */}
         <div className="sg-page-header">
           <div className="sg-page-header-left">
@@ -432,18 +423,22 @@ function ShipsGoTracking({
         <div className="sg-tabs">
           <button
             className={`sg-tab ${activeTab === "air" ? "sg-tab--active" : ""}`}
-            onClick={() => setActiveTab("air")}
+            onClick={() => handleTabChange("air")}
           >
             ✈️ Aéreo ({userAir.length})
           </button>
           <button
             className={`sg-tab ${activeTab === "ocean" ? "sg-tab--active" : ""}`}
-            onClick={() => setActiveTab("ocean")}
+            onClick={() => handleTabChange("ocean")}
           >
             🚢 Marítimo ({userOcean.length})
           </button>
         </div>
 
+        <div
+          className={`sg-split-view${hasSelection ? " sg-split-view--active" : ""}`}
+        >
+          <div className="sg-split-list">
         {/* === AIR TAB === */}
         {activeTab === "air" && (
           <>
@@ -542,11 +537,14 @@ function ShipsGoTracking({
                         (s) => (
                           <tr
                             key={s.id}
+                            className={
+                              selectedAir?.id === s.id
+                                ? "sg-table-row--selected"
+                                : undefined
+                            }
                             onClick={() => {
                               setSelectedAir(s);
                               setSelectedOcean(null);
-                              setShowModal(true);
-                              void fetchAirMapToken(s.id);
                             }}
                           >
                             <td>
@@ -651,17 +649,6 @@ function ShipsGoTracking({
                                 className="sg-row-actions"
                                 onClick={(e) => e.stopPropagation()}
                               >
-                                {airMapTokens[s.id] && (
-                                  <a
-                                    className="sg-link-live"
-                                    href={`https://map.shipsgo.com/air/shipments/${s.id}?token=${airMapTokens[s.id]}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
-                                    Ver en vivo
-                                  </a>
-                                )}
                                 <button
                                   type="button"
                                   className="sg-btn-delete-icon"
@@ -806,10 +793,14 @@ function ShipsGoTracking({
                         (s) => (
                           <tr
                             key={s.id}
+                            className={
+                              selectedOcean?.id === s.id
+                                ? "sg-table-row--selected"
+                                : undefined
+                            }
                             onClick={() => {
                               setSelectedOcean(s);
                               setSelectedAir(null);
-                              setShowModal(true);
                             }}
                           >
                             <td>
@@ -934,21 +925,6 @@ function ShipsGoTracking({
                                 className="sg-row-actions"
                                 onClick={(e) => e.stopPropagation()}
                               >
-                                {(s.container_number || s.booking_number) && (
-                                  <a
-                                    className="sg-link-live"
-                                    href={`https://shipsgo.com/live-map-container-tracking?query=${encodeURIComponent(
-                                      s.container_number ||
-                                      s.booking_number ||
-                                      "",
-                                    )}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
-                                    Ver en vivo
-                                  </a>
-                                )}
                                 <button
                                   type="button"
                                   className="sg-btn-delete-icon"
@@ -997,17 +973,48 @@ function ShipsGoTracking({
             )}
           </>
         )}
+          </div>
+
+          {hasSelection && (
+            <aside className="sg-split-detail">
+              {activeTab === "air" && selectedAir && (
+                <>
+                  <div className="sg-split-detail-map">
+                    <ShipsGoEmbed
+                      transport="air"
+                      query={selectedAir.awb_number}
+                    />
+                  </div>
+                  <div className="sg-split-detail-info">
+                    <AirShipmentDetails
+                      layout="panel"
+                      shipment={selectedAir}
+                      onClose={clearSelection}
+                    />
+                  </div>
+                </>
+              )}
+              {activeTab === "ocean" && selectedOcean && (
+                <>
+                  <div className="sg-split-detail-map">
+                    <ShipsGoEmbed
+                      transport="ocean"
+                      query={getOceanEmbedQuery(selectedOcean)}
+                    />
+                  </div>
+                  <div className="sg-split-detail-info">
+                    <OceanShipmentDetail
+                      layout="panel"
+                      shipment={selectedOcean}
+                      onClose={clearSelection}
+                    />
+                  </div>
+                </>
+              )}
+            </aside>
+          )}
+        </div>
       </div>
-
-      {/* ═══ Air Detail Panel ═══ */}
-      {showModal && selectedAir && (
-        <AirShipmentDetails shipment={selectedAir} onClose={closeModal} />
-      )}
-
-      {/* ═══ Ocean Detail Panel ═══ */}
-      {showModal && selectedOcean && (
-        <OceanShipmentDetail shipment={selectedOcean} onClose={closeModal} />
-      )}
 
       {deleteTarget && (
         <div className="sg-modal-overlay" onClick={closeDeleteDialog}>

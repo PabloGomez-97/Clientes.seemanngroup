@@ -194,7 +194,7 @@ interface OceanGeneralTabContentProps {
   shipment: OceanShippingOrder;
   quoteEntry: QuoteNumberCacheEntry | undefined;
   hbliEntry: HBLICacheEntry | undefined;
-  effectiveArrivalDate: string | null | undefined;
+  renderAccordionArrivalDate: () => React.ReactNode;
   getHBLIFromShipment: (s: OceanShippingOrder) => string | null;
   formatDateLong: (dateString?: string | null) => string;
   getDisplayedTrackingNumber: (s: OceanShippingOrder) => string;
@@ -210,7 +210,7 @@ function OceanGeneralTabContent({
   shipment,
   quoteEntry,
   hbliEntry,
-  effectiveArrivalDate,
+  renderAccordionArrivalDate,
   getHBLIFromShipment,
   formatDateLong,
   getDisplayedTrackingNumber,
@@ -278,10 +278,9 @@ function OceanGeneralTabContent({
           label="Fecha salida"
           value={formatDateLong(shipment.departureDate)}
         />
-        <FieldGridCell
-          label="Fecha llegada"
-          value={formatDateLong(effectiveArrivalDate)}
-        />
+        <FieldGridCell label="Fecha llegada">
+          {renderAccordionArrivalDate()}
+        </FieldGridCell>
         <FieldGridCell label="" action>
           {alreadyTracked ? (
             <button
@@ -643,8 +642,9 @@ function OceanShipmentsView({
       (key) => shipsgoArrivalByNumber[key] || trackedOceanNumbers.has(key),
     );
 
-  const renderEtaBadge = () => (
+  const renderEtaBadge = (tooltip?: string) => (
     <span
+      title={tooltip}
       style={{
         fontSize: "0.85em",
         fontWeight: 700,
@@ -657,11 +657,53 @@ function OceanShipmentsView({
         color: "rgb(142, 30, 104)",
         lineHeight: 1.1,
         whiteSpace: "nowrap",
+        cursor: tooltip ? "help" : undefined,
       }}
     >
       ETA
     </span>
   );
+
+  const renderAccordionArrivalDate = (shipment: OceanShippingOrder) => {
+    const linbisDate = shipment.arrivalDate;
+    const shipsgoDate = findShipsgoOceanEta(shipment);
+    const fromShipsgo = isOceanArrivalFromShipsgo(shipment);
+
+    if (fromShipsgo && shipsgoDate) {
+      return (
+        <span
+          className="osv-field-cell__value"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 8,
+            flexWrap: "wrap",
+          }}
+        >
+          {linbisDate ? (
+            <span style={{ textDecoration: "line-through", opacity: 0.65 }}>
+              {formatDateLong(linbisDate)}
+            </span>
+          ) : null}
+          <span
+            style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+          >
+            {renderEtaBadge("Fecha estimada con IA")}
+            <span>{formatDateLong(shipsgoDate)}</span>
+          </span>
+        </span>
+      );
+    }
+
+    const effective = getEffectiveArrivalDate(shipment);
+    return (
+      <span
+        className={`osv-field-cell__value${!effective ? " osv-field-cell__value--muted" : ""}`}
+      >
+        {formatDateLong(effective)}
+      </span>
+    );
+  };
 
   const renderArrivalInline = (dateString?: string | null, fromShipsgo = false) => (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
@@ -2195,8 +2237,8 @@ function OceanShipmentsView({
                                           hbliEntry={
                                             hbliCache[shipment.number]
                                           }
-                                          effectiveArrivalDate={
-                                            effectiveArrivalDate
+                                          renderAccordionArrivalDate={() =>
+                                            renderAccordionArrivalDate(shipment)
                                           }
                                           getHBLIFromShipment={
                                             getHBLIFromShipment

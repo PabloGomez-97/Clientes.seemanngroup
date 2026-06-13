@@ -30,9 +30,14 @@ const MAX_VISIBLE_FOLLOWERS = 9;
 interface OceanShipmentDetailProps {
   shipment: OceanShipment;
   onClose: () => void;
+  layout?: "modal" | "panel";
 }
 
-function OceanShipmentDetail({ shipment, onClose }: OceanShipmentDetailProps) {
+function OceanShipmentDetail({
+  shipment,
+  onClose,
+  layout = "modal",
+}: OceanShipmentDetailProps) {
   const { token } = useAuth();
   const { registrarEvento } = useAuditLog();
   const [detail, setDetail] = useState<OceanShipmentDetailType | null>(null);
@@ -242,9 +247,11 @@ function OceanShipmentDetail({ shipment, onClose }: OceanShipmentDetailProps) {
     }
   };
 
-  return (
-    <div className="sg-modal-overlay" onClick={onClose}>
-      <div className="sg-detail-panel" onClick={(e) => e.stopPropagation()}>
+  const panel = (
+    <div
+      className={`sg-detail-panel${layout === "panel" ? " sg-detail-panel--inline" : ""}`}
+      onClick={layout === "modal" ? (e) => e.stopPropagation() : undefined}
+    >
         {/* Header */}
         <div className="sg-detail-header sg-detail-header--ocean">
           <div className="sg-detail-header-info">
@@ -716,13 +723,21 @@ function OceanShipmentDetail({ shipment, onClose }: OceanShipmentDetailProps) {
           )}
         </div>
 
-        {/* Footer */}
-        <div className="sg-modal-footer">
-          <button className="sg-btn-close" onClick={onClose}>
-            Cerrar
-          </button>
-        </div>
+        {layout === "modal" && (
+          <div className="sg-modal-footer">
+            <button className="sg-btn-close" onClick={onClose}>
+              Cerrar
+            </button>
+          </div>
+        )}
       </div>
+  );
+
+  if (layout === "panel") return panel;
+
+  return (
+    <div className="sg-modal-overlay" onClick={onClose}>
+      {panel}
     </div>
   );
 }

@@ -171,7 +171,7 @@ interface GeneralTabContentProps {
   shipment: AirShipment;
   cargoDetail: CargoDetailCacheEntry | undefined;
   quoteEntry: QuoteNumberCacheEntry | undefined;
-  effectiveArrivalDisplayDate: string;
+  renderAccordionArrivalDate: () => React.ReactNode;
   onMountCargo: (
     shipmentId: string | number | undefined,
     number: string | undefined,
@@ -192,7 +192,7 @@ function GeneralTabContent({
   shipment,
   cargoDetail,
   quoteEntry,
-  effectiveArrivalDisplayDate,
+  renderAccordionArrivalDate,
   onMountCargo,
   getAllCommodities,
   formatDate,
@@ -293,17 +293,9 @@ function GeneralTabContent({
               : null
           }
         />
-        <FieldGridCell
-          label="Fecha llegada"
-          value={
-            effectiveArrivalDisplayDate
-              ? formatDate({
-                  date: effectiveArrivalDisplayDate,
-                  displayDate: effectiveArrivalDisplayDate,
-                })
-              : null
-          }
-        />
+        <FieldGridCell label="Fecha llegada">
+          {renderAccordionArrivalDate()}
+        </FieldGridCell>
         <FieldGridCell label="" action>
           {alreadyTracked ? (
             <button
@@ -675,8 +667,9 @@ function AirShipmentsView({
       (key) => shipsgoArrivalByAwb[key] || trackedAwbs.has(key),
     );
 
-  const renderEtaBadge = () => (
+  const renderEtaBadge = (tooltip?: string) => (
     <span
+      title={tooltip}
       style={{
         fontSize: "0.85em",
         fontWeight: 700,
@@ -689,11 +682,65 @@ function AirShipmentsView({
         color: "rgb(142, 30, 104)",
         lineHeight: 1.1,
         whiteSpace: "nowrap",
+        cursor: tooltip ? "help" : undefined,
       }}
     >
       ETA
     </span>
   );
+
+  const getLinbisArrivalDisplayDate = (shipment: AirShipment): string =>
+    shipment.arrival?.date ?? shipment.arrival?.displayDate ?? "";
+
+  const renderAccordionArrivalDate = (shipment: AirShipment) => {
+    const linbisDate = getLinbisArrivalDisplayDate(shipment);
+    const shipsgoDate = findShipsgoAirEta(shipment);
+    const fromShipsgo = isAirArrivalFromShipsgo(shipment);
+
+    if (fromShipsgo && shipsgoDate) {
+      return (
+        <span
+          className="asv-field-cell__value"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 8,
+            flexWrap: "wrap",
+          }}
+        >
+          {linbisDate ? (
+            <span style={{ textDecoration: "line-through", opacity: 0.65 }}>
+              {formatDateInline(linbisDate)}
+            </span>
+          ) : null}
+          <span
+            style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+          >
+            {renderEtaBadge("Fecha estimada con IA")}
+            <span>{formatDateInline(shipsgoDate)}</span>
+          </span>
+        </span>
+      );
+    }
+
+    const effective = getEffectiveArrivalDisplayDate(shipment);
+    if (!effective) {
+      return (
+        <span className="asv-field-cell__value asv-field-cell__value--muted">
+          -
+        </span>
+      );
+    }
+
+    return (
+      <span className="asv-field-cell__value">
+        {formatDate({
+          date: effective,
+          displayDate: effective,
+        })}
+      </span>
+    );
+  };
 
   const renderArrivalInline = (displayDate?: string, fromShipsgo = false) => (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
@@ -2068,8 +2115,8 @@ function AirShipmentsView({
                                               ? quoteNumberCache[shipment.id]
                                               : undefined
                                           }
-                                          effectiveArrivalDisplayDate={
-                                            effectiveArrivalDisplayDate
+                                          renderAccordionArrivalDate={() =>
+                                            renderAccordionArrivalDate(shipment)
                                           }
                                           onMountCargo={fetchCargoDetails}
                                           getAllCommodities={getAllCommodities}

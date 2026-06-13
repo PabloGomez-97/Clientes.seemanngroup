@@ -28,9 +28,14 @@ const MAX_VISIBLE_FOLLOWERS = 9;
 interface AirShipmentDetailProps {
   shipment: AirShipment;
   onClose: () => void;
+  layout?: "modal" | "panel";
 }
 
-function AirShipmentDetails({ shipment, onClose }: AirShipmentDetailProps) {
+function AirShipmentDetails({
+  shipment,
+  onClose,
+  layout = "modal",
+}: AirShipmentDetailProps) {
   const { token } = useAuth();
   const { registrarEvento } = useAuditLog();
   const [detail, setDetail] = useState<AirShipmentDetailType | null>(null);
@@ -239,9 +244,11 @@ function AirShipmentDetails({ shipment, onClose }: AirShipmentDetailProps) {
     }
   };
 
-  return (
-    <div className="sg-modal-overlay" onClick={onClose}>
-      <div className="sg-detail-panel" onClick={(e) => e.stopPropagation()}>
+  const panel = (
+    <div
+      className={`sg-detail-panel${layout === "panel" ? " sg-detail-panel--inline" : ""}`}
+      onClick={layout === "modal" ? (e) => e.stopPropagation() : undefined}
+    >
         {/* Header */}
         <div className="sg-detail-header">
           <div className="sg-detail-header-info">
@@ -682,13 +689,21 @@ function AirShipmentDetails({ shipment, onClose }: AirShipmentDetailProps) {
           )}
         </div>
 
-        {/* Footer */}
-        <div className="sg-modal-footer">
-          <button className="sg-btn-close" onClick={onClose}>
-            Cerrar
-          </button>
-        </div>
+        {layout === "modal" && (
+          <div className="sg-modal-footer">
+            <button className="sg-btn-close" onClick={onClose}>
+              Cerrar
+            </button>
+          </div>
+        )}
       </div>
+  );
+
+  if (layout === "panel") return panel;
+
+  return (
+    <div className="sg-modal-overlay" onClick={onClose}>
+      {panel}
     </div>
   );
 }
