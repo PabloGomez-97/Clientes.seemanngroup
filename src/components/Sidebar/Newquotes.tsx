@@ -77,6 +77,17 @@ const Cotizador: React.FC = () => {
     }
   }, [location.state, navigate, location.pathname]);
 
+  // Auto-seleccionar tipo desde query param (?tipo=AEREO|FCL|LCL|LASTMILE)
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const tipo = params.get("tipo")?.toUpperCase();
+    const valid = ["AEREO", "FCL", "LCL", "LASTMILE"] as const;
+    if (valid.includes(tipo as (typeof valid)[number])) {
+      setTipoCotizacion(tipo as Exclude<TipoCotizacion, null>);
+      navigate(location.pathname, { replace: true });
+    }
+  }, [location.search, navigate, location.pathname]);
+
   const handleSeleccionTipo = (tipo: Exclude<TipoCotizacion, null>) => {
     setTipoCotizacion(tipo);
     setPreselectedData(null);

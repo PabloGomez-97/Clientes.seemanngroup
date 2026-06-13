@@ -6,10 +6,12 @@
 
 .hal-itin {
   width: 100%;
+  max-width: 100%;
   display: flex;
   flex-direction: column;
   gap: 18px;
   font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  box-sizing: border-box;
 }
 
 /* ---------- Top bar: segmented + meta ---------- */

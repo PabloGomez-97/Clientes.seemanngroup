@@ -89,6 +89,7 @@
     "news": {
       "title": "News & Insights",
       "subtitle": "Global Trade Insights",
+      "viewAll": "View all news",
       "item1": "New Asia-America route speeds up deliveries",
       "item2": "Digital ports reduce delays",
       "item3": "Robots in warehouses: 24/7 picking",
@@ -127,6 +128,82 @@
     "testimonials": {
       "label": "Our Clients",
       "title": "Trusted by our clients"
+    },
+    "welcome": {
+      "greeting": "Hello, {{name}}",
+      "account": "Account {{account}}",
+      "kpiQuotes": "Quotes",
+      "kpiShipments": "Active shipments",
+      "kpiDocuments": "Documents"
+    },
+    "activityBar": {
+      "label": "Recent activity",
+      "seeAll": "See all",
+      "empty1": "No activity at the moment",
+      "empty2": "Your active shipments will appear here",
+      "airTransit": "In transit",
+      "airLanded": "Landed",
+      "oceanSailing": "Sailing",
+      "oceanDischarged": "Discharged"
+    },
+    "slideDynamic": {
+      "title": "You have {{count}} shipments in transit",
+      "subtitle": "Check the real-time status of your active operations.",
+      "button": "View my shipments"
+    },
+    "hero": {
+      "prevSlide": "Previous slide",
+      "nextSlide": "Next slide",
+      "goToSlide": "Go to slide {{n}}"
+    },
+    "servicesSection": {
+      "title": "Quote by modality"
+    },
+    "quickActions": {
+      "title": "Quick actions",
+      "quote": {
+        "title": "New quote",
+        "desc": "Quote your shipment in seconds"
+      },
+      "track": {
+        "title": "Track shipment"
+      },
+      "myQuotes": {
+        "title": "My quotes",
+        "desc": "Review and manage your quotes"
+      },
+      "documents": {
+        "title": "My documents",
+        "desc": "Access your operational files"
+      },
+      "trackings": {
+        "title": "My shipments"
+      }
+    },
+    "activityPanel": {
+      "title": "My activity",
+      "shipmentsTitle": "Recent shipments",
+      "quotesTitle": "Recent quotes",
+      "noShipments": "You don't have any registered shipments yet.",
+      "noQuotes": "You don't have any quotes yet.",
+      "trackFirst": "Register first tracking",
+      "quoteFirst": "Quote now",
+      "viewAllShipments": "View all shipments",
+      "viewAllQuotes": "View all quotes",
+      "airTransit": "In transit",
+      "airLanded": "Landed",
+      "oceanSailing": "Sailing",
+      "oceanDischarged": "Discharged"
+    },
+    "trust": {
+      "title": "Trust",
+      "learnMore": "Learn more about Seemann Group"
+    },
+    "ejecutivo": {
+      "title": "Your commercial executive",
+      "role": "Commercial executive",
+      "sendMessage": "Send message",
+      "call": "Call"
     },
     "navbar": {
       "openMenu": "Open menu",

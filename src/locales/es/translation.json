@@ -89,6 +89,7 @@
     "news": {
       "title": "Noticias y tendencias",
       "subtitle": "Noticias y tendencias del comercio global",
+      "viewAll": "Ver todas las novedades",
       "item1": "Nueva ruta Asia‑América acelera entregas",
       "item2": "Puertos digitales reducen demoras",
       "item3": "Robots en almacenes: picking 24/7",
@@ -127,6 +128,82 @@
     "testimonials": {
       "label": "Nuestros Clientes",
       "title": "Clientes que confían en nosotros"
+    },
+    "welcome": {
+      "greeting": "Hola, {{name}}",
+      "account": "Cuenta {{account}}",
+      "kpiQuotes": "Cotizaciones",
+      "kpiShipments": "Embarques activos",
+      "kpiDocuments": "Documentos"
+    },
+    "activityBar": {
+      "label": "Actividad reciente",
+      "seeAll": "Ver todos",
+      "empty1": "No hay actividad por el momento",
+      "empty2": "Tus embarques activos aparecerán aquí",
+      "airTransit": "En tránsito",
+      "airLanded": "Aterrizado",
+      "oceanSailing": "Navegando",
+      "oceanDischarged": "Descargado"
+    },
+    "slideDynamic": {
+      "title": "Tienes {{count}} embarques en tránsito",
+      "subtitle": "Consulta el estado en tiempo real de tus operaciones activas.",
+      "button": "Ver mis embarques"
+    },
+    "hero": {
+      "prevSlide": "Slide anterior",
+      "nextSlide": "Slide siguiente",
+      "goToSlide": "Ir al slide {{n}}"
+    },
+    "servicesSection": {
+      "title": "Cotiza por modalidad"
+    },
+    "quickActions": {
+      "title": "Acciones rápidas",
+      "quote": {
+        "title": "Nueva cotización",
+        "desc": "Cotiza tu embarque en segundos"
+      },
+      "track": {
+        "title": "Rastrear envío"
+      },
+      "myQuotes": {
+        "title": "Mis cotizaciones",
+        "desc": "Revisa y gestiona tus cotizaciones"
+      },
+      "documents": {
+        "title": "Mis documentos",
+        "desc": "Accede a tus archivos operacionales"
+      },
+      "trackings": {
+        "title": "Mis embarques"
+      }
+    },
+    "activityPanel": {
+      "title": "Mi actividad",
+      "shipmentsTitle": "Embarques recientes",
+      "quotesTitle": "Cotizaciones recientes",
+      "noShipments": "Aún no tienes embarques registrados.",
+      "noQuotes": "Aún no tienes cotizaciones.",
+      "trackFirst": "Registrar primer tracking",
+      "quoteFirst": "Cotizar ahora",
+      "viewAllShipments": "Ver todos los embarques",
+      "viewAllQuotes": "Ver todas las cotizaciones",
+      "airTransit": "En tránsito",
+      "airLanded": "Aterrizado",
+      "oceanSailing": "Navegando",
+      "oceanDischarged": "Descargado"
+    },
+    "trust": {
+      "title": "Confianza",
+      "learnMore": "Conoce más sobre Seemann Group"
+    },
+    "ejecutivo": {
+      "title": "Tu ejecutivo comercial",
+      "role": "Ejecutivo comercial",
+      "sendMessage": "Enviar mensaje",
+      "call": "Llamar"
     },
     "navbar": {
       "openMenu": "Abrir menú",

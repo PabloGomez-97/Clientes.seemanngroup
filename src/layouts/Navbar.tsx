@@ -38,7 +38,6 @@ function Navbar({
   const { t } = useTranslation();
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [showNotifications, setShowNotifications] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showLanguage, setShowLanguage] = useState(false);
   const [darkMode, setDarkMode] = useState(
@@ -54,32 +53,6 @@ function Navbar({
     }
     localStorage.setItem("darkMode", String(darkMode));
   }, [darkMode]);
-  const [notifications] = useState([
-    {
-      id: 1,
-      title: t("home.navbar.notifications.newQuote"),
-      message: t("home.navbar.notifications.quoteCreated"),
-      time: "5 min",
-      unread: true,
-      type: "info",
-    },
-    {
-      id: 2,
-      title: t("home.navbar.notifications.shipmentUpdated"),
-      message: t("home.navbar.notifications.airShipmentTransit"),
-      time: "15 min",
-      unread: true,
-      type: "success",
-    },
-    {
-      id: 3,
-      title: t("home.navbar.notifications.pendingDocument"),
-      message: t("home.navbar.notifications.invoiceReview"),
-      time: "1 hora",
-      unread: false,
-      type: "warning",
-    },
-  ]);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // User data
@@ -129,7 +102,6 @@ function Navbar({
       }
       if (e.key === "Escape") {
         setShowSearch(false);
-        setShowNotifications(false);
         setShowProfile(false);
         setShowLanguage(false);
       }
@@ -143,12 +115,6 @@ function Navbar({
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
-      if (
-        !target.closest(".notification-dropdown") &&
-        !target.closest(".notification-button")
-      ) {
-        setShowNotifications(false);
-      }
       if (
         !target.closest(".profile-dropdown") &&
         !target.closest(".profile-button")
@@ -166,8 +132,6 @@ function Navbar({
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
-  const unreadCount = notifications.filter((n) => n.unread).length;
 
   return (
     <>

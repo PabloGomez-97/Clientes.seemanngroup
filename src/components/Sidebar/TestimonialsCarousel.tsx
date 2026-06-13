@@ -173,8 +173,10 @@ const TestimonialsCarousel: React.FC = () => {
               </div>
               <div className="hal-testimonial-meta">
                 <strong>{item.name}</strong>
-                <span>{item.role}</span>
-                <span className="hal-testimonial-company">{item.company}</span>
+                {item.role && item.role !== "NA" && <span>{item.role}</span>}
+                {item.company && item.company !== "No especificada" && (
+                  <span className="hal-testimonial-company">{item.company}</span>
+                )}
               </div>
             </div>
           </div>

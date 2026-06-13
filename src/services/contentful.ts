@@ -112,3 +112,56 @@ export async function getBlogPostBySlug(
 export async function getRecentPosts(limit = 4): Promise<BlogPost[]> {
   return getBlogPosts(limit);
 }
+
+export interface HomeSlideFields {
+  title: string;
+  subtitle?: string;
+  buttonText: string;
+  buttonLink: string;
+  order?: number;
+  featuredImage?: BlogPostFields["featuredImage"];
+}
+
+export interface HomeSlide {
+  id: string;
+  title: string;
+  subtitle: string;
+  buttonText: string;
+  buttonLink: string;
+  imageUrl: string | null;
+  order: number;
+}
+
+function transformHomeSlide(entry: Entry<EntrySkeletonType>): HomeSlide {
+  const fields = entry.fields as unknown as HomeSlideFields;
+  const featuredImage = fields.featuredImage;
+  const imageUrl = featuredImage?.fields?.file?.url
+    ? `https:${featuredImage.fields.file.url}`
+    : null;
+
+  return {
+    id: entry.sys.id,
+    title: fields.title || "",
+    subtitle: fields.subtitle || "",
+    buttonText: fields.buttonText || "",
+    buttonLink: fields.buttonLink || "/newquotes",
+    imageUrl,
+    order: typeof fields.order === "number" ? fields.order : 0,
+  };
+}
+
+/**
+ * Hero slides from Contentful (content type: homeSlide). Returns [] if unavailable.
+ */
+export async function getHomeSlides(): Promise<HomeSlide[]> {
+  try {
+    const response = await client.getEntries({
+      content_type: "homeSlide",
+      order: ["fields.order"],
+      limit: 5,
+    });
+    return response.items.map(transformHomeSlide).sort((a, b) => a.order - b.order);
+  } catch {
+    return [];
+  }
+}
