@@ -54,7 +54,7 @@ const FALLBACK_SLIDES = (t: (k: string) => string): HeroSlide[] => [
 
     subtitle: t("home.slide1.subtitle"),
 
-    button: { text: t("home.slide1.button"), link: "/newquotes" },
+    button: { text: t("home.slide1.button"), link: "/promesas" },
 
   },
 

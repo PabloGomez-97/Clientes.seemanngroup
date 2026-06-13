@@ -168,6 +168,11 @@ function Sidebar({
           name: t("home.sidebar.novedades"),
           icon: "fa fa-newspaper",
         },
+        {
+          path: "/promesas",
+          name: t("home.sidebar.promesas"),
+          icon: "fa fa-handshake",
+        },
       ],
     },
   ];

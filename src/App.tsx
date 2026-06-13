@@ -69,6 +69,11 @@ import ShipsGoTracking from "./components/Sidebar/Shipsgotracking";
 import CreateShipmentForm from "./components/Sidebar/New-tracking";
 import CreateOceanShipmentForm from "./components/Sidebar/New-ocean-tracking";
 import Novedades from "./components/Sidebar/Novedades";
+import PromesasPage from "./components/Sidebar/home/promesas/PromesasPage";
+import Contenedores from "./components/Footer/info/Contenedores";
+import Contactenos from "./components/Footer/info/Contactenos";
+import ReportarError from "./components/Footer/info/ReportarError";
+import ItinerarioPage from "./components/Footer/info/ItinerarioPage";
 import ShippingOrderView from "./components/Sidebar/ShippingOrder";
 import CotizacionEspecial from "./components/Sidebar/Cotizacion-especial";
 import MisDocumentosCliente from "./components/Sidebar/MisDocumentosCliente";
@@ -289,6 +294,11 @@ function App() {
             element={<CreateOceanShipmentForm />}
           />
           <Route path="novedades" element={<Novedades />} />
+          <Route path="promesas" element={<PromesasPage />} />
+          <Route path="contenedores" element={<Contenedores />} />
+          <Route path="contactenos" element={<Contactenos />} />
+          <Route path="reportar-error" element={<ReportarError />} />
+          <Route path="itinerario" element={<ItinerarioPage />} />
           <Route path="mis-documentos" element={<MisDocumentosCliente />} />
         </Route>
 

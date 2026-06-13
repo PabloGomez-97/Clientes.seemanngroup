@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { imgUrl } from "../../../config/images";
 import { AnimatedStat } from "./useAnimatedCounter";
@@ -58,14 +59,9 @@ const HomeTrustSection: React.FC = () => {
                 </div>
               </div>
               <p className="hm-trust-section__about">
-                <a
-                  href="https://seemanngroup.com/seemanngroup/nuestra_empresa.php#historia-section1"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hm-trust-section__about-link"
-                >
+                <Link to="/promesas" className="hm-trust-section__about-link">
                   {t("home.trust.learnMore")} →
-                </a>
+                </Link>
               </p>
             </div>
           </div>
