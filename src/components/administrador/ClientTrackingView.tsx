@@ -2,17 +2,22 @@ import { useCallback, useState } from "react";
 import ShipsGoTracking from "../Sidebar/Shipsgotracking";
 import CreateShipmentForm from "../Sidebar/New-tracking";
 import CreateOceanShipmentForm from "../Sidebar/New-ocean-tracking";
+import type { ShipsGoOpenTrackingTarget } from "../../services/shipsgoTrackingNavigation";
 
 type TrackingFormType = "air" | "ocean" | null;
 
 interface ClientTrackingViewProps {
   clientUsername: string;
   initialTrackingTab?: "air" | "ocean";
+  initialOpenTracking?: ShipsGoOpenTrackingTarget | null;
+  onOpenTrackingConsumed?: () => void;
 }
 
 function ClientTrackingView({
   clientUsername,
   initialTrackingTab,
+  initialOpenTracking = null,
+  onOpenTrackingConsumed,
 }: ClientTrackingViewProps) {
   const [showCreateForm, setShowCreateForm] = useState<TrackingFormType>(null);
   const [trackingKey, setTrackingKey] = useState(0);
@@ -131,6 +136,8 @@ function ClientTrackingView({
         filterUsername={clientUsername}
         onNewTracking={handleNewTracking}
         initialTab={initialTrackingTab}
+        initialOpenTracking={initialOpenTracking}
+        onOpenTrackingConsumed={onOpenTrackingConsumed}
       />
     </>
   );

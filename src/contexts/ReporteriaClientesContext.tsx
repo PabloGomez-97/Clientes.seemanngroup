@@ -1,7 +1,11 @@
 import { createContext, useContext } from "react";
+import type { ShipsGoOpenTrackingTarget } from "../services/shipsgoTrackingNavigation";
 
 type ReporteriaClientesContextValue = {
-  openTrackingTab: (tab?: "air" | "ocean") => void;
+  openTrackingTab: (
+    tab?: "air" | "ocean",
+    openTracking?: ShipsGoOpenTrackingTarget | null,
+  ) => void;
   openQuotesTab: (quoteNumber?: string) => void;
   quoteFilterNumber?: string;
 };

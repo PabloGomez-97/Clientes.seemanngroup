@@ -1,7 +1,7 @@
 // src/components/shipsgo/ShipsGoTracking.tsx
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useAuth } from "../../auth/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuditLog } from "../../hooks/useAuditLog";
 import "./styles/Shipsgotracking.css";
 import OceanShipmentDetail from "./shipsgo/OceanShipmentDetail";
@@ -20,6 +20,12 @@ import {
 } from "./shipsgo/types";
 import AirShipmentDetails from "./shipsgo/AirShipmentDetail";
 import ShipsGoEmbed from "./shipsgo/ShipsGoEmbed";
+import {
+  type ShipsGoOpenTrackingTarget,
+  type ShipsGoTrackingLocationState,
+  matchesAirOpenTrackingTarget,
+  matchesOceanOpenTrackingTarget,
+} from "../../services/shipsgoTrackingNavigation";
 
 type TabType = "air" | "ocean";
 
@@ -69,19 +75,36 @@ export interface ShipsGoTrackingProps {
   onNewTracking?: (type: TabType) => void;
   /** Which tab to open initially: "air" (default) or "ocean" */
   initialTab?: TabType;
+  /** Abrir un tracking concreto tras cargar la lista (reportería embebida) */
+  initialOpenTracking?: ShipsGoOpenTrackingTarget | null;
+  /** Se invoca cuando ya se aplicó initialOpenTracking */
+  onOpenTrackingConsumed?: () => void;
 }
 
 function ShipsGoTracking({
   filterUsername,
   onNewTracking,
   initialTab = "air",
+  initialOpenTracking = null,
+  onOpenTrackingConsumed,
 }: ShipsGoTrackingProps = {}) {
   const { token, activeUsername } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { registrarEvento } = useAuditLog();
   const effectiveUsername = filterUsername || activeUsername;
+  const consumedEmbeddedOpenRef = useRef(false);
+  const consumedLocationOpenRef = useRef(false);
 
-  const [activeTab, setActiveTab] = useState<TabType>(initialTab);
+  const locationState = location.state as ShipsGoTrackingLocationState | null;
+  const pendingOpenTracking =
+    initialOpenTracking ?? locationState?.openTracking ?? null;
+  const pendingOpenTab =
+    pendingOpenTracking?.mode ??
+    locationState?.openTab ??
+    initialTab;
+
+  const [activeTab, setActiveTab] = useState<TabType>(pendingOpenTab);
 
   // Air state
   const [allAirShipments, setAllAirShipments] = useState<AirShipment[]>([]);
@@ -253,6 +276,84 @@ function ShipsGoTracking({
     void fetchAir();
     void fetchOcean();
   }, [effectiveUsername, fetchAir, fetchOcean]);
+
+  useEffect(() => {
+    const tabIntent =
+      initialOpenTracking?.mode ??
+      locationState?.openTracking?.mode ??
+      locationState?.openTab;
+    if (tabIntent) {
+      setActiveTab(tabIntent);
+    }
+  }, [
+    initialOpenTracking?.mode,
+    locationState?.openTracking?.mode,
+    locationState?.openTab,
+  ]);
+
+  useEffect(() => {
+    consumedEmbeddedOpenRef.current = false;
+  }, [initialOpenTracking]);
+
+  useEffect(() => {
+    consumedLocationOpenRef.current = false;
+  }, [locationState?.openTracking]);
+
+  useEffect(() => {
+    if (!pendingOpenTracking) return;
+
+    if (pendingOpenTracking.mode === "air") {
+      if (airLoading) return;
+      const match = userAir.find((shipment) =>
+        matchesAirOpenTrackingTarget(shipment.awb_number, pendingOpenTracking),
+      );
+      if (!match) return;
+
+      setSelectedOcean(null);
+      setSelectedAir(match);
+      setActiveTab("air");
+
+      if (initialOpenTracking && !consumedEmbeddedOpenRef.current) {
+        consumedEmbeddedOpenRef.current = true;
+        onOpenTrackingConsumed?.();
+      }
+      if (locationState?.openTracking && !consumedLocationOpenRef.current) {
+        consumedLocationOpenRef.current = true;
+        navigate(location.pathname, { replace: true, state: {} });
+      }
+      return;
+    }
+
+    if (oceanLoading) return;
+    const match = userOcean.find((shipment) =>
+      matchesOceanOpenTrackingTarget(shipment, pendingOpenTracking),
+    );
+    if (!match) return;
+
+    setSelectedAir(null);
+    setSelectedOcean(match);
+    setActiveTab("ocean");
+
+    if (initialOpenTracking && !consumedEmbeddedOpenRef.current) {
+      consumedEmbeddedOpenRef.current = true;
+      onOpenTrackingConsumed?.();
+    }
+    if (locationState?.openTracking && !consumedLocationOpenRef.current) {
+      consumedLocationOpenRef.current = true;
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [
+    pendingOpenTracking,
+    airLoading,
+    oceanLoading,
+    userAir,
+    userOcean,
+    initialOpenTracking,
+    locationState?.openTracking,
+    location.pathname,
+    navigate,
+    onOpenTrackingConsumed,
+  ]);
 
   function getOceanEmbedQuery(shipment: OceanShipment): string {
     return (

@@ -39,6 +39,10 @@ import {
   formatShipsgoTime,
   getShipsgoScheduledInitial,
 } from "../../services/shipsgoEtaHelpers";
+import {
+  buildAirOpenTrackingTarget,
+  type ShipsGoTrackingLocationState,
+} from "../../services/shipsgoTrackingNavigation";
 
 const ITEMS_PER_PAGE = 10;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -1370,6 +1374,24 @@ function AirShipmentsView({
     fetchAirShipments();
   };
 
+  const openTrackedShipmentInPortal = (shipment: AirShipment) => {
+    const awb =
+      resolveTrackingNumber(shipment) ||
+      shipment.waybillNumber ||
+      shipment.number;
+    const openTracking = buildAirOpenTrackingTarget(awb);
+    const navigationState: ShipsGoTrackingLocationState = openTracking
+      ? { openTab: "air", openTracking }
+      : { openTab: "air" };
+
+    if (reporteriaClientesContext) {
+      reporteriaClientesContext.openTrackingTab("air", openTracking);
+      return;
+    }
+
+    navigate("/trackings", { state: navigationState });
+  };
+
   /*  Track Modal  */
   const isShipmentAlreadyTracked = (shipment: AirShipment): boolean => {
     if (trackedAwbs.size === 0) return false;
@@ -2190,15 +2212,9 @@ function AirShipmentsView({
                                             isShipmentAlreadyTracked
                                           }
                                           openTrackModal={openTrackModal}
-                                          onOpenTracking={() => {
-                                            if (reporteriaClientesContext) {
-                                              reporteriaClientesContext.openTrackingTab(
-                                                "air",
-                                              );
-                                            } else {
-                                              navigate("/trackings-aereo");
-                                            }
-                                          }}
+                                          onOpenTracking={() =>
+                                            openTrackedShipmentInPortal(shipment)
+                                          }
                                           onOpenQuote={(qn) => {
                                             if (reporteriaClientesContext) {
                                               reporteriaClientesContext.openQuotesTab(

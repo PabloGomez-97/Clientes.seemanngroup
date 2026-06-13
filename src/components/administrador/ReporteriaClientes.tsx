@@ -128,6 +128,10 @@ function ReporteriaClientes() {
   const [trackingInitialTab, setTrackingInitialTab] = useState<"air" | "ocean">(
     "air",
   );
+  const [trackingOpenTarget, setTrackingOpenTarget] =
+    useState<import("../../services/shipsgoTrackingNavigation").ShipsGoOpenTrackingTarget | null>(
+      null,
+    );
   const [opsOpen, setOpsOpen] = useState(false);
   const [sortMode, setSortMode] = useState<"az" | "recent" | "subcuentas">(
     "az",
@@ -438,8 +442,12 @@ function ReporteriaClientes() {
 
   // ── Client Detail View (same portal views the client sees) ──
   if (selectedClient) {
-    const openTrackingTab = (tab?: "air" | "ocean") => {
+    const openTrackingTab = (
+      tab?: "air" | "ocean",
+      openTracking?: import("../../services/shipsgoTrackingNavigation").ShipsGoOpenTrackingTarget | null,
+    ) => {
       setTrackingInitialTab(tab ?? "air");
+      setTrackingOpenTarget(openTracking ?? null);
       setActiveTab("tracking");
     };
     const openQuotesTab = (quoteNumber?: string) => {
@@ -852,6 +860,8 @@ function ReporteriaClientes() {
               <ClientTrackingView
                 clientUsername={selectedClient.username}
                 initialTrackingTab={trackingInitialTab}
+                initialOpenTracking={trackingOpenTarget}
+                onOpenTrackingConsumed={() => setTrackingOpenTarget(null)}
               />
             )}
             {activeTab === "settings" && (
