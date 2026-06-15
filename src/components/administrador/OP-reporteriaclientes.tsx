@@ -614,15 +614,15 @@ function OPReporteriaClientes() {
                 padding: "7px 14px",
                 background:
                   activeTab === "air" ||
-                  activeTab === "ocean" ||
-                  activeTab === "ground"
+                    activeTab === "ocean" ||
+                    activeTab === "ground"
                     ? "#fff"
                     : "none",
                 border: "none",
                 borderTop:
                   activeTab === "air" ||
-                  activeTab === "ocean" ||
-                  activeTab === "ground"
+                    activeTab === "ocean" ||
+                    activeTab === "ground"
                     ? "2px solid #ff6200"
                     : "2px solid transparent",
                 borderRadius: "4px 4px 0 0",
@@ -631,14 +631,14 @@ function OPReporteriaClientes() {
                 fontSize: 12,
                 fontWeight:
                   activeTab === "air" ||
-                  activeTab === "ocean" ||
-                  activeTab === "ground"
+                    activeTab === "ocean" ||
+                    activeTab === "ground"
                     ? 600
                     : 400,
                 color:
                   activeTab === "air" ||
-                  activeTab === "ocean" ||
-                  activeTab === "ground"
+                    activeTab === "ocean" ||
+                    activeTab === "ground"
                     ? "#ff6200"
                     : "#6b7280",
                 transition: "all 0.15s",

@@ -70,6 +70,7 @@ export function CountryRatesDownloadButton({
           <PdfTemplateCountryRates
             countryLabel={countryLabel}
             serviceSuffix={SERVICE_SUFFIX_LABELS[service]}
+            service={service}
             generatedDate={generatedDate}
             columns={columns}
             rows={rows}
