@@ -98,10 +98,13 @@ import {
   type OriginSelectOption,
 } from "./originSelection";
 import { AirPriceHistoryModal } from "./Handlers/Air/AirPriceHistoryModal";
+import { AirCountryRatesDownloadButton } from "./Handlers/Air/AirCountryRatesDownloadButton";
+import { buildCountryAirRates } from "./Handlers/Air/buildCountryAirRates";
 import { AirPriceHistoryStep2Panel } from "./Handlers/Air/AirPriceHistoryStep2Panel";
 import { useAirCotizadorSidebarOptional } from "./Handlers/Air/AirCotizadorSidebarContext";
 import { useAirPriceHistory } from "./Handlers/Air/useAirPriceHistory";
 import {
+  AIR_PRICE_HISTORY_MARKUP,
   AIR_WEIGHT_TIERS,
   getCurrentAirMarketMinPrices,
 } from "./Handlers/Air/HandlerQuoteAirHistorical";
@@ -1916,6 +1919,24 @@ function QuoteAPITester({
   const hasHiddenRoutes = rutasFiltradas.length > INITIAL_VISIBLE_ROUTES;
   const activeCarriersKey = Array.from(carriersActivos).sort().join("|");
   const activeCurrenciesKey = Array.from(monedasActivas).sort().join("|");
+
+  const countryRatesRows = useMemo(
+    () =>
+      buildCountryAirRates(
+        rutas,
+        originIndex,
+        paisSeleccionado?.value,
+        carriersActivos,
+        monedasActivas,
+      ),
+    [
+      rutas,
+      originIndex,
+      paisSeleccionado?.value,
+      activeCarriersKey,
+      activeCurrenciesKey,
+    ],
+  );
 
   const {
     loading: loadingPriceHistory,
@@ -5716,15 +5737,25 @@ function QuoteAPITester({
                           {rutasFiltradas.length > 0 &&
                           originSeleccionado &&
                           destinationSeleccionado ? (
-                            <AirPriceHistoryModal
-                              originLabel={originSeleccionado.label}
-                              destinationLabel={
-                                destinationSeleccionado.label
-                              }
-                              loading={loadingPriceHistory}
-                              error={errorPriceHistory}
-                              seriesResult={priceHistorySeriesWithCurrent}
-                            />
+                            <div className="qa-routes-actions d-flex gap-2 flex-wrap">
+                              <AirPriceHistoryModal
+                                originLabel={originSeleccionado.label}
+                                destinationLabel={
+                                  destinationSeleccionado.label
+                                }
+                                loading={loadingPriceHistory}
+                                error={errorPriceHistory}
+                                seriesResult={priceHistorySeriesWithCurrent}
+                              />
+                              {paisSeleccionado ? (
+                                <AirCountryRatesDownloadButton
+                                  countryCode={paisSeleccionado.value}
+                                  countryLabel={paisSeleccionado.label}
+                                  rows={countryRatesRows}
+                                  disabled={countryRatesRows.length === 0}
+                                />
+                              ) : null}
+                            </div>
                           ) : null}
                         </div>
 
@@ -5955,9 +5986,10 @@ function QuoteAPITester({
                                                 {price > 0 ? (
                                                   <>
                                                     <span className="qa-rt-price-amount">
-                                                      {(price * 1.15).toFixed(
-                                                        2,
-                                                      )}
+                                                      {(
+                                                        price *
+                                                        AIR_PRICE_HISTORY_MARKUP
+                                                      ).toFixed(2)}
                                                     </span>
                                                     <span className="qa-rt-price-cur">
                                                       {ruta.currency}
