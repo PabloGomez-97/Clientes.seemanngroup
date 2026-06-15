@@ -1697,5 +1697,52 @@
   "itinerarioPage": {
     "title": "Find an itinerary",
     "subtitle": "Check available routes by modality, origin and destination."
+  },
+  "pageBanner": {
+    "airShipments": {
+      "badge": "Air Operations",
+      "title": "Your air shipments",
+      "description": "View and manage your air operations. From here you can check status, track shipments and review details for each delivery."
+    },
+    "oceanShipments": {
+      "badge": "Ocean Operations",
+      "title": "Your ocean shipments",
+      "description": "View and manage your ocean operations. Check status, track containers and review every detail of your shipments."
+    },
+    "groundShipments": {
+      "badge": "Ground Operations",
+      "title": "Your ground shipments",
+      "description": "Check the status and details of your ground operations. Review routes, carriers and delivery dates."
+    },
+    "quotes": {
+      "badge": "Quotes",
+      "title": "Your quotes",
+      "description": "Review the details, validity and status of all your quotes. From here you can check rates and request new quotes."
+    },
+    "specialQuote": {
+      "badge": "Premium Service",
+      "title": "Need a special quote?",
+      "description": "Oversized cargo, project cargo, temperature-controlled goods, hazardous materials or other special conditions. Your executive will find the best solution."
+    },
+    "shippingOrder": {
+      "badge": "Pre-Operational Stage",
+      "title": "Active operations",
+      "description": "The information shown here is tentative and may change. You will receive your AWB or HBL early so you can start tracking your cargo before the operation appears in the shipment views."
+    },
+    "airTracking": {
+      "badge": "Air tracking",
+      "title": "Tracking service for air cargo",
+      "description": "<p>Enter <strong>exactly the AWB provided by your airline</strong>. An incorrect number will consume credits unnecessarily.</p><p>Don't know your AWB? Check it in <highlight>Air Operations</highlight>.</p>"
+    },
+    "oceanTracking": {
+      "badge": "Ocean tracking",
+      "title": "Tracking service for ocean cargo",
+      "description": "<p>Enter the <strong>container or booking number</strong> provided by your carrier. The system will automatically detect the corresponding carrier.</p><p>Don't know your container? Check it in <highlight>Ocean Operations</highlight>.</p>"
+    },
+    "myDocuments": {
+      "badge": "My Documents",
+      "title": "Documentation",
+      "description": "View and manage all documents related to your shipments. Here you'll find invoices, air waybills, manifests and more — all in one place for your convenience."
+    }
   }
 }

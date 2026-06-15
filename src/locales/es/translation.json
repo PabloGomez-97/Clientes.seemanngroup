@@ -1698,5 +1698,52 @@
   "itinerarioPage": {
     "title": "Encontrar un itinerario",
     "subtitle": "Consulta rutas disponibles por modalidad, origen y destino."
+  },
+  "pageBanner": {
+    "airShipments": {
+      "badge": "Operaciones Aéreas",
+      "title": "Tus envíos aéreos",
+      "description": "Visualiza y gestiona tus operaciones aéreas. Desde aquí puedes consultar el estado, hacer seguimiento y revisar los detalles de cada envío."
+    },
+    "oceanShipments": {
+      "badge": "Operaciones Marítimas",
+      "title": "Tus envíos marítimos",
+      "description": "Visualiza y gestiona tus operaciones marítimas. Consulta el estado, haz seguimiento de contenedores y revisa cada detalle de tus embarques."
+    },
+    "groundShipments": {
+      "badge": "Operaciones Terrestres",
+      "title": "Tus envíos terrestres",
+      "description": "Consulta el estado y detalle de tus operaciones terrestres. Revisa rutas, transportistas y fechas de entrega."
+    },
+    "quotes": {
+      "badge": "Cotizaciones",
+      "title": "Tus cotizaciones",
+      "description": "Consulta el detalle, vigencia y estado de todas tus cotizaciones. Desde aquí puedes revisar tarifas y volver a cotizar."
+    },
+    "specialQuote": {
+      "badge": "Servicio Premium",
+      "title": "¿Necesitas una cotización especial?",
+      "description": "Cargas sobredimensionadas, proyecto, temperatura controlada, materiales peligrosos u otras condiciones especiales. Tu ejecutivo te dará la mejor solución."
+    },
+    "shippingOrder": {
+      "badge": "Etapa Pre-Operacional",
+      "title": "Operaciones activas",
+      "description": "La información aquí mostrada es tentativa y puede variar. Aquí recibirás de forma temprana tu AWB o HBL para que puedas iniciar el seguimiento de tu carga antes de que la operación se refleje en las vistas de envíos."
+    },
+    "airTracking": {
+      "badge": "Seguimiento aéreo",
+      "title": "Servicio de seguimiento para cargas aéreas",
+      "description": "<p>Ingrese <strong>exactamente el AWB entregado por su aerolínea</strong>. Un número incorrecto consumirá créditos innecesariamente.</p><p>¿No conoce su AWB? Revíselo en <highlight>Operaciones Aéreas</highlight>.</p>"
+    },
+    "oceanTracking": {
+      "badge": "Seguimiento marítimo",
+      "title": "Servicio de seguimiento para cargas marítimas",
+      "description": "<p>Ingrese el <strong>número de contenedor o booking</strong> proporcionado por su naviera. El sistema detectará automáticamente la naviera correspondiente.</p><p>¿No conoce su contenedor? Revíselo en <highlight>Operaciones Marítimas</highlight>.</p>"
+    },
+    "myDocuments": {
+      "badge": "Mis Documentos",
+      "title": "Documentación",
+      "description": "Consulta y gestiona todos tus documentos relacionados con tus envíos. Aquí encontrarás facturas, guías aéreas, manifiestos y más, todo en un solo lugar para tu comodidad."
+    }
   }
 }

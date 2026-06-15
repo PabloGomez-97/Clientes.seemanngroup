@@ -9,7 +9,7 @@ import LoadingTips from "./LoadingTips";
 import { useOutletContext, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { useClientOverride } from "../../contexts/ClientOverrideContext";
-import { imgUrl } from "../../config/images";
+import PageBannerHeader from "../PageBannerHeader";
 import { useReporteriaClientesContext } from "../../contexts/ReporteriaClientesContext";
 import { useAuditLog } from "../../hooks/useAuditLog";
 import { useTrackingEmailPreferences } from "../../hooks/useTrackingEmailPreferences";
@@ -1737,83 +1737,7 @@ function OceanShipmentsView({
      ========================================================= */
   return (
     <div className="osv-container">
-      {/* Image banner */}
-      <div
-        style={{
-          position: "relative",
-          height: 220,
-          overflow: "hidden",
-          background: "#1a1a1a",
-        }}
-      >
-        <img
-          src={imgUrl("/imo.png")}
-          alt="Operaciones Marítimas"
-          style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            opacity: 0.75,
-          }}
-          onError={(e) => {
-            (e.target as HTMLImageElement).style.display = "none";
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            background:
-              "linear-gradient(to right, rgba(26,26,26,0.85) 0%, rgba(26,26,26,0.35) 100%)",
-            display: "flex",
-            alignItems: "center",
-            padding: "0 32px",
-          }}
-        >
-          <div>
-            <div
-              style={{
-                display: "inline-block",
-                background: "var(--primary-color)",
-                color: "#fff",
-                fontSize: 11,
-                fontWeight: 600,
-                letterSpacing: "0.06em",
-                padding: "3px 10px",
-                borderRadius: 3,
-                marginBottom: 10,
-              }}
-            >
-              Operaciones Marítimas
-            </div>
-            <h2
-              style={{
-                color: "#fff",
-                fontSize: 24,
-                fontWeight: 700,
-                letterSpacing: "-0.02em",
-                margin: 0,
-                lineHeight: 1.3,
-              }}
-            >
-              Tus envíos marítimos
-            </h2>
-            <p
-              style={{
-                color: "rgba(255,255,255,0.78)",
-                fontSize: 14,
-                letterSpacing: "0.01em",
-                margin: "8px 0 0",
-                maxWidth: 460,
-              }}
-            >
-              Visualiza y gestiona tus operaciones marítimas. Consulta el
-              estado, haz seguimiento de contenedores y revisa cada detalle de
-              tus embarques.
-            </p>
-          </div>
-        </div>
-      </div>
+      <PageBannerHeader variant="oceanShipments" />
 
       {/* Toolbar */}
       <div

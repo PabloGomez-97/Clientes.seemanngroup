@@ -11,7 +11,7 @@ import {
   MAX_VISIBLE_TRACK_FOLLOWERS,
 } from "../../services/trackingEmailPreferences";
 import "./styles/CreateShipmentForm.css";
-import { imgUrl } from "../../config/images";
+import PageBannerHeader from "../PageBannerHeader";
 import { Colors } from "chart.js";
 
 const API_BASE_URL =
@@ -229,91 +229,7 @@ function CreateOceanShipmentForm({
 
   return (
     <div className="csf-wrapper">
-      {/* Image banner */}
-      <div
-        style={{
-          position: "relative",
-          height: 220,
-          overflow: "hidden",
-          background: "#1a1a1a",
-        }}
-      >
-        <img
-          src={imgUrl("/imo.png")}
-          alt="Carga especial"
-          style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            opacity: 0.75,
-          }}
-          onError={(e) => {
-            (e.target as HTMLImageElement).style.display = "none";
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            background:
-              "linear-gradient(to right, rgba(26,26,26,0.85) 0%, rgba(26,26,26,0.35) 100%)",
-            display: "flex",
-            alignItems: "center",
-            padding: "0 32px",
-          }}
-        >
-          <div>
-            <div
-              style={{
-                display: "inline-block",
-                background: "var(--primary-color)",
-                color: "#fff",
-                fontSize: 11,
-                fontWeight: 700,
-                letterSpacing: 1.2,
-                textTransform: "uppercase",
-                padding: "3px 10px",
-                borderRadius: 3,
-                marginBottom: 10,
-              }}
-            >
-              Servicio Premium
-            </div>
-            <h2
-              style={{
-                color: "#fff",
-                fontSize: 24,
-                fontWeight: 700,
-                margin: 0,
-                lineHeight: 1.3,
-              }}
-            >
-              Servicio de seguimiento para cargas marítimas
-            </h2>
-            <p
-              style={{
-                color: "rgba(255,255,255,0.78)",
-                fontSize: 14,
-                margin: "8px 0 0",
-                maxWidth: 460,
-              }}
-            >
-              <p>
-                Ingrese el <strong>número de contenedor o booking</strong>{" "}
-                proporcionado por su naviera. El sistema detectará
-                automáticamente la naviera correspondiente.
-              </p>
-              <p>
-                ¿No conoce su contenedor? Revíselo en{" "}
-                <strong style={{ color: "#ff6200" }}>
-                  Operaciones Marítimas
-                </strong>
-                .
-              </p>
-            </p>
-          </div>
-        </div>
-      </div>
+      <PageBannerHeader variant="oceanTracking" />
 
       <div className="csf-card">
         <div className="csf-card-body">

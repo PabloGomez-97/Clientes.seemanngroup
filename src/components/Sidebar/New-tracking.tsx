@@ -11,7 +11,7 @@ import {
   MAX_VISIBLE_TRACK_FOLLOWERS,
 } from "../../services/trackingEmailPreferences";
 import "./styles/CreateShipmentForm.css";
-import { imgUrl } from "../../config/images";
+import PageBannerHeader from "../PageBannerHeader";
 
 const API_BASE_URL =
   import.meta.env.MODE === "development"
@@ -199,89 +199,7 @@ function CreateShipmentForm({
 
   return (
     <div className="csf-wrapper">
-      {/* Image banner */}
-      <div
-        style={{
-          position: "relative",
-          height: 220,
-          overflow: "hidden",
-          background: "#1a1a1a",
-        }}
-      >
-        <img
-          src={imgUrl("/imo.png")}
-          alt="Carga especial"
-          style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            opacity: 0.75,
-          }}
-          onError={(e) => {
-            (e.target as HTMLImageElement).style.display = "none";
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            background:
-              "linear-gradient(to right, rgba(26,26,26,0.85) 0%, rgba(26,26,26,0.35) 100%)",
-            display: "flex",
-            alignItems: "center",
-            padding: "0 32px",
-          }}
-        >
-          <div>
-            <div
-              style={{
-                display: "inline-block",
-                background: "var(--primary-color)",
-                color: "#fff",
-                fontSize: 11,
-                fontWeight: 700,
-                letterSpacing: 1.2,
-                textTransform: "uppercase",
-                padding: "3px 10px",
-                borderRadius: 3,
-                marginBottom: 10,
-              }}
-            >
-              Servicio Premium
-            </div>
-            <h2
-              style={{
-                color: "#fff",
-                fontSize: 24,
-                fontWeight: 700,
-                margin: 0,
-                lineHeight: 1.3,
-              }}
-            >
-              Servicio de seguimiento para cargas aéreas
-            </h2>
-            <p
-              style={{
-                color: "rgba(255,255,255,0.78)",
-                fontSize: 14,
-                margin: "8px 0 0",
-                maxWidth: 460,
-              }}
-            >
-              <p>
-                Ingrese{" "}
-                <strong>exactamente el AWB entregado por su aerolínea</strong>.
-                Un número incorrecto consumirá créditos innecesariamente.
-              </p>
-              <p>
-                ¿No conoce su AWB? Revíselo en{" "}
-                <strong style={{ color: "#ff6200" }}>Operaciones Aéreas</strong>
-                .
-              </p>
-            </p>
-          </div>
-        </div>
-      </div>
+      <PageBannerHeader variant="airTracking" />
 
       <div className="csf-card">
         <div className="csf-card-body">

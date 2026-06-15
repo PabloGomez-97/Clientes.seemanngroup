@@ -6,7 +6,7 @@ import { useReporteriaClientesContext } from "../../contexts/ReporteriaClientesC
 import { useAuditLog } from "../../hooks/useAuditLog";
 import { useTrackingEmailPreferences } from "../../hooks/useTrackingEmailPreferences";
 import { useTranslation } from "react-i18next";
-import { imgUrl } from "../../config/images";
+import PageBannerHeader from "../PageBannerHeader";
 import LoadingTips from "../shipments/LoadingTips";
 import { DocumentosSection } from "./Documents/DocumentosSection";
 import TrackingEmailSuggestions from "../tracking/TrackingEmailSuggestions";
@@ -1544,84 +1544,7 @@ function QuotesView({
      ========================================================= */
   return (
     <div className="qv-container">
-      {/* Image banner */}
-      <div
-        style={{
-          position: "relative",
-          height: 220,
-          overflow: "hidden",
-          background: "#1a1a1a",
-          borderRadius: 12,
-          marginBottom: 24,
-        }}
-      >
-        <img
-          src={imgUrl("/imo.png")}
-          alt="Cotizaciones"
-          style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            opacity: 0.75,
-          }}
-          onError={(e) => {
-            (e.target as HTMLImageElement).style.display = "none";
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            background:
-              "linear-gradient(to right, rgba(26,26,26,0.85) 0%, rgba(26,26,26,0.35) 100%)",
-            display: "flex",
-            alignItems: "center",
-            padding: "0 32px",
-          }}
-        >
-          <div>
-            <div
-              style={{
-                display: "inline-block",
-                background: "var(--primary-color)",
-                color: "#fff",
-                fontSize: 11,
-                fontWeight: 600,
-                letterSpacing: "0.06em",
-                padding: "3px 10px",
-                borderRadius: 3,
-                marginBottom: 10,
-              }}
-            >
-              Cotizaciones
-            </div>
-            <h2
-              style={{
-                color: "#fff",
-                fontSize: 24,
-                fontWeight: 700,
-                letterSpacing: "-0.02em",
-                margin: 0,
-                lineHeight: 1.3,
-              }}
-            >
-              Tus cotizaciones
-            </h2>
-            <p
-              style={{
-                color: "rgba(255,255,255,0.78)",
-                fontSize: 14,
-                letterSpacing: "0.01em",
-                margin: "8px 0 0",
-                maxWidth: 460,
-              }}
-            >
-              Consulta el detalle, vigencia y estado de todas tus cotizaciones.
-              Desde aquí puedes revisar tarifas y volver a cotizar.
-            </p>
-          </div>
-        </div>
-      </div>
+      <PageBannerHeader variant="quotes" rounded />
 
       {/* -- Toolbar (advanced search) ------------------------- */}
       <div

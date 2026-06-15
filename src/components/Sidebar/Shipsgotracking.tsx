@@ -35,6 +35,79 @@ type DeleteTarget = {
   label: string;
 };
 
+type AirFilterKey = "inTransit" | "delivered" | "delayed";
+type OceanFilterKey = "sailing" | "arrived" | "delayed";
+
+type StatusChipTone = "transit" | "done" | "delayed" | "neutral";
+
+type StatusChipDef = {
+  key: string;
+  label: string;
+  count: number;
+  tone: StatusChipTone;
+};
+
+interface TrackingStatusStripProps {
+  chips: StatusChipDef[];
+  activeKey: string | null;
+  onToggle: (key: string) => void;
+  ariaLabel: string;
+}
+
+function TrackingStatusStrip({
+  chips,
+  activeKey,
+  onToggle,
+  ariaLabel,
+}: TrackingStatusStripProps) {
+  const barTotal = chips.reduce((sum, chip) => sum + chip.count, 0);
+
+  return (
+    <section className="sg-status-strip" aria-label={ariaLabel}>
+      {barTotal > 0 && (
+        <div className="sg-status-bar" role="presentation">
+          {chips.map((chip) =>
+            chip.count > 0 ? (
+              <div
+                key={chip.key}
+                className={`sg-status-bar__segment sg-status-bar__segment--${chip.tone}`}
+                style={{ flexGrow: chip.count }}
+              />
+            ) : null,
+          )}
+        </div>
+      )}
+      <div className="sg-status-chips">
+        {chips.map((chip) => {
+          const isActive = activeKey === chip.key;
+          const delayedAccent = chip.tone === "delayed" && chip.count > 0;
+          return (
+            <button
+              key={chip.key}
+              type="button"
+              className={[
+                "sg-status-chip",
+                isActive ? "sg-status-chip--active" : "",
+                delayedAccent ? "sg-status-chip--delayed" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              aria-pressed={isActive}
+              onClick={() => onToggle(chip.key)}
+            >
+              <span
+                className={`sg-status-chip__dot sg-status-chip__dot--${chip.tone}`}
+              />
+              <span className="sg-status-chip__label">{chip.label}</span>
+              <span className="sg-status-chip__count">{chip.count}</span>
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 const SHIPSGO_LIST_CACHE_TTL_MS = 5 * 60 * 60 * 1000; // 5 horas
 
 const API_BASE_URL =
@@ -133,6 +206,11 @@ function ShipsGoTracking({
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [airStatusFilter, setAirStatusFilter] = useState<AirFilterKey | null>(
+    null,
+  );
+  const [oceanStatusFilter, setOceanStatusFilter] =
+    useState<OceanFilterKey | null>(null);
   const userAir = useMemo(() => {
     if (!effectiveUsername) return [];
     return allAirShipments.filter(
@@ -372,8 +450,10 @@ function ShipsGoTracking({
     setActiveTab(tab);
     if (tab === "air") {
       setSelectedOcean(null);
+      setOceanStatusFilter(null);
     } else {
       setSelectedAir(null);
+      setAirStatusFilter(null);
     }
   };
 
@@ -392,6 +472,116 @@ function ShipsGoTracking({
     if (!eta || transit_percentage >= 100) return false;
     return new Date(s.updated_at) >= new Date(eta) && transit_percentage < 100;
   }
+
+  const matchesAirFilter = useCallback(
+    (shipment: AirShipment, filter: AirFilterKey) => {
+      switch (filter) {
+        case "inTransit":
+          return shipment.status === "EN_ROUTE";
+        case "delivered":
+          return (
+            shipment.status === "DELIVERED" || shipment.status === "LANDED"
+          );
+        case "delayed":
+          return isAirDelayed(shipment);
+        default:
+          return true;
+      }
+    },
+    [],
+  );
+
+  const matchesOceanFilter = useCallback(
+    (shipment: OceanShipment, filter: OceanFilterKey) => {
+      switch (filter) {
+        case "sailing":
+          return shipment.status === "SAILING";
+        case "arrived":
+          return (
+            shipment.status === "ARRIVED" || shipment.status === "DISCHARGED"
+          );
+        case "delayed":
+          return isOceanDelayed(shipment);
+        default:
+          return true;
+      }
+    },
+    [],
+  );
+
+  const filteredUserAir = useMemo(() => {
+    if (!airStatusFilter) return userAir;
+    return userAir.filter((shipment) =>
+      matchesAirFilter(shipment, airStatusFilter),
+    );
+  }, [userAir, airStatusFilter, matchesAirFilter]);
+
+  const filteredUserOcean = useMemo(() => {
+    if (!oceanStatusFilter) return userOcean;
+    return userOcean.filter((shipment) =>
+      matchesOceanFilter(shipment, oceanStatusFilter),
+    );
+  }, [userOcean, oceanStatusFilter, matchesOceanFilter]);
+
+  const airStatusChips = useMemo<StatusChipDef[]>(
+    () => [
+      {
+        key: "inTransit",
+        label: "En tránsito",
+        count: airStats.inTransit,
+        tone: "transit",
+      },
+      {
+        key: "delivered",
+        label: "Entregados",
+        count: airStats.delivered,
+        tone: "done",
+      },
+      {
+        key: "delayed",
+        label: "Demorados",
+        count: airStats.delayed,
+        tone: "delayed",
+      },
+    ],
+    [airStats],
+  );
+
+  const oceanStatusChips = useMemo<StatusChipDef[]>(
+    () => [
+      {
+        key: "sailing",
+        label: "Navegando",
+        count: oceanStats.sailing,
+        tone: "transit",
+      },
+      {
+        key: "arrived",
+        label: "Llegados",
+        count: oceanStats.arrived,
+        tone: "done",
+      },
+      {
+        key: "delayed",
+        label: "Demorados",
+        count: oceanStats.delayed,
+        tone: "delayed",
+      },
+    ],
+    [oceanStats],
+  );
+
+  const handleAirStatusToggle = useCallback((key: string) => {
+    setAirStatusFilter((prev) =>
+      prev === key ? null : (key as AirFilterKey),
+    );
+  }, []);
+
+  const handleOceanStatusToggle = useCallback((key: string) => {
+    setOceanStatusFilter((prev) =>
+      prev === key ? null : (key as OceanFilterKey),
+    );
+  }, []);
 
   const closeDeleteDialog = () => {
     if (deleteLoading) return;
@@ -577,36 +767,34 @@ function ShipsGoTracking({
               </div>
             ) : (
               <>
-                {/* Stats */}
-                <div className="sg-stats">
-                  <div className="sg-stat-item">
-                    <div className="sg-stat-label">Total</div>
-                    <div className="sg-stat-value">{airStats.total}</div>
-                  </div>
-                  <div className="sg-stat-item">
-                    <div className="sg-stat-label">En tránsito</div>
-                    <div className="sg-stat-value">{airStats.inTransit}</div>
-                  </div>
-                  <div className="sg-stat-item">
-                    <div className="sg-stat-label">Entregados</div>
-                    <div className="sg-stat-value">{airStats.delivered}</div>
-                  </div>
-                  <div className="sg-stat-item">
-                    <div className="sg-stat-label">Demorados</div>
-                    <div
-                      className={`sg-stat-value${airStats.delayed > 0 ? " sg-stat-value--delayed" : ""}`}
-                    >
-                      {airStats.delayed}
-                    </div>
-                  </div>
-                </div>
+                <TrackingStatusStrip
+                  chips={airStatusChips}
+                  activeKey={airStatusFilter}
+                  onToggle={handleAirStatusToggle}
+                  ariaLabel="Resumen de envíos aéreos"
+                />
 
                 <div
                   className={`sg-split-view${selectedAir ? " sg-split-view--active" : ""}`}
                 >
                   <div className="sg-split-list">
+                {airStatusFilter && filteredUserAir.length === 0 && (
+                  <div className="sg-filter-empty">
+                    <p>No hay envíos en este estado.</p>
+                    <button
+                      type="button"
+                      className="sg-filter-empty-btn"
+                      onClick={() => setAirStatusFilter(null)}
+                    >
+                      Ver todos
+                    </button>
+                  </div>
+                )}
+
+                {filteredUserAir.length > 0 && (
+                  <>
                 {/* Delay alerts */}
-                {userAir.filter(isAirDelayed).map((s) => (
+                {filteredUserAir.filter(isAirDelayed).map((s) => (
                   <div key={`d-${s.id}`} className="sg-delay-banner">
                     AWB <strong>{s.awb_number}</strong> — Envío con posible
                     retraso.
@@ -630,7 +818,10 @@ function ShipsGoTracking({
                       </tr>
                     </thead>
                     <tbody>
-                      {(airExpanded ? userAir : userAir.slice(0, 10)).map(
+                      {(airExpanded
+                        ? filteredUserAir
+                        : filteredUserAir.slice(0, 10)
+                      ).map(
                         (s) => (
                           <tr
                             key={s.id}
@@ -773,7 +964,7 @@ function ShipsGoTracking({
                     </tbody>
                   </table>
                 </div>
-                {userAir.length > 10 && (
+                {filteredUserAir.length > 10 && (
                   <div className="sg-show-more">
                     <button
                       type="button"
@@ -782,9 +973,11 @@ function ShipsGoTracking({
                     >
                       {airExpanded
                         ? `Ver menos ▲`
-                        : `Ver más (${userAir.length - 10} restantes) ▼`}
+                        : `Ver más (${filteredUserAir.length - 10} restantes) ▼`}
                     </button>
                   </div>
+                )}
+                  </>
                 )}
                 <div className="sg-new-tracking-warning">
                   ⚠️ Los seguimientos recién creados pueden tardar unos minutos
@@ -861,36 +1054,34 @@ function ShipsGoTracking({
               </div>
             ) : (
               <>
-                {/* Stats */}
-                <div className="sg-stats">
-                  <div className="sg-stat-item">
-                    <div className="sg-stat-label">Total</div>
-                    <div className="sg-stat-value">{oceanStats.total}</div>
-                  </div>
-                  <div className="sg-stat-item">
-                    <div className="sg-stat-label">Navegando</div>
-                    <div className="sg-stat-value">{oceanStats.sailing}</div>
-                  </div>
-                  <div className="sg-stat-item">
-                    <div className="sg-stat-label">Llegados</div>
-                    <div className="sg-stat-value">{oceanStats.arrived}</div>
-                  </div>
-                  <div className="sg-stat-item">
-                    <div className="sg-stat-label">Demorados</div>
-                    <div
-                      className={`sg-stat-value${oceanStats.delayed > 0 ? " sg-stat-value--delayed" : ""}`}
-                    >
-                      {oceanStats.delayed}
-                    </div>
-                  </div>
-                </div>
+                <TrackingStatusStrip
+                  chips={oceanStatusChips}
+                  activeKey={oceanStatusFilter}
+                  onToggle={handleOceanStatusToggle}
+                  ariaLabel="Resumen de envíos marítimos"
+                />
 
                 <div
                   className={`sg-split-view${selectedOcean ? " sg-split-view--active" : ""}`}
                 >
                   <div className="sg-split-list">
+                {oceanStatusFilter && filteredUserOcean.length === 0 && (
+                  <div className="sg-filter-empty">
+                    <p>No hay envíos en este estado.</p>
+                    <button
+                      type="button"
+                      className="sg-filter-empty-btn"
+                      onClick={() => setOceanStatusFilter(null)}
+                    >
+                      Ver todos
+                    </button>
+                  </div>
+                )}
+
+                {filteredUserOcean.length > 0 && (
+                  <>
                 {/* Delay alerts */}
-                {userOcean.filter(isOceanDelayed).map((s) => (
+                {filteredUserOcean.filter(isOceanDelayed).map((s) => (
                   <div key={`d-${s.id}`} className="sg-delay-banner">
                     {s.container_number
                       ? `Container ${s.container_number}`
@@ -915,7 +1106,10 @@ function ShipsGoTracking({
                       </tr>
                     </thead>
                     <tbody>
-                      {(oceanExpanded ? userOcean : userOcean.slice(0, 10)).map(
+                      {(oceanExpanded
+                        ? filteredUserOcean
+                        : filteredUserOcean.slice(0, 10)
+                      ).map(
                         (s) => (
                           <tr
                             key={s.id}
@@ -1080,8 +1274,8 @@ function ShipsGoTracking({
                       )}
                     </tbody>
                   </table>
-                </div>{" "}
-                {userOcean.length > 10 && (
+                </div>
+                {filteredUserOcean.length > 10 && (
                   <div className="sg-show-more">
                     <button
                       type="button"
@@ -1090,10 +1284,12 @@ function ShipsGoTracking({
                     >
                       {oceanExpanded
                         ? `Ver menos ▲`
-                        : `Ver más (${userOcean.length - 10} restantes) ▼`}
+                        : `Ver más (${filteredUserOcean.length - 10} restantes) ▼`}
                     </button>
                   </div>
-                )}{" "}
+                )}
+                  </>
+                )}
                 <div className="sg-new-tracking-warning">
                   ⚠️ Los seguimientos recién creados pueden tardar unos minutos
                   en cargarse. Por favor, no volver a crear el mismo
