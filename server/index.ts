@@ -635,6 +635,119 @@ function documentBelongsToOwnerScope(
   return ownerUsername !== 'Ejecutivo' && documento.usuarioId === 'Ejecutivo';
 }
 
+function parseUsernamesQuery(value: unknown): string[] {
+  if (!value) return [];
+  const raw = Array.isArray(value) ? value.join(',') : String(value);
+  return [
+    ...new Set(
+      raw
+        .split(',')
+        .map((entry) => entry.trim())
+        .filter(Boolean),
+    ),
+  ];
+}
+
+async function filterAllowedDocumentUsernames(
+  currentUser: AuthPayload,
+  usernames: string[],
+): Promise<string[]> {
+  if (usernames.length === 0) return [];
+
+  const me = await User.findOne({ email: currentUser.sub }).populate('ejecutivoId');
+  if (!me) throw new Error('Usuario no encontrado');
+
+  if (me.username !== 'Ejecutivo') {
+    const ownUsernames = (
+      Array.isArray(me.usernames) && me.usernames.length > 0
+        ? me.usernames
+        : [me.username]
+    )
+      .map((value) => String(value || '').trim())
+      .filter(Boolean);
+    return usernames.filter((username) => ownUsernames.includes(username));
+  }
+
+  let ejecutivoDoc = me.ejecutivoId as unknown as DocumentExecutiveAccess;
+  if (!ejecutivoDoc || !ejecutivoDoc._id) {
+    const lookupEmail = String(me.email || '').toLowerCase().trim();
+    ejecutivoDoc = await Ejecutivo.findOne({ email: lookupEmail });
+  }
+
+  const hasGlobalExecutiveAccess = !!(
+    ejecutivoDoc?.roles?.administrador || ejecutivoDoc?.roles?.operaciones
+  );
+
+  if (hasGlobalExecutiveAccess) {
+    return usernames;
+  }
+
+  const ejecutivoObjectId = ejecutivoDoc?._id ?? null;
+  if (!ejecutivoObjectId) return [];
+
+  const clientUsers = await User.find(
+    { ejecutivoId: ejecutivoObjectId, username: { $ne: 'Ejecutivo' } },
+    { username: 1, usernames: 1 },
+  ).lean();
+
+  const allowedSet = new Set<string>();
+  for (const client of clientUsers) {
+    if (client.username) allowedSet.add(String(client.username));
+    for (const name of client.usernames || []) {
+      if (name) allowedSet.add(String(name));
+    }
+  }
+
+  return usernames.filter((username) => allowedSet.has(username));
+}
+
+async function aggregateDocumentCounts(
+  usernames: string[],
+): Promise<Record<string, number>> {
+  const counts: Record<string, number> = {};
+  for (const username of usernames) {
+    counts[username] = 0;
+  }
+
+  if (usernames.length === 0) return counts;
+
+  const pipeline = [
+    { $match: { usuarioId: { $in: usernames } } },
+    { $group: { _id: '$usuarioId', count: { $sum: 1 } } },
+  ];
+
+  const [air, ocean, ground, quotes] = await Promise.all([
+    AirShipmentDocumento.aggregate(pipeline),
+    OceanShipmentDocumento.aggregate(pipeline),
+    GroundShipmentDocumento.aggregate(pipeline),
+    Documento.aggregate(pipeline),
+  ]);
+
+  for (const rows of [air, ocean, ground, quotes]) {
+    for (const row of rows) {
+      const id = String(row._id || '');
+      if (id) {
+        counts[id] = (counts[id] || 0) + row.count;
+      }
+    }
+  }
+
+  return counts;
+}
+
+function mapDocumentSummary(doc: any) {
+  const bytes = typeof doc.tamanoBytes === 'number' ? doc.tamanoBytes : 0;
+  return {
+    id: doc._id.toString(),
+    shipmentId: doc.shipmentId || doc.quoteId || null,
+    tipo: doc.tipo,
+    nombreArchivo: doc.nombreArchivo,
+    tipoArchivo: doc.tipoArchivo,
+    tamanoMB: (bytes / (1024 * 1024)).toFixed(2),
+    fechaSubida: doc.createdAt,
+  };
+}
+
 // ============================================================
 // HELPER: NOTIFICACIÓN POR EMAIL AL SUBIR DOCUMENTO
 // ============================================================
@@ -3980,13 +4093,43 @@ app.post('/api/shipsgo/webhooks/ocean', express.raw({ type: 'application/json' }
 // RUTAS DE DOCUMENTOS
 // ============================================================
 
+// GET /api/documents/counts?usernames=a,b,c - Conteos batch por ownerUsername
+app.get('/api/documents/counts', auth, async (req, res) => {
+  try {
+    const currentUser = (req as any).user as AuthPayload;
+    if (!currentUser) return res.status(401).json({ error: 'No autorizado' });
+
+    const requested = parseUsernamesQuery(req.query?.usernames);
+    if (requested.length === 0) {
+      return res.status(400).json({ error: 'usernames requerido' });
+    }
+
+    const allowed = await filterAllowedDocumentUsernames(currentUser, requested);
+    if (allowed.length === 0) {
+      return res.status(403).json({ error: 'No tienes permiso para ver estos clientes' });
+    }
+
+    const counts = await aggregateDocumentCounts(allowed);
+    return res.status(200).json({ counts });
+  } catch (error: any) {
+    if (error?.message === 'Usuario no encontrado') {
+      return res.status(404).json({ error: error.message });
+    }
+    console.error('[documents/counts] Error:', error);
+    return res.status(500).json({ error: 'Error al obtener conteos de documentos' });
+  }
+});
+
 // GET /api/documents/all?ownerUsername=X - Todos los docs de un usuario (sin base64)
 app.get('/api/documents/all', auth, async (req, res) => {
   try {
     const currentUser = (req as any).user;
     if (!currentUser) return res.status(401).json({ error: 'No autorizado' });
 
-    const ownerUsername = (req.query?.ownerUsername as string) || currentUser.username;
+    const ownerUsername = await resolveDocumentOwnerUsername(
+      currentUser,
+      (req.query?.ownerUsername as string) || undefined,
+    );
     if (!ownerUsername) return res.status(400).json({ error: 'ownerUsername requerido' });
 
     const [airDocs, oceanDocs, groundDocs, quoteDocs] = await Promise.all([
@@ -3996,23 +4139,20 @@ app.get('/api/documents/all', auth, async (req, res) => {
       Documento.find({ usuarioId: ownerUsername }).select('-contenidoBase64').sort({ createdAt: -1 }),
     ]);
 
-    const mapDoc = (doc: any) => ({
-      id: doc._id.toString(),
-      shipmentId: doc.shipmentId || doc.quoteId || null,
-      tipo: doc.tipo,
-      nombreArchivo: doc.nombreArchivo,
-      tipoArchivo: doc.tipoArchivo,
-      tamanoMB: (doc.tamanoBytes / (1024 * 1024)).toFixed(2),
-      fechaSubida: doc.createdAt,
-    });
-
     return res.status(200).json({
-      air: airDocs.map(mapDoc),
-      ocean: oceanDocs.map(mapDoc),
-      ground: groundDocs.map(mapDoc),
-      quotes: quoteDocs.map(mapDoc),
+      air: airDocs.map(mapDocumentSummary),
+      ocean: oceanDocs.map(mapDocumentSummary),
+      ground: groundDocs.map(mapDocumentSummary),
+      quotes: quoteDocs.map(mapDocumentSummary),
     });
-  } catch (error) {
+  } catch (error: any) {
+    if (
+      error?.message === 'Usuario no encontrado' ||
+      error?.message === 'Cliente no encontrado' ||
+      error?.message === 'No tienes permiso para acceder a esta cuenta'
+    ) {
+      return res.status(403).json({ error: error.message });
+    }
     console.error('[documents/all] Error:', error);
     return res.status(500).json({ error: 'Error al obtener documentos' });
   }

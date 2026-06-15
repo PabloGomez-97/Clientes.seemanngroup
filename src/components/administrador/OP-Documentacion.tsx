@@ -3,6 +3,10 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { useOutletContext, useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { DocumentosUnificadosView } from "../Sidebar/Documents/DocumentosUnificadosView";
+import { fetchDocumentCountsBatch } from "../../utils/documentCounts";
+import {
+  setCachedOpClients,
+} from "../../utils/opClientsCache";
 
 interface OutletContext {
   accessToken: string;
@@ -137,6 +141,8 @@ function OPDocumentacion() {
   );
 
   useEffect(() => {
+    const controller = new AbortController();
+
     const fetchClientes = async () => {
       if (!token) return;
       const cached = getCachedClients();
@@ -156,6 +162,7 @@ function OPDocumentacion() {
       try {
         const resp = await fetch("/api/admin/users", {
           headers: { Authorization: `Bearer ${token}` },
+          signal: controller.signal,
         });
         const data = await resp.json();
         if (!resp.ok) {
@@ -172,6 +179,7 @@ function OPDocumentacion() {
             nombreuser: user.nombreuser,
             createdAt: user.createdAt,
           }));
+        setCachedOpClients(raw);
         const lista = buildClientList(raw).sort((a: Cliente, b: Cliente) =>
           a.username.localeCompare(b.username, "es", { sensitivity: "base" }),
         );
@@ -179,67 +187,58 @@ function OPDocumentacion() {
         setClientes(lista);
         setCachedClients(lista);
       } catch (e) {
+        if (controller.signal.aborted) return;
         setError(e instanceof Error ? e.message : "Error desconocido");
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
       }
     };
     fetchClientes();
+
+    return () => {
+      controller.abort();
+    };
   }, [token]);
 
   useEffect(() => {
-    let cancelled = false;
+    const controller = new AbortController();
 
     const fetchDocumentCounts = async () => {
       if (!token || clientes.length === 0) return;
 
       const cachedCounts = getCachedDocumentCounts();
       if (cachedCounts) {
-        if (!cancelled) {
+        if (!controller.signal.aborted) {
           setDocumentCounts(cachedCounts);
         }
         return;
       }
 
       try {
-        const entries = await Promise.all(
-          clientes.map(async (client) => {
-            try {
-              const resp = await fetch(
-                `/api/documents/all?ownerUsername=${encodeURIComponent(client.username)}`,
-                { headers: { Authorization: `Bearer ${token}` } },
-              );
-              if (!resp.ok) return [client.username, 0] as const;
-
-              const data = await resp.json();
-              const total =
-                (Array.isArray(data?.air) ? data.air.length : 0) +
-                (Array.isArray(data?.ocean) ? data.ocean.length : 0) +
-                (Array.isArray(data?.ground) ? data.ground.length : 0) +
-                (Array.isArray(data?.quotes) ? data.quotes.length : 0);
-              return [client.username, total] as const;
-            } catch {
-              return [client.username, 0] as const;
-            }
-          }),
+        const usernames = clientes.map((client) => client.username);
+        const nextCounts = await fetchDocumentCountsBatch(
+          token,
+          usernames,
+          controller.signal,
         );
 
-        if (cancelled) return;
+        if (controller.signal.aborted) return;
 
-        const nextCounts: DocumentCounts = Object.fromEntries(entries);
         setDocumentCounts(nextCounts);
         setCachedDocumentCounts(nextCounts);
       } catch {
-        if (!cancelled) {
+        if (!controller.signal.aborted) {
           setDocumentCounts({});
         }
       }
     };
 
-    fetchDocumentCounts();
+    void fetchDocumentCounts();
 
     return () => {
-      cancelled = true;
+      controller.abort();
     };
   }, [clientes, token]);
 

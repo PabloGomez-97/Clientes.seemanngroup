@@ -19,6 +19,11 @@ import OceanShipmentDetail from "../Sidebar/shipsgo/OceanShipmentDetail";
 import ShipsGoTrackingAdminOP from "./Shipsgo/OP-trackeo";
 import "../Sidebar/styles/Shipsgotracking.css";
 import "./HomeOperaciones.css";
+import {
+  getCachedOpClients,
+  normalizeOpClientsFromApi,
+  setCachedOpClients,
+} from "../../utils/opClientsCache";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Modal types
@@ -314,6 +319,7 @@ export default function HomeOperaciones() {
   const [clients, setClients] = useState<ClientUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [clientsError, setClientsError] = useState<string | null>(null);
   const [shipmentTab, setShipmentTab] = useState<"air" | "ocean">("air");
 
   // Modal state
@@ -348,57 +354,103 @@ export default function HomeOperaciones() {
 
   // ── Data fetching ───────────────────────────────────────────────────────
   const fetchData = useCallback(
-    async (silent = false) => {
+    async (silent = false, signal?: AbortSignal) => {
       if (!token) return;
       if (!silent) setLoading(true);
       else setRefreshing(true);
 
+      const cachedClients = getCachedOpClients();
+      if (cachedClients) {
+        setClients(cachedClients);
+      }
+
+      const shouldFetchClients = !cachedClients || silent;
+
       try {
-        const [airRes, oceanRes, clientsRes] = await Promise.allSettled([
+        const shipmentRequests: Promise<unknown>[] = [
           fetch("/api/shipsgo/shipments", {
             headers: { Authorization: `Bearer ${token}` },
+            signal,
           }).then((r) => r.json() as Promise<AirResponse>),
           fetch("/api/shipsgo/ocean/shipments", {
             headers: { Authorization: `Bearer ${token}` },
+            signal,
           }).then((r) => r.json() as Promise<OceanResponse>),
-          fetch("/api/admin/users", {
-            headers: { Authorization: `Bearer ${token}` },
-          }).then((r) => r.json()),
-        ]);
+        ];
+
+        if (shouldFetchClients) {
+          shipmentRequests.push(
+            fetch("/api/admin/users", {
+              headers: { Authorization: `Bearer ${token}` },
+              signal,
+            }).then(async (r) => {
+              const data = await r.json();
+              if (!r.ok) {
+                throw new Error(data?.error || "Error al cargar clientes");
+              }
+              return data;
+            }),
+          );
+        }
+
+        const results = await Promise.allSettled(shipmentRequests);
+        const airRes = results[0];
+        const oceanRes = results[1];
+        const clientsRes = shouldFetchClients ? results[2] : null;
 
         if (
           airRes.status === "fulfilled" &&
-          Array.isArray(airRes.value?.shipments)
+          Array.isArray((airRes.value as AirResponse)?.shipments)
         ) {
-          setAllAir(airRes.value.shipments);
+          setAllAir((airRes.value as AirResponse).shipments);
         }
         if (
           oceanRes.status === "fulfilled" &&
-          Array.isArray(oceanRes.value?.shipments)
+          Array.isArray((oceanRes.value as OceanResponse)?.shipments)
         ) {
-          setAllOcean(oceanRes.value.shipments);
+          setAllOcean((oceanRes.value as OceanResponse).shipments);
         }
-        if (clientsRes.status === "fulfilled") {
-          const raw = clientsRes.value;
-          const arr: ClientUser[] = Array.isArray(raw?.users)
-            ? raw.users
-            : Array.isArray(raw)
-              ? raw
-              : [];
-          setClients(arr.filter((u: ClientUser) => u.username !== "Ejecutivo"));
+
+        if (clientsRes) {
+          if (clientsRes.status === "fulfilled") {
+            const arr = normalizeOpClientsFromApi(clientsRes.value);
+            setClients(arr);
+            setCachedOpClients(arr);
+            setClientsError(null);
+          } else if (!cachedClients) {
+            const reason = clientsRes.reason;
+            setClientsError(
+              reason instanceof Error
+                ? reason.message
+                : "No se pudieron cargar los clientes",
+            );
+          }
         }
-      } catch {
-        /* silent */
+      } catch (error) {
+        if (signal?.aborted) return;
+        if (!cachedClients) {
+          setClientsError(
+            error instanceof Error
+              ? error.message
+              : "Error al cargar datos del panel",
+          );
+        }
       } finally {
-        setLoading(false);
-        setRefreshing(false);
+        if (!signal?.aborted) {
+          setLoading(false);
+          setRefreshing(false);
+        }
       }
     },
     [token],
   );
 
   useEffect(() => {
-    fetchData();
+    const controller = new AbortController();
+    void fetchData(false, controller.signal);
+    return () => {
+      controller.abort();
+    };
   }, [fetchData]);
 
   // Auto-refresh every 5 minutes
@@ -690,6 +742,11 @@ export default function HomeOperaciones() {
           <p>{getToday()}</p>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          {clientsError && (
+            <p className="ops-clients-error" role="alert">
+              {clientsError}
+            </p>
+          )}
           <button
             className="ops-refresh-btn"
             onClick={() => fetchData(true)}
@@ -2124,29 +2181,29 @@ function ListModal({
                             <td>
                               {s.route?.port_of_loading.location.country
                                 ?.code && (
-                                <img
-                                  src={getFlagUrl(
-                                    s.route.port_of_loading.location.country
-                                      .code,
-                                  )}
-                                  alt=""
-                                  className="ops-flag"
-                                />
-                              )}
+                                  <img
+                                    src={getFlagUrl(
+                                      s.route.port_of_loading.location.country
+                                        .code,
+                                    )}
+                                    alt=""
+                                    className="ops-flag"
+                                  />
+                                )}
                               {s.route?.port_of_loading.location.name || "—"}
                             </td>
                             <td>
                               {s.route?.port_of_discharge.location.country
                                 ?.code && (
-                                <img
-                                  src={getFlagUrl(
-                                    s.route.port_of_discharge.location.country
-                                      .code,
-                                  )}
-                                  alt=""
-                                  className="ops-flag"
-                                />
-                              )}
+                                  <img
+                                    src={getFlagUrl(
+                                      s.route.port_of_discharge.location.country
+                                        .code,
+                                    )}
+                                    alt=""
+                                    className="ops-flag"
+                                  />
+                                )}
                               {s.route?.port_of_discharge.location.name || "—"}
                             </td>
                             <td style={{ fontWeight: 600 }}>

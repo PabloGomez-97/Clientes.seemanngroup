@@ -819,15 +819,15 @@ export default function HomeEjecutivo() {
         const oceanAll: LinbisOceanShipment[] =
           oceanAllRes.status === "fulfilled" && Array.isArray(oceanAllRes.value)
             ? oceanAllRes.value.filter((o: LinbisOceanShipment) =>
-                clientUsernames.has(o.consignee || ""),
-              )
+              clientUsernames.has(o.consignee || ""),
+            )
             : [];
         const groundAll: LinbisGroundShipment[] =
           groundAllRes.status === "fulfilled" &&
-          Array.isArray(groundAllRes.value)
+            Array.isArray(groundAllRes.value)
             ? groundAllRes.value.filter((g: LinbisGroundShipment) =>
-                clientUsernames.has(g.consignee || ""),
-              )
+              clientUsernames.has(g.consignee || ""),
+            )
             : [];
 
         const airByClient = await runWithConcurrency(
@@ -1374,13 +1374,12 @@ export default function HomeEjecutivo() {
                       }
                     >
                       <div
-                        className={`ej-activity-item__dot ej-activity-item__dot--${
-                          item.event === "QUOTE_COMPLETED"
+                        className={`ej-activity-item__dot ej-activity-item__dot--${item.event === "QUOTE_COMPLETED"
                             ? "success"
                             : item.event === "QUOTE_ABANDONED"
                               ? "abandon"
                               : "info"
-                        }`}
+                          }`}
                       />
                       <span className="ej-activity-bar__chip-client">
                         {item.clientUsername}
@@ -1890,8 +1889,8 @@ export default function HomeEjecutivo() {
                         <div className="ej-attention-item__sub">
                           {r.lastActivity
                             ? t("admin.homeEjecutivo.lastActivity", {
-                                time: timeAgo(r.lastActivity),
-                              })
+                              time: timeAgo(r.lastActivity),
+                            })
                             : t("admin.homeEjecutivo.neverQuoted")}
                         </div>
                       </div>
@@ -1931,7 +1930,7 @@ export default function HomeEjecutivo() {
               </div>
               <div className="ej-attention-col__list">
                 {!temperatureData ||
-                temperatureData.lists.tibio.length === 0 ? (
+                  temperatureData.lists.tibio.length === 0 ? (
                   <div className="ej-attention-col__empty">
                     {t("admin.homeEjecutivo.noWarmClients")}
                   </div>
@@ -1987,7 +1986,7 @@ export default function HomeEjecutivo() {
               </div>
               <div className="ej-attention-col__list">
                 {!temperatureData ||
-                temperatureData.lists.masAbandonos.length === 0 ? (
+                  temperatureData.lists.masAbandonos.length === 0 ? (
                   <div className="ej-attention-col__empty">
                     {t("admin.homeEjecutivo.noMultipleAbandons")}
                   </div>
@@ -2070,13 +2069,12 @@ export default function HomeEjecutivo() {
                       style={{ cursor: "pointer" }}
                     >
                       <div
-                        className={`ej-activity-item__dot ej-activity-item__dot--${
-                          item.event === "QUOTE_COMPLETED"
+                        className={`ej-activity-item__dot ej-activity-item__dot--${item.event === "QUOTE_COMPLETED"
                             ? "success"
                             : item.event === "QUOTE_ABANDONED"
                               ? "warn"
                               : "info"
-                        }`}
+                          }`}
                       />
                       <div className="ej-activity-item__body">
                         <span className="ej-activity-item__client">
@@ -2732,24 +2730,24 @@ function EjListModal({
   // Filtering tracking lists by search
   const filteredAirList = search
     ? airList.filter(
-        (s) =>
-          s.awb_number.toLowerCase().includes(search.toLowerCase()) ||
-          (s.reference || "").toLowerCase().includes(search.toLowerCase()) ||
-          (s.airline?.name || "").toLowerCase().includes(search.toLowerCase()),
-      )
+      (s) =>
+        s.awb_number.toLowerCase().includes(search.toLowerCase()) ||
+        (s.reference || "").toLowerCase().includes(search.toLowerCase()) ||
+        (s.airline?.name || "").toLowerCase().includes(search.toLowerCase()),
+    )
     : airList;
   const filteredOceanList = search
     ? oceanList.filter(
-        (s) =>
-          (s.container_number || "")
-            .toLowerCase()
-            .includes(search.toLowerCase()) ||
-          (s.booking_number || "")
-            .toLowerCase()
-            .includes(search.toLowerCase()) ||
-          (s.reference || "").toLowerCase().includes(search.toLowerCase()) ||
-          (s.carrier?.name || "").toLowerCase().includes(search.toLowerCase()),
-      )
+      (s) =>
+        (s.container_number || "")
+          .toLowerCase()
+          .includes(search.toLowerCase()) ||
+        (s.booking_number || "")
+          .toLowerCase()
+          .includes(search.toLowerCase()) ||
+        (s.reference || "").toLowerCase().includes(search.toLowerCase()) ||
+        (s.carrier?.name || "").toLowerCase().includes(search.toLowerCase()),
+    )
     : oceanList;
 
   const filteredAir = tab === "ocean" ? [] : filteredAirList;
@@ -2968,28 +2966,28 @@ function EjListModal({
                           <td>
                             {s.route?.port_of_loading.location.country
                               ?.code && (
-                              <img
-                                src={getFlagUrl(
-                                  s.route.port_of_loading.location.country.code,
-                                )}
-                                alt=""
-                                className="ej-flag"
-                              />
-                            )}
+                                <img
+                                  src={getFlagUrl(
+                                    s.route.port_of_loading.location.country.code,
+                                  )}
+                                  alt=""
+                                  className="ej-flag"
+                                />
+                              )}
                             {s.route?.port_of_loading.location.name || "—"}
                           </td>
                           <td>
                             {s.route?.port_of_discharge.location.country
                               ?.code && (
-                              <img
-                                src={getFlagUrl(
-                                  s.route.port_of_discharge.location.country
-                                    .code,
-                                )}
-                                alt=""
-                                className="ej-flag"
-                              />
-                            )}
+                                <img
+                                  src={getFlagUrl(
+                                    s.route.port_of_discharge.location.country
+                                      .code,
+                                  )}
+                                  alt=""
+                                  className="ej-flag"
+                                />
+                              )}
                             {s.route?.port_of_discharge.location.name || "—"}
                           </td>
                           <td style={{ fontWeight: 600 }}>
@@ -3263,122 +3261,122 @@ function EjListModal({
             {/* ShipsGo trackings for this client */}
             {(clientTrackingAir.length > 0 ||
               clientTrackingOcean.length > 0) && (
-              <>
-                <h4 className="ej-list-modal__subtitle">
-                  🔍 Seguimientos en Tiempo Real
-                </h4>
-                {clientTrackingAir.length > 0 && (
-                  <table className="ej-mini-table" style={{ marginBottom: 16 }}>
-                    <thead>
-                      <tr>
-                        <th>Estado</th>
-                        <th>AWB</th>
-                        <th>Aerolínea</th>
-                        <th>Origen → Destino</th>
-                        <th>Progreso</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {clientTrackingAir.map((s) => {
-                        const delayed = isAirDelayed(s);
-                        return (
-                          <tr
-                            key={s.id}
-                            className="ej-clickable-row"
-                            onClick={() => onSelectAir(s)}
-                          >
-                            <td>
-                              <span
-                                className={`ej-badge ${delayed ? "ej-badge--delayed" : getAirBadgeClass(s.status)}`}
-                              >
-                                {delayed
-                                  ? "⚠ Retraso"
-                                  : AIR_STATUS_LABELS[s.status] || s.status}
-                              </span>
-                            </td>
-                            <td
-                              style={{
-                                fontWeight: 600,
-                                fontFamily: "monospace",
-                                fontSize: 11,
-                              }}
+                <>
+                  <h4 className="ej-list-modal__subtitle">
+                    🔍 Seguimientos en Tiempo Real
+                  </h4>
+                  {clientTrackingAir.length > 0 && (
+                    <table className="ej-mini-table" style={{ marginBottom: 16 }}>
+                      <thead>
+                        <tr>
+                          <th>Estado</th>
+                          <th>AWB</th>
+                          <th>Aerolínea</th>
+                          <th>Origen → Destino</th>
+                          <th>Progreso</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {clientTrackingAir.map((s) => {
+                          const delayed = isAirDelayed(s);
+                          return (
+                            <tr
+                              key={s.id}
+                              className="ej-clickable-row"
+                              onClick={() => onSelectAir(s)}
                             >
-                              {s.awb_number}
-                            </td>
-                            <td>{s.airline?.name || "—"}</td>
-                            <td>
-                              {s.route?.origin.location.iata || "?"} →{" "}
-                              {s.route?.destination.location.iata || "?"}
-                            </td>
-                            <td style={{ minWidth: 100 }}>
-                              <ProgressBar
-                                value={s.route?.transit_percentage ?? 0}
-                                color={delayed ? "#dc2626" : "#0891b2"}
-                              />
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                )}
-                {clientTrackingOcean.length > 0 && (
-                  <table className="ej-mini-table" style={{ marginBottom: 16 }}>
-                    <thead>
-                      <tr>
-                        <th>Estado</th>
-                        <th>Container</th>
-                        <th>Naviera</th>
-                        <th>Origen → Destino</th>
-                        <th>Progreso</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {clientTrackingOcean.map((s) => {
-                        const delayed = isOceanDelayed(s);
-                        return (
-                          <tr
-                            key={s.id}
-                            className="ej-clickable-row"
-                            onClick={() => onSelectOcean(s)}
-                          >
-                            <td>
-                              <span
-                                className={`ej-badge ${delayed ? "ej-badge--delayed" : getOceanBadgeClass(s.status)}`}
+                              <td>
+                                <span
+                                  className={`ej-badge ${delayed ? "ej-badge--delayed" : getAirBadgeClass(s.status)}`}
+                                >
+                                  {delayed
+                                    ? "⚠ Retraso"
+                                    : AIR_STATUS_LABELS[s.status] || s.status}
+                                </span>
+                              </td>
+                              <td
+                                style={{
+                                  fontWeight: 600,
+                                  fontFamily: "monospace",
+                                  fontSize: 11,
+                                }}
                               >
-                                {delayed
-                                  ? "⚠ Retraso"
-                                  : OCEAN_STATUS_LABELS[s.status] || s.status}
-                              </span>
-                            </td>
-                            <td
-                              style={{
-                                fontWeight: 600,
-                                fontFamily: "monospace",
-                                fontSize: 11,
-                              }}
+                                {s.awb_number}
+                              </td>
+                              <td>{s.airline?.name || "—"}</td>
+                              <td>
+                                {s.route?.origin.location.iata || "?"} →{" "}
+                                {s.route?.destination.location.iata || "?"}
+                              </td>
+                              <td style={{ minWidth: 100 }}>
+                                <ProgressBar
+                                  value={s.route?.transit_percentage ?? 0}
+                                  color={delayed ? "#dc2626" : "#0891b2"}
+                                />
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  )}
+                  {clientTrackingOcean.length > 0 && (
+                    <table className="ej-mini-table" style={{ marginBottom: 16 }}>
+                      <thead>
+                        <tr>
+                          <th>Estado</th>
+                          <th>Container</th>
+                          <th>Naviera</th>
+                          <th>Origen → Destino</th>
+                          <th>Progreso</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {clientTrackingOcean.map((s) => {
+                          const delayed = isOceanDelayed(s);
+                          return (
+                            <tr
+                              key={s.id}
+                              className="ej-clickable-row"
+                              onClick={() => onSelectOcean(s)}
                             >
-                              {s.container_number || s.booking_number || "—"}
-                            </td>
-                            <td>{s.carrier?.name || "—"}</td>
-                            <td>
-                              {s.route?.port_of_loading.location.name || "?"} →{" "}
-                              {s.route?.port_of_discharge.location.name || "?"}
-                            </td>
-                            <td style={{ minWidth: 100 }}>
-                              <ProgressBar
-                                value={s.route?.transit_percentage ?? 0}
-                                color={delayed ? "#dc2626" : "#2563eb"}
-                              />
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                )}
-              </>
-            )}
+                              <td>
+                                <span
+                                  className={`ej-badge ${delayed ? "ej-badge--delayed" : getOceanBadgeClass(s.status)}`}
+                                >
+                                  {delayed
+                                    ? "⚠ Retraso"
+                                    : OCEAN_STATUS_LABELS[s.status] || s.status}
+                                </span>
+                              </td>
+                              <td
+                                style={{
+                                  fontWeight: 600,
+                                  fontFamily: "monospace",
+                                  fontSize: 11,
+                                }}
+                              >
+                                {s.container_number || s.booking_number || "—"}
+                              </td>
+                              <td>{s.carrier?.name || "—"}</td>
+                              <td>
+                                {s.route?.port_of_loading.location.name || "?"} →{" "}
+                                {s.route?.port_of_discharge.location.name || "?"}
+                              </td>
+                              <td style={{ minWidth: 100 }}>
+                                <ProgressBar
+                                  value={s.route?.transit_percentage ?? 0}
+                                  color={delayed ? "#dc2626" : "#2563eb"}
+                                />
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  )}
+                </>
+              )}
 
             {/* Linbis air for client */}
             {clientAirShipments.length > 0 && (

@@ -103,6 +103,7 @@
     transform: scale(0.8);
     opacity: 1;
   }
+
   100% {
     transform: scale(2.2);
     opacity: 0;
@@ -133,6 +134,13 @@
 
 .ops-refresh-btn svg.spinning {
   animation: ops-spin 1s linear infinite;
+}
+
+.ops-clients-error {
+  margin: 0;
+  font-size: 13px;
+  color: #b42318;
+  max-width: 280px;
 }
 
 @keyframes ops-spin {
@@ -228,21 +236,27 @@
 .ops-kpi--orange::before {
   background: var(--ops-orange);
 }
+
 .ops-kpi--blue::before {
   background: var(--ops-blue);
 }
+
 .ops-kpi--cyan::before {
   background: var(--ops-cyan);
 }
+
 .ops-kpi--green::before {
   background: var(--ops-green);
 }
+
 .ops-kpi--red::before {
   background: var(--ops-red);
 }
+
 .ops-kpi--purple::before {
   background: var(--ops-purple);
 }
+
 .ops-kpi--amber::before {
   background: var(--ops-amber);
 }
@@ -525,22 +539,27 @@
   background: var(--ops-cyan-bg);
   color: var(--ops-cyan);
 }
+
 .ops-badge--sailing {
   background: var(--ops-blue-bg);
   color: var(--ops-blue);
 }
+
 .ops-badge--delivered {
   background: var(--ops-green-bg);
   color: var(--ops-green);
 }
+
 .ops-badge--delayed {
   background: var(--ops-red-bg);
   color: var(--ops-red);
 }
+
 .ops-badge--booked {
   background: var(--ops-purple-bg);
   color: var(--ops-purple);
 }
+
 .ops-badge--other {
   background: #f1f3f8;
   color: var(--ops-text-muted);
@@ -820,6 +839,7 @@
   0% {
     background-position: 200% 0;
   }
+
   100% {
     background-position: -200% 0;
   }
@@ -894,8 +914,13 @@
 }
 
 @keyframes ops-fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 .ops-list-modal {
@@ -912,8 +937,15 @@
 }
 
 @keyframes ops-slide-up {
-  from { transform: translateY(20px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 .ops-list-modal__header {
@@ -1132,16 +1164,20 @@
   .ops-list-overlay {
     padding: 8px;
   }
+
   .ops-list-modal {
     max-height: 92vh;
     border-radius: 12px;
   }
+
   .ops-list-modal__header {
     padding: 14px 16px 12px;
   }
+
   .ops-list-modal__filters {
     padding: 12px 16px 0;
   }
+
   .ops-list-modal__body {
     padding: 12px 16px 16px;
   }
