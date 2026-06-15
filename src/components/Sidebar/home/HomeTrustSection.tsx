@@ -3,8 +3,6 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { imgUrl } from "../../../config/images";
 import { AnimatedStat } from "./useAnimatedCounter";
-import HomeCarriersCarousel from "./HomeCarriersCarousel";
-
 const STATS = [
   { value: 50, key: "experience", color: "dark-grey" as const },
   { value: 200, key: "clients", color: "orange" as const },
@@ -17,8 +15,6 @@ const HomeTrustSection: React.FC = () => {
 
   return (
     <section className="hm-trust-section" aria-label={t("home.trust.title")}>
-      <HomeCarriersCarousel />
-
       <div className="sectionheadline">
         <div className="hal-page-container-content">
           <div className="hal-section-headline hal-module--border">

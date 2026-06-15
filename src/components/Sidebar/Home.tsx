@@ -30,6 +30,8 @@ import HomeHeroCarousel, {
 
 import HomeServicesGrid from "./home/HomeServicesGrid";
 
+import HomeCarriersCarousel from "./home/HomeCarriersCarousel";
+
 import HomeItinerarySection from "./home/HomeItinerarySection";
 
 import HomeActivityPanel from "./home/HomeActivityPanel";
@@ -219,6 +221,8 @@ const Home: React.FC = () => {
         <div className="hal-page-container-content hal-main-after-hero">
 
           <HomeServicesGrid />
+
+          <HomeCarriersCarousel />
 
           <HomeItinerarySection />
 
