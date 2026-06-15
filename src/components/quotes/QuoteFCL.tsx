@@ -58,10 +58,15 @@ import "./QuoteFCL.css";
 import "flag-icons/css/flag-icons.min.css";
 import GenerateOperationModal from "./Operations/GenerateOperationModal";
 import { FclPriceHistoryModal } from "./Handlers/FCL/FclPriceHistoryModal";
+import { buildCountryFclRates } from "./Handlers/FCL/buildCountryFclRates";
+import { CountryRatesDownloadButton } from "./Handlers/shared/CountryRatesDownloadButton";
+import { COUNTRY_RATE_COLUMNS_FCL } from "./Handlers/shared/countryRatesTypes";
+import "./Handlers/shared/CountryRatesDownload.css";
 import { FclPriceHistoryStep2Panel } from "./Handlers/FCL/FclPriceHistoryStep2Panel";
 import { useAirCotizadorSidebarOptional } from "./Handlers/Air/AirCotizadorSidebarContext";
 import { useFclPriceHistory } from "./Handlers/FCL/useFclPriceHistory";
 import {
+  FCL_PRICE_HISTORY_MARKUP,
   FCL_PRICE_TIERS,
   getCurrentFclMarketMinPrices,
 } from "./Handlers/FCL/HandlerQuoteFCLHistorical";
@@ -1254,6 +1259,17 @@ function QuoteFCL({
     : rutasFiltradas.slice(0, INITIAL_VISIBLE_ROUTES);
   const hasHiddenRoutes = rutasFiltradas.length > INITIAL_VISIBLE_ROUTES;
   const activeCarriersKey = Array.from(carriersActivos).sort().join("|");
+
+  const countryRatesRows = useMemo(
+    () =>
+      buildCountryFclRates(
+        rutas,
+        originIndex,
+        paisSeleccionado?.value,
+        carriersActivos,
+      ),
+    [rutas, originIndex, paisSeleccionado?.value, activeCarriersKey],
+  );
 
   const {
     loading: loadingPriceHistory,
@@ -3411,13 +3427,26 @@ function QuoteFCL({
                           {rutasFiltradas.length > 0 &&
                             polSeleccionado &&
                             podSeleccionado && (
-                            <FclPriceHistoryModal
-                              polLabel={polSeleccionado.label}
-                              podLabel={podSeleccionado.label}
-                              loading={loadingPriceHistory}
-                              error={errorPriceHistory}
-                              seriesResult={priceHistorySeriesWithCurrent}
-                            />
+                            <div className="qa-routes-actions d-flex gap-2 flex-wrap">
+                              <FclPriceHistoryModal
+                                polLabel={polSeleccionado.label}
+                                podLabel={podSeleccionado.label}
+                                loading={loadingPriceHistory}
+                                error={errorPriceHistory}
+                                seriesResult={priceHistorySeriesWithCurrent}
+                              />
+                              {paisSeleccionado ? (
+                                <CountryRatesDownloadButton
+                                  service="fcl"
+                                  countryCode={paisSeleccionado.value}
+                                  countryLabel={paisSeleccionado.label}
+                                  columns={COUNTRY_RATE_COLUMNS_FCL}
+                                  rows={countryRatesRows}
+                                  translationNs="Quotefcl"
+                                  disabled={countryRatesRows.length === 0}
+                                />
+                              ) : null}
+                            </div>
                           )}
                         </div>
 
@@ -3640,9 +3669,10 @@ function QuoteFCL({
                                                   {available ? (
                                                     <>
                                                       <span className="qa-rt-price-amount">
-                                                        {(price * 1.15).toFixed(
-                                                          0,
-                                                        )}
+                                                        {(
+                                                          price *
+                                                          FCL_PRICE_HISTORY_MARKUP
+                                                        ).toFixed(0)}
                                                       </span>
                                                       <span className="qa-rt-price-cur">
                                                         {ruta.currency}

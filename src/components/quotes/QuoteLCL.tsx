@@ -43,10 +43,15 @@ import "./QuoteAIR.css";
 import GenerateOperationModal from "./Operations/GenerateOperationModal";
 import { useOperationModalAfterPdf } from "./Operations/useOperationModalAfterPdf";
 import { LclPriceHistoryModal } from "./Handlers/LCL/LclPriceHistoryModal";
+import { buildCountryLclRates } from "./Handlers/LCL/buildCountryLclRates";
+import { CountryRatesDownloadButton } from "./Handlers/shared/CountryRatesDownloadButton";
+import { COUNTRY_RATE_COLUMNS_LCL } from "./Handlers/shared/countryRatesTypes";
+import "./Handlers/shared/CountryRatesDownload.css";
 import { LclPriceHistoryStep2Panel } from "./Handlers/LCL/LclPriceHistoryStep2Panel";
 import { useAirCotizadorSidebarOptional } from "./Handlers/Air/AirCotizadorSidebarContext";
 import { useLclPriceHistory } from "./Handlers/LCL/useLclPriceHistory";
 import {
+  LCL_PRICE_HISTORY_MARKUP,
   LCL_PRICE_TIERS,
   getCurrentLclMarketMinPrices,
 } from "./Handlers/LCL/HandlerQuoteLCLHistorical";
@@ -1679,6 +1684,17 @@ function QuoteLCL({
     : rutasFiltradas.slice(0, INITIAL_VISIBLE_ROUTES);
   const hasHiddenRoutes = rutasFiltradas.length > INITIAL_VISIBLE_ROUTES;
   const activeOperadoresKey = Array.from(operadoresActivos).sort().join("|");
+
+  const countryRatesRows = useMemo(
+    () =>
+      buildCountryLclRates(
+        rutas,
+        originIndex,
+        paisSeleccionado?.value,
+        operadoresActivos,
+      ),
+    [rutas, originIndex, paisSeleccionado?.value, activeOperadoresKey],
+  );
 
   const {
     loading: loadingPriceHistory,
@@ -3927,13 +3943,26 @@ function QuoteLCL({
                             Rutas Disponibles ({rutasFiltradas.length})
                           </h6>
                           {rutasFiltradas.length > 0 && polSeleccionado && podSeleccionado && (
-                            <LclPriceHistoryModal
-                              polLabel={polSeleccionado.label}
-                              podLabel={podSeleccionado.label}
-                              loading={loadingPriceHistory}
-                              error={errorPriceHistory}
-                              seriesResult={priceHistorySeriesWithCurrent}
-                            />
+                            <div className="qa-routes-actions d-flex gap-2 flex-wrap">
+                              <LclPriceHistoryModal
+                                polLabel={polSeleccionado.label}
+                                podLabel={podSeleccionado.label}
+                                loading={loadingPriceHistory}
+                                error={errorPriceHistory}
+                                seriesResult={priceHistorySeriesWithCurrent}
+                              />
+                              {paisSeleccionado ? (
+                                <CountryRatesDownloadButton
+                                  service="lcl"
+                                  countryCode={paisSeleccionado.value}
+                                  countryLabel={paisSeleccionado.label}
+                                  columns={COUNTRY_RATE_COLUMNS_LCL}
+                                  rows={countryRatesRows}
+                                  translationNs="Quotelcl"
+                                  disabled={countryRatesRows.length === 0}
+                                />
+                              ) : null}
+                            </div>
                           )}
                         </div>
 
@@ -4120,9 +4149,10 @@ function QuoteLCL({
                                               {ruta.ofWM > 0 ? (
                                                 <>
                                                   <span className="qa-rt-price-amount">
-                                                    {(ruta.ofWM * 1.35).toFixed(
-                                                      2,
-                                                    )}
+                                                    {(
+                                                      ruta.ofWM *
+                                                      LCL_PRICE_HISTORY_MARKUP
+                                                    ).toFixed(2)}
                                                   </span>
                                                   <span className="qa-rt-price-cur">
                                                     {ruta.currency}

@@ -2,18 +2,27 @@ import { useState } from "react";
 import { Button } from "react-bootstrap";
 import { useTranslation } from "react-i18next";
 import ReactDOM from "react-dom/client";
-import { PdfTemplateAirCountryRates } from "../../Pdftemplate/PdfTemplateAirCountryRates";
+import { PdfTemplateCountryRates } from "../../Pdftemplate/PdfTemplateCountryRates";
 import {
   formatDateForFilename,
   generatePDF,
   preloadLogoAsDataUrl,
 } from "../../Pdftemplate/Pdfutils";
-import type { CountryAirRateRow } from "./buildCountryAirRates";
+import {
+  SERVICE_FILENAME_LABELS,
+  SERVICE_SUFFIX_LABELS,
+  type CountryRateColumn,
+  type CountryRateRow,
+  type CountryRateService,
+} from "./countryRatesTypes";
 
-interface AirCountryRatesDownloadButtonProps {
+interface CountryRatesDownloadButtonProps {
+  service: CountryRateService;
   countryCode: string;
   countryLabel: string;
-  rows: CountryAirRateRow[];
+  columns: CountryRateColumn[];
+  rows: CountryRateRow[];
+  translationNs: "QuoteAIR" | "Quotefcl" | "Quotelcl";
   disabled?: boolean;
 }
 
@@ -25,12 +34,15 @@ function formatGeneratedDate(date: Date): string {
   });
 }
 
-export function AirCountryRatesDownloadButton({
+export function CountryRatesDownloadButton({
+  service,
   countryCode,
   countryLabel,
+  columns,
   rows,
+  translationNs,
   disabled = false,
-}: AirCountryRatesDownloadButtonProps) {
+}: CountryRatesDownloadButtonProps) {
   const { t } = useTranslation();
   const [generating, setGenerating] = useState(false);
 
@@ -50,9 +62,11 @@ export function AirCountryRatesDownloadButton({
 
       await new Promise<void>((resolve) => {
         root.render(
-          <PdfTemplateAirCountryRates
+          <PdfTemplateCountryRates
             countryLabel={countryLabel}
+            serviceSuffix={SERVICE_SUFFIX_LABELS[service]}
             generatedDate={generatedDate}
+            columns={columns}
             rows={rows}
             logoSrc={logoDataUrl}
           />,
@@ -66,7 +80,8 @@ export function AirCountryRatesDownloadButton({
       }
 
       const countryClean = countryCode.replace(/[^a-zA-Z0-9]/g, "_");
-      const filename = `Tarifas_${countryClean}_${formatDateForFilename(new Date())}.pdf`;
+      const serviceLabel = SERVICE_FILENAME_LABELS[service];
+      const filename = `Tarifas_${countryClean}_${serviceLabel}_${formatDateForFilename(new Date())}.pdf`;
 
       await generatePDF({
         filename,
@@ -93,7 +108,7 @@ export function AirCountryRatesDownloadButton({
       disabled={disabled || generating || rows.length === 0}
       title={
         rows.length === 0
-          ? t("QuoteAIR.downloadCountryRatesEmpty")
+          ? t(`${translationNs}.downloadCountryRatesEmpty`)
           : undefined
       }
     >
@@ -104,12 +119,12 @@ export function AirCountryRatesDownloadButton({
             role="status"
             aria-hidden
           />
-          {t("QuoteAIR.downloadCountryRatesGenerating")}
+          {t(`${translationNs}.downloadCountryRatesGenerating`)}
         </>
       ) : (
         <>
           <i className="bi bi-download me-1" aria-hidden />
-          {t("QuoteAIR.downloadCountryRates")}
+          {t(`${translationNs}.downloadCountryRates`)}
         </>
       )}
     </Button>

@@ -1,6 +1,7 @@
 import { getOriginsInCountry } from "../../originSelection/maritimeOriginHelpers";
 import type { OriginIndex } from "../../originSelection/types";
 import { getValidityClass, formatValidUntilDisplay } from "../handlerFechas";
+import type { CountryRateRow } from "../shared/countryRatesTypes";
 import {
   extractPrice,
   capitalize,
@@ -11,20 +12,6 @@ import {
   AIR_PRICE_HISTORY_MARKUP,
   type AirWeightTier,
 } from "./HandlerQuoteAirHistorical";
-
-export interface CountryAirRateRow {
-  id: string;
-  origin: string;
-  destination: string;
-  carrier: string;
-  kg45: string | null;
-  kg100: string | null;
-  kg300: string | null;
-  kg500: string | null;
-  kg1000: string | null;
-  currency: Currency;
-  validUntil: string;
-}
 
 function formatMarkedUpPrice(raw: string | null): string | null {
   const base = extractPrice(raw);
@@ -42,7 +29,7 @@ export function buildCountryAirRates(
   countryCode: string | null | undefined,
   carriersActivos: Set<string>,
   monedasActivas: Set<Currency>,
-): CountryAirRateRow[] {
+): CountryRateRow[] {
   if (!originIndex || !countryCode) return [];
 
   const countryOriginNorms = new Set(
@@ -70,14 +57,14 @@ export function buildCountryAirRates(
     id: ruta.id,
     origin: capitalize(ruta.origin),
     destination: capitalize(ruta.destination),
-    carrier: ruta.carrier
-      ? capitalize(ruta.carrier)
-      : "Por confirmar",
-    kg45: tierPrice(ruta, "kg45"),
-    kg100: tierPrice(ruta, "kg100"),
-    kg300: tierPrice(ruta, "kg300"),
-    kg500: tierPrice(ruta, "kg500"),
-    kg1000: tierPrice(ruta, "kg1000"),
+    carrier: ruta.carrier ? capitalize(ruta.carrier) : "Por confirmar",
+    prices: {
+      kg45: tierPrice(ruta, "kg45"),
+      kg100: tierPrice(ruta, "kg100"),
+      kg300: tierPrice(ruta, "kg300"),
+      kg500: tierPrice(ruta, "kg500"),
+      kg1000: tierPrice(ruta, "kg1000"),
+    },
     currency: ruta.currency,
     validUntil: ruta.validUntil
       ? formatValidUntilDisplay(ruta.validUntil)

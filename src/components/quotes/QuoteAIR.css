@@ -1639,17 +1639,6 @@
   letter-spacing: 0.02em;
 }
 
-.qa-routes-actions {
-  align-items: center;
-}
-
-.qa-country-rates-download-btn {
-  white-space: nowrap;
-  font-size: 0.8rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-}
-
 .qa-price-history-modal .modal-body {
   padding-top: 0.75rem;
 }

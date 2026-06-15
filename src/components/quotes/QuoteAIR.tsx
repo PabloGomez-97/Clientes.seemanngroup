@@ -98,8 +98,10 @@ import {
   type OriginSelectOption,
 } from "./originSelection";
 import { AirPriceHistoryModal } from "./Handlers/Air/AirPriceHistoryModal";
-import { AirCountryRatesDownloadButton } from "./Handlers/Air/AirCountryRatesDownloadButton";
 import { buildCountryAirRates } from "./Handlers/Air/buildCountryAirRates";
+import { CountryRatesDownloadButton } from "./Handlers/shared/CountryRatesDownloadButton";
+import { COUNTRY_RATE_COLUMNS_AIR } from "./Handlers/shared/countryRatesTypes";
+import "./Handlers/shared/CountryRatesDownload.css";
 import { AirPriceHistoryStep2Panel } from "./Handlers/Air/AirPriceHistoryStep2Panel";
 import { useAirCotizadorSidebarOptional } from "./Handlers/Air/AirCotizadorSidebarContext";
 import { useAirPriceHistory } from "./Handlers/Air/useAirPriceHistory";
@@ -5748,10 +5750,13 @@ function QuoteAPITester({
                                 seriesResult={priceHistorySeriesWithCurrent}
                               />
                               {paisSeleccionado ? (
-                                <AirCountryRatesDownloadButton
+                                <CountryRatesDownloadButton
+                                  service="air"
                                   countryCode={paisSeleccionado.value}
                                   countryLabel={paisSeleccionado.label}
+                                  columns={COUNTRY_RATE_COLUMNS_AIR}
                                   rows={countryRatesRows}
+                                  translationNs="QuoteAIR"
                                   disabled={countryRatesRows.length === 0}
                                 />
                               ) : null}

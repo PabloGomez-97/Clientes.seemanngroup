@@ -1,10 +1,16 @@
 import React from "react";
-import type { CountryAirRateRow } from "../Handlers/Air/buildCountryAirRates";
+import {
+  getCountryRateCellValue,
+  type CountryRateColumn,
+  type CountryRateRow,
+} from "../Handlers/shared/countryRatesTypes";
 
-interface PdfTemplateAirCountryRatesProps {
+interface PdfTemplateCountryRatesProps {
   countryLabel: string;
+  serviceSuffix: string;
   generatedDate: string;
-  rows: CountryAirRateRow[];
+  columns: CountryRateColumn[];
+  rows: CountryRateRow[];
   logoSrc?: string;
 }
 
@@ -44,17 +50,14 @@ const tdPrice: React.CSSProperties = {
   whiteSpace: "nowrap",
 };
 
-const KG_COLUMNS: Array<{ key: keyof Pick<CountryAirRateRow, "kg45" | "kg100" | "kg300" | "kg500" | "kg1000">; label: string }> = [
-  { key: "kg45", label: "45–99" },
-  { key: "kg100", label: "100–299" },
-  { key: "kg300", label: "300–499" },
-  { key: "kg500", label: "500–999" },
-  { key: "kg1000", label: "+1000" },
-];
-
-export const PdfTemplateAirCountryRates: React.FC<
-  PdfTemplateAirCountryRatesProps
-> = ({ countryLabel, generatedDate, rows, logoSrc = "/logo.png" }) => {
+export const PdfTemplateCountryRates: React.FC<PdfTemplateCountryRatesProps> = ({
+  countryLabel,
+  serviceSuffix,
+  generatedDate,
+  columns,
+  rows,
+  logoSrc = "/logo.png",
+}) => {
   const page: React.CSSProperties = {
     width: "297mm",
     minHeight: "210mm",
@@ -94,10 +97,10 @@ export const PdfTemplateAirCountryRates: React.FC<
                 letterSpacing: "-0.3px",
               }}
             >
-              Tarifas {countryLabel}
+              Tarifas {countryLabel} {serviceSuffix}
             </div>
             <div style={{ fontSize: "7.5pt", color: C.sub, marginTop: "2px" }}>
-              Air Freight — Rutas recurrentes
+              Rutas recurrentes
             </div>
           </div>
         </div>
@@ -116,32 +119,44 @@ export const PdfTemplateAirCountryRates: React.FC<
       >
         <thead>
           <tr>
-            <th style={{ ...th, width: "11%" }}>Origen</th>
-            <th style={{ ...th, width: "11%" }}>Destino</th>
-            <th style={{ ...th, width: "10%" }}>Carrier</th>
-            {KG_COLUMNS.map((col) => (
-              <th key={col.key} style={{ ...th, width: "8%", textAlign: "right" }}>
+            {columns.map((col) => (
+              <th
+                key={col.key}
+                style={{
+                  ...th,
+                  width: col.width,
+                  textAlign: col.type === "price" ? "right" : "left",
+                }}
+              >
                 {col.label}
-                <span style={{ fontWeight: 400, fontSize: "5.5pt" }}> kg</span>
               </th>
             ))}
-            <th style={{ ...th, width: "6%", textAlign: "center" }}>Mon.</th>
-            <th style={{ ...th, width: "9%" }}>Validez</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((row) => (
             <tr key={row.id} style={{ pageBreakInside: "avoid" }}>
-              <td style={td}>{row.origin}</td>
-              <td style={td}>{row.destination}</td>
-              <td style={td}>{row.carrier}</td>
-              {KG_COLUMNS.map((col) => (
-                <td key={col.key} style={tdPrice}>
-                  {row[col.key] ?? "—"}
-                </td>
-              ))}
-              <td style={{ ...td, textAlign: "center" }}>{row.currency}</td>
-              <td style={{ ...td, fontSize: "6.5pt" }}>{row.validUntil}</td>
+              {columns.map((col) => {
+                const value = getCountryRateCellValue(row, col);
+                const isPrice = col.type === "price";
+                const isCurrency = col.key === "currency";
+                return (
+                  <td
+                    key={col.key}
+                    style={{
+                      ...(isPrice ? tdPrice : td),
+                      textAlign: isPrice
+                        ? "right"
+                        : isCurrency
+                          ? "center"
+                          : "left",
+                      fontSize: col.key === "validUntil" ? "6.5pt" : "7pt",
+                    }}
+                  >
+                    {value}
+                  </td>
+                );
+              })}
             </tr>
           ))}
         </tbody>
@@ -156,7 +171,7 @@ export const PdfTemplateAirCountryRates: React.FC<
           paddingTop: "6px",
         }}
       >
-        Tarifas Air Freight de Seemann Group. Sujetas a disponibilidad.
+        Tarifas de Seemann Group. Sujetas a cambios sin previo aviso, según disponibilidad.
       </div>
     </div>
   );
