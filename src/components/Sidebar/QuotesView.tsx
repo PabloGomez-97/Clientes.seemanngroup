@@ -166,7 +166,43 @@ const getQuoteDate = (quote: Record<string, unknown>): string => {
 const normalizeQuote = (quote: Quote): Quote => ({
   ...quote,
   date: getQuoteDate(quote),
+  number:
+    quote.number !== null && quote.number !== undefined
+      ? String(quote.number)
+      : quote.number,
+  customerReference:
+    quote.customerReference !== null && quote.customerReference !== undefined
+      ? String(quote.customerReference)
+      : quote.customerReference,
 });
+
+function toSortableText(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  return String(value).toLowerCase();
+}
+
+function getQuoteDisplayReference(quote: Quote): string {
+  const ref = quote.customerReference?.trim();
+  return ref || "---";
+}
+
+function getQuoteNumberLabel(quote: Quote): string {
+  const num = quote.number?.trim();
+  return num || "---";
+}
+
+function getQuoteTransportDisplay(quote: Quote): string {
+  const label = getQuoteTransportModeLabel(quote);
+  if (label) return label;
+  const mode = quote.modeOfTransportation;
+  if (mode === null || mode === undefined || mode === "") return "---";
+  if (typeof mode === "object") {
+    const name = (mode as { name?: unknown }).name;
+    if (typeof name === "string" && name.trim()) return name;
+    return "---";
+  }
+  return String(mode);
+}
 
 function isQuoteValid(validUntilDate?: string): boolean | null {
   if (!validUntilDate) return null;
@@ -387,6 +423,10 @@ interface QuoteGeneralTabContentProps {
   getQuoteTrackingNumber: (quote: Quote) => string;
   openTrackModal: (quote: Quote) => void;
   onOpenTracking: (type: "air" | "ocean") => void;
+  showPdfAction?: boolean;
+  hasPdf?: boolean;
+  isDownloadingPdf?: boolean;
+  onDownloadPdf?: () => void;
 }
 
 function QuoteGeneralTabContent({
@@ -399,6 +439,10 @@ function QuoteGeneralTabContent({
   getQuoteTrackingNumber,
   openTrackModal,
   onOpenTracking,
+  showPdfAction = false,
+  hasPdf = false,
+  isDownloadingPdf = false,
+  onDownloadPdf,
 }: QuoteGeneralTabContentProps) {
   const showTracking = shouldShowQuoteTracking(quote);
   const alreadyTracked = isQuoteAlreadyTracked(quote);
@@ -534,8 +578,275 @@ function QuoteGeneralTabContent({
         />
         <FieldGridCell label="Flujo actual" value={quote.currentFlow} />
         <FieldGridCell label="Ejecutivo comercial" value={quote.salesRep} />
+        {showPdfAction ? (
+          <FieldGridCell label={t("quotesView.thPDF")} action>
+            {hasPdf ? (
+              <button
+                type="button"
+                className="qv-pdf-btn"
+                disabled={isDownloadingPdf}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDownloadPdf?.();
+                }}
+              >
+                {isDownloadingPdf ? (
+                  <span
+                    className="spinner-border spinner-border-sm"
+                    style={{ width: "10px", height: "10px" }}
+                  />
+                ) : (
+                  t("quotesView.download")
+                )}
+              </button>
+            ) : (
+              <span className="qv-field-cell__value qv-field-cell__value--muted">
+                —
+              </span>
+            )}
+          </FieldGridCell>
+        ) : null}
       </FieldGridSection>
     </div>
+  );
+}
+
+interface QuoteDetailPanelProps {
+  quote: Quote;
+  documentsOnly: boolean;
+  onClose: () => void;
+  t: (key: string) => string;
+  formatDateShort: (dateString?: string) => string;
+  formatDateLong: (dateString?: string) => string;
+  formatCLP: (priceString?: string) => string | null;
+  shouldShowQuoteTracking: (quote: Quote) => boolean;
+  isQuoteAlreadyTracked: (quote: Quote) => boolean;
+  getQuoteTrackingNumber: (quote: Quote) => string;
+  openTrackModal: (quote: Quote) => void;
+  onOpenTracking: (type: "air" | "ocean") => void;
+  setDocumentCounts: React.Dispatch<
+    React.SetStateAction<Record<string | number, number>>
+  >;
+  availablePDFs: Set<string>;
+  downloadingPDF: string | null;
+  onDownloadPdf: (quoteNumber: string) => void;
+}
+
+function QuoteDetailPanel({
+  quote,
+  documentsOnly,
+  onClose,
+  t,
+  formatDateShort,
+  formatDateLong,
+  formatCLP,
+  shouldShowQuoteTracking,
+  isQuoteAlreadyTracked,
+  getQuoteTrackingNumber,
+  openTrackModal,
+  onOpenTracking,
+  setDocumentCounts,
+  availablePDFs,
+  downloadingPDF,
+  onDownloadPdf,
+}: QuoteDetailPanelProps) {
+  const quoteNumber = quote.number || "";
+  const hasPdf = availablePDFs.has(quoteNumber);
+
+  return (
+    <>
+      <div className="qv-split-detail__header">
+        <div>
+          <span className="qv-split-detail__eyebrow">
+            {t("quotesView.customerRef")}
+          </span>
+          <h3 className="qv-split-detail__title">
+            {quote.customerReference || "—"}
+          </h3>
+        </div>
+        <button
+          type="button"
+          className="qv-split-detail__close"
+          onClick={onClose}
+          aria-label={t("quotesView.close")}
+        >
+          {t("quotesView.close")}
+        </button>
+      </div>
+      <div className="qv-split-detail__body">
+        <div className="qv-split-meta">
+          <div className="qv-split-meta__item">
+            <span className="qv-split-meta__label">
+              {t("quotesView.quoteNumber")}
+            </span>
+            <span className="qv-split-meta__value">{quote.number || "—"}</span>
+          </div>
+          <div className="qv-split-meta__item">
+            <span className="qv-split-meta__label">Vigencia</span>
+            <StatusBadge validUntilDate={quote.validUntil_Date} />
+          </div>
+          <div className="qv-split-meta__item">
+            <span className="qv-split-meta__label">
+              {t("quotesView.thTransport")}
+            </span>
+            <span className="qv-split-meta__value">
+              {getQuoteTransportDisplay(quote)}
+            </span>
+          </div>
+          <div className="qv-split-meta__item">
+            <span className="qv-split-meta__label">
+              {t("quotesView.thIssueDate")}
+            </span>
+            <span className="qv-split-meta__value">
+              {formatDateShort(quote.date)}
+            </span>
+          </div>
+          <div className="qv-split-meta__item">
+            <span className="qv-split-meta__label">
+              {t("quotesView.thTransit")}
+            </span>
+            <span className="qv-split-meta__value">
+              {quote.transitDays != null ? `${quote.transitDays}d` : "—"}
+            </span>
+          </div>
+        </div>
+
+        <div className="qv-route-card">
+          <div className="qv-route-card__point">
+            <span className="qv-route-card__label">{t("quotesView.origin")}</span>
+            <span className="qv-route-card__value">{quote.origin || "N/A"}</span>
+            {quote.deperture_Date && (
+              <span className="qv-route-card__date">
+                {formatDateShort(quote.deperture_Date)}
+              </span>
+            )}
+          </div>
+          <div className="qv-route-card__connector">
+            <span className="qv-route-card__line" />
+            {quote.transitDays != null && (
+              <span className="qv-route-card__carrier">
+                {quote.transitDays} {t("quotesView.transitDays")}
+              </span>
+            )}
+          </div>
+          <div className="qv-route-card__point qv-route-card__point--end">
+            <span className="qv-route-card__label">
+              {t("quotesView.destination")}
+            </span>
+            <span className="qv-route-card__value">
+              {quote.destination || "N/A"}
+            </span>
+            {quote.arrival_Date && (
+              <span className="qv-route-card__date">
+                {formatDateShort(quote.arrival_Date)}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {documentsOnly ? (
+          <DocumentosSection
+            quoteId={String(quote.id || quote.number || "")}
+            onCountChange={(count) =>
+              setDocumentCounts((prev) => ({
+                ...prev,
+                [String(quote.id || quote.number || "")]: count,
+              }))
+            }
+          />
+        ) : (
+          <DetailTabs
+            tabs={[
+              {
+                key: "general",
+                label: t("quotesView.tabGeneral"),
+                icon: (
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="16" x2="12" y2="12" />
+                    <line x1="12" y1="8" x2="12.01" y2="8" />
+                  </svg>
+                ),
+                content: (
+                  <QuoteGeneralTabContent
+                    quote={quote}
+                    t={t}
+                    formatDateLong={formatDateLong}
+                    formatCLP={formatCLP}
+                    shouldShowQuoteTracking={shouldShowQuoteTracking}
+                    isQuoteAlreadyTracked={isQuoteAlreadyTracked}
+                    getQuoteTrackingNumber={getQuoteTrackingNumber}
+                    openTrackModal={openTrackModal}
+                    onOpenTracking={onOpenTracking}
+                    showPdfAction
+                    hasPdf={hasPdf}
+                    isDownloadingPdf={downloadingPDF === quoteNumber}
+                    onDownloadPdf={() => onDownloadPdf(quoteNumber)}
+                  />
+                ),
+              },
+              {
+                key: "documentos",
+                label: t("quotesView.tabDocuments"),
+                icon: (
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                    <line x1="16" y1="13" x2="8" y2="13" />
+                    <line x1="16" y1="17" x2="8" y2="17" />
+                    <polyline points="10 9 9 9 8 9" />
+                  </svg>
+                ),
+                content: (
+                  <DocumentosSection
+                    quoteId={String(quote.id || quote.number || "")}
+                    onCountChange={(count) =>
+                      setDocumentCounts((prev) => ({
+                        ...prev,
+                        [String(quote.id || quote.number || "")]: count,
+                      }))
+                    }
+                  />
+                ),
+              },
+              {
+                key: "notas",
+                label: t("quotesView.tabNotes"),
+                icon: (
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                  </svg>
+                ),
+                hidden: !quote.notes || quote.notes === "N/A",
+                content: <div className="qv-notes">{quote.notes}</div>,
+              },
+            ]}
+          />
+        )}
+      </div>
+    </>
   );
 }
 
@@ -575,8 +886,8 @@ function QuotesView({
   const [rowsPerPage, setRowsPerPage] = useState(ITEMS_PER_PAGE);
   const [tablePage, setTablePage] = useState(1);
 
-  // Accordion
-  const [expandedQuoteId, setExpandedQuoteId] = useState<
+  // Selection (split detail panel)
+  const [selectedQuoteId, setSelectedQuoteId] = useState<
     string | number | null
   >(null);
   const [documentCounts, setDocumentCounts] = useState<
@@ -683,8 +994,12 @@ function QuotesView({
       let valA: any, valB: any;
       switch (sortColumn) {
         case "number":
-          valA = parseInt(a.number?.replace(/\D/g, "") || "0", 10);
-          valB = parseInt(b.number?.replace(/\D/g, "") || "0", 10);
+          valA = parseInt(String(a.number ?? "").replace(/\D/g, "") || "0", 10);
+          valB = parseInt(String(b.number ?? "").replace(/\D/g, "") || "0", 10);
+          break;
+        case "customerReference":
+          valA = toSortableText(a.customerReference || a.number);
+          valB = toSortableText(b.customerReference || b.number);
           break;
         case "date":
           valA = a.date ? new Date(a.date).getTime() : 0;
@@ -695,12 +1010,12 @@ function QuotesView({
           valB = b.validUntil_Date ? new Date(b.validUntil_Date).getTime() : 0;
           break;
         case "origin":
-          valA = (a.origin || "").toLowerCase();
-          valB = (b.origin || "").toLowerCase();
+          valA = toSortableText(a.origin);
+          valB = toSortableText(b.origin);
           break;
         case "destination":
-          valA = (a.destination || "").toLowerCase();
-          valB = (b.destination || "").toLowerCase();
+          valA = toSortableText(a.destination);
+          valB = toSortableText(b.destination);
           break;
         case "transit":
           valA = a.transitDays || 0;
@@ -732,6 +1047,35 @@ function QuotesView({
     const end = Math.min(tablePage * rowsPerPage, sortedQuotes.length);
     return `${start}-${end} de ${sortedQuotes.length}`;
   }, [tablePage, rowsPerPage, sortedQuotes.length]);
+
+  const getQuoteRowId = useCallback(
+    (quote: Quote, index: number) => quote.id || quote.number || index,
+    [],
+  );
+
+  const selectedQuote = useMemo(() => {
+    if (selectedQuoteId == null) return null;
+    return (
+      paginatedQuotes.find(
+        (quote, index) => getQuoteRowId(quote, index) === selectedQuoteId,
+      ) ?? null
+    );
+  }, [selectedQuoteId, paginatedQuotes, getQuoteRowId]);
+
+  const selectedQuoteIndex = useMemo(() => {
+    if (selectedQuoteId == null) return -1;
+    return paginatedQuotes.findIndex(
+      (quote, index) => getQuoteRowId(quote, index) === selectedQuoteId,
+    );
+  }, [selectedQuoteId, paginatedQuotes, getQuoteRowId]);
+
+  useEffect(() => {
+    if (selectedQuoteId == null) return;
+    const stillVisible = paginatedQuotes.some(
+      (quote, index) => getQuoteRowId(quote, index) === selectedQuoteId,
+    );
+    if (!stillVisible) setSelectedQuoteId(null);
+  }, [paginatedQuotes, selectedQuoteId, getQuoteRowId]);
 
   useEffect(() => {
     setTablePage(1);
@@ -793,8 +1137,8 @@ function QuotesView({
         normalizeQuote,
       );
       const sortedArr = quotesArray.sort((a, b) => {
-        const nA = parseInt(a.number?.replace(/\D/g, "") || "0", 10);
-        const nB = parseInt(b.number?.replace(/\D/g, "") || "0", 10);
+        const nA = parseInt(String(a.number ?? "").replace(/\D/g, "") || "0", 10);
+        const nB = parseInt(String(b.number ?? "").replace(/\D/g, "") || "0", 10);
         return nB - nA;
       });
 
@@ -803,8 +1147,8 @@ function QuotesView({
       const cacheKey = `quotesCache_${activeUsername}`;
       if (append && page > 1) {
         const combined = [...quotes, ...sortedArr].sort((a, b) => {
-          const nA = parseInt(a.number?.replace(/\D/g, "") || "0", 10);
-          const nB = parseInt(b.number?.replace(/\D/g, "") || "0", 10);
+          const nA = parseInt(String(a.number ?? "").replace(/\D/g, "") || "0", 10);
+          const nB = parseInt(String(b.number ?? "").replace(/\D/g, "") || "0", 10);
           return nB - nA;
         });
         setQuotes(combined);
@@ -1158,11 +1502,13 @@ function QuotesView({
       // User is now driving quick search manually — release the external filter lock
       externalFilterApplied.current = false;
       const results = quotes.filter((q) => {
-        const number = (q.number || "").toLowerCase();
-        const origin = (q.origin || "").toLowerCase();
-        const destination = (q.destination || "").toLowerCase();
-        const date = (q.date || "").toLowerCase();
+        const reference = toSortableText(q.customerReference || q.number);
+        const number = toSortableText(q.number);
+        const origin = toSortableText(q.origin);
+        const destination = toSortableText(q.destination);
+        const date = toSortableText(q.date);
         return (
+          reference.includes(term) ||
           number.includes(term) ||
           origin.includes(term) ||
           destination.includes(term) ||
@@ -1195,7 +1541,8 @@ function QuotesView({
     setFilterNumber(quoteFilter);
     const term = quoteFilter.trim().toLowerCase();
     const filtered = quotes.filter((q) =>
-      (q.number || "").toLowerCase().includes(term),
+      toSortableText(q.number).includes(term) ||
+      toSortableText(q.customerReference).includes(term),
     );
     setDisplayedQuotes(filtered);
     setShowingAll(true);
@@ -1243,7 +1590,11 @@ function QuotesView({
     }
     const term = searchNumber.trim().toLowerCase();
     setDisplayedQuotes(
-      quotes.filter((q) => (q.number || "").toLowerCase().includes(term)),
+      quotes.filter(
+        (q) =>
+          toSortableText(q.number).includes(term) ||
+          toSortableText(q.customerReference).includes(term),
+      ),
     );
     setShowingAll(true);
     setShowAllQuotes(false);
@@ -1324,7 +1675,7 @@ function QuotesView({
     if (filterNumber.trim()) {
       const term = filterNumber.trim().toLowerCase();
       filtered = filtered.filter((q) =>
-        (q.number || "").toLowerCase().includes(term),
+        toSortableText(q.number).includes(term),
       );
     }
     if (filterStatus.trim()) {
@@ -1352,7 +1703,7 @@ function QuotesView({
     if (filterTransport.trim()) {
       const term = filterTransport.trim().toLowerCase();
       filtered = filtered.filter((q) =>
-        (q.modeOfTransportation || "").toLowerCase().includes(term),
+        toSortableText(getQuoteTransportDisplay(q)).includes(term),
       );
     }
     if (filterPieces.trim()) {
@@ -1427,10 +1778,10 @@ function QuotesView({
     fetchQuotes(1, false);
   }, [activeUsername]);
 
-  const toggleAccordion = useCallback((quote: Quote) => {
-    const quoteKey = quote.id || quote.number || "";
-    setExpandedQuoteId((prev) => (prev === quoteKey ? null : quoteKey));
-  }, []);
+  const toggleQuoteSelection = useCallback((quote: Quote, index: number) => {
+    const quoteKey = getQuoteRowId(quote, index);
+    setSelectedQuoteId((prev) => (prev === quoteKey ? null : quoteKey));
+  }, [getQuoteRowId]);
 
   /* -- Fetch available PDFs --------------------------------- */
   useEffect(() => {
@@ -1838,6 +2189,7 @@ function QuotesView({
       {loading && (
         <LoadingTips
           columns={[
+            { label: t("quotesView.customerRef") },
             { label: t("quotesView.thNumber") },
             { label: "Etapa", center: true },
             { label: "Vigencia", center: true },
@@ -1862,415 +2214,272 @@ function QuotesView({
           TABLE
          ===================================================== */}
       {!loading && displayedQuotes.length > 0 && (
-        <div className="qv-table-wrapper">
-          <div className="qv-table-scroll">
-            <table className="qv-table">
-              <thead>
-                <tr>
-                  <th
-                    className="qv-th qv-th--sortable"
-                    onClick={() => handleSort("number")}
-                  >
-                    <span>{t("quotesView.thNumber")}</span>
-                    <SortIcon column="number" />
-                  </th>
-                  <th className="qv-th qv-th--center">
-                    <span>Etapa</span>
-                  </th>
-                  <th className="qv-th qv-th--center">
-                    <span>Vigencia</span>
-                  </th>
-                  <th
-                    className="qv-th qv-th--sortable"
-                    onClick={() => handleSort("origin")}
-                  >
-                    <span>{t("quotesView.thOrigin")}</span>
-                    <SortIcon column="origin" />
-                  </th>
-                  <th
-                    className="qv-th qv-th--sortable"
-                    onClick={() => handleSort("destination")}
-                  >
-                    <span>{t("quotesView.thDestination")}</span>
-                    <SortIcon column="destination" />
-                  </th>
-                  <th className="qv-th">
-                    <span>{t("quotesView.thTransport")}</span>
-                  </th>
-                  <th
-                    className="qv-th qv-th--sortable"
-                    onClick={() => handleSort("date")}
-                  >
-                    <span>{t("quotesView.thIssueDate")}</span>
-                    <SortIcon column="date" />
-                  </th>
-                  <th
-                    className="qv-th qv-th--sortable"
-                    onClick={() => handleSort("validUntil")}
-                  >
-                    <span>{t("quotesView.thValidUntil")}</span>
-                    <SortIcon column="validUntil" />
-                  </th>
-                  <th
-                    className="qv-th qv-th--center qv-th--sortable"
-                    onClick={() => handleSort("transit")}
-                  >
-                    <span>{t("quotesView.thTransit")}</span>
-                    <SortIcon column="transit" />
-                  </th>
-                  <th className="qv-th qv-th--center">
-                    <span>{t("quotesView.thPDF")}</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {paginatedQuotes.map((quote, index) => {
-                  const quoteKey = quote.id || quote.number || index;
-                  const isExpanded =
-                    expandedQuoteId === (quote.id || quote.number || "");
-                  return (
-                    <React.Fragment key={quoteKey}>
-                      <tr
-                        className={`qv-tr ${isExpanded ? "qv-tr--active" : ""}`}
-                        onClick={() => toggleAccordion(quote)}
+        <div
+          className={`qv-split-view${selectedQuote ? " qv-split-view--active" : ""}`}
+        >
+          <div className="qv-split-list">
+            <div className="qv-table-wrapper">
+              <div className="qv-table-scroll">
+                <table className="qv-table">
+                  <thead>
+                    <tr>
+                      <th
+                        className="qv-th qv-th--sortable"
+                        onClick={() => handleSort("customerReference")}
                       >
-                        <td className="qv-td qv-td--number">
-                          <svg
-                            className={`qv-row-chevron ${isExpanded ? "qv-row-chevron--open" : ""}`}
-                            width="14"
-                            height="14"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2.5"
-                          >
-                            <polyline points="9 18 15 12 9 6" />
-                          </svg>
-                          {quote.number || "---"}
-                        </td>
-                        <td className="qv-td qv-td--center">
-                          <FlowBadge currentFlow={quote.currentFlow} />
-                        </td>
-                        <td className="qv-td qv-td--center">
-                          <StatusBadge validUntilDate={quote.validUntil_Date} />
-                        </td>
-                        <td
-                          className="qv-td qv-td--truncate"
-                          title={quote.origin || "---"}
-                        >
-                          {quote.origin || "---"}
-                        </td>
-                        <td
-                          className="qv-td qv-td--truncate"
-                          title={quote.destination || "---"}
-                        >
-                          {quote.destination || "---"}
-                        </td>
-                        <td className="qv-td">
-                          {quote.modeOfTransportation || "---"}
-                        </td>
-                        <td className="qv-td">{formatDateShort(quote.date)}</td>
-                        <td className="qv-td">
-                          {formatDateShort(quote.validUntil_Date)}
-                        </td>
-                        <td className="qv-td qv-td--center">
-                          {quote.transitDays != null
-                            ? `${quote.transitDays}d`
-                            : "---"}
-                        </td>
-                        <td
-                          className="qv-td qv-td--center"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {availablePDFs.has(quote.number || "") ? (
-                            <button
-                              className="qv-pdf-btn"
-                              disabled={downloadingPDF === quote.number}
-                              onClick={() =>
-                                handleDownloadPDF(quote.number || "")
-                              }
-                            >
-                              {downloadingPDF === quote.number ? (
-                                <span
-                                  className="spinner-border spinner-border-sm"
-                                  style={{ width: "10px", height: "10px" }}
-                                />
-                              ) : (
-                                "Descargar"
-                              )}
-                            </button>
-                          ) : (
-                            <span
-                              style={{ color: "#d1d5db", fontSize: "11px" }}
-                            >
-                              ---
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                      {isExpanded && (
-                        <tr className="qv-accordion-row">
-                          <td colSpan={11} className="qv-accordion-cell">
-                            <div className="qv-accordion-content">
-                              {/* Route summary */}
-                              <div className="qv-route-card">
-                                <div className="qv-route-card__point">
-                                  <span className="qv-route-card__label">
-                                    {t("quotesView.origin")}
-                                  </span>
-                                  <span className="qv-route-card__value">
-                                    {quote.origin || "N/A"}
-                                  </span>
-                                  {quote.deperture_Date && (
-                                    <span className="qv-route-card__date">
-                                      {formatDateShort(quote.deperture_Date)}
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="qv-route-card__connector">
-                                  <span className="qv-route-card__line" />
-                                  {quote.transitDays != null && (
-                                    <span className="qv-route-card__carrier">
-                                      {quote.transitDays}{" "}
-                                      {t("quotesView.transitDays")}
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="qv-route-card__point qv-route-card__point--end">
-                                  <span className="qv-route-card__label">
-                                    {t("quotesView.destination")}
-                                  </span>
-                                  <span className="qv-route-card__value">
-                                    {quote.destination || "N/A"}
-                                  </span>
-                                  {quote.arrival_Date && (
-                                    <span className="qv-route-card__date">
-                                      {formatDateShort(quote.arrival_Date)}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
+                        <span>{t("quotesView.customerRef")}</span>
+                        <SortIcon column="customerReference" />
+                      </th>
+                      <th
+                        className="qv-th qv-th--sortable qv-th--split-hidden"
+                        onClick={() => handleSort("number")}
+                      >
+                        <span>{t("quotesView.thNumber")}</span>
+                        <SortIcon column="number" />
+                      </th>
+                      <th className="qv-th qv-th--center">
+                        <span>Etapa</span>
+                      </th>
+                      <th className="qv-th qv-th--center qv-th--split-hidden">
+                        <span>Vigencia</span>
+                      </th>
+                      <th
+                        className="qv-th qv-th--sortable"
+                        onClick={() => handleSort("origin")}
+                      >
+                        <span>{t("quotesView.thOrigin")}</span>
+                        <SortIcon column="origin" />
+                      </th>
+                      <th
+                        className="qv-th qv-th--sortable"
+                        onClick={() => handleSort("destination")}
+                      >
+                        <span>{t("quotesView.thDestination")}</span>
+                        <SortIcon column="destination" />
+                      </th>
+                      <th className="qv-th qv-th--split-hidden">
+                        <span>{t("quotesView.thTransport")}</span>
+                      </th>
+                      <th
+                        className="qv-th qv-th--sortable qv-th--split-hidden"
+                        onClick={() => handleSort("date")}
+                      >
+                        <span>{t("quotesView.thIssueDate")}</span>
+                        <SortIcon column="date" />
+                      </th>
+                      <th
+                        className="qv-th qv-th--sortable"
+                        onClick={() => handleSort("validUntil")}
+                      >
+                        <span>{t("quotesView.thValidUntil")}</span>
+                        <SortIcon column="validUntil" />
+                      </th>
+                      <th
+                        className="qv-th qv-th--center qv-th--sortable qv-th--split-hidden"
+                        onClick={() => handleSort("transit")}
+                      >
+                        <span>{t("quotesView.thTransit")}</span>
+                        <SortIcon column="transit" />
+                      </th>
+                      <th className="qv-th qv-th--center qv-th--split-hidden">
+                        <span>{t("quotesView.thPDF")}</span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paginatedQuotes.map((quote, index) => {
+                      const quoteKey = getQuoteRowId(quote, index);
+                      const isSelected = selectedQuoteId === quoteKey;
+                      const referenceLabel = getQuoteDisplayReference(quote);
+                      const numberLabel = getQuoteNumberLabel(quote);
+                      const transportLabel = getQuoteTransportDisplay(quote);
 
-                              {/* Tabs */}
-                              {documentsOnly ? (
-                                <DocumentosSection
-                                  quoteId={String(
-                                    quote.id || quote.number || "",
-                                  )}
-                                  onCountChange={(count) =>
-                                    setDocumentCounts((prev) => ({
-                                      ...prev,
-                                      [String(quote.id || quote.number || "")]:
-                                        count,
-                                    }))
-                                  }
-                                />
-                              ) : (
-                                <DetailTabs
-                                  tabs={[
-                                    {
-                                      key: "general",
-                                      label: t("quotesView.tabGeneral"),
-                                      icon: (
-                                        <svg
-                                          width="14"
-                                          height="14"
-                                          viewBox="0 0 24 24"
-                                          fill="none"
-                                          stroke="currentColor"
-                                          strokeWidth="2"
-                                        >
-                                          <circle cx="12" cy="12" r="10" />
-                                          <line
-                                            x1="12"
-                                            y1="16"
-                                            x2="12"
-                                            y2="12"
-                                          />
-                                          <line
-                                            x1="12"
-                                            y1="8"
-                                            x2="12.01"
-                                            y2="8"
-                                          />
-                                        </svg>
-                                      ),
-                                      content: (
-                                        <QuoteGeneralTabContent
-                                          quote={quote}
-                                          t={t}
-                                          formatDateLong={formatDateLong}
-                                          formatCLP={formatCLP}
-                                          shouldShowQuoteTracking={
-                                            shouldShowQuoteTracking
-                                          }
-                                          isQuoteAlreadyTracked={
-                                            isQuoteAlreadyTracked
-                                          }
-                                          getQuoteTrackingNumber={
-                                            getQuoteTrackingNumber
-                                          }
-                                          openTrackModal={openTrackModal}
-                                          onOpenTracking={(type) => {
-                                            if (reporteriaClientesContext) {
-                                              reporteriaClientesContext.openTrackingTab(
-                                                type,
-                                              );
-                                            } else {
-                                              navigate(
-                                                type === "air"
-                                                  ? "/trackings-aereo"
-                                                  : "/trackings-maritimo",
-                                              );
-                                            }
-                                          }}
-                                        />
-                                      ),
-                                    },
-                                    {
-                                      key: "documentos",
-                                      label: t("quotesView.tabDocuments"),
-                                      icon: (
-                                        <svg
-                                          width="14"
-                                          height="14"
-                                          viewBox="0 0 24 24"
-                                          fill="none"
-                                          stroke="currentColor"
-                                          strokeWidth="2"
-                                        >
-                                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                                          <polyline points="14 2 14 8 20 8" />
-                                          <line
-                                            x1="16"
-                                            y1="13"
-                                            x2="8"
-                                            y2="13"
-                                          />
-                                          <line
-                                            x1="16"
-                                            y1="17"
-                                            x2="8"
-                                            y2="17"
-                                          />
-                                          <polyline points="10 9 9 9 8 9" />
-                                        </svg>
-                                      ),
-                                      content: (
-                                        <DocumentosSection
-                                          quoteId={String(
-                                            quote.id || quote.number || "",
-                                          )}
-                                          onCountChange={(count) =>
-                                            setDocumentCounts((prev) => ({
-                                              ...prev,
-                                              [String(
-                                                quote.id || quote.number || "",
-                                              )]: count,
-                                            }))
-                                          }
-                                        />
-                                      ),
-                                    },
-                                    {
-                                      key: "notas",
-                                      label: t("quotesView.tabNotes"),
-                                      icon: (
-                                        <svg
-                                          width="14"
-                                          height="14"
-                                          viewBox="0 0 24 24"
-                                          fill="none"
-                                          stroke="currentColor"
-                                          strokeWidth="2"
-                                        >
-                                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                                        </svg>
-                                      ),
-                                      hidden:
-                                        !quote.notes || quote.notes === "N/A",
-                                      content: (
-                                        <div className="qv-notes">
-                                          {quote.notes}
-                                        </div>
-                                      ),
-                                    },
-                                  ]}
-                                />
-                              )}
-                            </div>
+                      return (
+                        <tr
+                          key={quoteKey}
+                          className={`qv-tr${isSelected ? " qv-tr--selected" : ""}`}
+                          onClick={() => toggleQuoteSelection(quote, index)}
+                        >
+                          <td
+                            className="qv-td qv-td--reference"
+                            title={referenceLabel}
+                          >
+                            {referenceLabel}
+                          </td>
+                          <td
+                            className="qv-td qv-td--number qv-td--split-hidden"
+                            title={numberLabel}
+                          >
+                            {numberLabel}
+                          </td>
+                          <td className="qv-td qv-td--center">
+                            <FlowBadge currentFlow={quote.currentFlow} />
+                          </td>
+                          <td className="qv-td qv-td--center qv-td--split-hidden">
+                            <StatusBadge validUntilDate={quote.validUntil_Date} />
+                          </td>
+                          <td
+                            className="qv-td qv-td--truncate"
+                            title={quote.origin || "---"}
+                          >
+                            {quote.origin || "---"}
+                          </td>
+                          <td
+                            className="qv-td qv-td--truncate"
+                            title={quote.destination || "---"}
+                          >
+                            {quote.destination || "---"}
+                          </td>
+                          <td
+                            className="qv-td qv-td--split-hidden"
+                            title={transportLabel}
+                          >
+                            {transportLabel}
+                          </td>
+                          <td className="qv-td qv-td--split-hidden">
+                            {formatDateShort(quote.date)}
+                          </td>
+                          <td className="qv-td">
+                            {formatDateShort(quote.validUntil_Date)}
+                          </td>
+                          <td className="qv-td qv-td--center qv-td--split-hidden">
+                            {quote.transitDays != null
+                              ? `${quote.transitDays}d`
+                              : "---"}
+                          </td>
+                          <td
+                            className="qv-td qv-td--center qv-td--split-hidden"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {availablePDFs.has(quote.number || "") ? (
+                              <button
+                                className="qv-pdf-btn"
+                                disabled={downloadingPDF === quote.number}
+                                onClick={() =>
+                                  handleDownloadPDF(quote.number || "")
+                                }
+                              >
+                                {downloadingPDF === quote.number ? (
+                                  <span
+                                    className="spinner-border spinner-border-sm"
+                                    style={{ width: "10px", height: "10px" }}
+                                  />
+                                ) : (
+                                  t("quotesView.download")
+                                )}
+                              </button>
+                            ) : (
+                              <span
+                                style={{ color: "#d1d5db", fontSize: "11px" }}
+                              >
+                                ---
+                              </span>
+                            )}
                           </td>
                         </tr>
-                      )}
-                    </React.Fragment>
-                  );
-                })}
-              </tbody>
-            </table>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="qv-table-footer">
+                <div className="qv-table-footer__left">
+                  {loadingMore && (
+                    <span className="qv-loading-text">
+                      {t("quotesView.loading")}
+                    </span>
+                  )}
+                </div>
+                <div className="qv-table-footer__right">
+                  <span className="qv-pagination-label">
+                    {t("quotesView.rowsPerPage")}
+                  </span>
+                  <select
+                    className="qv-pagination-select"
+                    value={rowsPerPage}
+                    onChange={(e) => {
+                      setRowsPerPage(Number(e.target.value));
+                      setTablePage(1);
+                    }}
+                  >
+                    <option value={10}>10</option>
+                    <option value={15}>15</option>
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                  </select>
+                  <span className="qv-pagination-range">
+                    {paginationRangeText}
+                  </span>
+                  <button
+                    className="qv-pagination-btn"
+                    disabled={tablePage <= 1}
+                    onClick={() => setTablePage((p) => p - 1)}
+                  >
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <polyline points="15 18 9 12 15 6" />
+                    </svg>
+                  </button>
+                  <button
+                    className="qv-pagination-btn"
+                    disabled={tablePage >= totalTablePages}
+                    onClick={() => setTablePage((p) => p + 1)}
+                  >
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <polyline points="9 18 15 12 9 6" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* -- Table footer / pagination ------------------- */}
-          <div className="qv-table-footer">
-            <div className="qv-table-footer__left">
-              {loadingMore && (
-                <span className="qv-loading-text">
-                  {t("quotesView.loading")}
-                </span>
-              )}
-            </div>
-            <div className="qv-table-footer__right">
-              <span className="qv-pagination-label">
-                {t("quotesView.rowsPerPage")}
-              </span>
-              <select
-                className="qv-pagination-select"
-                value={rowsPerPage}
-                onChange={(e) => {
-                  setRowsPerPage(Number(e.target.value));
-                  setTablePage(1);
+          {selectedQuote && selectedQuoteIndex >= 0 && (
+            <aside className="qv-split-detail">
+              <QuoteDetailPanel
+                quote={selectedQuote}
+                documentsOnly={documentsOnly}
+                onClose={() => setSelectedQuoteId(null)}
+                t={t}
+                formatDateShort={formatDateShort}
+                formatDateLong={formatDateLong}
+                formatCLP={formatCLP}
+                shouldShowQuoteTracking={shouldShowQuoteTracking}
+                isQuoteAlreadyTracked={isQuoteAlreadyTracked}
+                getQuoteTrackingNumber={getQuoteTrackingNumber}
+                openTrackModal={openTrackModal}
+                onOpenTracking={(type) => {
+                  if (reporteriaClientesContext) {
+                    reporteriaClientesContext.openTrackingTab(type);
+                  } else {
+                    navigate(
+                      type === "air"
+                        ? "/trackings-aereo"
+                        : "/trackings-maritimo",
+                    );
+                  }
                 }}
-              >
-                <option value={10}>10</option>
-                <option value={15}>15</option>
-                <option value={25}>25</option>
-                <option value={50}>50</option>
-              </select>
-              <span className="qv-pagination-range">{paginationRangeText}</span>
-              <button
-                className="qv-pagination-btn"
-                disabled={tablePage <= 1}
-                onClick={() => setTablePage((p) => p - 1)}
-              >
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <polyline points="15 18 9 12 15 6" />
-                </svg>
-              </button>
-              <button
-                className="qv-pagination-btn"
-                disabled={tablePage >= totalTablePages}
-                onClick={() => setTablePage((p) => p + 1)}
-              >
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <polyline points="9 18 15 12 9 6" />
-                </svg>
-              </button>
-            </div>
-          </div>
+                setDocumentCounts={setDocumentCounts}
+                availablePDFs={availablePDFs}
+                downloadingPDF={downloadingPDF}
+                onDownloadPdf={handleDownloadPDF}
+              />
+            </aside>
+          )}
         </div>
       )}
 

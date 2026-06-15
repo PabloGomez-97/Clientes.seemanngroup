@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import LoadingTips from "./LoadingTips";
 import { useOutletContext, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
@@ -18,7 +18,7 @@ import { consigneeMatches } from "../../services/linbisListFetch";
 const GROUND_ALL_CACHE_KEY = "groundShipmentsAllCache_v1";
 const GROUND_ALL_CACHE_TS_KEY = "groundShipmentsAllCacheTimestamp_v1";
 
-const DEFAULT_ROWS_PER_PAGE = 10;
+const DEFAULT_ROWS_PER_PAGE = 15;
 
 /* -- DetailTabs (accordion inline tabs) --------------------- */
 interface TabDef {
@@ -56,6 +56,455 @@ function DetailTabs({ tabs }: { tabs: TabDef[] }) {
   );
 }
 
+
+interface GroundShipmentDetailPanelProps {
+  shipment: GroundShipment;
+  shipmentId: string | number;
+  documentsOnly: boolean;
+  onClose: () => void;
+  formatDate: (dateString?: string) => string;
+  formatDateShort: (dateString?: string) => string;
+  formatCLP: (priceString?: string) => string | null;
+}
+
+function GroundShipmentDetailPanel({
+  shipment,
+  shipmentId,
+  documentsOnly,
+  onClose,
+  formatDate,
+  formatDateShort,
+  formatCLP,
+}: GroundShipmentDetailPanelProps) {
+  return (
+    <>
+      <div className="gsv-split-detail__header">
+        <div>
+          <span className="gsv-split-detail__eyebrow">Referencia Cliente</span>
+          <h3 className="gsv-split-detail__title">
+            {shipment.customerReference || "—"}
+          </h3>
+        </div>
+        <button
+          type="button"
+          className="gsv-split-detail__close"
+          onClick={onClose}
+          aria-label="Cerrar detalle"
+        >
+          Cerrar
+        </button>
+      </div>
+      <div className="gsv-split-detail__body">
+                              {/* Route summary card */}
+                              <div className="gsv-route-card">
+                                <div className="gsv-route-card__point">
+                                  <span className="gsv-route-card__label">
+                                    Origen
+                                  </span>
+                                  <span className="gsv-route-card__value">
+                                    {shipment.from || "N/A"}
+                                  </span>
+                                  {shipment.departure && (
+                                    <span className="gsv-route-card__date">
+                                      {formatDateShort(shipment.departure)}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="gsv-route-card__arrow">
+                                  <svg
+                                    width="24"
+                                    height="24"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="var(--primary-color)"
+                                    strokeWidth="2"
+                                  >
+                                    <line x1="5" y1="12" x2="19" y2="12" />
+                                    <polyline points="12 5 19 12 12 19" />
+                                  </svg>
+                                  {shipment.carrier && (
+                                    <span className="gsv-route-card__transit">
+                                      {shipment.carrier.length > 25
+                                        ? shipment.carrier.substring(0, 25) +
+                                          "…"
+                                        : shipment.carrier}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="gsv-route-card__point gsv-route-card__point--end">
+                                  <span className="gsv-route-card__label">
+                                    Destino
+                                  </span>
+                                  <span className="gsv-route-card__value">
+                                    {shipment.to || "N/A"}
+                                  </span>
+                                  {shipment.arrival && (
+                                    <span className="gsv-route-card__date">
+                                      {formatDateShort(shipment.arrival)}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Tabs */}
+                              {documentsOnly ? (
+                                <DocumentosSectionGround
+                                  shipmentId={shipmentId}
+                                />
+                              ) : (
+                                <DetailTabs
+                                  tabs={[
+                                    {
+                                      key: "general",
+                                      label: "Informacion General",
+                                      icon: (
+                                        <svg
+                                          width="14"
+                                          height="14"
+                                          viewBox="0 0 24 24"
+                                          fill="none"
+                                          stroke="currentColor"
+                                          strokeWidth="2"
+                                        >
+                                          <circle cx="12" cy="12" r="10" />
+                                          <line
+                                            x1="12"
+                                            y1="16"
+                                            x2="12"
+                                            y2="12"
+                                          />
+                                          <line
+                                            x1="12"
+                                            y1="8"
+                                            x2="12.01"
+                                            y2="8"
+                                          />
+                                        </svg>
+                                      ),
+                                      content: (
+                                        <div className="gsv-cards-grid">
+                                          <div className="gsv-card">
+                                            <h4>Detalles del Envio</h4>
+                                            <div className="gsv-info-grid">
+                                              <InfoField
+                                                label="Numero de Envio"
+                                                value={shipment.number}
+                                              />
+                                              <InfoField
+                                                label="Tipo de Operacion"
+                                                value={shipment.operationFlow}
+                                              />
+                                              <InfoField
+                                                label="Tipo de Envio"
+                                                value={shipment.shipmentType}
+                                              />
+                                              <InfoField
+                                                label="Clase"
+                                                value={shipment.shipmentClass}
+                                              />
+                                              <InfoField
+                                                label="Categoria"
+                                                value={shipment.rateCategory}
+                                              />
+                                              <InfoField
+                                                label="Tipo de Pago"
+                                                value={shipment.paymentType}
+                                              />
+                                            </div>
+                                          </div>
+                                          <div className="gsv-card">
+                                            <h4>Transporte Terrestre</h4>
+                                            <div className="gsv-info-grid">
+                                              <InfoField
+                                                label="Transportista"
+                                                value={shipment.carrier}
+                                              />
+                                              <InfoField
+                                                label="Conductor"
+                                                value={shipment.driver}
+                                              />
+                                              <InfoField
+                                                label="N° Camion"
+                                                value={shipment.truckNumber}
+                                              />
+                                              <InfoField
+                                                label="N° Tracking"
+                                                value={shipment.trackingNumber}
+                                              />
+                                              <InfoField
+                                                label="Pro Number"
+                                                value={shipment.proNumber}
+                                              />
+                                              <InfoField
+                                                label="Origen"
+                                                value={shipment.from}
+                                              />
+                                              <InfoField
+                                                label="Destino"
+                                                value={shipment.to}
+                                              />
+                                              <InfoField
+                                                label="Destino Final"
+                                                value={
+                                                  shipment.finalDestination
+                                                }
+                                              />
+                                            </div>
+                                          </div>
+                                          <div className="gsv-card">
+                                            <h4>Documentos y Referencias</h4>
+                                            <div className="gsv-info-grid">
+                                              <InfoField
+                                                label="Booking Number"
+                                                value={shipment.bookingNumber}
+                                              />
+                                              <InfoField
+                                                label="Waybill Number"
+                                                value={shipment.waybillNumber}
+                                              />
+                                              <InfoField
+                                                label="N° Contenedor"
+                                                value={shipment.containerNumber}
+                                              />
+                                              <InfoField
+                                                label="Referencia Cliente"
+                                                value={
+                                                  shipment.customerReference
+                                                }
+                                              />
+                                              <InfoField
+                                                label="Representante Ventas"
+                                                value={shipment.salesRep}
+                                              />
+                                            </div>
+                                          </div>
+                                          <div className="gsv-card">
+                                            <h4>Fechas</h4>
+                                            <div className="gsv-info-grid">
+                                              <InfoField
+                                                label="Fecha de Creacion"
+                                                value={
+                                                  shipment.createdOn
+                                                    ? formatDate(
+                                                        shipment.createdOn,
+                                                      )
+                                                    : null
+                                                }
+                                              />
+                                              <InfoField
+                                                label="Fecha Salida"
+                                                value={
+                                                  shipment.departure
+                                                    ? formatDate(
+                                                        shipment.departure,
+                                                      )
+                                                    : null
+                                                }
+                                              />
+                                              <InfoField
+                                                label="Fecha Llegada"
+                                                value={
+                                                  shipment.arrival
+                                                    ? formatDate(
+                                                        shipment.arrival,
+                                                      )
+                                                    : null
+                                                }
+                                              />
+                                            </div>
+                                          </div>
+                                        </div>
+                                      ),
+                                    },
+                                    {
+                                      key: "cargo",
+                                      label: "Informacion de Carga",
+                                      icon: (
+                                        <svg
+                                          width="14"
+                                          height="14"
+                                          viewBox="0 0 24 24"
+                                          fill="none"
+                                          stroke="currentColor"
+                                          strokeWidth="2"
+                                        >
+                                          <rect
+                                            x="1"
+                                            y="3"
+                                            width="15"
+                                            height="13"
+                                          />
+                                          <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
+                                          <circle cx="5.5" cy="18.5" r="2.5" />
+                                          <circle cx="18.5" cy="18.5" r="2.5" />
+                                        </svg>
+                                      ),
+                                      content: (
+                                        <div className="gsv-cards-grid">
+                                          <div className="gsv-card">
+                                            <h4>Cantidades</h4>
+                                            <div className="gsv-info-grid">
+                                              <InfoField
+                                                label="Total de Piezas"
+                                                value={
+                                                  shipment.totalCargo_Pieces
+                                                }
+                                              />
+                                              <InfoField
+                                                label="Peso Total"
+                                                value={
+                                                  shipment.totalCargo_WeightDisplayValue
+                                                }
+                                              />
+                                              <InfoField
+                                                label="Volumen Total"
+                                                value={
+                                                  shipment.totalCargo_VolumeDisplayValue
+                                                }
+                                              />
+                                              <InfoField
+                                                label="Pallets"
+                                                value={shipment.pallets}
+                                              />
+                                            </div>
+                                          </div>
+                                          <div className="gsv-card">
+                                            <h4>Detalle de Carga</h4>
+                                            <div className="gsv-info-grid">
+                                              <InfoField
+                                                label="Descripcion de Carga"
+                                                value={
+                                                  shipment.cargoDescription
+                                                }
+                                                fullWidth
+                                              />
+                                            </div>
+                                          </div>
+                                          <div className="gsv-card">
+                                            <h4>Estado y Seguridad</h4>
+                                            <div className="gsv-info-grid">
+                                              <InfoField
+                                                label="Estado de Carga"
+                                                value={shipment.cargoStatus}
+                                              />
+                                              <InfoField
+                                                label="Carga Peligrosa"
+                                                value={
+                                                  shipment.hazardous
+                                                    ? "Si"
+                                                    : "No"
+                                                }
+                                              />
+                                            </div>
+                                          </div>
+                                        </div>
+                                      ),
+                                    },
+                                    {
+                                      key: "documentos",
+                                      label: "Documentos",
+                                      icon: (
+                                        <svg
+                                          width="14"
+                                          height="14"
+                                          viewBox="0 0 24 24"
+                                          fill="none"
+                                          stroke="currentColor"
+                                          strokeWidth="2"
+                                        >
+                                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                          <polyline points="14 2 14 8 20 8" />
+                                          <line
+                                            x1="16"
+                                            y1="13"
+                                            x2="8"
+                                            y2="13"
+                                          />
+                                          <line
+                                            x1="16"
+                                            y1="17"
+                                            x2="8"
+                                            y2="17"
+                                          />
+                                        </svg>
+                                      ),
+                                      content: (
+                                        <DocumentosSectionGround
+                                          shipmentId={shipmentId}
+                                        />
+                                      ),
+                                    },
+                                    {
+                                      key: "financiero",
+                                      label: "Financiero",
+                                      icon: (
+                                        <svg
+                                          width="14"
+                                          height="14"
+                                          viewBox="0 0 24 24"
+                                          fill="none"
+                                          stroke="currentColor"
+                                          strokeWidth="2"
+                                        >
+                                          <line
+                                            x1="12"
+                                            y1="1"
+                                            x2="12"
+                                            y2="23"
+                                          />
+                                          <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                                        </svg>
+                                      ),
+                                      content: (
+                                        <div className="gsv-finance-card">
+                                          <span className="gsv-finance-card__label">
+                                            Gasto Total (No incluye impuestos)
+                                          </span>
+                                          <span className="gsv-finance-card__amount">
+                                            {formatCLP(
+                                              shipment.totalCharge_IncomeDisplayValue,
+                                            ) || "$0 CLP"}
+                                          </span>
+                                          <span className="gsv-finance-card__note">
+                                            Monto estimado para este envio
+                                          </span>
+                                        </div>
+                                      ),
+                                    },
+                                    {
+                                      key: "notas",
+                                      label: "Notas",
+                                      icon: (
+                                        <svg
+                                          width="14"
+                                          height="14"
+                                          viewBox="0 0 24 24"
+                                          fill="none"
+                                          stroke="currentColor"
+                                          strokeWidth="2"
+                                        >
+                                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                        </svg>
+                                      ),
+                                      hidden:
+                                        !shipment.notes ||
+                                        shipment.notes === "N/A",
+                                      content: (
+                                        <div className="gsv-notes">
+                                          {shipment.notes}
+                                        </div>
+                                      ),
+                                    },
+                                  ]}
+                                />
+                              )}
+                            
+      </div>
+    </>
+  );
+}
+
 /* ===========================================================
    MAIN COMPONENT
    =========================================================== */
@@ -78,8 +527,7 @@ function GroundShipmentsView({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Accordion
-  const [expandedShipmentId, setExpandedShipmentId] = useState<
+  const [selectedShipmentId, setSelectedShipmentId] = useState<
     string | number | null
   >(null);
 
@@ -174,6 +622,39 @@ function GroundShipmentsView({
     const end = Math.min(tablePage * rowsPerPage, displayedShipments.length);
     return `${start}-${end} de ${displayedShipments.length}`;
   }, [tablePage, rowsPerPage, displayedShipments.length]);
+
+  const getShipmentRowId = useCallback(
+    (shipment: GroundShipment, index: number) =>
+      shipment.id || shipment.number || index,
+    [],
+  );
+
+  const selectedShipment = useMemo(() => {
+    if (selectedShipmentId == null) return null;
+    return (
+      paginatedShipments.find(
+        (shipment, index) =>
+          getShipmentRowId(shipment, index) === selectedShipmentId,
+      ) ?? null
+    );
+  }, [selectedShipmentId, paginatedShipments, getShipmentRowId]);
+
+  const selectedShipmentIndex = useMemo(() => {
+    if (selectedShipmentId == null) return -1;
+    return paginatedShipments.findIndex(
+      (shipment, index) =>
+        getShipmentRowId(shipment, index) === selectedShipmentId,
+    );
+  }, [selectedShipmentId, paginatedShipments, getShipmentRowId]);
+
+  useEffect(() => {
+    if (selectedShipmentId == null) return;
+    const stillVisible = paginatedShipments.some(
+      (shipment, index) =>
+        getShipmentRowId(shipment, index) === selectedShipmentId,
+    );
+    if (!stillVisible) setSelectedShipmentId(null);
+  }, [paginatedShipments, selectedShipmentId, getShipmentRowId]);
 
   const sortGroundShipments = (items: GroundShipment[]) =>
     [...items].sort((a, b) => {
@@ -347,7 +828,7 @@ function GroundShipmentsView({
     setDisplayedShipments(filtered);
     setShowingAll(true);
     setTablePage(1);
-    setExpandedShipmentId(filtered[0]?.id ?? null);
+    setSelectedShipmentId(filtered[0]?.id ?? filtered[0]?.number ?? null);
     setEmbedQuery(filtered[0]?.number || null);
 
     if (!initialFilterNumber && locationState?.shipmentFilterNumber) {
@@ -361,19 +842,20 @@ function GroundShipmentsView({
     navigate,
   ]);
 
-  /* -- Accordion --------------------------------------------- */
-  const toggleAccordion = (shipmentId: string | number) => {
-    if (expandedShipmentId === shipmentId) {
-      setExpandedShipmentId(null);
+  const toggleShipmentSelection = (shipmentId: string | number) => {
+    if (selectedShipmentId === shipmentId) {
+      setSelectedShipmentId(null);
       setEmbedQuery(null);
-    } else {
-      setExpandedShipmentId(shipmentId);
-      const s = displayedShipments.find((sh) => {
-        const id = sh.id || sh.number;
-        return id === shipmentId;
-      });
-      setEmbedQuery(s?.number || null);
+      return;
     }
+
+    setSelectedShipmentId(shipmentId);
+    const shipment =
+      paginatedShipments.find(
+        (sh, index) => getShipmentRowId(sh, index) === shipmentId,
+      ) ??
+      displayedShipments.find((sh) => (sh.id || sh.number) === shipmentId);
+    if (shipment) setEmbedQuery(shipment.number || null);
   };
 
   /* -- Search ------------------------------------------------ */
@@ -995,6 +1477,7 @@ function GroundShipmentsView({
       {loading && (
         <LoadingTips
           columns={[
+            { label: "Referencia Cliente" },
             { label: "Numero" },
             { label: "Origen" },
             { label: "Destino" },
@@ -1017,549 +1500,180 @@ function GroundShipmentsView({
           TABLE
          ===================================================== */}
       {!loading && displayedShipments.length > 0 && (
-        <div className="gsv-table-wrapper">
-          <div className="gsv-table-scroll">
-            <table className="gsv-table">
-              <thead>
-                <tr>
-                  <th className="gsv-th">Numero</th>
-                  <th className="gsv-th">Origen</th>
-                  <th className="gsv-th">Destino</th>
-                  <th className="gsv-th">Fecha Salida</th>
-                  <th className="gsv-th">Transportista</th>
-                  <th className="gsv-th gsv-th--center">Tipo</th>
-                  <th className="gsv-th gsv-th--center">Piezas</th>
-                </tr>
-              </thead>
-              <tbody>
-                {paginatedShipments.map((shipment, index) => {
-                  const shipmentId = shipment.id || shipment.number || index;
-                  const isExpanded = expandedShipmentId === shipmentId;
+        <div
+          className={`gsv-split-view${selectedShipment ? " gsv-split-view--active" : ""}`}
+        >
+          <div className="gsv-split-list">
+            <div className="gsv-table-wrapper">
+              <div className="gsv-table-scroll">
+                <table className="gsv-table">
+                  <thead>
+                    <tr>
+                      <th className="gsv-th">Referencia Cliente</th>
+                      <th className="gsv-th gsv-th--split-hidden">Numero</th>
+                      <th className="gsv-th">Origen</th>
+                      <th className="gsv-th">Destino</th>
+                      <th className="gsv-th">Fecha Salida</th>
+                      <th className="gsv-th gsv-th--split-hidden">
+                        Transportista
+                      </th>
+                      <th className="gsv-th gsv-th--center gsv-th--split-hidden">
+                        Tipo
+                      </th>
+                      <th className="gsv-th gsv-th--center gsv-th--split-hidden">
+                        Piezas
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paginatedShipments.map((shipment, index) => {
+                      const shipmentId = getShipmentRowId(shipment, index);
+                      const isSelected = selectedShipmentId === shipmentId;
+                      const referenceLabel =
+                        shipment.customerReference || "-";
+                      const numberLabel = shipment.number || "---";
+                      const originLabel = shipment.from || "---";
+                      const destinationLabel = shipment.to || "---";
+                      const departureLabel = formatDateShort(
+                        shipment.departure,
+                      );
+                      const carrierLabel = shipment.carrier
+                        ? shipment.carrier.length > 30
+                          ? shipment.carrier.substring(0, 30) + "…"
+                          : shipment.carrier
+                        : "-";
 
-                  return (
-                    <React.Fragment key={shipmentId}>
-                      <tr
-                        className={`gsv-tr ${isExpanded ? "gsv-tr--active" : ""}`}
-                        onClick={() => toggleAccordion(shipmentId)}
-                      >
-                        <td className="gsv-td gsv-td--number">
-                          <svg
-                            className={`gsv-row-chevron ${isExpanded ? "gsv-row-chevron--open" : ""}`}
-                            width="14"
-                            height="14"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2.5"
+                      return (
+                        <tr
+                          key={shipmentId}
+                          className={`gsv-tr${isSelected ? " gsv-tr--selected" : ""}`}
+                          onClick={() => toggleShipmentSelection(shipmentId)}
+                        >
+                          <td
+                            className="gsv-td gsv-td--reference"
+                            title={referenceLabel}
                           >
-                            <polyline points="9 18 15 12 9 6" />
-                          </svg>
-                          {shipment.number || "---"}
-                        </td>
-                        <td className="gsv-td">{shipment.from || "---"}</td>
-                        <td className="gsv-td">{shipment.to || "---"}</td>
-                        <td className="gsv-td">
-                          {formatDateShort(shipment.departure)}
-                        </td>
-                        <td className="gsv-td">
-                          {shipment.carrier
-                            ? shipment.carrier.length > 30
-                              ? shipment.carrier.substring(0, 30) + "…"
-                              : shipment.carrier
-                            : "-"}
-                        </td>
-                        <td className="gsv-td gsv-td--center">
-                          {shipment.shipmentClass ? (
-                            <span
-                              className={`gsv-badge gsv-badge--${shipment.shipmentClass.toLowerCase()}`}
-                            >
-                              {shipment.shipmentClass}
-                            </span>
-                          ) : (
-                            "---"
-                          )}
-                        </td>
-                        <td className="gsv-td gsv-td--center">
-                          {shipment.totalCargo_Pieces ?? "---"}
-                        </td>
-                      </tr>
-
-                      {isExpanded && (
-                        <tr className="gsv-accordion-row">
-                          <td colSpan={7} className="gsv-accordion-cell">
-                            <div className="gsv-accordion-content">
-                              {/* Route summary card */}
-                              <div className="gsv-route-card">
-                                <div className="gsv-route-card__point">
-                                  <span className="gsv-route-card__label">
-                                    Origen
-                                  </span>
-                                  <span className="gsv-route-card__value">
-                                    {shipment.from || "N/A"}
-                                  </span>
-                                  {shipment.departure && (
-                                    <span className="gsv-route-card__date">
-                                      {formatDateShort(shipment.departure)}
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="gsv-route-card__arrow">
-                                  <svg
-                                    width="24"
-                                    height="24"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="var(--primary-color)"
-                                    strokeWidth="2"
-                                  >
-                                    <line x1="5" y1="12" x2="19" y2="12" />
-                                    <polyline points="12 5 19 12 12 19" />
-                                  </svg>
-                                  {shipment.carrier && (
-                                    <span className="gsv-route-card__transit">
-                                      {shipment.carrier.length > 25
-                                        ? shipment.carrier.substring(0, 25) +
-                                          "…"
-                                        : shipment.carrier}
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="gsv-route-card__point gsv-route-card__point--end">
-                                  <span className="gsv-route-card__label">
-                                    Destino
-                                  </span>
-                                  <span className="gsv-route-card__value">
-                                    {shipment.to || "N/A"}
-                                  </span>
-                                  {shipment.arrival && (
-                                    <span className="gsv-route-card__date">
-                                      {formatDateShort(shipment.arrival)}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-
-                              {/* Tabs */}
-                              {documentsOnly ? (
-                                <DocumentosSectionGround
-                                  shipmentId={shipmentId}
-                                />
-                              ) : (
-                                <DetailTabs
-                                  tabs={[
-                                    {
-                                      key: "general",
-                                      label: "Informacion General",
-                                      icon: (
-                                        <svg
-                                          width="14"
-                                          height="14"
-                                          viewBox="0 0 24 24"
-                                          fill="none"
-                                          stroke="currentColor"
-                                          strokeWidth="2"
-                                        >
-                                          <circle cx="12" cy="12" r="10" />
-                                          <line
-                                            x1="12"
-                                            y1="16"
-                                            x2="12"
-                                            y2="12"
-                                          />
-                                          <line
-                                            x1="12"
-                                            y1="8"
-                                            x2="12.01"
-                                            y2="8"
-                                          />
-                                        </svg>
-                                      ),
-                                      content: (
-                                        <div className="gsv-cards-grid">
-                                          <div className="gsv-card">
-                                            <h4>Detalles del Envio</h4>
-                                            <div className="gsv-info-grid">
-                                              <InfoField
-                                                label="Numero de Envio"
-                                                value={shipment.number}
-                                              />
-                                              <InfoField
-                                                label="Tipo de Operacion"
-                                                value={shipment.operationFlow}
-                                              />
-                                              <InfoField
-                                                label="Tipo de Envio"
-                                                value={shipment.shipmentType}
-                                              />
-                                              <InfoField
-                                                label="Clase"
-                                                value={shipment.shipmentClass}
-                                              />
-                                              <InfoField
-                                                label="Categoria"
-                                                value={shipment.rateCategory}
-                                              />
-                                              <InfoField
-                                                label="Tipo de Pago"
-                                                value={shipment.paymentType}
-                                              />
-                                            </div>
-                                          </div>
-                                          <div className="gsv-card">
-                                            <h4>Transporte Terrestre</h4>
-                                            <div className="gsv-info-grid">
-                                              <InfoField
-                                                label="Transportista"
-                                                value={shipment.carrier}
-                                              />
-                                              <InfoField
-                                                label="Conductor"
-                                                value={shipment.driver}
-                                              />
-                                              <InfoField
-                                                label="N° Camion"
-                                                value={shipment.truckNumber}
-                                              />
-                                              <InfoField
-                                                label="N° Tracking"
-                                                value={shipment.trackingNumber}
-                                              />
-                                              <InfoField
-                                                label="Pro Number"
-                                                value={shipment.proNumber}
-                                              />
-                                              <InfoField
-                                                label="Origen"
-                                                value={shipment.from}
-                                              />
-                                              <InfoField
-                                                label="Destino"
-                                                value={shipment.to}
-                                              />
-                                              <InfoField
-                                                label="Destino Final"
-                                                value={
-                                                  shipment.finalDestination
-                                                }
-                                              />
-                                            </div>
-                                          </div>
-                                          <div className="gsv-card">
-                                            <h4>Documentos y Referencias</h4>
-                                            <div className="gsv-info-grid">
-                                              <InfoField
-                                                label="Booking Number"
-                                                value={shipment.bookingNumber}
-                                              />
-                                              <InfoField
-                                                label="Waybill Number"
-                                                value={shipment.waybillNumber}
-                                              />
-                                              <InfoField
-                                                label="N° Contenedor"
-                                                value={shipment.containerNumber}
-                                              />
-                                              <InfoField
-                                                label="Referencia Cliente"
-                                                value={
-                                                  shipment.customerReference
-                                                }
-                                              />
-                                              <InfoField
-                                                label="Representante Ventas"
-                                                value={shipment.salesRep}
-                                              />
-                                            </div>
-                                          </div>
-                                          <div className="gsv-card">
-                                            <h4>Fechas</h4>
-                                            <div className="gsv-info-grid">
-                                              <InfoField
-                                                label="Fecha de Creacion"
-                                                value={
-                                                  shipment.createdOn
-                                                    ? formatDate(
-                                                        shipment.createdOn,
-                                                      )
-                                                    : null
-                                                }
-                                              />
-                                              <InfoField
-                                                label="Fecha Salida"
-                                                value={
-                                                  shipment.departure
-                                                    ? formatDate(
-                                                        shipment.departure,
-                                                      )
-                                                    : null
-                                                }
-                                              />
-                                              <InfoField
-                                                label="Fecha Llegada"
-                                                value={
-                                                  shipment.arrival
-                                                    ? formatDate(
-                                                        shipment.arrival,
-                                                      )
-                                                    : null
-                                                }
-                                              />
-                                            </div>
-                                          </div>
-                                        </div>
-                                      ),
-                                    },
-                                    {
-                                      key: "cargo",
-                                      label: "Informacion de Carga",
-                                      icon: (
-                                        <svg
-                                          width="14"
-                                          height="14"
-                                          viewBox="0 0 24 24"
-                                          fill="none"
-                                          stroke="currentColor"
-                                          strokeWidth="2"
-                                        >
-                                          <rect
-                                            x="1"
-                                            y="3"
-                                            width="15"
-                                            height="13"
-                                          />
-                                          <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
-                                          <circle cx="5.5" cy="18.5" r="2.5" />
-                                          <circle cx="18.5" cy="18.5" r="2.5" />
-                                        </svg>
-                                      ),
-                                      content: (
-                                        <div className="gsv-cards-grid">
-                                          <div className="gsv-card">
-                                            <h4>Cantidades</h4>
-                                            <div className="gsv-info-grid">
-                                              <InfoField
-                                                label="Total de Piezas"
-                                                value={
-                                                  shipment.totalCargo_Pieces
-                                                }
-                                              />
-                                              <InfoField
-                                                label="Peso Total"
-                                                value={
-                                                  shipment.totalCargo_WeightDisplayValue
-                                                }
-                                              />
-                                              <InfoField
-                                                label="Volumen Total"
-                                                value={
-                                                  shipment.totalCargo_VolumeDisplayValue
-                                                }
-                                              />
-                                              <InfoField
-                                                label="Pallets"
-                                                value={shipment.pallets}
-                                              />
-                                            </div>
-                                          </div>
-                                          <div className="gsv-card">
-                                            <h4>Detalle de Carga</h4>
-                                            <div className="gsv-info-grid">
-                                              <InfoField
-                                                label="Descripcion de Carga"
-                                                value={
-                                                  shipment.cargoDescription
-                                                }
-                                                fullWidth
-                                              />
-                                            </div>
-                                          </div>
-                                          <div className="gsv-card">
-                                            <h4>Estado y Seguridad</h4>
-                                            <div className="gsv-info-grid">
-                                              <InfoField
-                                                label="Estado de Carga"
-                                                value={shipment.cargoStatus}
-                                              />
-                                              <InfoField
-                                                label="Carga Peligrosa"
-                                                value={
-                                                  shipment.hazardous
-                                                    ? "Si"
-                                                    : "No"
-                                                }
-                                              />
-                                            </div>
-                                          </div>
-                                        </div>
-                                      ),
-                                    },
-                                    {
-                                      key: "documentos",
-                                      label: "Documentos",
-                                      icon: (
-                                        <svg
-                                          width="14"
-                                          height="14"
-                                          viewBox="0 0 24 24"
-                                          fill="none"
-                                          stroke="currentColor"
-                                          strokeWidth="2"
-                                        >
-                                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                                          <polyline points="14 2 14 8 20 8" />
-                                          <line
-                                            x1="16"
-                                            y1="13"
-                                            x2="8"
-                                            y2="13"
-                                          />
-                                          <line
-                                            x1="16"
-                                            y1="17"
-                                            x2="8"
-                                            y2="17"
-                                          />
-                                        </svg>
-                                      ),
-                                      content: (
-                                        <DocumentosSectionGround
-                                          shipmentId={shipmentId}
-                                        />
-                                      ),
-                                    },
-                                    {
-                                      key: "financiero",
-                                      label: "Financiero",
-                                      icon: (
-                                        <svg
-                                          width="14"
-                                          height="14"
-                                          viewBox="0 0 24 24"
-                                          fill="none"
-                                          stroke="currentColor"
-                                          strokeWidth="2"
-                                        >
-                                          <line
-                                            x1="12"
-                                            y1="1"
-                                            x2="12"
-                                            y2="23"
-                                          />
-                                          <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-                                        </svg>
-                                      ),
-                                      content: (
-                                        <div className="gsv-finance-card">
-                                          <span className="gsv-finance-card__label">
-                                            Gasto Total (No incluye impuestos)
-                                          </span>
-                                          <span className="gsv-finance-card__amount">
-                                            {formatCLP(
-                                              shipment.totalCharge_IncomeDisplayValue,
-                                            ) || "$0 CLP"}
-                                          </span>
-                                          <span className="gsv-finance-card__note">
-                                            Monto estimado para este envio
-                                          </span>
-                                        </div>
-                                      ),
-                                    },
-                                    {
-                                      key: "notas",
-                                      label: "Notas",
-                                      icon: (
-                                        <svg
-                                          width="14"
-                                          height="14"
-                                          viewBox="0 0 24 24"
-                                          fill="none"
-                                          stroke="currentColor"
-                                          strokeWidth="2"
-                                        >
-                                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                                        </svg>
-                                      ),
-                                      hidden:
-                                        !shipment.notes ||
-                                        shipment.notes === "N/A",
-                                      content: (
-                                        <div className="gsv-notes">
-                                          {shipment.notes}
-                                        </div>
-                                      ),
-                                    },
-                                  ]}
-                                />
-                              )}
-                            </div>
+                            {referenceLabel}
+                          </td>
+                          <td
+                            className="gsv-td gsv-td--number gsv-td--split-hidden"
+                            title={numberLabel}
+                          >
+                            {numberLabel}
+                          </td>
+                          <td className="gsv-td" title={originLabel}>
+                            {originLabel}
+                          </td>
+                          <td className="gsv-td" title={destinationLabel}>
+                            {destinationLabel}
+                          </td>
+                          <td className="gsv-td" title={departureLabel}>
+                            {departureLabel}
+                          </td>
+                          <td
+                            className="gsv-td gsv-td--split-hidden"
+                            title={carrierLabel}
+                          >
+                            {carrierLabel}
+                          </td>
+                          <td className="gsv-td gsv-td--center gsv-td--split-hidden">
+                            {shipment.shipmentClass ? (
+                              <span
+                                className={`gsv-badge gsv-badge--${shipment.shipmentClass.toLowerCase()}`}
+                              >
+                                {shipment.shipmentClass}
+                              </span>
+                            ) : (
+                              "---"
+                            )}
+                          </td>
+                          <td className="gsv-td gsv-td--center gsv-td--split-hidden">
+                            {shipment.totalCargo_Pieces ?? "---"}
                           </td>
                         </tr>
-                      )}
-                    </React.Fragment>
-                  );
-                })}
-              </tbody>
-            </table>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="gsv-table-footer">
+                <div className="gsv-table-footer__left">
+                  {loading && (
+                    <span className="gsv-loading-text">Cargando...</span>
+                  )}
+                </div>
+                <div className="gsv-table-footer__right">
+                  <span className="gsv-pagination-label">Filas por pagina:</span>
+                  <select
+                    className="gsv-pagination-select"
+                    value={rowsPerPage}
+                    onChange={(e) => {
+                      setRowsPerPage(Number(e.target.value));
+                      setTablePage(1);
+                    }}
+                  >
+                    <option value={10}>10</option>
+                    <option value={15}>15</option>
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                  </select>
+                  <span className="gsv-pagination-range">
+                    {paginationRangeText}
+                  </span>
+                  <button
+                    className="gsv-pagination-btn"
+                    disabled={tablePage <= 1}
+                    onClick={() => setTablePage((p) => p - 1)}
+                  >
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <polyline points="15 18 9 12 15 6" />
+                    </svg>
+                  </button>
+                  <button
+                    className="gsv-pagination-btn"
+                    disabled={tablePage >= totalTablePages}
+                    onClick={() => setTablePage((p) => p + 1)}
+                  >
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <polyline points="9 18 15 12 9 6" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* Table footer */}
-          <div className="gsv-table-footer">
-            <div className="gsv-table-footer__left">
-              {loading && <span className="gsv-loading-text">Cargando...</span>}
-            </div>
-            <div className="gsv-table-footer__right">
-              <span className="gsv-pagination-label">Filas por pagina:</span>
-              <select
-                className="gsv-pagination-select"
-                value={rowsPerPage}
-                onChange={(e) => {
-                  setRowsPerPage(Number(e.target.value));
-                  setTablePage(1);
-                }}
-              >
-                <option value={10}>10</option>
-                <option value={15}>15</option>
-                <option value={25}>25</option>
-                <option value={50}>50</option>
-              </select>
-              <span className="gsv-pagination-range">
-                {paginationRangeText}
-              </span>
-              <button
-                className="gsv-pagination-btn"
-                disabled={tablePage <= 1}
-                onClick={() => setTablePage((p) => p - 1)}
-              >
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <polyline points="15 18 9 12 15 6" />
-                </svg>
-              </button>
-              <button
-                className="gsv-pagination-btn"
-                disabled={tablePage >= totalTablePages}
-                onClick={() => setTablePage((p) => p + 1)}
-              >
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <polyline points="9 18 15 12 9 6" />
-                </svg>
-              </button>
-            </div>
-          </div>
+          {selectedShipment && selectedShipmentIndex >= 0 && (
+            <aside className="gsv-split-detail">
+              <GroundShipmentDetailPanel
+                shipment={selectedShipment}
+                shipmentId={getShipmentRowId(
+                  selectedShipment,
+                  selectedShipmentIndex,
+                )}
+                documentsOnly={documentsOnly}
+                onClose={() => setSelectedShipmentId(null)}
+                formatDate={formatDate}
+                formatDateShort={formatDateShort}
+                formatCLP={formatCLP}
+              />
+            </aside>
+          )}
         </div>
       )}
 

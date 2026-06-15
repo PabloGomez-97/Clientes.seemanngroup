@@ -44,7 +44,7 @@ import {
   type ShipsGoTrackingLocationState,
 } from "../../services/shipsgoTrackingNavigation";
 
-const ITEMS_PER_PAGE = 10;
+const ITEMS_PER_PAGE = 15;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const AIR_SHIPMENTS_CACHE_PREFIX = "airShipmentsCache_v3_";
 
@@ -433,6 +433,202 @@ function GeneralTabContent({
   );
 }
 
+interface AirShipmentDetailPanelProps {
+  shipment: AirShipment;
+  shipmentId: string | number;
+  documentsOnly: boolean;
+  onClose: () => void;
+  formatAirportCell: (shipment: AirShipment, kind: "origin" | "dest") => string;
+  formatDateInline: (displayDate: string | undefined) => string;
+  effectiveArrivalDisplayDate: string;
+  effectiveArrivalIsShipsgo: boolean;
+  cargoDetail: CargoDetailCacheEntry | undefined;
+  quoteEntry: QuoteNumberCacheEntry | undefined;
+  renderAccordionArrivalDate: () => React.ReactNode;
+  onMountCargo: (
+    shipmentId: string | number | undefined,
+    number: string | undefined,
+  ) => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  getAllCommodities: (s: AirShipment) => any[];
+  formatDate: (dateObj: unknown) => string;
+  getDisplayedTrackAwbNumber: (s: AirShipment) => string;
+  isTrackAwbLoading: (s: AirShipment) => boolean;
+  isTrackAwbReady: (s: AirShipment) => boolean;
+  isShipmentAlreadyTracked: (s: AirShipment) => boolean;
+  openTrackModal: (s: AirShipment) => void;
+  onOpenTracking: () => void;
+  onOpenQuote: (quoteNumber: string) => void;
+}
+
+function AirShipmentDetailPanel({
+  shipment,
+  shipmentId,
+  documentsOnly,
+  onClose,
+  formatAirportCell,
+  formatDateInline,
+  effectiveArrivalDisplayDate,
+  effectiveArrivalIsShipsgo,
+  cargoDetail,
+  quoteEntry,
+  renderAccordionArrivalDate,
+  onMountCargo,
+  getAllCommodities,
+  formatDate,
+  getDisplayedTrackAwbNumber,
+  isTrackAwbLoading,
+  isTrackAwbReady,
+  isShipmentAlreadyTracked,
+  openTrackModal,
+  onOpenTracking,
+  onOpenQuote,
+}: AirShipmentDetailPanelProps) {
+  return (
+    <>
+      <div className="asv-split-detail__header">
+        <div>
+          <span className="asv-split-detail__eyebrow">Referencia Cliente</span>
+          <h3 className="asv-split-detail__title">
+            {shipment.customerReference || "—"}
+          </h3>
+        </div>
+        <button
+          type="button"
+          className="asv-split-detail__close"
+          onClick={onClose}
+          aria-label="Cerrar detalle"
+        >
+          Cerrar
+        </button>
+      </div>
+      <div className="asv-split-detail__body">
+        <div className="asv-route-card">
+          <div className="asv-route-card__point">
+            <span className="asv-route-card__label">Aeropuerto de Carga</span>
+            <span className="asv-route-card__value">
+              {formatAirportCell(shipment, "origin")}
+            </span>
+            {shipment.departure?.displayDate && (
+              <span className="asv-route-card__date">
+                {formatDateInline(
+                  shipment.departure?.date ?? shipment.departure?.displayDate,
+                )}
+              </span>
+            )}
+          </div>
+          <div className="asv-route-card__connector">
+            <span className="asv-route-card__line" />
+            {shipment.carrier?.name && (
+              <span
+                className="asv-route-card__carrier"
+                title={shipment.carrier.name}
+              >
+                {shipment.carrier.name}
+              </span>
+            )}
+          </div>
+          <div className="asv-route-card__point asv-route-card__point--end">
+            <span className="asv-route-card__label">Aeropuerto de Descarga</span>
+            <span className="asv-route-card__value">
+              {formatAirportCell(shipment, "dest")}
+            </span>
+            {effectiveArrivalDisplayDate && (
+              <span className="asv-route-card__date">
+                {effectiveArrivalIsShipsgo
+                  ? formatShipsgoDateLong(effectiveArrivalDisplayDate)
+                  : formatDateInline(effectiveArrivalDisplayDate)}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {documentsOnly ? (
+          <DocumentosSectionAir shipmentId={shipmentId} />
+        ) : (
+          <DetailTabs
+            tabs={[
+              {
+                key: "general",
+                label: "Información General",
+                icon: (
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="16" x2="12" y2="12" />
+                    <line x1="12" y1="8" x2="12.01" y2="8" />
+                  </svg>
+                ),
+                content: (
+                  <GeneralTabContent
+                    shipment={shipment}
+                    cargoDetail={cargoDetail}
+                    quoteEntry={quoteEntry}
+                    renderAccordionArrivalDate={renderAccordionArrivalDate}
+                    onMountCargo={onMountCargo}
+                    getAllCommodities={getAllCommodities}
+                    formatDate={formatDate}
+                    getDisplayedTrackAwbNumber={getDisplayedTrackAwbNumber}
+                    isTrackAwbLoading={isTrackAwbLoading}
+                    isTrackAwbReady={isTrackAwbReady}
+                    isShipmentAlreadyTracked={isShipmentAlreadyTracked}
+                    openTrackModal={openTrackModal}
+                    onOpenTracking={onOpenTracking}
+                    onOpenQuote={onOpenQuote}
+                  />
+                ),
+              },
+              {
+                key: "docs",
+                label: "Documentos",
+                icon: (
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                  </svg>
+                ),
+                content: <DocumentosSectionAir shipmentId={shipmentId} />,
+              },
+              {
+                key: "notes",
+                label: "Notas",
+                icon: (
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                  </svg>
+                ),
+                hidden: !shipment.notes,
+                content: <div className="asv-notes">{shipment.notes}</div>,
+              },
+            ]}
+          />
+        )}
+      </div>
+    </>
+  );
+}
+
 /* 
    MAIN COMPONENT
     */
@@ -458,8 +654,7 @@ function AirShipmentsView({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Accordion  single expanded
-  const [expandedShipmentId, setExpandedShipmentId] = useState<
+  const [selectedShipmentId, setSelectedShipmentId] = useState<
     string | number | null
   >(null);
 
@@ -597,6 +792,39 @@ function AirShipmentsView({
   useEffect(() => {
     setTablePage(1);
   }, [displayedShipments]);
+
+  const getShipmentRowId = useCallback(
+    (shipment: AirShipment, index: number) =>
+      shipment.id || shipment.number || index,
+    [],
+  );
+
+  const selectedShipment = useMemo(() => {
+    if (selectedShipmentId == null) return null;
+    return (
+      paginatedShipments.find(
+        (shipment, index) =>
+          getShipmentRowId(shipment, index) === selectedShipmentId,
+      ) ?? null
+    );
+  }, [selectedShipmentId, paginatedShipments, getShipmentRowId]);
+
+  const selectedShipmentIndex = useMemo(() => {
+    if (selectedShipmentId == null) return -1;
+    return paginatedShipments.findIndex(
+      (shipment, index) =>
+        getShipmentRowId(shipment, index) === selectedShipmentId,
+    );
+  }, [selectedShipmentId, paginatedShipments, getShipmentRowId]);
+
+  useEffect(() => {
+    if (selectedShipmentId == null) return;
+    const stillVisible = paginatedShipments.some(
+      (shipment, index) =>
+        getShipmentRowId(shipment, index) === selectedShipmentId,
+    );
+    if (!stillVisible) setSelectedShipmentId(null);
+  }, [paginatedShipments, selectedShipmentId, getShipmentRowId]);
 
   /*  Helpers  */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1119,17 +1347,21 @@ function AirShipmentsView({
     return () => trackingIndexAbortRef.current?.abort();
   }, [loadTrackingIndex, activeUsername]);
 
-  /*  Accordion  */
-  const toggleAccordion = (shipmentId: string | number) => {
-    if (expandedShipmentId === shipmentId) {
-      setExpandedShipmentId(null);
-    } else {
-      setExpandedShipmentId(shipmentId);
-      const s = shipments.find((sh) => (sh.id || sh.number) === shipmentId);
-      if (s) {
-        void fetchRouteForShipment(s);
-        fetchQuoteNumber(shipmentId, s.customerReference);
-      }
+  const toggleShipmentSelection = (shipmentId: string | number) => {
+    if (selectedShipmentId === shipmentId) {
+      setSelectedShipmentId(null);
+      return;
+    }
+
+    setSelectedShipmentId(shipmentId);
+    const shipment =
+      paginatedShipments.find(
+        (sh, index) => getShipmentRowId(sh, index) === shipmentId,
+      ) ??
+      shipments.find((sh) => (sh.id || sh.number) === shipmentId);
+    if (shipment) {
+      void fetchRouteForShipment(shipment);
+      fetchQuoteNumber(shipmentId, shipment.customerReference);
     }
   };
 
@@ -1260,7 +1492,7 @@ function AirShipmentsView({
     setFilterNumber(incomingFilter);
     setDisplayedShipments(filtered);
     setShowingAll(true);
-    setExpandedShipmentId(filtered[0]?.id ?? null);
+    setSelectedShipmentId(filtered[0]?.id ?? filtered[0]?.number ?? null);
     setTablePage(1);
 
     if (!initialFilterNumber && locationState?.shipmentFilterNumber) {
@@ -1936,9 +2168,9 @@ function AirShipmentsView({
       {loading && (
         <LoadingTips
           columns={[
+            { label: "Referencia Cliente" },
             { label: "Número" },
             { label: "Origen" },
-            { label: "Referencia Cliente" },
             { label: "Fecha Salida", center: true },
             { label: "Fecha Llegada", center: true },
             { label: "Carrier", center: true },
@@ -1955,318 +2187,205 @@ function AirShipmentsView({
 
       {/* Table */}
       {!loading && displayedShipments.length > 0 && (
-        <div className="asv-table-wrapper">
-          <div className="asv-table-scroll">
-            <table className="asv-table">
-              <thead>
-                <tr>
-                  <th className="asv-th">Número</th>
-                  <th className="asv-th">Origen</th>
-                  <th className="asv-th">Referencia Cliente</th>
-                  <th className="asv-th asv-th--center">Fecha Salida</th>
-                  <th className="asv-th asv-th--center">Fecha Llegada</th>
-                  <th className="asv-th asv-th--center">Carrier</th>
-                </tr>
-              </thead>
-              <tbody>
-                {paginatedShipments.map((shipment, index) => {
-                  const shipmentId = shipment.id || shipment.number || index;
-                  const isExpanded = expandedShipmentId === shipmentId;
-                  const effectiveArrivalDisplayDate =
-                    getEffectiveArrivalDisplayDate(shipment);
-                  const effectiveArrivalIsShipsgo =
-                    isAirArrivalFromShipsgo(shipment);
+        <div
+          className={`asv-split-view${selectedShipment ? " asv-split-view--active" : ""}`}
+        >
+          <div className="asv-split-list">
+            <div className="asv-table-wrapper">
+              <div className="asv-table-scroll">
+                <table className="asv-table">
+                  <thead>
+                    <tr>
+                      <th className="asv-th">Referencia Cliente</th>
+                      <th className="asv-th asv-th--split-hidden">Número</th>
+                      <th className="asv-th">Origen</th>
+                      <th className="asv-th asv-th--center">Fecha Salida</th>
+                      <th className="asv-th asv-th--center">Fecha Llegada</th>
+                      <th className="asv-th asv-th--center asv-th--split-hidden">
+                        Carrier
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paginatedShipments.map((shipment, index) => {
+                      const shipmentId = getShipmentRowId(shipment, index);
+                      const isSelected = selectedShipmentId === shipmentId;
+                      const effectiveArrivalDisplayDate =
+                        getEffectiveArrivalDisplayDate(shipment);
+                      const effectiveArrivalIsShipsgo =
+                        isAirArrivalFromShipsgo(shipment);
+                      const referenceLabel =
+                        shipment.customerReference || "-";
+                      const numberLabel = shipment.number || "---";
+                      const originLabel = formatAirportCell(shipment, "origin");
+                      const departureLabel = formatDateInline(
+                        shipment.departure?.date ??
+                          shipment.departure?.displayDate,
+                      );
+                      const carrierLabel = shipment.carrier?.name || "-";
 
-                  return (
-                    <React.Fragment key={shipmentId}>
-                      <tr
-                        className={`asv-tr ${isExpanded ? "asv-tr--active" : ""}`}
-                        onClick={() => toggleAccordion(shipmentId)}
-                      >
-                        <td className="asv-td asv-td--number">
-                          <svg
-                            className={`asv-row-chevron ${isExpanded ? "asv-row-chevron--open" : ""}`}
-                            width="14"
-                            height="14"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2.5"
+                      return (
+                        <tr
+                          key={shipmentId}
+                          className={`asv-tr${isSelected ? " asv-tr--selected" : ""}`}
+                          onClick={() => toggleShipmentSelection(shipmentId)}
+                        >
+                          <td
+                            className="asv-td asv-td--reference"
+                            title={referenceLabel}
                           >
-                            <polyline points="9 18 15 12 9 6" />
-                          </svg>
-                          {shipment.number || "---"}
-                        </td>
-                        <td className="osv-td osv-td--waybill">
-                          {formatAirportCell(shipment, "origin")}
-                        </td>
-                        <td className="asv-td">
-                          {shipment.customerReference || "-"}
-                        </td>
-                        <td className="asv-td asv-td--center">
-                          {formatDateInline(
-                            shipment.departure?.date ??
-                              shipment.departure?.displayDate,
-                          )}
-                        </td>
-                        <td className="asv-td asv-td--center">
-                          {renderArrivalInline(
-                            effectiveArrivalDisplayDate,
-                            effectiveArrivalIsShipsgo,
-                          )}
-                        </td>
-                        <td className="asv-td asv-td--center">
-                          {shipment.carrier?.name || "-"}
-                        </td>
-                      </tr>
-
-                      {/* Accordion content */}
-                      {isExpanded && (
-                        <tr className="asv-accordion-row">
-                          <td colSpan={6} className="asv-accordion-cell">
-                            <div className="asv-accordion-content">
-                              {/* Route summary card */}
-                              <div className="asv-route-card">
-                                <div className="asv-route-card__point">
-                                  <span className="asv-route-card__label">
-                                    Aeropuerto de Carga
-                                  </span>
-                                  <span className="asv-route-card__value">
-                                    {formatAirportCell(shipment, "origin")}
-                                  </span>
-                                  {shipment.departure?.displayDate && (
-                                    <span className="asv-route-card__date">
-                                      {formatDateInline(
-                                        shipment.departure?.date ??
-                                          shipment.departure?.displayDate,
-                                      )}
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="asv-route-card__connector">
-                                  <span className="asv-route-card__line" />
-                                  {shipment.carrier?.name && (
-                                    <span
-                                      className="asv-route-card__carrier"
-                                      title={shipment.carrier.name}
-                                    >
-                                      {shipment.carrier.name}
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="asv-route-card__point asv-route-card__point--end">
-                                  <span className="asv-route-card__label">
-                                    Aeropuerto de Descarga
-                                  </span>
-                                  <span className="asv-route-card__value">
-                                    {formatAirportCell(shipment, "dest")}
-                                  </span>
-                                  {effectiveArrivalDisplayDate && (
-                                    <span className="asv-route-card__date">
-                                      {effectiveArrivalIsShipsgo
-                                        ? formatShipsgoDateLong(
-                                            effectiveArrivalDisplayDate,
-                                          )
-                                        : formatDateInline(
-                                            effectiveArrivalDisplayDate,
-                                          )}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-
-                              {/* Tabs */}
-                              {documentsOnly ? (
-                                <DocumentosSectionAir shipmentId={shipmentId} />
-                              ) : (
-                                <DetailTabs
-                                  tabs={[
-                                    {
-                                      key: "general",
-                                      label: "Información General",
-                                      icon: (
-                                        <svg
-                                          width="14"
-                                          height="14"
-                                          viewBox="0 0 24 24"
-                                          fill="none"
-                                          stroke="currentColor"
-                                          strokeWidth="2"
-                                        >
-                                          <circle cx="12" cy="12" r="10" />
-                                          <line
-                                            x1="12"
-                                            y1="16"
-                                            x2="12"
-                                            y2="12"
-                                          />
-                                          <line
-                                            x1="12"
-                                            y1="8"
-                                            x2="12.01"
-                                            y2="8"
-                                          />
-                                        </svg>
-                                      ),
-                                      content: (
-                                        <GeneralTabContent
-                                          shipment={shipment}
-                                          cargoDetail={
-                                            shipment.id != null
-                                              ? cargoDetailsCache[shipment.id]
-                                              : undefined
-                                          }
-                                          quoteEntry={
-                                            shipment.id != null
-                                              ? quoteNumberCache[shipment.id]
-                                              : undefined
-                                          }
-                                          renderAccordionArrivalDate={() =>
-                                            renderAccordionArrivalDate(shipment)
-                                          }
-                                          onMountCargo={fetchCargoDetails}
-                                          getAllCommodities={getAllCommodities}
-                                          formatDate={formatDate}
-                                          getDisplayedTrackAwbNumber={
-                                            getDisplayedTrackAwbNumber
-                                          }
-                                          isTrackAwbLoading={isTrackAwbLoading}
-                                          isTrackAwbReady={isTrackAwbReady}
-                                          isShipmentAlreadyTracked={
-                                            isShipmentAlreadyTracked
-                                          }
-                                          openTrackModal={openTrackModal}
-                                          onOpenTracking={() =>
-                                            openTrackedShipmentInPortal(shipment)
-                                          }
-                                          onOpenQuote={(qn) => {
-                                            if (reporteriaClientesContext) {
-                                              reporteriaClientesContext.openQuotesTab(
-                                                qn,
-                                              );
-                                            } else {
-                                              navigate("/quotes", {
-                                                state: { quoteFilter: qn },
-                                              });
-                                            }
-                                          }}
-                                        />
-                                      ),
-                                    },
-                                    {
-                                      key: "docs",
-                                      label: "Documentos",
-                                      icon: (
-                                        <svg
-                                          width="14"
-                                          height="14"
-                                          viewBox="0 0 24 24"
-                                          fill="none"
-                                          stroke="currentColor"
-                                          strokeWidth="2"
-                                        >
-                                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                                          <polyline points="14 2 14 8 20 8" />
-                                        </svg>
-                                      ),
-                                      content: (
-                                        <DocumentosSectionAir
-                                          shipmentId={shipmentId}
-                                        />
-                                      ),
-                                    },
-                                    {
-                                      key: "notes",
-                                      label: "Notas",
-                                      icon: (
-                                        <svg
-                                          width="14"
-                                          height="14"
-                                          viewBox="0 0 24 24"
-                                          fill="none"
-                                          stroke="currentColor"
-                                          strokeWidth="2"
-                                        >
-                                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                                        </svg>
-                                      ),
-                                      hidden: !shipment.notes,
-                                      content: (
-                                        <div className="asv-notes">
-                                          {shipment.notes}
-                                        </div>
-                                      ),
-                                    },
-                                  ]}
-                                />
-                              )}
-                            </div>
+                            {referenceLabel}
+                          </td>
+                          <td
+                            className="asv-td asv-td--number asv-td--split-hidden"
+                            title={numberLabel}
+                          >
+                            {numberLabel}
+                          </td>
+                          <td
+                            className="asv-td asv-td--waybill"
+                            title={originLabel}
+                          >
+                            {originLabel}
+                          </td>
+                          <td
+                            className="asv-td asv-td--center"
+                            title={departureLabel}
+                          >
+                            {departureLabel}
+                          </td>
+                          <td
+                            className="asv-td asv-td--center"
+                            title={effectiveArrivalDisplayDate || "-"}
+                          >
+                            {renderArrivalInline(
+                              effectiveArrivalDisplayDate,
+                              effectiveArrivalIsShipsgo,
+                            )}
+                          </td>
+                          <td
+                            className="asv-td asv-td--center asv-td--split-hidden"
+                            title={carrierLabel}
+                          >
+                            {carrierLabel}
                           </td>
                         </tr>
-                      )}
-                    </React.Fragment>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
 
-          {/* Table footer */}
-          <div className="asv-table-footer">
-            <div className="asv-table-footer__left" />
-            <div className="asv-table-footer__right">
-              <span className="asv-pagination-label">Filas por pagina:</span>
-              <select
-                className="asv-pagination-select"
-                value={rowsPerPage}
-                onChange={(e) => {
-                  setRowsPerPage(Number(e.target.value));
-                  setTablePage(1);
-                }}
-              >
-                <option value={10}>10</option>
-                <option value={15}>15</option>
-                <option value={25}>25</option>
-                <option value={50}>50</option>
-              </select>
-              <span className="asv-pagination-range">
-                {paginationRangeText}
-              </span>
-              <button
-                className="asv-pagination-btn"
-                disabled={tablePage <= 1}
-                onClick={() => setTablePage((p) => p - 1)}
-              >
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <polyline points="15 18 9 12 15 6" />
-                </svg>
-              </button>
-              <button
-                className="asv-pagination-btn"
-                disabled={tablePage >= totalTablePages}
-                onClick={() => setTablePage((p) => p + 1)}
-              >
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <polyline points="9 18 15 12 9 6" />
-                </svg>
-              </button>
+              {/* Table footer */}
+              <div className="asv-table-footer">
+                <div className="asv-table-footer__left" />
+                <div className="asv-table-footer__right">
+                  <span className="asv-pagination-label">Filas por pagina:</span>
+                  <select
+                    className="asv-pagination-select"
+                    value={rowsPerPage}
+                    onChange={(e) => {
+                      setRowsPerPage(Number(e.target.value));
+                      setTablePage(1);
+                    }}
+                  >
+                    <option value={10}>10</option>
+                    <option value={15}>15</option>
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                  </select>
+                  <span className="asv-pagination-range">
+                    {paginationRangeText}
+                  </span>
+                  <button
+                    className="asv-pagination-btn"
+                    disabled={tablePage <= 1}
+                    onClick={() => setTablePage((p) => p - 1)}
+                  >
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <polyline points="15 18 9 12 15 6" />
+                    </svg>
+                  </button>
+                  <button
+                    className="asv-pagination-btn"
+                    disabled={tablePage >= totalTablePages}
+                    onClick={() => setTablePage((p) => p + 1)}
+                  >
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <polyline points="9 18 15 12 9 6" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
+
+          {selectedShipment && selectedShipmentIndex >= 0 && (
+            <aside className="asv-split-detail">
+              <AirShipmentDetailPanel
+                shipment={selectedShipment}
+                shipmentId={getShipmentRowId(
+                  selectedShipment,
+                  selectedShipmentIndex,
+                )}
+                documentsOnly={documentsOnly}
+                onClose={() => setSelectedShipmentId(null)}
+                formatAirportCell={formatAirportCell}
+                formatDateInline={formatDateInline}
+                effectiveArrivalDisplayDate={getEffectiveArrivalDisplayDate(
+                  selectedShipment,
+                )}
+                effectiveArrivalIsShipsgo={isAirArrivalFromShipsgo(
+                  selectedShipment,
+                )}
+                cargoDetail={
+                  selectedShipment.id != null
+                    ? cargoDetailsCache[selectedShipment.id]
+                    : undefined
+                }
+                quoteEntry={
+                  selectedShipment.id != null
+                    ? quoteNumberCache[selectedShipment.id]
+                    : undefined
+                }
+                renderAccordionArrivalDate={() =>
+                  renderAccordionArrivalDate(selectedShipment)
+                }
+                onMountCargo={fetchCargoDetails}
+                getAllCommodities={getAllCommodities}
+                formatDate={formatDate}
+                getDisplayedTrackAwbNumber={getDisplayedTrackAwbNumber}
+                isTrackAwbLoading={isTrackAwbLoading}
+                isTrackAwbReady={isTrackAwbReady}
+                isShipmentAlreadyTracked={isShipmentAlreadyTracked}
+                openTrackModal={openTrackModal}
+                onOpenTracking={() =>
+                  openTrackedShipmentInPortal(selectedShipment)
+                }
+                onOpenQuote={(qn) => {
+                  if (reporteriaClientesContext) {
+                    reporteriaClientesContext.openQuotesTab(qn);
+                  } else {
+                    navigate("/quotes", { state: { quoteFilter: qn } });
+                  }
+                }}
+              />
+            </aside>
+          )}
         </div>
       )}
 
