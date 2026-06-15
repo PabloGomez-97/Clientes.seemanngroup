@@ -162,8 +162,6 @@ export function useAirConnectSpain(params: UseAirConnectSpainParams) {
 
   const prevFcaOriginRef = useRef<string | null>(null);
 
-  const prevExwPostalRef = useRef<string | null>(null);
-
   const quoteFetchGenerationRef = useRef(0);
 
   const prevInputsSnapshotRef = useRef("");
@@ -349,8 +347,6 @@ export function useAirConnectSpain(params: UseAirConnectSpainParams) {
 
       prevFcaOriginRef.current = null;
 
-      prevExwPostalRef.current = null;
-
       return;
 
     }
@@ -383,35 +379,9 @@ export function useAirConnectSpain(params: UseAirConnectSpainParams) {
 
 
 
-    if (isExw && isValidSpainPostalCode(postalCode)) {
-
-      if (postalCode === prevExwPostalRef.current) return;
-
-      prevExwPostalRef.current = postalCode;
-
-      if (!rutaSeleccionada) {
-
-        setRutaSeleccionada(createAirConnectMockRutaFromPostal(postalCode));
-
-      }
-
-      onAdvanceToStep2();
-
-      return;
-
-    }
-
-
-
     if (!isFca || !originSeleccionado) {
 
       prevFcaOriginRef.current = null;
-
-    }
-
-    if (!isExw || !isValidSpainPostalCode(postalCode)) {
-
-      prevExwPostalRef.current = null;
 
     }
 
@@ -421,15 +391,11 @@ export function useAirConnectSpain(params: UseAirConnectSpainParams) {
 
     isFca,
 
-    isExw,
-
     originSeleccionado,
 
     rutaSeleccionada,
 
     currentStep,
-
-    postalCode,
 
     setRutaSeleccionada,
 
@@ -738,11 +704,20 @@ export function useAirConnectSpain(params: UseAirConnectSpainParams) {
 
 
 
+  const confirmExwStep1 = useCallback(() => {
+    if (!isExw || !isValidSpainPostalCode(postalCode)) {
+      setExwPostalRetryActive(true);
+      setError(AIR_CONNECT_EXW_POSTAL_ERROR);
+      return;
+    }
+
+    setRutaSeleccionada(createAirConnectMockRutaFromPostal(postalCode));
+    onAdvanceToStep2();
+  }, [isExw, postalCode, setRutaSeleccionada, onAdvanceToStep2]);
+
   const resetAirConnectState = useCallback(() => {
 
     prevFcaOriginRef.current = null;
-
-    prevExwPostalRef.current = null;
 
     prevInputsSnapshotRef.current = "";
 
@@ -795,6 +770,8 @@ export function useAirConnectSpain(params: UseAirConnectSpainParams) {
     fetchQuote: runQuoteFetch,
 
     retryQuote,
+
+    confirmExwStep1,
 
     resetAirConnectState,
 

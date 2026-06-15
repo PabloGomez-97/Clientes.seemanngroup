@@ -2831,6 +2831,11 @@ function QuoteAPITester({
                 ).toLocaleDateString()
             }
             incoterm={incoterm}
+            pickupFromAddress={
+              incoterm === "EXW" && pickupFromAddress.trim()
+                ? pickupFromAddress
+                : undefined
+            }
             deliveryToAddress={
               ultimaMillaAplicaCobro ? undefined : deliveryToAddressDerived
             }
@@ -5658,6 +5663,36 @@ function QuoteAPITester({
                       onPostalCodeChange={airConnect.setPostalCode}
                     />
 
+                    {airConnect.isExw &&
+                      paisSeleccionado &&
+                      destinationSeleccionado && (
+                        <div className="mb-4 bg-light p-3 rounded border">
+                          <CotizadorAddressMap
+                            value={pickupFromAddress}
+                            onChange={setPickupFromAddress}
+                            placeholder="Ingrese dirección de recogida (opcional)"
+                            rows={2}
+                            pickupLabel={t("QuoteAIR.pickup")}
+                            onPickupCoordsChange={setPickupCoords}
+                          />
+                        </div>
+                      )}
+
+                    {airConnect.isExw &&
+                      currentStep === 1 &&
+                      airConnect.isRouteStepReady && (
+                        <div className="mb-4">
+                          <button
+                            type="button"
+                            className="qa-btn qa-btn-primary"
+                            onClick={() => airConnect.confirmExwStep1()}
+                          >
+                            Siguiente
+                            <i className="ti ti-arrow-right ms-2" />
+                          </button>
+                        </div>
+                      )}
+
                     {incoterm === "FCA" && paisSeleccionado && !airConnect.isFca && (
                       <div className="row g-3 mb-4">
                         <div className="col-md-6">
@@ -7078,6 +7113,7 @@ function QuoteAPITester({
                 onSelectOffer={airConnect.setSelectedKey}
                 postalCode={airConnect.postalCode}
                 onPostalCodeChange={airConnect.setPostalCode}
+                pickupFromAddress={pickupFromAddress}
                 onRetryQuote={() => void airConnect.retryQuote()}
                 btnPhase={btnPhase}
                 onGenerateQuote={() => {

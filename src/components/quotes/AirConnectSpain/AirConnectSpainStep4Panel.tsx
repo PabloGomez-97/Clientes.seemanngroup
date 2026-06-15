@@ -19,6 +19,7 @@ interface AirConnectSpainStep4PanelProps {
   onSelectOffer: (key: string) => void;
   postalCode: string;
   onPostalCodeChange: (value: string) => void;
+  pickupFromAddress?: string;
   onRetryQuote: () => void;
   btnPhase: QuoteBtnPhase;
   onGenerateQuote: () => void;
@@ -38,6 +39,7 @@ export function AirConnectSpainStep4Panel({
   onSelectOffer,
   postalCode,
   onPostalCodeChange,
+  pickupFromAddress,
   onRetryQuote,
   btnPhase,
   onGenerateQuote,
@@ -129,6 +131,14 @@ export function AirConnectSpainStep4Panel({
                 <>
                   <div className="col-6 text-muted">Código postal</div>
                   <div className="col-6 text-end fw-semibold">{quote.postalCode}</div>
+                </>
+              ) : null}
+              {pickupFromAddress?.trim() ? (
+                <>
+                  <div className="col-6 text-muted">Dirección de recogida</div>
+                  <div className="col-6 text-end fw-semibold">
+                    {pickupFromAddress.trim()}
+                  </div>
                 </>
               ) : null}
               <div className="col-6 text-muted">Peso cobrable (API)</div>
