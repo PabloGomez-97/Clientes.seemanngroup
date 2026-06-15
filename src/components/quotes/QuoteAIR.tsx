@@ -2578,7 +2578,7 @@ function QuoteAPITester({
       validUntil: validUntilIso,
       transitDays: null,
       project: { name: "AIR" },
-      customerReference: "Portal Created [AIR] - AirConnect ES-SCL",
+      customerReference: "Portal Created [AIR]",
       contact: { name: effectiveUsername },
       origin: { name: rutaSeleccionada.origin },
       carrierBroker: { name: airlineLabel },
@@ -2606,9 +2606,9 @@ function QuoteAPITester({
             billApplyTo: "Other",
             billTo: { name: effectiveUsername },
             currency: { abbr: AIR_CONNECT_CURRENCY },
-            reference: `AirConnect ${offer.freight} - ${airlineLabel}`,
+            reference: `Amount to Air Freight - ${airlineLabel}`,
             showOnDocument: true,
-            notes: `Cotización AirConnect España→SCL (${airlineLabel})`,
+            notes: `Air freight quotation created via Client Portal (${airlineLabel})`,
           },
           expense: {
             currency: { abbr: AIR_CONNECT_CURRENCY },
@@ -2884,7 +2884,7 @@ function QuoteAPITester({
         );
         const filename = quoteNumber
           ? `${quoteNumber}_${customerClean}.pdf`
-          : `Cotizacion_AirConnect_${customerClean}_${formatDateForFilename(new Date())}.pdf`;
+          : `Cotizacion_${customerClean}_${formatDateForFilename(new Date())}.pdf`;
 
         const pdfBase64 = await generatePDFBase64(pdfElement);
         if (pdfBase64 && quoteNumber) {
@@ -5774,8 +5774,8 @@ function QuoteAPITester({
                             Rutas Disponibles ({rutasFiltradas.length})
                           </h6>
                           {rutasFiltradas.length > 0 &&
-                          originSeleccionado &&
-                          destinationSeleccionado ? (
+                            originSeleccionado &&
+                            destinationSeleccionado ? (
                             <div className="qa-routes-actions d-flex gap-2 flex-wrap">
                               <AirPriceHistoryModal
                                 originLabel={originSeleccionado.label}
