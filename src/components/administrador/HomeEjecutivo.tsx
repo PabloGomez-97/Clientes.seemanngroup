@@ -19,6 +19,11 @@ import AirShipmentDetail from "../Sidebar/shipsgo/AirShipmentDetail";
 import OceanShipmentDetail from "../Sidebar/shipsgo/OceanShipmentDetail";
 import "../Sidebar/styles/Shipsgotracking.css";
 import "./HomeEjecutivo.css";
+import { EjCommandDock, EjCommandDockSkeleton } from "./homeEjecutivo/EjCommandDock";
+import {
+  EjOperationsMetrics,
+  EjOperationsMetricsSkeleton,
+} from "./homeEjecutivo/EjOperationsMetrics";
 import {
   fetchAllLinbisByConsignee,
   LINBIS_CLIENT_CONCURRENCY,
@@ -370,19 +375,6 @@ function clearLinbisCache(username: string) {
 // Sub-components (stateless)
 // ═══════════════════════════════════════════════════════════════════════════
 
-function SkeletonMetricStrip() {
-  return (
-    <div className="ej-client-metrics-strip ej-client-metrics-strip--skeleton" aria-hidden="true">
-      {Array.from({ length: 4 }).map((_, index) => (
-        <div className="ej-client-metrics-strip__item" key={index}>
-          <div className="ej-skeleton ej-skeleton--label" />
-          <div className="ej-skeleton ej-skeleton--value" />
-          <div className="ej-skeleton ej-skeleton--sub" />
-        </div>
-      ))}
-    </div>
-  );
-}
 
 function BehaviorStatsSkeleton() {
   return (
@@ -468,14 +460,7 @@ function HomeEjecutivoLoadingSkeleton({
         </div>
       </div>
 
-      <div className="ej-quick-actions-skeleton">
-        <div className="ej-skeleton ej-skeleton--quick-label" />
-        <div className="ej-quick-actions-skeleton__row">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div className="ej-skeleton ej-skeleton--quick-btn" key={i} />
-          ))}
-        </div>
-      </div>
+      <EjCommandDockSkeleton />
 
       <div className="ej-section">
         <div className="ej-skeleton ej-skeleton--section-title" />
@@ -486,7 +471,7 @@ function HomeEjecutivoLoadingSkeleton({
 
       <div className="ej-section">
         <div className="ej-skeleton ej-skeleton--section-title" />
-        <SkeletonMetricStrip />
+        <EjOperationsMetricsSkeleton />
       </div>
 
       <div className="ej-section">
@@ -1474,42 +1459,7 @@ export default function HomeEjecutivo() {
         </button>
       </div>
 
-      {/* ── Acceso Rápido ──────────────────────────────────────────────── */}
-      <div className="ops-quick-actions-section">
-        <span className="ops-quick-actions-label">
-          {t("admin.homeEjecutivo.quickAccess")}
-        </span>
-        <div className="ops-quick-actions">
-          <button
-            className="ops-quick-action"
-            onClick={() => navigate("/admin/cotizador-administrador")}
-          >
-            {t("admin.homeEjecutivo.newQuote")}
-          </button>
-          <button
-            className="ops-quick-action"
-            onClick={() =>
-              navigate("/admin/cotizador-administrador", {
-                state: { tipoEnvio: "LASTMILE" },
-              })
-            }
-          >
-            {t("admin.homeEjecutivo.lastMileQuote")}
-          </button>
-          <button
-            className="ops-quick-action"
-            onClick={() => navigate("/admin/reporteriaclientes")}
-          >
-            {t("admin.homeEjecutivo.myClients")}
-          </button>
-          <button
-            className="ops-quick-action"
-            onClick={() => navigate("/admin/trackeos")}
-          >
-            {t("admin.homeEjecutivo.trackings")}
-          </button>
-        </div>
-      </div>
+      <EjCommandDock t={t} navigate={navigate} />
 
       {/* ── Delay Banner (solo cuando hay retrasos) ─────────────────────── */}
       {totalDelayed > 0 && (
@@ -1698,161 +1648,31 @@ export default function HomeEjecutivo() {
             {t("admin.homeEjecutivo.viewFullAnalysis")}
           </button>
         </div>
-        <div className="ej-client-metrics-strip">
-          {/* Clients o */}
-          <div
-            className="ej-kpi ej-kpi--orange ej-kpi--clickable ej-client-metrics-strip__item"
-            onClick={() => setListModal("all-clients")}
-          >
-            <div className="ej-kpi__header">
-              <span className="ej-kpi__label">{t("admin.homeEjecutivo.myClients")}</span>
-              <div
-                className="ej-kpi__icon"
-                style={{ background: "var(--ej-orange-bg)" }}
-              >
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="var(--ej-orange)"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                  <circle cx="9" cy="7" r="4" />
-                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                </svg>
-              </div>
-            </div>
-            <div className="ej-kpi__value">{clientes.length}</div>
-            <div className="ej-kpi__sub">
-              {newThisMonth > 0
-                ? t("admin.homeEjecutivo.newThisMonth", { count: newThisMonth })
-                : t("admin.homeEjecutivo.activePortfolio")}
-            </div>
-          </div>
-
-          {/* ShipsGo Trackings */}
-          <div
-            className="ej-kpi ej-kpi--green ej-kpi--clickable ej-client-metrics-strip__item"
-            onClick={() => {
-              setListModal("all-trackings");
-              setListModalTab("all");
-            }}
-          >
-            <div className="ej-kpi__header">
-              <span className="ej-kpi__label">{t("admin.homeEjecutivo.trackings")}</span>
-              <div
-                className="ej-kpi__icon"
-                style={{ background: "var(--ej-green-bg)" }}
-              >
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="var(--ej-green)"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-                </svg>
-              </div>
-            </div>
-            <div className="ej-kpi__value">
-              {trackingAir.length + trackingOcean.length}
-            </div>
-            <div className="ej-kpi__sub">
-              {t("admin.homeEjecutivo.airOceanBreakdown", {
-                air: trackingAir.length,
-                ocean: trackingOcean.length,
-              })}
-            </div>
-          </div>
-
-          {/* Active (in transit) */}
-          <div
-            className="ej-kpi ej-kpi--amber ej-kpi--clickable ej-client-metrics-strip__item"
-            onClick={() => {
-              setListModal("kpi-trackings");
-              setListModalTab("all");
-            }}
-          >
-            <div className="ej-kpi__header">
-              <span className="ej-kpi__label">{t("admin.homeEjecutivo.inMotion")}</span>
-              <div
-                className="ej-kpi__icon"
-                style={{ background: "var(--ej-amber-bg)" }}
-              >
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="var(--ej-amber)"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <circle cx="12" cy="12" r="10" />
-                  <polyline points="12 6 12 12 16 14" />
-                </svg>
-              </div>
-            </div>
-            <div className="ej-kpi__value">
-              {airInTransit.length + oceanInTransit.length}
-            </div>
-            <div className="ej-kpi__sub">
-              {t("admin.homeEjecutivo.airOceanBreakdown", {
-                air: airInTransit.length,
-                ocean: oceanInTransit.length,
-              })}
-            </div>
-          </div>
-
-          {/* Delays */}
-          <div
-            className="ej-kpi ej-kpi--red ej-kpi--clickable ej-client-metrics-strip__item"
-            onClick={() => {
-              setListModal("kpi-delayed");
-              setListModalTab("all");
-            }}
-          >
-            <div className="ej-kpi__header">
-              <span className="ej-kpi__label">{t("admin.homeEjecutivo.activeDelays")}</span>
-              <div
-                className="ej-kpi__icon"
-                style={{ background: "var(--ej-red-bg)" }}
-              >
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="var(--ej-red)"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                  <line x1="12" y1="9" x2="12" y2="13" />
-                  <line x1="12" y1="17" x2="12.01" y2="17" />
-                </svg>
-              </div>
-            </div>
-            <div className="ej-kpi__value">{totalDelayed}</div>
-            <div className="ej-kpi__sub">
-              {t("admin.homeEjecutivo.airOceanBreakdown", {
-                air: airDelayed.length,
-                ocean: oceanDelayed.length,
-              })}
-            </div>
-          </div>
-        </div>
+        <EjOperationsMetrics
+          t={t}
+          clientCount={clientes.length}
+          newThisMonth={newThisMonth}
+          trackingAirCount={trackingAir.length}
+          trackingOceanCount={trackingOcean.length}
+          inTransitAirCount={airInTransit.length}
+          inTransitOceanCount={oceanInTransit.length}
+          totalDelayed={totalDelayed}
+          airDelayedCount={airDelayed.length}
+          oceanDelayedCount={oceanDelayed.length}
+          onClientsClick={() => setListModal("all-clients")}
+          onTrackingsClick={() => {
+            setListModal("all-trackings");
+            setListModalTab("all");
+          }}
+          onInMotionClick={() => {
+            setListModal("kpi-trackings");
+            setListModalTab("all");
+          }}
+          onDelaysClick={() => {
+            setListModal("kpi-delayed");
+            setListModalTab("all");
+          }}
+        />
       </div>
 
       {/* ── Atención Inmediata ─────────────────────────────────────────── */}
