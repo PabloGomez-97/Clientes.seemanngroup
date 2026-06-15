@@ -1267,8 +1267,9 @@ function QuoteFCL({
         originIndex,
         paisSeleccionado?.value,
         carriersActivos,
+        podSeleccionado?.value,
       ),
-    [rutas, originIndex, paisSeleccionado?.value, activeCarriersKey],
+    [rutas, originIndex, paisSeleccionado?.value, podSeleccionado?.value, activeCarriersKey],
   );
 
   const {
@@ -3440,6 +3441,9 @@ function QuoteFCL({
                                   service="fcl"
                                   countryCode={paisSeleccionado.value}
                                   countryLabel={paisSeleccionado.label}
+                                  destinationLabel={podSeleccionado.label}
+                                  destinationCode={podSeleccionado.value}
+                                  selectedOriginLabel={polSeleccionado.label}
                                   columns={COUNTRY_RATE_COLUMNS_FCL}
                                   rows={countryRatesRows}
                                   translationNs="Quotefcl"

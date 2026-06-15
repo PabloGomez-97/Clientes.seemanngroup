@@ -1930,11 +1930,13 @@ function QuoteAPITester({
         paisSeleccionado?.value,
         carriersActivos,
         monedasActivas,
+        destinationSeleccionado?.value,
       ),
     [
       rutas,
       originIndex,
       paisSeleccionado?.value,
+      destinationSeleccionado?.value,
       activeCarriersKey,
       activeCurrenciesKey,
     ],
@@ -5789,6 +5791,9 @@ function QuoteAPITester({
                                   service="air"
                                   countryCode={paisSeleccionado.value}
                                   countryLabel={paisSeleccionado.label}
+                                  destinationLabel={destinationSeleccionado.label}
+                                  destinationCode={destinationSeleccionado.value}
+                                  selectedOriginLabel={originSeleccionado.label}
                                   columns={COUNTRY_RATE_COLUMNS_AIR}
                                   rows={countryRatesRows}
                                   translationNs="QuoteAIR"

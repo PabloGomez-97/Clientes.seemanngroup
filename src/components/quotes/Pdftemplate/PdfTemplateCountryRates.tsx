@@ -14,6 +14,8 @@ import {
 interface PdfTemplateCountryRatesProps {
   countryLabel: string;
   serviceSuffix: string;
+  destinationLabel?: string;
+  selectedOriginLabel?: string;
   service?: CountryRateService;
   generatedDate: string;
   columns: CountryRateColumn[];
@@ -109,8 +111,11 @@ const tdPrice: React.CSSProperties = {
   fontVariantNumeric: "tabular-nums",
 };
 
-function buildSheets(rows: CountryRateRow[]): PdfSheet[] {
-  const originGroups = groupRowsByOrigin(rows);
+function buildSheets(
+  rows: CountryRateRow[],
+  preferredOriginLabel?: string,
+): PdfSheet[] {
+  const originGroups = groupRowsByOrigin(rows, preferredOriginLabel);
   const sheets: PdfSheet[] = [];
   let isFirst = true;
 
@@ -164,6 +169,7 @@ function Callout({
 function SheetHeader({
   countryLabel,
   serviceSuffix,
+  destinationLabel,
   logoSrc,
   origin,
   continuation = false,
@@ -171,12 +177,16 @@ function SheetHeader({
 }: {
   countryLabel: string;
   serviceSuffix: string;
+  destinationLabel?: string;
   logoSrc: string;
   origin?: string;
   continuation?: boolean;
   variant?: "origin" | "legal";
 }) {
   const isLegal = variant === "legal";
+  const routeContext = destinationLabel
+    ? `${countryLabel} · ${serviceSuffix} → ${destinationLabel}`
+    : `${countryLabel} · ${serviceSuffix}`;
 
   return (
     <header style={{ marginBottom: "10px" }}>
@@ -279,7 +289,7 @@ function SheetHeader({
               fontWeight: 500,
             }}
           >
-            {countryLabel} · {serviceSuffix}
+            {routeContext}
             {!isLegal && !continuation ? (
               <span style={{ color: C.line }}> · </span>
             ) : null}
@@ -302,18 +312,23 @@ function SheetHeader({
 function MetaStrip({
   countryLabel,
   serviceSuffix,
+  destinationLabel,
   generatedDate,
   routeCount,
   originCount,
 }: {
   countryLabel: string;
   serviceSuffix: string;
+  destinationLabel?: string;
   generatedDate: string;
   routeCount: number;
   originCount: number;
 }) {
   const fields = [
     { label: "País", value: countryLabel, bold: true },
+    ...(destinationLabel
+      ? [{ label: "Destino", value: destinationLabel, bold: true }]
+      : []),
     { label: "Modalidad", value: serviceSuffix, bold: true },
     { label: "Generado", value: generatedDate, bold: false },
     { label: "Rutas", value: String(routeCount), bold: true },
@@ -537,6 +552,8 @@ function SheetFooter({
 export const PdfTemplateCountryRates: React.FC<PdfTemplateCountryRatesProps> = ({
   countryLabel,
   serviceSuffix,
+  destinationLabel,
+  selectedOriginLabel,
   service,
   generatedDate,
   columns,
@@ -544,8 +561,8 @@ export const PdfTemplateCountryRates: React.FC<PdfTemplateCountryRatesProps> = (
   logoSrc = "/logo.png",
 }) => {
   const serviceNote = service ? SERVICE_NOTES[service] : null;
-  const originGroups = groupRowsByOrigin(rows);
-  const sheets = buildSheets(rows);
+  const originGroups = groupRowsByOrigin(rows, selectedOriginLabel);
+  const sheets = buildSheets(rows, selectedOriginLabel);
   const totalPages = sheets.length;
 
   return (
@@ -566,6 +583,7 @@ export const PdfTemplateCountryRates: React.FC<PdfTemplateCountryRatesProps> = (
           <SheetHeader
             countryLabel={countryLabel}
             serviceSuffix={serviceSuffix}
+            destinationLabel={destinationLabel}
             logoSrc={logoSrc}
             origin={sheet.origin}
             continuation={sheet.continuation}
@@ -576,6 +594,7 @@ export const PdfTemplateCountryRates: React.FC<PdfTemplateCountryRatesProps> = (
             <MetaStrip
               countryLabel={countryLabel}
               serviceSuffix={serviceSuffix}
+              destinationLabel={destinationLabel}
               generatedDate={generatedDate}
               routeCount={rows.length}
               originCount={originGroups.length}

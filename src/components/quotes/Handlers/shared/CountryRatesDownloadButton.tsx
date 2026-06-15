@@ -20,6 +20,9 @@ interface CountryRatesDownloadButtonProps {
   service: CountryRateService;
   countryCode: string;
   countryLabel: string;
+  destinationLabel?: string;
+  destinationCode?: string;
+  selectedOriginLabel?: string;
   columns: CountryRateColumn[];
   rows: CountryRateRow[];
   translationNs: "QuoteAIR" | "Quotefcl" | "Quotelcl";
@@ -38,6 +41,9 @@ export function CountryRatesDownloadButton({
   service,
   countryCode,
   countryLabel,
+  destinationLabel,
+  destinationCode,
+  selectedOriginLabel,
   columns,
   rows,
   translationNs,
@@ -70,6 +76,8 @@ export function CountryRatesDownloadButton({
           <PdfTemplateCountryRates
             countryLabel={countryLabel}
             serviceSuffix={SERVICE_SUFFIX_LABELS[service]}
+            destinationLabel={destinationLabel}
+            selectedOriginLabel={selectedOriginLabel}
             service={service}
             generatedDate={generatedDate}
             columns={columns}
@@ -86,8 +94,11 @@ export function CountryRatesDownloadButton({
       }
 
       const countryClean = countryCode.replace(/[^a-zA-Z0-9]/g, "_");
+      const destinationClean = destinationCode
+        ? `_${destinationCode.replace(/[^a-zA-Z0-9]/g, "_")}`
+        : "";
       const serviceLabel = SERVICE_FILENAME_LABELS[service];
-      const filename = `Tarifas_${countryClean}_${serviceLabel}_${formatDateForFilename(new Date())}.pdf`;
+      const filename = `Tarifas_${countryClean}${destinationClean}_${serviceLabel}_${formatDateForFilename(new Date())}.pdf`;
 
       await generatePDF({
         filename,

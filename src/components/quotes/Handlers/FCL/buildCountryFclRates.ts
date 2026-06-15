@@ -35,19 +35,21 @@ export function buildCountryFclRates(
   originIndex: OriginIndex | null,
   countryCode: string | null | undefined,
   carriersActivos: Set<string>,
+  destinationNormalized: string | null | undefined,
 ): CountryRateRow[] {
+  if (!destinationNormalized) return [];
+
   const countryPolNorms = getCountryPolNorms(originIndex, countryCode);
   if (countryPolNorms.size === 0) return [];
 
   const filtered = rutas.filter(
     (ruta) =>
       isRouteInCountryAndValid(ruta, countryPolNorms) &&
+      ruta.podNormalized === destinationNormalized &&
       matchesCarrier(ruta.carrier, carriersActivos),
   );
 
   const sorted = [...filtered].sort((a, b) => {
-    const podCmp = a.pod.localeCompare(b.pod, "es");
-    if (podCmp !== 0) return podCmp;
     const polCmp = a.pol.localeCompare(b.pol, "es");
     if (polCmp !== 0) return polCmp;
     return (a.carrier || "").localeCompare(b.carrier || "", "es");

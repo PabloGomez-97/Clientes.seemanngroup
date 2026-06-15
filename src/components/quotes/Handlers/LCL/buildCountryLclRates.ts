@@ -13,21 +13,21 @@ export function buildCountryLclRates(
   originIndex: OriginIndex | null,
   countryCode: string | null | undefined,
   operadoresActivos: Set<Operador>,
+  destinationNormalized: string | null | undefined,
 ): CountryRateRow[] {
+  if (!destinationNormalized) return [];
+
   const countryPolNorms = getCountryPolNorms(originIndex, countryCode);
   if (countryPolNorms.size === 0) return [];
 
   const filtered = rutas.filter(
     (ruta) =>
       isRouteInCountryAndValid(ruta, countryPolNorms) &&
+      ruta.podNormalized === destinationNormalized &&
       operadoresActivos.has(ruta.operador),
   );
 
-  const sorted = [...filtered].sort((a, b) => {
-    const podCmp = a.pod.localeCompare(b.pod, "es");
-    if (podCmp !== 0) return podCmp;
-    return a.pol.localeCompare(b.pol, "es");
-  });
+  const sorted = [...filtered].sort((a, b) => a.pol.localeCompare(b.pol, "es"));
 
   return sorted.map((ruta) => ({
     id: ruta.id,

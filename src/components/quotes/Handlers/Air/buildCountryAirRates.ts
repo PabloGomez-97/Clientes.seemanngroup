@@ -29,8 +29,9 @@ export function buildCountryAirRates(
   countryCode: string | null | undefined,
   carriersActivos: Set<string>,
   monedasActivas: Set<Currency>,
+  destinationNormalized: string | null | undefined,
 ): CountryRateRow[] {
-  if (!originIndex || !countryCode) return [];
+  if (!originIndex || !countryCode || !destinationNormalized) return [];
 
   const countryOriginNorms = new Set(
     getOriginsInCountry(originIndex, countryCode).map((o) => o.normalized),
@@ -39,6 +40,7 @@ export function buildCountryAirRates(
 
   const filtered = rutas.filter((ruta) => {
     if (!countryOriginNorms.has(ruta.originNormalized)) return false;
+    if (ruta.destinationNormalized !== destinationNormalized) return false;
     if (getValidityClass(ruta.validUntil) === "expired") return false;
     const matchCarrier = !ruta.carrier || carriersActivos.has(ruta.carrier);
     const matchMoneda = monedasActivas.has(ruta.currency);
@@ -46,8 +48,6 @@ export function buildCountryAirRates(
   });
 
   const sorted = [...filtered].sort((a, b) => {
-    const destCmp = a.destination.localeCompare(b.destination, "es");
-    if (destCmp !== 0) return destCmp;
     const originCmp = a.origin.localeCompare(b.origin, "es");
     if (originCmp !== 0) return originCmp;
     return (a.carrier || "").localeCompare(b.carrier || "", "es");

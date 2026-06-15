@@ -1692,8 +1692,9 @@ function QuoteLCL({
         originIndex,
         paisSeleccionado?.value,
         operadoresActivos,
+        podSeleccionado?.value,
       ),
-    [rutas, originIndex, paisSeleccionado?.value, activeOperadoresKey],
+    [rutas, originIndex, paisSeleccionado?.value, podSeleccionado?.value, activeOperadoresKey],
   );
 
   const {
@@ -3956,6 +3957,9 @@ function QuoteLCL({
                                   service="lcl"
                                   countryCode={paisSeleccionado.value}
                                   countryLabel={paisSeleccionado.label}
+                                  destinationLabel={podSeleccionado.label}
+                                  destinationCode={podSeleccionado.value}
+                                  selectedOriginLabel={polSeleccionado.label}
                                   columns={COUNTRY_RATE_COLUMNS_LCL}
                                   rows={countryRatesRows}
                                   translationNs="Quotelcl"
