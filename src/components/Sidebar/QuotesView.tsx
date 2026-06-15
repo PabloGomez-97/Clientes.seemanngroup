@@ -113,7 +113,7 @@ function shouldShowQuoteTracking(quote: Quote): boolean {
   return !!getQuoteTrackType(quote) && !!getQuoteTrackingNumber(quote);
 }
 
-const ITEMS_PER_PAGE = 10;
+const ITEMS_PER_PAGE = 15;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const QUOTE_TRACKING_CUSTOM_FIELD_ID = 17;
 const API_BASE_URL =
