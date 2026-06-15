@@ -22,7 +22,10 @@ const buildPdfOptions = (
     scrollY: 0,
   },
   pagebreak: paginateTables
-    ? { mode: ['css', 'legacy'] as const }
+    ? {
+        mode: ['css', 'legacy'] as const,
+        after: ['.pdf-page-after'],
+      }
     : { mode: ['avoid-all', 'css'] as const },
   jsPDF: { 
     unit: 'mm', 

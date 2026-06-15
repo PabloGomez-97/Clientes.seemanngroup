@@ -1,5 +1,10 @@
 import React from "react";
 import {
+  chunkRows,
+  groupRowsByOrigin,
+  ROWS_PER_PDF_PAGE,
+} from "../Handlers/shared/countryRatesPdfUtils";
+import {
   getCountryRateCellValue,
   type CountryRateColumn,
   type CountryRateRow,
@@ -16,6 +21,17 @@ interface PdfTemplateCountryRatesProps {
   logoSrc?: string;
 }
 
+type SheetKind = "rates" | "legal";
+
+interface PdfSheet {
+  key: string;
+  kind: SheetKind;
+  origin?: string;
+  continuation?: boolean;
+  showMeta?: boolean;
+  rows?: CountryRateRow[];
+}
+
 const C = {
   text: "#111",
   sub: "#666",
@@ -28,6 +44,17 @@ const C = {
 const FONT =
   '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
 
+const SHEET: React.CSSProperties = {
+  width: "297mm",
+  padding: "8mm 12mm",
+  boxSizing: "border-box",
+  backgroundColor: C.white,
+  fontFamily: FONT,
+  fontSize: "8pt",
+  color: C.text,
+  lineHeight: 1.45,
+};
+
 const SERVICE_NOTES: Record<CountryRateService, string> = {
   air: "Tarifas aéreas expresadas por tramos de peso (kg). Peso facturable según relación peso/volumen (1 m³ = 167 kg).",
   fcl: "Tarifas FCL por tipo de contenedor. Free time y tiempo de tránsito son referenciales y sujetos a confirmación del carrier.",
@@ -39,6 +66,72 @@ const COMMERCIAL_TERMS =
 
 const DATA_PROTECTION_CLAUSE =
   "El presente documento contiene información comercial confidencial destinada exclusivamente al destinatario. Los datos personales asociados a esta comunicación son tratados por Seemann y Compañía Limitada conforme a la Ley 81 de 2019 de Panamá y el Reglamento General de Protección de Datos (RGPD), para fines de gestión logística, comercial y cumplimiento normativo. Usted puede ejercer sus derechos de acceso, rectificación, supresión y portabilidad escribiendo a contacto@seemanngroup.com. Más información en la Política de Privacidad de Seemann Group.";
+
+const label: React.CSSProperties = {
+  fontSize: "6pt",
+  fontWeight: 600,
+  color: C.sub,
+  textTransform: "uppercase",
+  letterSpacing: "0.5px",
+  marginBottom: "1px",
+};
+
+const val: React.CSSProperties = {
+  fontSize: "8pt",
+  fontWeight: 500,
+  color: C.text,
+};
+
+const th: React.CSSProperties = {
+  padding: "5px 8px",
+  textAlign: "left",
+  fontSize: "8pt",
+  fontWeight: 700,
+  color: C.sub,
+  textTransform: "uppercase",
+  letterSpacing: "0.3px",
+  borderBottom: `2px solid ${C.text}`,
+  whiteSpace: "nowrap",
+  backgroundColor: C.bg,
+};
+
+const td: React.CSSProperties = {
+  padding: "4px 8px",
+  fontSize: "9pt",
+  borderBottom: `1px solid ${C.line}`,
+  verticalAlign: "middle",
+};
+
+const tdPrice: React.CSSProperties = {
+  ...td,
+  textAlign: "right",
+  whiteSpace: "nowrap",
+  fontVariantNumeric: "tabular-nums",
+};
+
+function buildSheets(rows: CountryRateRow[]): PdfSheet[] {
+  const originGroups = groupRowsByOrigin(rows);
+  const sheets: PdfSheet[] = [];
+  let isFirst = true;
+
+  for (const group of originGroups) {
+    const chunks = chunkRows(group.rows, ROWS_PER_PDF_PAGE);
+    chunks.forEach((chunk, chunkIndex) => {
+      sheets.push({
+        key: `${group.origin}-${chunkIndex}`,
+        kind: "rates",
+        origin: group.origin,
+        continuation: chunkIndex > 0,
+        showMeta: isFirst,
+        rows: chunk,
+      });
+      isFirst = false;
+    });
+  }
+
+  sheets.push({ key: "legal", kind: "legal" });
+  return sheets;
+}
 
 function Callout({
   title,
@@ -54,16 +147,389 @@ function Callout({
         border: `1px solid ${C.line}`,
         borderLeft: `3px solid ${C.accent}`,
         borderRadius: "3px",
-        padding: "7px 12px",
-        marginBottom: "8px",
-        fontSize: "7.5pt",
+        padding: "6px 10px",
+        marginBottom: "6px",
+        fontSize: "8pt",
         color: C.sub,
-        lineHeight: 1.5,
+        lineHeight: 1.45,
       }}
     >
       <strong style={{ color: C.text }}>{title}</strong>
       {" — "}
       {children}
+    </div>
+  );
+}
+
+function SheetHeader({
+  countryLabel,
+  serviceSuffix,
+  logoSrc,
+  origin,
+  continuation = false,
+  variant = "origin",
+}: {
+  countryLabel: string;
+  serviceSuffix: string;
+  logoSrc: string;
+  origin?: string;
+  continuation?: boolean;
+  variant?: "origin" | "legal";
+}) {
+  const isLegal = variant === "legal";
+
+  return (
+    <header style={{ marginBottom: "10px" }}>
+      <div
+        style={{
+          height: "3px",
+          backgroundColor: C.accent,
+          borderRadius: "1px",
+          marginBottom: "8px",
+        }}
+      />
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          gap: "16px",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "9px",
+            flex: "0 0 auto",
+            minWidth: "0",
+          }}
+        >
+          <img
+            src={logoSrc}
+            alt="Seemann Group"
+            style={{ width: "40px", height: "40px", objectFit: "contain" }}
+          />
+          <div>
+            <div
+              style={{
+                fontWeight: 700,
+                fontSize: "9pt",
+                letterSpacing: "-0.2px",
+                lineHeight: 1.2,
+              }}
+            >
+              Seemann y Compañía Limitada
+            </div>
+            <div
+              style={{
+                fontSize: "6.5pt",
+                color: C.sub,
+                lineHeight: 1.4,
+                marginTop: "2px",
+              }}
+            >
+              +56 2 2604 8385 · contacto@seemanngroup.com
+            </div>
+          </div>
+        </div>
+
+        <div style={{ flex: 1, textAlign: "right", minWidth: 0 }}>
+          <div
+            style={{
+              fontSize: "6pt",
+              fontWeight: 700,
+              color: C.accent,
+              textTransform: "uppercase",
+              letterSpacing: "1.2px",
+              marginBottom: "2px",
+            }}
+          >
+            {isLegal ? "Documento" : "Puerto de origen"}
+          </div>
+          <div
+            style={{
+              fontSize: isLegal ? "14pt" : "17pt",
+              fontWeight: 700,
+              color: C.text,
+              letterSpacing: "-0.5px",
+              lineHeight: 1.05,
+              wordBreak: "break-word",
+            }}
+          >
+            {isLegal ? "Términos y Condiciones" : origin}
+            {!isLegal && continuation ? (
+              <span
+                style={{
+                  fontSize: "8pt",
+                  fontWeight: 500,
+                  color: C.sub,
+                  marginLeft: "6px",
+                }}
+              >
+                (continuación)
+              </span>
+            ) : null}
+          </div>
+          <div
+            style={{
+              fontSize: "8pt",
+              color: C.sub,
+              marginTop: "3px",
+              fontWeight: 500,
+            }}
+          >
+            {countryLabel} · {serviceSuffix}
+            {!isLegal && !continuation ? (
+              <span style={{ color: C.line }}> · </span>
+            ) : null}
+            {!isLegal && !continuation ? (
+              <span style={{ fontSize: "7pt" }}>Rutas recurrentes</span>
+            ) : null}
+          </div>
+        </div>
+      </div>
+      <div
+        style={{
+          marginTop: "8px",
+          borderBottom: `2px solid ${C.text}`,
+        }}
+      />
+    </header>
+  );
+}
+
+function MetaStrip({
+  countryLabel,
+  serviceSuffix,
+  generatedDate,
+  routeCount,
+  originCount,
+}: {
+  countryLabel: string;
+  serviceSuffix: string;
+  generatedDate: string;
+  routeCount: number;
+  originCount: number;
+}) {
+  const fields = [
+    { label: "País", value: countryLabel, bold: true },
+    { label: "Modalidad", value: serviceSuffix, bold: true },
+    { label: "Generado", value: generatedDate, bold: false },
+    { label: "Rutas", value: String(routeCount), bold: true },
+    { label: "Orígenes", value: String(originCount), bold: true },
+  ];
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "stretch",
+        backgroundColor: C.bg,
+        border: `1px solid ${C.line}`,
+        borderRadius: "3px",
+        padding: "7px 12px",
+        marginBottom: "10px",
+      }}
+    >
+      {fields.map((field, index) => (
+        <div
+          key={field.label}
+          style={{
+            flex: 1,
+            borderLeft: index > 0 ? `1px solid ${C.line}` : undefined,
+            paddingLeft: index > 0 ? "12px" : undefined,
+          }}
+        >
+          <div style={label}>{field.label}</div>
+          <div style={{ ...val, fontWeight: field.bold ? 700 : 500 }}>
+            {field.value}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function PdfRatesTable({
+  columns,
+  rows,
+}: {
+  columns: CountryRateColumn[];
+  rows: CountryRateRow[];
+}) {
+  return (
+    <table
+      className="pdf-rates-table"
+      style={{
+        width: "100%",
+        borderCollapse: "collapse",
+        tableLayout: "fixed",
+      }}
+    >
+      <thead>
+        <tr>
+          {columns.map((col) => (
+            <th
+              key={col.key}
+              style={{
+                ...th,
+                width: col.width,
+                textAlign: col.type === "price" ? "right" : "left",
+              }}
+            >
+              {col.label}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((row, rowIndex) => (
+          <tr
+            key={row.id}
+            style={{
+              backgroundColor: rowIndex % 2 === 1 ? C.bg : C.white,
+            }}
+          >
+            {columns.map((col) => {
+              const value = getCountryRateCellValue(row, col);
+              const isPrice = col.type === "price";
+              const isCurrency = col.key === "currency";
+              return (
+                <td
+                  key={col.key}
+                  style={{
+                    ...(isPrice ? tdPrice : td),
+                    textAlign: isPrice
+                      ? "right"
+                      : isCurrency
+                        ? "center"
+                        : "left",
+                    fontSize: col.key === "validUntil" ? "8.5pt" : "9pt",
+                  }}
+                >
+                  {value}
+                </td>
+              );
+            })}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+function LegalSection({ serviceNote }: { serviceNote: string | null }) {
+  return (
+    <>
+      <Callout title="Condiciones de la tarifa">
+        Tarifa válida únicamente para el detalle de carga indicado: carga
+        general, no mercancía peligrosa (DG), apilable, de peso y medidas
+        estándar. Tarifas con markup incluido. Sujetas a disponibilidad de
+        espacio y equipo al momento del booking.
+        {serviceNote ? ` ${serviceNote}` : ""}
+      </Callout>
+
+      <Callout title="Recomendaciones Seemann Group">
+        <span style={{ display: "block", marginTop: "2px" }}>
+          <strong style={{ color: C.text }}>Seguro de carga:</strong> Seemann
+          Group recomienda contratar cobertura total (All Risk). Consulte con su
+          ejecutivo las condiciones y valores.
+        </span>
+        <span style={{ display: "block", marginTop: "2px" }}>
+          <strong style={{ color: C.text }}>Cargos locales:</strong> Tasas
+          portuarias, terminal, inspecciones y aranceles en origen/destino no
+          están incluidos salvo indicación expresa.
+        </span>
+        <span style={{ display: "block", marginTop: "2px" }}>
+          <strong style={{ color: C.text }}>Mercancía peligrosa:</strong>{" "}
+          Embarques DG requieren aprobación previa y documentación específica.
+        </span>
+        <span style={{ display: "block", marginTop: "2px" }}>
+          <strong style={{ color: C.text }}>Seguimiento:</strong> Al confirmar
+          su operación, acceda al portal de clientes para monitorear su envío en
+          tiempo real.
+        </span>
+        <span style={{ display: "block", marginTop: "2px" }}>
+          <strong style={{ color: C.text }}>Vigencia:</strong> Respete la fecha
+          de validez indicada en cada ruta; las tarifas pueden actualizarse sin
+          previo aviso.
+        </span>
+      </Callout>
+
+      <div style={{ marginTop: "6px", marginBottom: "6px" }}>
+        <div
+          style={{
+            fontSize: "7pt",
+            fontWeight: 700,
+            textTransform: "uppercase",
+            letterSpacing: "0.5px",
+            color: C.sub,
+            marginBottom: "3px",
+          }}
+        >
+          Condiciones Comerciales
+        </div>
+        <div
+          style={{
+            fontSize: "6.5pt",
+            lineHeight: 1.5,
+            color: C.sub,
+            columnCount: 2,
+            columnGap: "12px",
+          }}
+        >
+          {COMMERCIAL_TERMS}
+        </div>
+      </div>
+
+      <div style={{ marginBottom: "6px" }}>
+        <div
+          style={{
+            fontSize: "7pt",
+            fontWeight: 700,
+            textTransform: "uppercase",
+            letterSpacing: "0.5px",
+            color: C.sub,
+            marginBottom: "3px",
+          }}
+        >
+          Protección de Datos Personales
+        </div>
+        <div style={{ fontSize: "6.5pt", lineHeight: 1.5, color: C.sub }}>
+          {DATA_PROTECTION_CLAUSE}
+        </div>
+      </div>
+    </>
+  );
+}
+
+function SheetFooter({
+  generatedDate,
+  pageNumber,
+  totalPages,
+}: {
+  generatedDate: string;
+  pageNumber: number;
+  totalPages: number;
+}) {
+  return (
+    <div
+      style={{
+        borderTop: `1px solid ${C.line}`,
+        paddingTop: "5px",
+        marginTop: "8px",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        fontSize: "7pt",
+        color: C.sub,
+      }}
+    >
+      <span>Seemann Group · seemanngroup.com</span>
+      <span>
+        Página {pageNumber} de {totalPages} · Generado: {generatedDate}
+      </span>
     </div>
   );
 }
@@ -77,368 +543,60 @@ export const PdfTemplateCountryRates: React.FC<PdfTemplateCountryRatesProps> = (
   rows,
   logoSrc = "/logo.png",
 }) => {
-  const label: React.CSSProperties = {
-    fontSize: "6.5pt",
-    fontWeight: 600,
-    color: C.sub,
-    textTransform: "uppercase",
-    letterSpacing: "0.5px",
-    marginBottom: "1px",
-  };
-
-  const val: React.CSSProperties = {
-    fontSize: "8.5pt",
-    fontWeight: 500,
-    color: C.text,
-  };
-
-  const th: React.CSSProperties = {
-    padding: "5px 8px",
-    textAlign: "left",
-    fontSize: "6.5pt",
-    fontWeight: 700,
-    color: C.sub,
-    textTransform: "uppercase",
-    letterSpacing: "0.3px",
-    borderBottom: `2px solid ${C.text}`,
-    whiteSpace: "nowrap",
-    backgroundColor: C.bg,
-  };
-
-  const td: React.CSSProperties = {
-    padding: "4px 8px",
-    fontSize: "7pt",
-    borderBottom: `1px solid ${C.line}`,
-    verticalAlign: "middle",
-  };
-
-  const tdPrice: React.CSSProperties = {
-    ...td,
-    textAlign: "right",
-    whiteSpace: "nowrap",
-    fontVariantNumeric: "tabular-nums",
-  };
-
-  const page: React.CSSProperties = {
-    width: "297mm",
-    padding: "10mm 12mm",
-    boxSizing: "border-box",
-    backgroundColor: C.white,
-    fontFamily: FONT,
-    fontSize: "8pt",
-    color: C.text,
-    lineHeight: 1.45,
-  };
-
   const serviceNote = service ? SERVICE_NOTES[service] : null;
+  const originGroups = groupRowsByOrigin(rows);
+  const sheets = buildSheets(rows);
+  const totalPages = sheets.length;
 
   return (
-    <div id="pdf-content" style={page}>
+    <div id="pdf-content">
       <style>{`
-        .pdf-rates-table thead { display: table-header-group; }
+        .pdf-page-after { page-break-after: always; break-after: page; }
         .pdf-rates-table tr { page-break-inside: avoid; }
-        .pdf-table-section { page-break-before: auto; }
       `}</style>
 
-      {/* ── Accent bar ── */}
-      <div
-        style={{
-          height: "3px",
-          backgroundColor: C.accent,
-          marginBottom: "10px",
-          borderRadius: "1px",
-        }}
-      />
-
-      {/* ── Header corporativo ── */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          paddingBottom: "10px",
-          borderBottom: `2px solid ${C.text}`,
-          marginBottom: "12px",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <img
-            src={logoSrc}
-            alt="Seemann Group"
-            style={{ width: "48px", height: "48px", objectFit: "contain" }}
+      {sheets.map((sheet, index) => (
+        <div
+          key={sheet.key}
+          className={
+            index < sheets.length - 1 ? "pdf-sheet pdf-page-after" : "pdf-sheet"
+          }
+          style={SHEET}
+        >
+          <SheetHeader
+            countryLabel={countryLabel}
+            serviceSuffix={serviceSuffix}
+            logoSrc={logoSrc}
+            origin={sheet.origin}
+            continuation={sheet.continuation}
+            variant={sheet.kind === "legal" ? "legal" : "origin"}
           />
-          <div>
-            <div
-              style={{
-                fontWeight: 700,
-                fontSize: "10pt",
-                letterSpacing: "-0.2px",
-              }}
-            >
-              Seemann y Compañía Limitada
-            </div>
-            <div
-              style={{
-                fontSize: "7pt",
-                color: C.sub,
-                lineHeight: 1.5,
-                marginTop: "1px",
-              }}
-            >
-              Av. Libertad 1405, Of. 1203 · Viña del Mar, Chile
-              <br />
-              +56 2 2604 8385 · contacto@seemanngroup.com
-            </div>
-          </div>
-        </div>
-        <div style={{ textAlign: "right" }}>
-          <div
-            style={{
-              fontSize: "6.5pt",
-              fontWeight: 600,
-              color: C.sub,
-              textTransform: "uppercase",
-              letterSpacing: "1px",
-            }}
-          >
-            Tarifario de Rutas
-          </div>
-          <div
-            style={{
-              fontSize: "15pt",
-              fontWeight: 700,
-              color: C.text,
-              letterSpacing: "-0.4px",
-              lineHeight: 1.1,
-              marginTop: "3px",
-            }}
-          >
-            Tarifas {countryLabel} · {serviceSuffix}
-          </div>
-          <div style={{ fontSize: "7.5pt", color: C.sub, marginTop: "3px" }}>
-            Rutas recurrentes
-          </div>
-        </div>
-      </div>
 
-      {/* ── Ficha resumen ── */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "stretch",
-          gap: "0",
-          backgroundColor: C.bg,
-          border: `1px solid ${C.line}`,
-          borderRadius: "3px",
-          padding: "9px 14px",
-          marginBottom: "12px",
-        }}
-      >
-        <div style={{ flex: 1 }}>
-          <div style={label}>País</div>
-          <div style={{ ...val, fontWeight: 700 }}>{countryLabel}</div>
-        </div>
-        <div
-          style={{
-            borderLeft: `1px solid ${C.line}`,
-            paddingLeft: "14px",
-            flex: 1,
-          }}
-        >
-          <div style={label}>Modalidad</div>
-          <div style={{ ...val, fontWeight: 700 }}>{serviceSuffix}</div>
-        </div>
-        <div
-          style={{
-            borderLeft: `1px solid ${C.line}`,
-            paddingLeft: "14px",
-            flex: 1,
-          }}
-        >
-          <div style={label}>Generado</div>
-          <div style={val}>{generatedDate}</div>
-        </div>
-        <div
-          style={{
-            borderLeft: `1px solid ${C.line}`,
-            paddingLeft: "14px",
-            flex: 1,
-          }}
-        >
-          <div style={label}>Rutas</div>
-          <div style={{ ...val, fontWeight: 700 }}>{rows.length}</div>
-        </div>
-      </div>
+          {sheet.showMeta ? (
+            <MetaStrip
+              countryLabel={countryLabel}
+              serviceSuffix={serviceSuffix}
+              generatedDate={generatedDate}
+              routeCount={rows.length}
+              originCount={originGroups.length}
+            />
+          ) : null}
 
-      {/* ── Tabla de tarifas ── */}
-      <div className="pdf-table-section">
-        <table
-          className="pdf-rates-table"
-          style={{
-            width: "100%",
-            borderCollapse: "collapse",
-            tableLayout: "fixed",
-          }}
-        >
-          <thead>
-            <tr>
-              {columns.map((col) => (
-                <th
-                  key={col.key}
-                  style={{
-                    ...th,
-                    width: col.width,
-                    textAlign: col.type === "price" ? "right" : "left",
-                  }}
-                >
-                  {col.label}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row, rowIndex) => (
-              <tr
-                key={row.id}
-                style={{
-                  backgroundColor:
-                    rowIndex % 2 === 1 ? C.bg : C.white,
-                }}
-              >
-                {columns.map((col) => {
-                  const value = getCountryRateCellValue(row, col);
-                  const isPrice = col.type === "price";
-                  const isCurrency = col.key === "currency";
-                  return (
-                    <td
-                      key={col.key}
-                      style={{
-                        ...(isPrice ? tdPrice : td),
-                        textAlign: isPrice
-                          ? "right"
-                          : isCurrency
-                            ? "center"
-                            : "left",
-                        fontSize: col.key === "validUntil" ? "6.5pt" : "7pt",
-                      }}
-                    >
-                      {value}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+          {sheet.kind === "rates" && sheet.rows ? (
+            <PdfRatesTable columns={columns} rows={sheet.rows} />
+          ) : null}
 
-      {/* ── Callouts informativos ── */}
-      <div style={{ marginTop: "12px" }}>
-        <Callout title="Condiciones de la tarifa">
-          Tarifa válida únicamente para el detalle de carga indicado: carga
-          general, no mercancía peligrosa (DG), apilable, de peso y medidas
-          estándar. Tarifas con markup incluido. Sujetas a disponibilidad de
-          espacio y equipo al momento del booking.
-          {serviceNote ? ` ${serviceNote}` : ""}
-        </Callout>
+          {sheet.kind === "legal" ? (
+            <LegalSection serviceNote={serviceNote} />
+          ) : null}
 
-        <Callout title="Recomendaciones Seemann Group">
-          <span style={{ display: "block", marginTop: "2px" }}>
-            <strong style={{ color: C.text }}>Seguro de carga:</strong> Seemann
-            Group recomienda contratar cobertura total (All Risk). Consulte con
-            su ejecutivo las condiciones y valores.
-          </span>
-          <span style={{ display: "block", marginTop: "3px" }}>
-            <strong style={{ color: C.text }}>Cargos locales:</strong> Tasas
-            portuarias, terminal, inspecciones y aranceles en origen/destino no
-            están incluidos salvo indicación expresa.
-          </span>
-          <span style={{ display: "block", marginTop: "3px" }}>
-            <strong style={{ color: C.text }}>Mercancía peligrosa:</strong>{" "}
-            Embarques DG requieren aprobación previa y documentación específica.
-          </span>
-          <span style={{ display: "block", marginTop: "3px" }}>
-            <strong style={{ color: C.text }}>Seguimiento:</strong> Al confirmar
-            su operación, acceda al portal de clientes para monitorear su envío
-            en tiempo real.
-          </span>
-          <span style={{ display: "block", marginTop: "3px" }}>
-            <strong style={{ color: C.text }}>Vigencia:</strong> Respete la
-            fecha de validez indicada en cada ruta; las tarifas pueden
-            actualizarse sin previo aviso.
-          </span>
-        </Callout>
-      </div>
-
-      {/* ── Condiciones comerciales ── */}
-      <div style={{ marginTop: "8px", marginBottom: "8px" }}>
-        <div
-          style={{
-            fontSize: "6.5pt",
-            fontWeight: 700,
-            textTransform: "uppercase",
-            letterSpacing: "0.5px",
-            color: C.sub,
-            marginBottom: "3px",
-          }}
-        >
-          Condiciones Comerciales
+          <SheetFooter
+            generatedDate={generatedDate}
+            pageNumber={index + 1}
+            totalPages={totalPages}
+          />
         </div>
-        <div
-          style={{
-            fontSize: "6pt",
-            lineHeight: 1.55,
-            color: C.sub,
-            columnCount: 2,
-            columnGap: "14px",
-          }}
-        >
-          {COMMERCIAL_TERMS}
-        </div>
-      </div>
-
-      {/* ── Protección de datos ── */}
-      <div style={{ marginBottom: "10px" }}>
-        <div
-          style={{
-            fontSize: "6.5pt",
-            fontWeight: 700,
-            textTransform: "uppercase",
-            letterSpacing: "0.5px",
-            color: C.sub,
-            marginBottom: "3px",
-          }}
-        >
-          Protección de Datos Personales
-        </div>
-        <div
-          style={{
-            fontSize: "6pt",
-            lineHeight: 1.55,
-            color: C.sub,
-          }}
-        >
-          {DATA_PROTECTION_CLAUSE}
-        </div>
-      </div>
-
-      {/* ── Footer ── */}
-      <div
-        style={{
-          borderTop: `1px solid ${C.line}`,
-          paddingTop: "6px",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          fontSize: "6.5pt",
-          color: C.sub,
-        }}
-      >
-        <span>
-          Seemann Group · seemanngroup.com · portalclientes.seemanngroup.com
-        </span>
-        <span>Generado: {generatedDate}</span>
-      </div>
+      ))}
     </div>
   );
 };

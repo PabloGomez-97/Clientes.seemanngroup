@@ -77,7 +77,7 @@ export function CountryRatesDownloadButton({
             logoSrc={logoDataUrl}
           />,
         );
-        setTimeout(resolve, 400);
+        setTimeout(resolve, 600);
       });
 
       const pdfElement = tempDiv.querySelector("#pdf-content") as HTMLElement;
