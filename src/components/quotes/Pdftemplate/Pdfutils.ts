@@ -4,9 +4,14 @@ interface GeneratePDFOptions {
   filename: string;
   element: HTMLElement;
   orientation?: 'portrait' | 'landscape';
+  /** Evita `avoid-all`, que suele generar páginas en blanco en tablas largas. */
+  paginateTables?: boolean;
 }
 
-const buildPdfOptions = (orientation: 'portrait' | 'landscape' = 'portrait') => ({
+const buildPdfOptions = (
+  orientation: 'portrait' | 'landscape' = 'portrait',
+  paginateTables = false,
+) => ({
   margin: 0,
   image: { type: 'jpeg' as const, quality: 0.98 },
   html2canvas: { 
@@ -16,9 +21,9 @@ const buildPdfOptions = (orientation: 'portrait' | 'landscape' = 'portrait') => 
     scrollX: 0,
     scrollY: 0,
   },
-  pagebreak: {
-    mode: ['avoid-all', 'css']
-  },
+  pagebreak: paginateTables
+    ? { mode: ['css', 'legacy'] as const }
+    : { mode: ['avoid-all', 'css'] as const },
   jsPDF: { 
     unit: 'mm', 
     format: 'a4', 
@@ -28,9 +33,17 @@ const buildPdfOptions = (orientation: 'portrait' | 'landscape' = 'portrait') => 
 
 const pdfOptions = buildPdfOptions('portrait');
 
-export const generatePDF = async ({ filename, element, orientation = 'portrait' }: GeneratePDFOptions): Promise<void> => {
+export const generatePDF = async ({
+  filename,
+  element,
+  orientation = 'portrait',
+  paginateTables = false,
+}: GeneratePDFOptions): Promise<void> => {
   try {
-    await html2pdf().set({ ...buildPdfOptions(orientation), filename }).from(element).save();
+    await html2pdf()
+      .set({ ...buildPdfOptions(orientation, paginateTables), filename })
+      .from(element)
+      .save();
   } catch (error) {
     console.error('Error generating PDF:', error);
     throw new Error('Failed to generate PDF');

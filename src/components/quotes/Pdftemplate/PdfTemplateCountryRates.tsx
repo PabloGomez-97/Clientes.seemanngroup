@@ -60,7 +60,6 @@ export const PdfTemplateCountryRates: React.FC<PdfTemplateCountryRatesProps> = (
 }) => {
   const page: React.CSSProperties = {
     width: "297mm",
-    minHeight: "210mm",
     padding: "10mm 12mm",
     boxSizing: "border-box",
     backgroundColor: C.white,
@@ -135,7 +134,7 @@ export const PdfTemplateCountryRates: React.FC<PdfTemplateCountryRatesProps> = (
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={row.id} style={{ pageBreakInside: "avoid" }}>
+            <tr key={row.id}>
               {columns.map((col) => {
                 const value = getCountryRateCellValue(row, col);
                 const isPrice = col.type === "price";
@@ -171,7 +170,7 @@ export const PdfTemplateCountryRates: React.FC<PdfTemplateCountryRatesProps> = (
           paddingTop: "6px",
         }}
       >
-        Tarifas de Seemann Group. Sujetas a cambios sin previo aviso, según disponibilidad.
+        Tarifas con markup incluido. Sujetas a disponibilidad.
       </div>
     </div>
   );

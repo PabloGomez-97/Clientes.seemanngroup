@@ -51,8 +51,13 @@ export function CountryRatesDownloadButton({
 
     setGenerating(true);
     const tempDiv = document.createElement("div");
-    tempDiv.style.position = "absolute";
-    tempDiv.style.left = "-9999px";
+    tempDiv.style.position = "fixed";
+    tempDiv.style.top = "0";
+    tempDiv.style.left = "0";
+    tempDiv.style.width = "297mm";
+    tempDiv.style.opacity = "0";
+    tempDiv.style.pointerEvents = "none";
+    tempDiv.style.zIndex = "-1";
     document.body.appendChild(tempDiv);
 
     try {
@@ -87,6 +92,7 @@ export function CountryRatesDownloadButton({
         filename,
         element: pdfElement,
         orientation: "landscape",
+        paginateTables: true,
       });
 
       root.unmount();
