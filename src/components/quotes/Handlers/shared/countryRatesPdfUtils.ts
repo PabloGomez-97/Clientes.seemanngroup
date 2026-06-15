@@ -9,7 +9,7 @@ export interface OriginRateGroup {
 }
 
 export function groupRowsByOrigin(rows: CountryRateRow[]): OriginRateGroup[] {
-  const groupMap = new Map<string, CountryRateGroup>();
+  const groupMap = new Map<string, OriginRateGroup>();
 
   for (const row of rows) {
     const key = row.origin.trim();
