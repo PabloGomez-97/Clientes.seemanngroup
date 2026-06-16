@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<!--
+  BOCETO — Email cotización/operación aérea (Seemann Group)
+
+  Iteración en vivo:
+    npm run email:preview:air
+    → abre http://localhost:5199 y recarga al guardar este archivo.
+
+  Cuando el diseño esté listo, lo portamos a api/emails/airQuoteEmailTemplate.ts
+  (solo el bloque entre EMAIL_START y EMAIL_END; sin #dev-toolbar).
+-->
+<html lang="es">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Boceto — Nueva cotización aérea · Seemann Group</title>
+  <style>
+    :root {
+      --font: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      --primary: #ff6200;
+      --dark: #1a1a1a;
+      --canvas: #eceff3;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: #111;
+      font-family: var(--font);
+      -webkit-text-size-adjust: 100%;
+    }
+
+    .email-root,
+    .email-root table,
+    .email-root td,
+    .email-root p,
+    .email-root a,
+    .email-root span,
+    .email-root div {
+      font-family: var(--font);
+    }
+
+    #dev-toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 9999;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 16px;
+      background: #111827;
+      color: #e5e7eb;
+      font-size: 13px;
+      border-bottom: 1px solid #374151;
+    }
+
+    #dev-toolbar strong {
+      color: #fff;
+    }
+
+    #dev-toolbar button {
+      font-family: var(--font);
+      font-size: 12px;
+      padding: 6px 12px;
+      border-radius: 6px;
+      border: 1px solid #4b5563;
+      background: #1f2937;
+      color: #f9fafb;
+      cursor: pointer;
+    }
+
+    #dev-toolbar button:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    #preview-frame {
+      transition: max-width 0.2s ease;
+      margin: 0 auto;
+    }
+
+    #preview-frame.mobile {
+      max-width: 375px;
+    }
+
+    @media only screen and (max-width: 720px) {
+      .shell-pad {
+        padding: 16px 8px !important;
+      }
+
+      .card-pad {
+        padding-left: 20px !important;
+        padding-right: 20px !important;
+      }
+
+      .header-pad {
+        padding: 24px 20px !important;
+      }
+
+      .header-logo-col {
+        display: block !important;
+        width: 100% !important;
+        text-align: left !important;
+        padding-bottom: 14px !important;
+      }
+
+      .header-badge-col {
+        display: block !important;
+        width: 100% !important;
+        text-align: left !important;
+      }
+
+      .header-title-row {
+        padding-top: 16px !important;
+      }
+
+      .title-main {
+        font-size: 22px !important;
+      }
+
+      .route-col {
+        display: block !important;
+        width: 100% !important;
+        text-align: center !important;
+        padding: 8px 0 !important;
+      }
+
+      .route-arrow {
+        display: block !important;
+        width: 100% !important;
+        text-align: center !important;
+        padding: 4px 0 !important;
+      }
+
+      .summary-col {
+        display: block !important;
+        width: 100% !important;
+        text-align: left !important;
+        padding: 10px 0 !important;
+        border-left: none !important;
+        border-top: 1px solid #e5e7eb !important;
+      }
+
+      .summary-col-first {
+        border-top: none !important;
+      }
+
+      .spec-card {
+        display: block !important;
+        width: 100% !important;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- NO incluir en producción -->
+  <div id="dev-toolbar">
+    <strong>Boceto email aéreo</strong>
+    <span>Edita <code style="color:#fbbf24">tmp-air-email-preview.html</code> y guarda — recarga automática</span>
+    <button type="button" id="btn-mobile">Vista móvil (375px)</button>
+    <button type="button" id="btn-desktop">Vista desktop</button>
+  </div>
+
+  <div id="preview-frame">
+    <!-- EMAIL_START -->
+
+    <table role="presentation" class="shell-pad email-root" width="100%" cellpadding="0" cellspacing="0"
+      style="background-color:#eceff3;">
+      <tr>
+        <td align="center" style="padding:40px 20px;">
+
+          <table role="presentation" width="680" cellpadding="0" cellspacing="0"
+            style="max-width:680px;min-width:300px;width:100%;background-color:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e5e7eb;box-shadow:0 8px 32px rgba(17,24,39,0.08);">
+
+            <!-- Header -->
+            <tr>
+              <td class="header-pad" style="background-color:#ffffff;padding:28px 36px;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td class="header-logo-col" valign="middle">
+                      <img src="https://portalclientes.seemanngroup.com/logocompleto.png" alt="Seemann Group"
+                        width="140" style="display:block;max-width:140px;height:auto;" />
+                    </td>
+                    <td class="header-badge-col" align="right" valign="middle">
+                      <table role="presentation" class="type-tag" cellpadding="0" cellspacing="0">
+                        <tr>
+                          <td width="3" style="width:3px;background-color:#ff6200;border-radius:1px;font-size:0;line-height:0;">&nbsp;</td>
+                          <td style="padding-left:10px;">
+                            <p style="margin:0;font-size:9px;font-weight:600;letter-spacing:0.16em;text-transform:uppercase;color:#9ca3af;line-height:1.3;">Cotización</p>
+                            <p style="margin:3px 0 0;font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#ff6200;line-height:1.2;">Aéreo</p>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="header-title-row" colspan="2" style="padding-top:22px;">
+                      <p class="title-main"
+                        style="margin:0 0 6px;font-size:26px;font-weight:600;color:#111827;line-height:1.2;letter-spacing:-0.02em;">
+                        Nueva cotización aérea
+                      </p>
+                      <p style="margin:0;font-size:14px;color:#6b7280;line-height:1.5;">
+                        Cliente <span style="color:#111827;font-weight:600;">MundoGaming · Lucas Gómez</span>
+                      </p>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <!-- Ruta hero -->
+            <tr>
+              <td style="background-color:#f8f9fa;padding:0 36px 28px;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+                  style="background-color:#ffffff;border-radius:12px;border:1px solid #e5e7eb;">
+                  <tr>
+                    <td class="route-col" width="42%" align="left" style="padding:22px 20px 22px 24px;">
+                      <p
+                        style="margin:0 0 6px;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#6b7280;">
+                        Origen</p>
+                      <p style="margin:0;font-size:17px;font-weight:600;color:#111827;line-height:1.3;">Frankfurt</p>
+                    </td>
+                    <td class="route-arrow" width="16%" align="center" style="padding:22px 8px;">
+                      <span style="display:inline-block;font-size:20px;font-weight:600;color:#ff6200;line-height:1;font-family:Arial,sans-serif;">&rarr;</span>
+                    </td>
+                    <td class="route-col" width="42%" align="right" style="padding:22px 24px 22px 20px;">
+                      <p
+                        style="margin:0 0 6px;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#6b7280;">
+                        Destino</p>
+                      <p style="margin:0;font-size:17px;font-weight:600;color:#111827;line-height:1.3;">Santiago De
+                        Chile</p>
+                    </td>
+                  </tr>
+                </table>
+
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:16px;">
+                  <tr>
+                    <td class="summary-col summary-col-first" width="33%"
+                      style="padding:14px 16px 14px 0;border-right:1px solid #e5e7eb;">
+                      <p
+                        style="margin:0 0 4px;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#6b7280;">
+                        N° de cotización</p>
+                      <p style="margin:0;font-size:15px;font-weight:700;color:#111827;letter-spacing:0.03em;">QUO0020656
+                      </p>
+                    </td>
+                    <td class="summary-col" width="34%" style="padding:14px 16px;border-right:1px solid #e5e7eb;">
+                      <p
+                        style="margin:0 0 4px;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#6b7280;">
+                        Total</p>
+                      <p style="margin:0;font-size:20px;font-weight:700;color:#ff6200;letter-spacing:-0.01em;">EUR
+                        586.50</p>
+                    </td>
+                    <td class="summary-col" width="33%" style="padding:14px 0 14px 16px;">
+                      <p
+                        style="margin:0 0 4px;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#6b7280;">
+                        Generado</p>
+                      <p style="margin:0;font-size:13px;font-weight:500;color:#4b5563;line-height:1.4;">16 de junio de
+                        2026 a las 4:31 p. m.</p>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+          </table>
+        </td>
+      </tr>
+    </table>
+
+    <!-- EMAIL_END -->
+  </div>
+
+  <script>
+    (function () {
+      var frame = document.getElementById('preview-frame');
+      document.getElementById('btn-mobile').onclick = function () {
+        frame.classList.add('mobile');
+      };
+      document.getElementById('btn-desktop').onclick = function () {
+        frame.classList.remove('mobile');
+      };
+    })();
+  </script>
+</body>
+
+</html>

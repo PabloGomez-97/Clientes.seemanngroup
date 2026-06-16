@@ -14,7 +14,8 @@
     "whatsapp:insert-test-notification": "node -r dotenv/config ./node_modules/.bin/tsx scripts/whatsapp-insert-test-notification.ts",
     "whatsapp:optin-add-phone": "node -r dotenv/config ./node_modules/.bin/tsx scripts/whatsapp-optin-add-phone.ts",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "email:preview:air": "node scripts/dev-air-email-preview.mjs"
   },
   "engines": {
     "node": "24.x"

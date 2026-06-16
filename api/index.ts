@@ -5637,6 +5637,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         const tipoAccionResolved = (tipoAccion || tipo) as 'cotizacion' | 'operacion' | undefined;
 
+        const pdfUsuarioId =
+          (typeof clienteUsernameBody === 'string' && clienteUsernameBody.trim()) ||
+          currentUser.username ||
+          '';
+        const pdfAttachment =
+          quoteNumber && pdfUsuarioId
+            ? await loadQuotePdfAttachment(String(quoteNumber), pdfUsuarioId, QuotePDF)
+            : null;
+
+        if (!pdfAttachment && quoteNumber) {
+          console.warn(
+            `[send-operation-email] Correo sin adjunto PDF para quoteNumber=${quoteNumber}, usuarioId=${pdfUsuarioId}`,
+          );
+        }
+
         let subject: string;
         let htmlContent: string;
 
@@ -5717,24 +5732,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             agente: agente || undefined,
             quoteNumber: quoteNumber || undefined,
             proveedor: proveedor || undefined,
+            pdfAdjunto: Boolean(pdfAttachment),
           };
           subject = getAirQuoteEmailSubject(emailData);
           htmlContent = buildAirQuoteEmailHTML(emailData);
-        }
-
-        const pdfUsuarioId =
-          (typeof clienteUsernameBody === 'string' && clienteUsernameBody.trim()) ||
-          currentUser.username ||
-          '';
-        const pdfAttachment =
-          quoteNumber && pdfUsuarioId
-            ? await loadQuotePdfAttachment(String(quoteNumber), pdfUsuarioId, QuotePDF)
-            : null;
-
-        if (!pdfAttachment && quoteNumber) {
-          console.warn(
-            `[send-operation-email] Correo sin adjunto PDF para quoteNumber=${quoteNumber}, usuarioId=${pdfUsuarioId}`,
-          );
         }
 
         const brevoPayload: Record<string, unknown> = {
