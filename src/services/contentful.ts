@@ -150,18 +150,54 @@ function transformHomeSlide(entry: Entry<EntrySkeletonType>): HomeSlide {
   };
 }
 
+function isHomeSlidesContentfulEnabled(): boolean {
+  const spaceId = import.meta.env.VITE_CONTENTFUL_SPACE_ID;
+  const accessToken = import.meta.env.VITE_CONTENTFUL_ACCESS_TOKEN;
+  const enabled =
+    String(import.meta.env.VITE_CONTENTFUL_HOME_SLIDES_ENABLED ?? "").toLowerCase() ===
+    "true";
+
+  return Boolean(spaceId && accessToken && enabled);
+}
+
+function logHomeSlidesError(error: unknown): void {
+  if (!import.meta.env.DEV) return;
+
+  const details =
+    error && typeof error === "object" && "message" in error
+      ? String((error as { message?: unknown }).message)
+      : String(error);
+  const status =
+    error && typeof error === "object" && "status" in error
+      ? (error as { status?: unknown }).status
+      : undefined;
+
+  console.warn(
+    "[contentful] getHomeSlides failed:",
+    status !== undefined ? `status=${status}` : "no status",
+    details,
+  );
+}
+
 /**
  * Hero slides from Contentful (content type: homeSlide). Returns [] if unavailable.
+ * Opt-in via VITE_CONTENTFUL_HOME_SLIDES_ENABLED=true once the CMS content type exists.
  */
 export async function getHomeSlides(): Promise<HomeSlide[]> {
+  if (!isHomeSlidesContentfulEnabled()) {
+    return [];
+  }
+
   try {
     const response = await client.getEntries({
       content_type: "homeSlide",
-      order: ["fields.order"],
       limit: 5,
     });
-    return response.items.map(transformHomeSlide).sort((a, b) => a.order - b.order);
-  } catch {
+    return response.items
+      .map(transformHomeSlide)
+      .sort((a, b) => a.order - b.order);
+  } catch (error) {
+    logHomeSlidesError(error);
     return [];
   }
 }

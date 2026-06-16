@@ -2,6 +2,9 @@
   "version": 2,
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
+  "env": {
+    "NODE_OPTIONS": "--disable-warning=DEP0169"
+  },
   "functions": {
     "api/**/*.ts": {
       "memory": 3008,
