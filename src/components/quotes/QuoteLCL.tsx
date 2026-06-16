@@ -132,6 +132,11 @@ const DEFAULT_OVERALL_LCL_PACKAGE_TYPE = "97";
 const FIXED_LCL_PACKAGE_TYPE_NAME = "BOX";
 const INITIAL_VISIBLE_ROUTES = 5;
 
+const normalizeRouteCarrierKey = (carrier: string | null | undefined): string => {
+  const trimmed = carrier?.trim();
+  return trimmed ? trimmed.toLowerCase() : "otros/no informado";
+};
+
 /** Expande cuentas multi-empresa: una entrada por empresa en el selector */
 function expandClientesPorEmpresa(
   clientes: ClienteAsignado[],
@@ -1679,10 +1684,56 @@ function QuoteLCL({
       return sortConfig.dir === "asc" ? diff : -diff;
     });
 
-  const rutasVisibles = showAllRoutes
-    ? rutasFiltradas
-    : rutasFiltradas.slice(0, INITIAL_VISIBLE_ROUTES);
-  const hasHiddenRoutes = rutasFiltradas.length > INITIAL_VISIBLE_ROUTES;
+  const rutasOrdenadas = useMemo(() => {
+    if (sortConfig.col !== "validez") return rutasFiltradas;
+    if (rutasFiltradas.length <= 1) return rutasFiltradas;
+
+    const firstIndexByOperador = new Map<string, number>();
+    for (let i = 0; i < rutasFiltradas.length; i++) {
+      const key = normalizeRouteCarrierKey(rutasFiltradas[i].operador);
+      if (!firstIndexByOperador.has(key)) firstIndexByOperador.set(key, i);
+    }
+
+    if (firstIndexByOperador.size <= 1) return rutasFiltradas;
+
+    const operadoresSorted = Array.from(firstIndexByOperador.entries()).sort(
+      ([operadorA, idxA], [operadorB, idxB]) => {
+        const dateA = parseValidUntilToISO(rutasFiltradas[idxA].validUntil);
+        const dateB = parseValidUntilToISO(rutasFiltradas[idxB].validUntil);
+        const diff = dateB.localeCompare(dateA);
+        return diff !== 0 ? diff : operadorA.localeCompare(operadorB);
+      },
+    );
+
+    const selectedIndices = new Set<number>();
+    const head: typeof rutasFiltradas = [];
+    for (const [, idx] of operadoresSorted) {
+      selectedIndices.add(idx);
+      head.push(rutasFiltradas[idx]);
+    }
+
+    const tail: typeof rutasFiltradas = [];
+    for (let i = 0; i < rutasFiltradas.length; i++) {
+      if (!selectedIndices.has(i)) tail.push(rutasFiltradas[i]);
+    }
+
+    return head.concat(tail);
+  }, [rutasFiltradas, sortConfig.col]);
+
+  const rutasColapsadas = useMemo(() => {
+    const seen = new Set<string>();
+    const unique: typeof rutasOrdenadas = [];
+    for (const ruta of rutasOrdenadas) {
+      const key = normalizeRouteCarrierKey(ruta.operador);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      unique.push(ruta);
+    }
+    return unique.slice(0, INITIAL_VISIBLE_ROUTES);
+  }, [rutasOrdenadas]);
+
+  const rutasVisibles = showAllRoutes ? rutasOrdenadas : rutasColapsadas;
+  const hasHiddenRoutes = rutasOrdenadas.length > rutasColapsadas.length;
   const activeOperadoresKey = Array.from(operadoresActivos).sort().join("|");
 
   const countryRatesRows = useMemo(
@@ -1768,7 +1819,7 @@ function QuoteLCL({
 
   // Scroll a rutas cuando aparecen
   useEffect(() => {
-    if (rutasFiltradas.length > 0 && currentStep === 1) {
+    if (rutasOrdenadas.length > 0 && currentStep === 1) {
       const timeout = setTimeout(() => {
         routesRef.current?.scrollIntoView({
           behavior: "smooth",
@@ -1777,7 +1828,7 @@ function QuoteLCL({
       }, 200);
       return () => clearTimeout(timeout);
     }
-  }, [rutasFiltradas.length, currentStep]);
+  }, [rutasOrdenadas.length, currentStep]);
 
   useEffect(() => {
     setShowAllRoutes(false);
@@ -3941,9 +3992,9 @@ function QuoteLCL({
                       <div className="mt-4" ref={routesRef}>
                         <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
                           <h6 className="qa-section-label mb-0">
-                            Rutas Disponibles ({rutasFiltradas.length})
+                            Rutas Disponibles ({rutasOrdenadas.length})
                           </h6>
-                          {rutasFiltradas.length > 0 && polSeleccionado && podSeleccionado && (
+                          {rutasOrdenadas.length > 0 && polSeleccionado && podSeleccionado && (
                             <div className="qa-routes-actions d-flex gap-2 flex-wrap">
                               <LclPriceHistoryModal
                                 polLabel={polSeleccionado.label}
@@ -3970,7 +4021,7 @@ function QuoteLCL({
                           )}
                         </div>
 
-                        {rutasFiltradas.length > 0 &&
+                        {rutasOrdenadas.length > 0 &&
                           (() => {
                             return (
                               <div className="qa-routes-table-wrap">
@@ -4054,13 +4105,12 @@ function QuoteLCL({
                                   <tbody>
                                     {(() => {
                                       const carrierCounts =
-                                        rutasFiltradas.reduce<
+                                        rutasVisibles.reduce<
                                           Record<string, number>
                                         >((acc, r) => {
-                                          const key = (r.operador || "")
-                                            .trim()
-                                            .toLowerCase();
-                                          if (!key) return acc;
+                                          const key = normalizeRouteCarrierKey(
+                                            r.operador,
+                                          );
                                           acc[key] = (acc[key] || 0) + 1;
                                           return acc;
                                         }, {});
@@ -4072,16 +4122,13 @@ function QuoteLCL({
                                           ruta.validUntil,
                                         );
 
-                                        const carrierKey = (ruta.operador || "")
-                                          .trim()
-                                          .toLowerCase();
+                                        const carrierKey = normalizeRouteCarrierKey(
+                                          ruta.operador,
+                                        );
                                         const isDuplicateCarrier =
-                                          carrierKey.length > 0 &&
-                                          (carrierCounts[carrierKey] || 0) >
-                                          1 &&
+                                          (carrierCounts[carrierKey] || 0) > 1 &&
                                           seenCarriers.has(carrierKey);
-                                        if (carrierKey)
-                                          seenCarriers.add(carrierKey);
+                                        seenCarriers.add(carrierKey);
 
                                         return (
                                           <tr

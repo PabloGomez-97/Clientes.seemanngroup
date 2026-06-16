@@ -150,6 +150,11 @@ const DEFAULT_OVERALL_AIR_PACKAGE_TYPE = "97";
 const FIXED_AIR_PACKAGE_TYPE_NAME = "BOX";
 const INITIAL_VISIBLE_ROUTES = 5;
 
+const normalizeAirCarrierKey = (carrier: string | null | undefined): string => {
+  const trimmed = carrier?.trim();
+  return trimmed ? trimmed.toLowerCase() : "otros/no informado";
+};
+
 function getAirDestinationLabel(
   destinationNormalized: string,
   routeDestination: string,
@@ -1915,10 +1920,60 @@ function QuoteAPITester({
       return sortConfig.dir === "asc" ? diff : -diff;
     });
 
-  const rutasVisibles = showAllRoutes
-    ? rutasFiltradas
-    : rutasFiltradas.slice(0, INITIAL_VISIBLE_ROUTES);
-  const hasHiddenRoutes = rutasFiltradas.length > INITIAL_VISIBLE_ROUTES;
+  const rutasOrdenadas = useMemo(() => {
+    // Solo intercalar cuando el orden activo es por validez.
+    if (sortConfig.col !== "validez") return rutasFiltradas;
+    if (rutasFiltradas.length <= 1) return rutasFiltradas;
+
+    // Índice de primera ocurrencia por carrier (como ya viene ordenado por validez desc,
+    // esa primera ocurrencia representa la mejor validez del carrier).
+    const firstIndexByCarrier = new Map<string, number>();
+    for (let i = 0; i < rutasFiltradas.length; i++) {
+      const key = normalizeAirCarrierKey(rutasFiltradas[i].carrier);
+      if (!firstIndexByCarrier.has(key)) firstIndexByCarrier.set(key, i);
+    }
+
+    // Si solo hay un carrier, no cambia nada.
+    if (firstIndexByCarrier.size <= 1) return rutasFiltradas;
+
+    const carriersSorted = Array.from(firstIndexByCarrier.entries()).sort(
+      ([carrierA, idxA], [carrierB, idxB]) => {
+        const dateA = parseValidUntilToISO(rutasFiltradas[idxA].validUntil);
+        const dateB = parseValidUntilToISO(rutasFiltradas[idxB].validUntil);
+        const diff = dateB.localeCompare(dateA); // desc
+        return diff !== 0 ? diff : carrierA.localeCompare(carrierB);
+      },
+    );
+
+    const selectedIndices = new Set<number>();
+    const head: typeof rutasFiltradas = [];
+    for (const [, idx] of carriersSorted) {
+      selectedIndices.add(idx);
+      head.push(rutasFiltradas[idx]);
+    }
+
+    const tail: typeof rutasFiltradas = [];
+    for (let i = 0; i < rutasFiltradas.length; i++) {
+      if (!selectedIndices.has(i)) tail.push(rutasFiltradas[i]);
+    }
+
+    return head.concat(tail);
+  }, [rutasFiltradas, sortConfig.col]);
+
+  const rutasColapsadas = useMemo(() => {
+    const seen = new Set<string>();
+    const unique: typeof rutasOrdenadas = [];
+    for (const ruta of rutasOrdenadas) {
+      const key = normalizeAirCarrierKey(ruta.carrier);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      unique.push(ruta);
+    }
+    return unique.slice(0, INITIAL_VISIBLE_ROUTES);
+  }, [rutasOrdenadas]);
+
+  const rutasVisibles = showAllRoutes ? rutasOrdenadas : rutasColapsadas;
+  const hasHiddenRoutes = rutasOrdenadas.length > rutasColapsadas.length;
   const activeCarriersKey = Array.from(carriersActivos).sort().join("|");
   const activeCurrenciesKey = Array.from(monedasActivas).sort().join("|");
 
@@ -2013,7 +2068,7 @@ function QuoteAPITester({
 
   // Scroll a rutas cuando aparecen
   useEffect(() => {
-    if (rutasFiltradas.length > 0 && currentStep === 1) {
+    if (rutasOrdenadas.length > 0 && currentStep === 1) {
       const timeout = setTimeout(() => {
         routesRef.current?.scrollIntoView({
           behavior: "smooth",
@@ -2022,7 +2077,7 @@ function QuoteAPITester({
       }, 200);
       return () => clearTimeout(timeout);
     }
-  }, [rutasFiltradas.length, currentStep]);
+  }, [rutasOrdenadas.length, currentStep]);
 
   useEffect(() => {
     setShowAllRoutes(false);
@@ -5131,7 +5186,7 @@ function QuoteAPITester({
     let fastestIndex = -1;
     let minDays = Infinity;
 
-    rutasFiltradas.forEach((ruta, index) => {
+    rutasOrdenadas.forEach((ruta, index) => {
       // ✅ CORRECTO
       if (ruta.transitTime) {
         // Extraer los días del string (ej: "15-20 días" -> toma 15)
@@ -5147,14 +5202,14 @@ function QuoteAPITester({
     });
 
     return fastestIndex;
-  }, [rutasFiltradas]); // ✅ CORRECTO
+  }, [rutasOrdenadas]); // ✅ CORRECTO
 
   // Función para encontrar el índice de la ruta con menor precio (excluyendo precio 0)
   const bestPriceRouteIndex = useMemo(() => {
     let bestIndex = -1;
     let minPrice = Infinity;
 
-    rutasFiltradas.forEach((ruta, index) => {
+    rutasOrdenadas.forEach((ruta, index) => {
       if (ruta.priceForComparison > 0 && ruta.priceForComparison < minPrice) {
         minPrice = ruta.priceForComparison;
         bestIndex = index;
@@ -5162,7 +5217,7 @@ function QuoteAPITester({
     });
 
     return bestIndex;
-  }, [rutasFiltradas]);
+  }, [rutasOrdenadas]);
 
   // getValidityClass moved earlier to be usable during filtering
   // ============================================================================
@@ -5771,9 +5826,9 @@ function QuoteAPITester({
                       <div className="mt-4" ref={routesRef}>
                         <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
                           <h6 className="qa-section-label mb-0">
-                            Rutas Disponibles ({rutasFiltradas.length})
+                            Rutas Disponibles ({rutasOrdenadas.length})
                           </h6>
-                          {rutasFiltradas.length > 0 &&
+                          {rutasOrdenadas.length > 0 &&
                             originSeleccionado &&
                             destinationSeleccionado ? (
                             <div className="qa-routes-actions d-flex gap-2 flex-wrap">
@@ -5804,7 +5859,7 @@ function QuoteAPITester({
                           ) : null}
                         </div>
 
-                        {rutasFiltradas.length === 0 ? (
+                        {rutasOrdenadas.length === 0 ? (
                           <div className="text-center py-4 bg-light rounded text-muted">
                             <i className="bi bi-search fs-3 d-block mb-2"></i>
                             <p className="mb-1">{t("QuoteAIR.norutas")}</p>
@@ -5912,10 +5967,9 @@ function QuoteAPITester({
                                         rutasVisibles.reduce<
                                           Record<string, number>
                                         >((acc, r) => {
-                                          const key = (r.carrier || "")
-                                            .trim()
-                                            .toLowerCase();
-                                          if (!key) return acc;
+                                          const key = normalizeAirCarrierKey(
+                                            r.carrier,
+                                          );
                                           acc[key] = (acc[key] || 0) + 1;
                                           return acc;
                                         }, {});
@@ -5935,16 +5989,13 @@ function QuoteAPITester({
                                           ruta.validUntil,
                                         );
 
-                                        const carrierKey = (ruta.carrier || "")
-                                          .trim()
-                                          .toLowerCase();
+                                        const carrierKey = normalizeAirCarrierKey(
+                                          ruta.carrier,
+                                        );
                                         const isDuplicateCarrier =
-                                          carrierKey.length > 0 &&
-                                          (carrierCounts[carrierKey] || 0) >
-                                          1 &&
+                                          (carrierCounts[carrierKey] || 0) > 1 &&
                                           seenCarriers.has(carrierKey);
-                                        if (carrierKey)
-                                          seenCarriers.add(carrierKey);
+                                        seenCarriers.add(carrierKey);
 
                                         return (
                                           <tr

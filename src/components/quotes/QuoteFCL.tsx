@@ -114,6 +114,11 @@ import {
 
 const INITIAL_VISIBLE_ROUTES = 5;
 
+const normalizeRouteCarrierKey = (carrier: string | null | undefined): string => {
+  const trimmed = carrier?.trim();
+  return trimmed ? trimmed.toLowerCase() : "otros/no informado";
+};
+
 const FCL_ULTIMA_MILLA_ELIGIBLE_PODS = new Set(["san antonio", "valparaiso"]);
 
 const isUltimaMillaEligiblePOD = (podNormalized?: string | null): boolean =>
@@ -1254,10 +1259,56 @@ function QuoteFCL({
       return sortConfig.dir === "asc" ? diff : -diff;
     });
 
-  const rutasVisibles = showAllRoutes
-    ? rutasFiltradas
-    : rutasFiltradas.slice(0, INITIAL_VISIBLE_ROUTES);
-  const hasHiddenRoutes = rutasFiltradas.length > INITIAL_VISIBLE_ROUTES;
+  const rutasOrdenadas = useMemo(() => {
+    if (sortConfig.col !== "validez") return rutasFiltradas;
+    if (rutasFiltradas.length <= 1) return rutasFiltradas;
+
+    const firstIndexByCarrier = new Map<string, number>();
+    for (let i = 0; i < rutasFiltradas.length; i++) {
+      const key = normalizeRouteCarrierKey(rutasFiltradas[i].carrier);
+      if (!firstIndexByCarrier.has(key)) firstIndexByCarrier.set(key, i);
+    }
+
+    if (firstIndexByCarrier.size <= 1) return rutasFiltradas;
+
+    const carriersSorted = Array.from(firstIndexByCarrier.entries()).sort(
+      ([carrierA, idxA], [carrierB, idxB]) => {
+        const dateA = parseValidUntilToISO(rutasFiltradas[idxA].validUntil);
+        const dateB = parseValidUntilToISO(rutasFiltradas[idxB].validUntil);
+        const diff = dateB.localeCompare(dateA);
+        return diff !== 0 ? diff : carrierA.localeCompare(carrierB);
+      },
+    );
+
+    const selectedIndices = new Set<number>();
+    const head: typeof rutasFiltradas = [];
+    for (const [, idx] of carriersSorted) {
+      selectedIndices.add(idx);
+      head.push(rutasFiltradas[idx]);
+    }
+
+    const tail: typeof rutasFiltradas = [];
+    for (let i = 0; i < rutasFiltradas.length; i++) {
+      if (!selectedIndices.has(i)) tail.push(rutasFiltradas[i]);
+    }
+
+    return head.concat(tail);
+  }, [rutasFiltradas, sortConfig.col]);
+
+  const rutasColapsadas = useMemo(() => {
+    const seen = new Set<string>();
+    const unique: typeof rutasOrdenadas = [];
+    for (const ruta of rutasOrdenadas) {
+      const key = normalizeRouteCarrierKey(ruta.carrier);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      unique.push(ruta);
+    }
+    return unique.slice(0, INITIAL_VISIBLE_ROUTES);
+  }, [rutasOrdenadas]);
+
+  const rutasVisibles = showAllRoutes ? rutasOrdenadas : rutasColapsadas;
+  const hasHiddenRoutes = rutasOrdenadas.length > rutasColapsadas.length;
   const activeCarriersKey = Array.from(carriersActivos).sort().join("|");
 
   const countryRatesRows = useMemo(
@@ -1346,7 +1397,7 @@ function QuoteFCL({
 
   // Scroll a rutas cuando aparecen
   useEffect(() => {
-    if (rutasFiltradas.length > 0 && currentStep === 1) {
+    if (rutasOrdenadas.length > 0 && currentStep === 1) {
       const timeout = setTimeout(() => {
         routesRef.current?.scrollIntoView({
           behavior: "smooth",
@@ -1355,7 +1406,7 @@ function QuoteFCL({
       }, 200);
       return () => clearTimeout(timeout);
     }
-  }, [rutasFiltradas.length, currentStep]);
+  }, [rutasOrdenadas.length, currentStep]);
 
   useEffect(() => {
     setShowAllRoutes(false);
@@ -3423,9 +3474,9 @@ function QuoteFCL({
                         {/* Header mejorado */}
                         <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
                           <h6 className="qa-section-label mb-0">
-                            Rutas Disponibles ({rutasFiltradas.length})
+                            Rutas Disponibles ({rutasOrdenadas.length})
                           </h6>
-                          {rutasFiltradas.length > 0 &&
+                          {rutasOrdenadas.length > 0 &&
                             polSeleccionado &&
                             podSeleccionado && (
                             <div className="qa-routes-actions d-flex gap-2 flex-wrap">
@@ -3454,7 +3505,7 @@ function QuoteFCL({
                           )}
                         </div>
 
-                        {rutasFiltradas.length > 0 &&
+                        {rutasOrdenadas.length > 0 &&
                           (() => {
                             const isContainerAvailable = (
                               val?: string | null,
@@ -3537,13 +3588,12 @@ function QuoteFCL({
                                   <tbody>
                                     {(() => {
                                       const carrierCounts =
-                                        rutasFiltradas.reduce<
+                                        rutasVisibles.reduce<
                                           Record<string, number>
                                         >((acc, r) => {
-                                          const key = (r.carrier || "")
-                                            .trim()
-                                            .toLowerCase();
-                                          if (!key) return acc;
+                                          const key = normalizeRouteCarrierKey(
+                                            r.carrier,
+                                          );
                                           acc[key] = (acc[key] || 0) + 1;
                                           return acc;
                                         }, {});
@@ -3555,16 +3605,13 @@ function QuoteFCL({
                                         const isRowSelected =
                                           rutaSeleccionada?.id === ruta.id;
 
-                                        const carrierKey = (ruta.carrier || "")
-                                          .trim()
-                                          .toLowerCase();
+                                        const carrierKey = normalizeRouteCarrierKey(
+                                          ruta.carrier,
+                                        );
                                         const isDuplicateCarrier =
-                                          carrierKey.length > 0 &&
-                                          (carrierCounts[carrierKey] || 0) >
-                                          1 &&
+                                          (carrierCounts[carrierKey] || 0) > 1 &&
                                           seenCarriers.has(carrierKey);
-                                        if (carrierKey)
-                                          seenCarriers.add(carrierKey);
+                                        seenCarriers.add(carrierKey);
 
                                         const containers: {
                                           type: ContainerType;
