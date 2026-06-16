@@ -21,6 +21,7 @@ interface PdfTemplateCountryRatesProps {
   columns: CountryRateColumn[];
   rows: CountryRateRow[];
   logoSrc?: string;
+  includeLegal?: boolean;
 }
 
 type SheetKind = "rates" | "legal";
@@ -114,6 +115,7 @@ const tdPrice: React.CSSProperties = {
 function buildSheets(
   rows: CountryRateRow[],
   preferredOriginLabel?: string,
+  includeLegal = true,
 ): PdfSheet[] {
   const originGroups = groupRowsByOrigin(rows, preferredOriginLabel);
   const sheets: PdfSheet[] = [];
@@ -134,7 +136,9 @@ function buildSheets(
     });
   }
 
-  sheets.push({ key: "legal", kind: "legal" });
+  if (includeLegal) {
+    sheets.push({ key: "legal", kind: "legal" });
+  }
   return sheets;
 }
 
@@ -559,10 +563,11 @@ export const PdfTemplateCountryRates: React.FC<PdfTemplateCountryRatesProps> = (
   columns,
   rows,
   logoSrc = "/logo.png",
+  includeLegal = true,
 }) => {
   const serviceNote = service ? SERVICE_NOTES[service] : null;
   const originGroups = groupRowsByOrigin(rows, selectedOriginLabel);
-  const sheets = buildSheets(rows, selectedOriginLabel);
+  const sheets = buildSheets(rows, selectedOriginLabel, includeLegal);
   const totalPages = sheets.length;
 
   return (
