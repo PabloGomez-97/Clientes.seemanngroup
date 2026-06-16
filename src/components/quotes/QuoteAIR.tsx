@@ -2578,7 +2578,7 @@ function QuoteAPITester({
       validUntil: validUntilIso,
       transitDays: null,
       project: { name: "AIR" },
-      customerReference: "Portal Created [AIR]",
+      customerReference: "Portal Created [AIR] - AirConnect ES-SCL",
       contact: { name: effectiveUsername },
       origin: { name: rutaSeleccionada.origin },
       carrierBroker: { name: airlineLabel },
@@ -2606,9 +2606,9 @@ function QuoteAPITester({
             billApplyTo: "Other",
             billTo: { name: effectiveUsername },
             currency: { abbr: AIR_CONNECT_CURRENCY },
-            reference: `Amount to Air Freight - ${airlineLabel}`,
+            reference: `AirConnect ${offer.freight} - ${airlineLabel}`,
             showOnDocument: true,
-            notes: `Air freight quotation created via Client Portal (${airlineLabel})`,
+            notes: `Cotización AirConnect España→SCL (${airlineLabel})`,
           },
           expense: {
             currency: { abbr: AIR_CONNECT_CURRENCY },
@@ -2884,7 +2884,7 @@ function QuoteAPITester({
         );
         const filename = quoteNumber
           ? `${quoteNumber}_${customerClean}.pdf`
-          : `Cotizacion_${customerClean}_${formatDateForFilename(new Date())}.pdf`;
+          : `Cotizacion_AirConnect_${customerClean}_${formatDateForFilename(new Date())}.pdf`;
 
         const pdfBase64 = await generatePDFBase64(pdfElement);
         if (pdfBase64 && quoteNumber) {

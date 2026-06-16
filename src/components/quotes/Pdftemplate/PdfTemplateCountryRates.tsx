@@ -578,6 +578,7 @@ export const PdfTemplateCountryRates: React.FC<PdfTemplateCountryRatesProps> = (
           className={
             index < sheets.length - 1 ? "pdf-sheet pdf-page-after" : "pdf-sheet"
           }
+          data-pdf-page={index + 1}
           style={SHEET}
         >
           <SheetHeader

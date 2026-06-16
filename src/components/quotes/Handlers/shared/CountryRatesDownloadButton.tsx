@@ -5,7 +5,7 @@ import ReactDOM from "react-dom/client";
 import { PdfTemplateCountryRates } from "../../Pdftemplate/PdfTemplateCountryRates";
 import {
   formatDateForFilename,
-  generatePDF,
+  generateFlattenedPDF,
   preloadLogoAsDataUrl,
 } from "../../Pdftemplate/Pdfutils";
 import {
@@ -100,11 +100,10 @@ export function CountryRatesDownloadButton({
       const serviceLabel = SERVICE_FILENAME_LABELS[service];
       const filename = `Tarifas_${countryClean}${destinationClean}_${serviceLabel}_${formatDateForFilename(new Date())}.pdf`;
 
-      await generatePDF({
+      await generateFlattenedPDF({
         filename,
         element: pdfElement,
         orientation: "landscape",
-        paginateTables: true,
       });
 
       root.unmount();

@@ -1,4 +1,6 @@
+import html2canvas from 'html2canvas';
 import html2pdf from 'html2pdf.js';
+import { jsPDF } from 'jspdf';
 
 interface GeneratePDFOptions {
   filename: string;
@@ -35,6 +37,111 @@ const buildPdfOptions = (
 });
 
 const pdfOptions = buildPdfOptions('portrait');
+
+interface FlattenedPDFOptions {
+  filename: string;
+  element: HTMLElement;
+  orientation?: 'portrait' | 'landscape';
+  pageSelector?: string;
+  scale?: number;
+  jpegQuality?: number;
+}
+
+const A4_MM = { width: 210, height: 297 };
+
+const getPageDimensionsMm = (orientation: 'portrait' | 'landscape') =>
+  orientation === 'landscape'
+    ? { width: A4_MM.height, height: A4_MM.width }
+    : { width: A4_MM.width, height: A4_MM.height };
+
+const createOffscreenCaptureRoot = (widthMm: number): HTMLDivElement => {
+  const root = document.createElement('div');
+  root.style.cssText = [
+    'position:fixed',
+    'left:-10000px',
+    'top:0',
+    `width:${widthMm}mm`,
+    'background:#ffffff',
+    'opacity:1',
+    'pointer-events:none',
+    'z-index:-1',
+    'overflow:visible',
+  ].join(';');
+  document.body.appendChild(root);
+  return root;
+};
+
+/**
+ * Genera un PDF aplanado capturando cada hoja (.pdf-sheet) como imagen JPEG independiente.
+ * Elimina el scroll jank causado por el canvas monolítico de html2pdf.
+ */
+export const generateFlattenedPDF = async ({
+  filename,
+  element,
+  orientation = 'landscape',
+  pageSelector = '.pdf-sheet',
+  scale = 1.5,
+  jpegQuality = 0.92,
+}: FlattenedPDFOptions): Promise<void> => {
+  const pages = element.querySelectorAll<HTMLElement>(pageSelector);
+  if (pages.length === 0) {
+    throw new Error(`No pages found with selector "${pageSelector}"`);
+  }
+
+  const { width: pageWidthMm, height: pageHeightMm } = getPageDimensionsMm(orientation);
+  const pdf = new jsPDF({
+    unit: 'mm',
+    format: 'a4',
+    orientation,
+    compress: true,
+  });
+
+  const captureRoot = createOffscreenCaptureRoot(pageWidthMm);
+
+  try {
+    for (let i = 0; i < pages.length; i++) {
+      if (i > 0) {
+        pdf.addPage();
+      }
+
+      const page = pages[i];
+      const clone = page.cloneNode(true) as HTMLElement;
+      captureRoot.replaceChildren(clone);
+
+      const canvas = await html2canvas(clone, {
+        scale,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+        scrollX: 0,
+        scrollY: 0,
+      });
+
+      const aspectRatio = canvas.height / canvas.width;
+      let drawWidth = pageWidthMm;
+      let drawHeight = drawWidth * aspectRatio;
+
+      if (drawHeight > pageHeightMm) {
+        drawHeight = pageHeightMm;
+        drawWidth = drawHeight / aspectRatio;
+      }
+
+      const offsetX = (pageWidthMm - drawWidth) / 2;
+      const imgData = canvas.toDataURL('image/jpeg', jpegQuality);
+      pdf.addImage(imgData, 'JPEG', offsetX, 0, drawWidth, drawHeight);
+
+      canvas.width = 0;
+      canvas.height = 0;
+    }
+
+    pdf.save(filename);
+  } catch (error) {
+    console.error('Error generating flattened PDF:', error);
+    throw new Error('Failed to generate flattened PDF');
+  } finally {
+    document.body.removeChild(captureRoot);
+  }
+};
 
 export const generatePDF = async ({
   filename,
