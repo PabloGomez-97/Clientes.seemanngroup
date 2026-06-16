@@ -22,6 +22,7 @@ import {
 } from './emails/pricingAlertEmailTemplate.js';
 import { buildR2Key, uploadPDF, downloadPDFBuffer, deleteAllUserPDFs } from './services/r2Storage.js';
 import { buildDocR2Key, uploadDocument, downloadDocumentBuffer, deleteDocument } from './services/r2DocumentStorage.js';
+import { resolveEjecutivoForEmail, loadQuotePdfAttachment } from './utils/operationEmailHelpers.js';
 
 /** =========================
  *  Entorno + JWT
@@ -5616,13 +5617,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           proveedor,
         } = req.body;
 
-        const ejecutivoEmail =
-          (typeof ejecutivoEmailBody === 'string' && ejecutivoEmailBody.trim()) ||
-          (currentUser.ejecutivoId as any)?.email;
-        const ejecutivoNombre =
-          (typeof ejecutivoNombreBody === 'string' && ejecutivoNombreBody.trim()) ||
-          (currentUser.ejecutivoId as any)?.nombre ||
-          'Ejecutivo';
+        const ejecutivoResolved = await resolveEjecutivoForEmail(
+          currentUser,
+          { ejecutivoEmail: ejecutivoEmailBody, ejecutivoNombre: ejecutivoNombreBody },
+          Ejecutivo,
+        );
+        if (!ejecutivoResolved) {
+          return res.status(400).json({ error: 'No se encontró ejecutivo asignado al usuario' });
+        }
+        const { ejecutivoEmail, ejecutivoNombre } = ejecutivoResolved;
+
         const clienteUsername =
           (typeof clienteUsernameBody === 'string' && clienteUsernameBody.trim()) ||
           currentUser.username ||
@@ -5630,10 +5634,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const clienteNombreResolved =
           (typeof clienteNombreBody === 'string' && clienteNombreBody.trim()) ||
           currentUser.nombreuser;
-
-        if (!ejecutivoEmail) {
-          return res.status(400).json({ error: 'No se encontró ejecutivo asignado al usuario' });
-        }
 
         const tipoAccionResolved = (tipoAccion || tipo) as 'cotizacion' | 'operacion' | undefined;
 
@@ -5722,18 +5722,38 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           htmlContent = buildAirQuoteEmailHTML(emailData);
         }
 
+        const pdfUsuarioId =
+          (typeof clienteUsernameBody === 'string' && clienteUsernameBody.trim()) ||
+          currentUser.username ||
+          '';
+        const pdfAttachment =
+          quoteNumber && pdfUsuarioId
+            ? await loadQuotePdfAttachment(String(quoteNumber), pdfUsuarioId, QuotePDF)
+            : null;
+
+        if (!pdfAttachment && quoteNumber) {
+          console.warn(
+            `[send-operation-email] Correo sin adjunto PDF para quoteNumber=${quoteNumber}, usuarioId=${pdfUsuarioId}`,
+          );
+        }
+
+        const brevoPayload: Record<string, unknown> = {
+          sender: { name: 'Portal Clientes Seemann Group', email: 'noreply@sphereglobal.io' },
+          to: [{ email: ejecutivoEmail }],
+          subject,
+          htmlContent,
+        };
+        if (pdfAttachment) {
+          brevoPayload.attachment = [pdfAttachment];
+        }
+
         const brevoResponse = await fetch('https://api.brevo.com/v3/smtp/email', {
           method: 'POST',
           headers: {
             'api-key': process.env.BREVO_API_KEY!,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            sender: { name: 'Portal Clientes Seemann Group', email: 'noreply@sphereglobal.io' },
-            to: [{ email: ejecutivoEmail }],
-            subject,
-            htmlContent,
-          }),
+          body: JSON.stringify(brevoPayload),
         });
 
         console.log('Brevo response status:', brevoResponse.status);
@@ -5742,7 +5762,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           console.error('Error enviando correo con Brevo:', errorText);
         }
 
-        return res.status(200).json({ success: true, message: 'Notificación enviada al ejecutivo' });
+        return res.status(200).json({
+          success: true,
+          message: 'Notificación enviada al ejecutivo',
+          pdfAttached: Boolean(pdfAttachment),
+        });
       } catch (error: any) {
         if (error?.message === 'No auth token' || error?.message === 'Invalid token') {
           return res.status(401).json({ error: error.message });

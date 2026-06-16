@@ -2801,8 +2801,12 @@ function QuoteLCL({
             Authorization: `Bearer ${jwtToken}`,
           },
           body: JSON.stringify({
-            ejecutivoEmail: ejecutivo?.email,
-            ejecutivoNombre: ejecutivo?.nombre,
+            ejecutivoEmail: isEjecutivoMode
+              ? (user?.ejecutivo?.email ?? user?.email)
+              : ejecutivo?.email,
+            ejecutivoNombre: isEjecutivoMode
+              ? (user?.ejecutivo?.nombre ?? user?.nombreuser ?? user?.username)
+              : ejecutivo?.nombre,
             clienteUsername: isEjecutivoMode
               ? clienteSeleccionado?.username
               : user?.username,
