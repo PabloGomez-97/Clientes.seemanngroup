@@ -4,6 +4,18 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useOutletContext } from "react-router-dom";
 import { useAuth } from "../../../auth/AuthContext";
 import { linbisFetch } from "../../../services/linbisFetch";
+import {
+  DocGroupSection,
+  type DocGroup,
+  type UnifiedDoc,
+} from "./DocGroupSection";
+import { DocTransportFilter } from "./DocTransportFilter";
+import {
+  TRANSPORT_LABELS,
+  type DocItem,
+  type GroupTransportType,
+  type TransportType,
+} from "./docTransportTokens";
 import "./DocumentosUnificadosView.css";
 import LoadingTips from "../../shipments/LoadingTips";
 
@@ -12,15 +24,7 @@ const FONT =
 const DOCS_CACHE_TTL = 3 * 60 * 60 * 1000;
 const DOCS_CACHE_PREFIX = "unifiedDocumentsCache_v1";
 
-export interface DocItem {
-  id: string;
-  shipmentId: string | null;
-  tipo: string;
-  nombreArchivo: string;
-  tipoArchivo: string;
-  tamanoMB: string;
-  fechaSubida: string;
-}
+export type { DocItem };
 
 interface AllDocs {
   air: DocItem[];
@@ -28,9 +32,6 @@ interface AllDocs {
   ground: DocItem[];
   quotes: DocItem[];
 }
-
-type TransportType = "all" | "air" | "ocean" | "ground" | "quotes";
-type GroupTransportType = Exclude<TransportType, "all">;
 
 interface OutletContext {
   accessToken: string;
@@ -48,47 +49,6 @@ interface CachedDocsPayload {
   docs: AllDocs;
   referenceMap: Record<string, ReferenceMeta>;
 }
-
-type UnifiedDoc = DocItem & { _type: GroupTransportType };
-
-interface DocGroup {
-  key: string;
-  type: GroupTransportType;
-  title: string;
-  subtitle: string | null;
-  docs: UnifiedDoc[];
-  latestTimestamp: number;
-  sortValue: number;
-  lookupValue: string | null;
-}
-
-const TRANSPORT_LABELS: Record<TransportType, string> = {
-  all: "Todos",
-  air: "Aérea",
-  ocean: "Marítima",
-  ground: "Terrestre",
-  quotes: "Cotizaciones",
-};
-
-const SUMMARY_METRICS: Array<{
-  key: TransportType;
-  label: string;
-  sub: string;
-}> = [
-  { key: "all", label: "Todos", sub: "documentos" },
-  { key: "air", label: "Aéreo", sub: "documentos" },
-  { key: "ocean", label: "Marítimo", sub: "documentos" },
-  { key: "ground", label: "Terrestre", sub: "documentos" },
-  { key: "quotes", label: "Cotizaciones", sub: "documentos" },
-];
-
-const FILE_BADGES: Array<{ match: string; label: string }> = [
-  { match: "pdf", label: "PDF" },
-  { match: "excel", label: "XLS" },
-  { match: "spreadsheet", label: "XLS" },
-  { match: "word", label: "DOC" },
-  { match: "document", label: "DOC" },
-];
 
 function normalizeText(value: unknown) {
   return typeof value === "string" && value.trim() ? value.trim() : null;
@@ -191,12 +151,6 @@ function getGroupSubtitle(
   }
 
   return null;
-}
-
-function getFileBadge(tipoArchivo: string) {
-  const lower = tipoArchivo.toLowerCase();
-  const match = FILE_BADGES.find((item) => lower.includes(item.match));
-  return match?.label ?? "FILE";
 }
 
 function getGroupLookupValue(
@@ -721,6 +675,19 @@ export function DocumentosUnificadosView({
     await loadDocs(true);
   }, [loadDocs]);
 
+  const resultsSummary = useMemo(() => {
+    if (loading || visibleDocs.length === 0) return null;
+
+    let text = `${visibleDocs.length} documento${visibleDocs.length !== 1 ? "s" : ""}`;
+    if (activeType !== "all") {
+      text += ` en ${TRANSPORT_LABELS[activeType]}`;
+    }
+    if (search.trim()) {
+      text += ` encontrado${visibleDocs.length !== 1 ? "s" : ""}`;
+    }
+    return text;
+  }, [activeType, loading, search, visibleDocs.length]);
+
   return (
     <div className="doc-unified-view" style={{ fontFamily: FONT }}>
       {title && (
@@ -729,90 +696,50 @@ export function DocumentosUnificadosView({
         </div>
       )}
 
-      {/* Hint sobre subida de documentos */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "flex-start",
-          gap: 10,
-          padding: "10px 14px",
-          background: "#eff6ff",
-          border: "1px solid #bfdbfe",
-          borderRadius: 8,
-          marginBottom: 20,
-          fontSize: 12,
-          color: "#1d4ed8",
-          lineHeight: 1.5,
-        }}
-      >
-        <svg
-          width="14"
-          height="14"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          style={{ marginTop: 1, flexShrink: 0 }}
-        >
-          <circle cx="12" cy="12" r="10" />
-          <line x1="12" y1="8" x2="12.01" y2="8" />
-          <line x1="12" y1="12" x2="12" y2="16" />
-        </svg>
-        <span>
-          Para <strong>subir nuevos documentos</strong>, ve a la sección de
-          operaciones correspondiente (Aérea, Marítima o Terrestre) y ábrelos
-          desde allí.
-        </span>
-      </div>
-
-      <section className="doc-metrics-strip" aria-label="Resumen de documentos">
-        {SUMMARY_METRICS.map((metric) => {
-          const active = activeType === metric.key;
-          return (
-            <button
-              key={metric.key}
-              type="button"
-              className={`doc-metrics-strip__item${active ? " doc-metrics-strip__item--active" : ""}`}
-              aria-pressed={active}
-              onClick={() => setActiveType(metric.key)}
-            >
-              <div className="doc-metrics-strip__label">{metric.label}</div>
-              <div className="doc-metrics-strip__value">
-                {counts[metric.key]}
-              </div>
-              <div className="doc-metrics-strip__sub">{metric.sub}</div>
-            </button>
-          );
-        })}
-      </section>
-
-      <div className="doc-toolbar">
-        <div className="doc-search">
-          <input
-            type="text"
-            placeholder="Buscar por nombre, tipo, operación o cotización..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          {search && (
-            <button
-              type="button"
-              className="doc-link"
-              onClick={() => setSearch("")}
-            >
-              Limpiar
-            </button>
-          )}
+      <header className="doc-command-bar">
+        <div className="doc-intro">
+          <p className="doc-intro__text">
+            Para <strong>subir nuevos documentos</strong>, ve a la sección de
+            operaciones correspondiente (Aérea, Marítima o Terrestre) y ábrelos
+            desde allí.
+          </p>
         </div>
-        <button
-          type="button"
-          className="doc-refresh-button"
-          onClick={handleRefresh}
-          disabled={loading}
-        >
-          Actualizar
-        </button>
-      </div>
+
+        <DocTransportFilter
+          activeType={activeType}
+          counts={counts}
+          onChange={setActiveType}
+          resultsSummary={resultsSummary}
+        />
+
+        <div className="doc-toolbar">
+          <div className="doc-search">
+            <input
+              type="text"
+              placeholder="Buscar por nombre, tipo, operación o cotización..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            {search && (
+              <button
+                type="button"
+                className="doc-link"
+                onClick={() => setSearch("")}
+              >
+                Limpiar
+              </button>
+            )}
+          </div>
+          <button
+            type="button"
+            className="doc-refresh-button"
+            onClick={handleRefresh}
+            disabled={loading}
+          >
+            Actualizar
+          </button>
+        </div>
+      </header>
 
       {successMsg && (
         <div className="doc-alert doc-alert--success">{successMsg}</div>
@@ -836,169 +763,44 @@ export function DocumentosUnificadosView({
 
       {!loading && groupedDocs.length > 0 && (
         <div className="doc-groups">
-          {groupedDocs.map((group) => {
-            const isExpanded = expandedGroups.includes(group.key);
-            const destination = buildDestination(group);
-
-            return (
-              <section
-                key={group.key}
-                className={`doc-group${isExpanded ? " doc-group--open" : ""}`}
-              >
-                <div
-                  className="doc-group__header"
-                  onClick={() => toggleGroup(group.key)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      toggleGroup(group.key);
-                    }
-                  }}
-                >
-                  <div className="doc-group__copy">
-                    <div className="doc-group__title-row">
-                      <div className="doc-group__title">{group.title}</div>
-                      <button
-                        type="button"
-                        className="doc-group__view"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(destination.to, {
-                            state: destination.state,
-                          });
-                        }}
-                      >
-                        {group.type === "quotes"
-                          ? "Ver Cotización"
-                          : "Ver Operación"}
-                      </button>
-                    </div>
-                    <div className="doc-group__subtitle">
-                      {group.subtitle ||
-                        "Documentos agrupados bajo esta referencia"}
-                    </div>
-                  </div>
-
-                  <div className="doc-group__meta">
-                    <span>
-                      {group.docs.length} documento
-                      {group.docs.length !== 1 ? "s" : ""}
-                    </span>
-                    <span className="doc-group__toggle">
-                      {isExpanded ? "Cerrar" : "Abrir"}
-                    </span>
-                  </div>
-                </div>
-
-                {isExpanded && (
-                  <div className="doc-group__body">
-                    <div className="doc-group__table-header">
-                      <div className="doc-group__head">Documento</div>
-                      <div className="doc-group__head">Tipo</div>
-                      <div className="doc-group__head">Fecha</div>
-                      <div className="doc-group__head doc-group__head--actions">
-                        Acciones
-                      </div>
-                    </div>
-
-                    {group.docs.map((doc) => {
-                      const isDeleting = deletingId === doc.id;
-                      const isDownloading = downloadingId === doc.id;
-
-                      return (
-                        <div key={doc.id} className="doc-row">
-                          <div
-                            className="doc-document"
-                            title={doc.nombreArchivo}
-                          >
-                            <span className="doc-file-badge">
-                              {getFileBadge(doc.tipoArchivo)}
-                            </span>
-                            <div className="doc-document__copy">
-                              <div className="doc-document__name">
-                                {doc.nombreArchivo}
-                              </div>
-                              <div className="doc-document__size">
-                                {doc.tamanoMB} MB
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="doc-type-cell">
-                            <span className="doc-type-badge" title={doc.tipo}>
-                              {doc.tipo}
-                            </span>
-                          </div>
-
-                          <div
-                            className="doc-date"
-                            title={formatFechaFull(doc.fechaSubida)}
-                          >
-                            {formatFecha(doc.fechaSubida)}
-                          </div>
-
-                          <div className="doc-actions">
-                            <button
-                              type="button"
-                              className="doc-action-link"
-                              onClick={() => handleDownload(doc)}
-                              disabled={isDownloading || isDeleting}
-                            >
-                              {isDownloading ? "Descargando..." : "Descargar"}
-                            </button>
-
-                            {canDelete && (
-                              <button
-                                type="button"
-                                className="doc-action-link doc-action-link--danger"
-                                onClick={() => handleDelete(doc)}
-                                disabled={isDeleting || isDownloading}
-                              >
-                                {isDeleting ? "Eliminando..." : "Eliminar"}
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </section>
-            );
-          })}
+          {groupedDocs.map((group) => (
+            <DocGroupSection
+              key={group.key}
+              group={group}
+              isExpanded={expandedGroups.includes(group.key)}
+              destination={buildDestination(group)}
+              canDelete={canDelete}
+              deletingId={deletingId}
+              downloadingId={downloadingId}
+              onToggle={() => toggleGroup(group.key)}
+              onNavigate={navigate}
+              onDownload={handleDownload}
+              onDelete={handleDelete}
+              formatFecha={formatFecha}
+              formatFechaFull={formatFechaFull}
+            />
+          ))}
         </div>
       )}
 
       {!loading && groupedDocs.length === 0 && (
         <div className="doc-empty">
-          <div>
-            <div className="doc-empty__title">
-              {search
-                ? `Sin resultados para "${search}"`
-                : counts.all === 0
-                  ? "No hay documentos disponibles"
-                  : `Sin documentos en ${TRANSPORT_LABELS[activeType]}`}
-            </div>
-            {search ? (
-              <button
-                type="button"
-                className="doc-link"
-                onClick={() => setSearch("")}
-              >
-                Limpiar búsqueda
-              </button>
-            ) : null}
+          <div className="doc-empty__title">
+            {search
+              ? `Sin resultados para "${search}"`
+              : counts.all === 0
+                ? "No hay documentos disponibles"
+                : `Sin documentos en ${TRANSPORT_LABELS[activeType]}`}
           </div>
-        </div>
-      )}
-
-      {!loading && visibleDocs.length > 0 && (
-        <div className="doc-results">
-          {visibleDocs.length} documento{visibleDocs.length !== 1 ? "s" : ""}
-          {activeType !== "all" && ` en ${TRANSPORT_LABELS[activeType]}`}
-          {search && ` encontrado${visibleDocs.length !== 1 ? "s" : ""}`}
+          {search ? (
+            <button
+              type="button"
+              className="doc-link"
+              onClick={() => setSearch("")}
+            >
+              Limpiar búsqueda
+            </button>
+          ) : null}
         </div>
       )}
     </div>
