@@ -22,7 +22,7 @@ import {
 } from './emails/pricingAlertEmailTemplate.js';
 import { buildR2Key, uploadPDF, downloadPDFBuffer, deleteAllUserPDFs } from './services/r2Storage.js';
 import { buildDocR2Key, uploadDocument, downloadDocumentBuffer, deleteDocument } from './services/r2DocumentStorage.js';
-import { resolveEjecutivoForEmail, loadQuotePdfAttachment } from './utils/operationEmailHelpers.js';
+import { resolveEjecutivoForEmail, loadQuotePdfAttachment, loadQuotePdfAttachmentWithRetry } from './utils/operationEmailHelpers.js';
 
 /** =========================
  *  Entorno + JWT
@@ -6146,6 +6146,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const ejecutivoEmail = (currentUser.ejecutivoId as any).email;
         const ejecutivoNombre = (currentUser.ejecutivoId as any).nombre || 'Ejecutivo';
         const clienteUsername = currentUser.username || currentUser.email;
+        const clienteNombre = currentUser.nombreuser || undefined;
 
         const { quoteType, cargoDetails, quoteNumber: noRateQuoteNumber } = req.body as {
           quoteType: 'AIR' | 'FCL' | 'LCL' | 'LASTMILE';
@@ -6153,16 +6154,40 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           quoteNumber?: string;
         };
 
+        const pdfUsuarioId = clienteUsername;
+        const pdfAttachment =
+          noRateQuoteNumber && pdfUsuarioId
+            ? await loadQuotePdfAttachmentWithRetry(String(noRateQuoteNumber), pdfUsuarioId, QuotePDF)
+            : null;
+
+        if (!pdfAttachment && noRateQuoteNumber) {
+          console.warn(
+            `[no-rate-email] Correo sin adjunto PDF para quoteNumber=${noRateQuoteNumber}, usuarioId=${pdfUsuarioId}`,
+          );
+        }
+
         const emailData: NoRateQuoteEmailData = {
           ejecutivoNombre,
           clienteUsername,
+          clienteNombre,
           quoteType,
           cargoDetails,
           quoteNumber: noRateQuoteNumber || undefined,
+          pdfAdjunto: Boolean(pdfAttachment),
         };
 
         const subject = getNoRateQuoteEmailSubject(emailData);
         const htmlContent = buildNoRateQuoteEmailHTML(emailData);
+
+        const brevoPayload: Record<string, unknown> = {
+          sender: { name: 'Portal Clientes Seemann Group', email: 'noreply@sphereglobal.io' },
+          to: [{ email: ejecutivoEmail }],
+          subject,
+          htmlContent,
+        };
+        if (pdfAttachment) {
+          brevoPayload.attachment = [pdfAttachment];
+        }
 
         const brevoRes = await fetch('https://api.brevo.com/v3/smtp/email', {
           method: 'POST',
@@ -6170,19 +6195,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             'api-key': process.env.BREVO_API_KEY!,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            sender: { name: 'Portal Clientes Seemann Group', email: 'noreply@sphereglobal.io' },
-            to: [{ email: ejecutivoEmail }],
-            subject,
-            htmlContent,
-          }),
+          body: JSON.stringify(brevoPayload),
         });
 
         if (!brevoRes.ok) {
           console.error('[no-rate-email] Brevo error:', await brevoRes.text());
         }
 
-        return res.status(200).json({ success: true });
+        return res.status(200).json({ success: true, pdfAdjunto: Boolean(pdfAttachment) });
       } catch (error: any) {
         if (error?.message === 'No auth token' || error?.message === 'Invalid token') {
           return res.status(401).json({ error: error.message });

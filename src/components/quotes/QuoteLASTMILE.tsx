@@ -1625,34 +1625,6 @@ function QuoteLASTMILE({
         trackComplete({ quoteNumber });
       }
 
-      // Zona 3: fuera del polígono exterior → cotización sin tarifa, aviso al ejecutivo
-      if (!isEjecutivoMode && deliveryVespucioZone === "outside") {
-        fetch(`/api/send-no-rate-quote-email`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            quoteType: "LASTMILE",
-            cargoDetails: {
-              pol: origenSel.label,
-              pod: destinoSel.label,
-              pickupFromAddress: pickupAddress,
-              deliveryToAddress: deliveryAddress,
-              piezasCount: piecesData.length,
-              piezasDesc: piezasDescSummary,
-              pesoTotal: cargoTotals.realWeight.toFixed(2),
-              volumenTotal: cargoTotals.volume.toFixed(4),
-              pesoVolumetrico: cargoTotals.volumetricWeight.toFixed(2),
-              pesoChargeable: cargoTotals.chargeableWeight.toFixed(2),
-            },
-            quoteNumber: quoteNumber || undefined,
-          }),
-          keepalive: true,
-        }).catch(() => { });
-      }
-
       // Calcular charges para el PDF (solo LCL + DAP tiene tarifa fija)
       type PDFCharge = {
         code: string;
@@ -2013,6 +1985,25 @@ function QuoteLASTMILE({
           } catch (err) {
             console.error("[QuoteLASTMILE] Error subiendo PDF:", err);
           }
+        }
+
+        if (!isEjecutivoMode && deliveryVespucioZone === "outside") {
+          fetch(`/api/send-no-rate-quote-email`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              quoteType: "LASTMILE",
+              cargoDetails: {
+                origen: origenSel.label,
+                destino: destinoSel.label,
+              },
+              quoteNumber: quoteNumber || undefined,
+            }),
+            keepalive: true,
+          }).catch(() => { });
         }
 
         if (pdfBase64) {

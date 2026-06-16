@@ -15,7 +15,8 @@
     "whatsapp:optin-add-phone": "node -r dotenv/config ./node_modules/.bin/tsx scripts/whatsapp-optin-add-phone.ts",
     "lint": "eslint .",
     "preview": "vite preview",
-    "email:preview:air": "node scripts/dev-air-email-preview.mjs"
+    "email:preview:air": "node scripts/dev-air-email-preview.mjs",
+    "email:preview:no-rate": "node scripts/dev-no-rate-email-preview.mjs"
   },
   "engines": {
     "node": "24.x"

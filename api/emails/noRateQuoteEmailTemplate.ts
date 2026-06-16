@@ -1,123 +1,94 @@
 /**
  * Template HTML para notificación de cotización sin tarifa (ruta no recurrente).
- * Minimalista, responsive, con branding Seemann Group.
+ * Tarjeta clara compacta — branding Seemann Group.
  */
 
 export interface NoRateQuoteEmailData {
   ejecutivoNombre: string;
   clienteUsername: string;
+  clienteNombre?: string;
   quoteType: 'AIR' | 'FCL' | 'LCL' | 'LASTMILE';
   cargoDetails: Record<string, unknown>;
   quoteNumber?: string;
+  pdfAdjunto?: boolean;
 }
 
 const LOGO_URL = 'https://portalclientes.seemanngroup.com/logocompleto.png';
-const PORTAL_URL = 'https://portalclientes.seemanngroup.com';
+
+const FONT = "'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 
 const C = {
   primary: '#ff6200',
-  dark: '#1a1a1a',
-  text: '#333333',
-  muted: '#666666',
-  border: '#e0e0e0',
-  bgLight: '#f8f9fa',
-  white: '#ffffff',
+  card: '#ffffff',
+  section: '#f8f9fa',
+  border: '#e5e7eb',
+  canvas: '#eceff3',
+  text: '#111827',
+  muted: '#6b7280',
+  labelLight: '#4b5563',
 };
 
-function getServiceLabel(quoteType: string): string {
-  if (quoteType === 'AIR') return 'Aéreo (AIR)';
-  if (quoteType === 'FCL') return 'Marítimo FCL';
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function badgeLine2(quoteType: NoRateQuoteEmailData['quoteType']): string {
+  if (quoteType === 'AIR') return 'Aéreo';
+  if (quoteType === 'FCL') return 'FCL';
   if (quoteType === 'LASTMILE') return 'Última Milla';
-  return 'Marítimo LCL';
+  return 'LCL';
 }
 
-function getServiceColor(quoteType: string): string {
-  if (quoteType === 'AIR') return '#3b82f6';
-  if (quoteType === 'FCL') return '#8b5cf6';
-  if (quoteType === 'LASTMILE') return '#0d9488';
-  return '#06b6d4';
+function tipoTitulo(quoteType: NoRateQuoteEmailData['quoteType']): string {
+  if (quoteType === 'AIR') return 'Cotización sin tarifa aérea';
+  if (quoteType === 'FCL') return 'Cotización sin tarifa marítima FCL';
+  if (quoteType === 'LASTMILE') return 'Cotización sin tarifa última milla';
+  return 'Cotización sin tarifa marítima LCL';
 }
 
-function buildDetailRows(quoteType: string, d: any): string {
-  const row = (label: string, value: string) => `
-    <tr>
-      <td class="detail-label" style="padding:8px 12px;font-size:13px;color:${C.muted};white-space:nowrap;width:180px;border-bottom:1px solid ${C.border};">${label}</td>
-      <td class="detail-value" style="padding:8px 12px;font-size:13px;font-weight:600;color:${C.text};border-bottom:1px solid ${C.border};">${value || '—'}</td>
-    </tr>`;
-
-  if (quoteType === 'AIR') {
-    const rows = [
-      row('Origen', d.origen),
-      row('Destino', d.destino),
-      row('Carrier', d.carrier),
-      row('Incoterm', d.incoterm),
-      row('Tipo de bulto', d.packageType),
-    ];
-    if (d.isOverall) {
-      rows.push(row('Modo de ingreso', 'OVERALL (datos globales)'));
-      rows.push(row('Peso total (kg)', d.pesoTotal));
-      rows.push(row('Volumen total (m³)', d.volumenTotal));
-    } else {
-      rows.push(row('Piezas / carga', d.piezasDesc));
-      rows.push(row('Peso total (kg)', d.pesoTotal));
-      rows.push(row('Volumen total (m³)', d.volumenTotal));
-    }
-    if (d.incoterm === 'EXW') {
-      if (d.pickupFromAddress) rows.push(row('Dirección de recogida', d.pickupFromAddress as string));
-      if (d.deliveryToAddress) rows.push(row('Dirección de entrega', d.deliveryToAddress as string));
-    }
-    return rows.join('');
-  }
-  if (quoteType === 'FCL') {
-    const rows = [
-      row('POL (Origen)', d.pol),
-      row('POD (Destino)', d.pod),
-      row('Carrier', d.carrier),
-      row('Tipo de contenedor', d.containerType),
-      row('Cantidad de contenedores', d.cantidadContenedores),
-      row('Incoterm', d.incoterm),
-    ];
-    if (d.incoterm === 'EXW') {
-      if (d.pickupFromAddress) rows.push(row('Dirección de recogida', d.pickupFromAddress as string));
-      if (d.deliveryToAddress) rows.push(row('Dirección de entrega', d.deliveryToAddress as string));
-    }
-    return rows.join('');
-  }
-  // LCL
-  const rows = [
-    row('POL (Origen)', d.pol),
-    row('POD (Destino)', d.pod),
-    row('Operador', d.operador),
-    row('Incoterm', d.incoterm),
-    row('Piezas / carga', d.piezasDesc),
-    row('Peso total (kg)', d.pesoTotal),
-    row('Volumen total (m³)', d.volumenTotal),
-  ];
-  if (d.incoterm === 'EXW') {
-    if (d.pickupFromAddress) rows.push(row('Dirección de recogida', d.pickupFromAddress as string));
-    if (d.deliveryToAddress) rows.push(row('Dirección de entrega', d.deliveryToAddress as string));
-  }
-  return rows.join('');
+function tipoSubject(quoteType: NoRateQuoteEmailData['quoteType']): string {
+  if (quoteType === 'AIR') return 'aérea';
+  if (quoteType === 'FCL') return 'marítima FCL';
+  if (quoteType === 'LASTMILE') return 'última milla';
+  return 'marítima LCL';
 }
 
-function buildLastMileDetailRows(d: any, row: (l: string, v: string) => string): string {
-  const rows = [
-    row('Origen', d.pol),
-    row('Destino', d.pod),
-    row('Dirección de recogida', d.pickupFromAddress),
-    row('Dirección de entrega', d.deliveryToAddress),
-  ];
-  if (d.piezasCount) rows.push(row('Cantidad de piezas', String(d.piezasCount)));
-  if (d.piezasDesc) rows.push(row('Detalle de piezas', d.piezasDesc));
-  if (d.pesoTotal) rows.push(row('Peso total (kg)', d.pesoTotal));
-  if (d.volumenTotal) rows.push(row('Volumen total (m³)', d.volumenTotal));
-  if (d.pesoVolumetrico) rows.push(row('Peso volumétrico (kg)', d.pesoVolumetrico));
-  if (d.pesoChargeable) rows.push(row('Peso chargeable (kg)', d.pesoChargeable));
-  return rows.join('');
+function routeLabels(quoteType: NoRateQuoteEmailData['quoteType']): { origin: string; dest: string } {
+  if (quoteType === 'FCL' || quoteType === 'LCL') {
+    return { origin: 'POL', dest: 'POD' };
+  }
+  return { origin: 'Origen', dest: 'Destino' };
+}
+
+function getOrigen(data: NoRateQuoteEmailData): string {
+  const d = data.cargoDetails || {};
+  if (data.quoteType === 'FCL' || data.quoteType === 'LCL') {
+    return String(d.pol || '');
+  }
+  return String(d.origen || d.pol || '');
+}
+
+function getDestino(data: NoRateQuoteEmailData): string {
+  const d = data.cargoDetails || {};
+  if (data.quoteType === 'FCL' || data.quoteType === 'LCL') {
+    return String(d.pod || '');
+  }
+  return String(d.destino || d.pod || '');
+}
+
+function formatClienteLine(data: NoRateQuoteEmailData): string {
+  if (data.clienteNombre && data.clienteNombre !== data.clienteUsername) {
+    return `${escapeHtml(data.clienteUsername)} · ${escapeHtml(data.clienteNombre)}`;
+  }
+  return escapeHtml(data.clienteUsername);
 }
 
 export function getNoRateQuoteEmailSubject(data: NoRateQuoteEmailData): string {
-  return `Cotización sin tarifa — ${data.clienteUsername} (${data.quoteType})`;
+  return `Cotización sin tarifa ${tipoSubject(data.quoteType)} — ${data.clienteUsername}`;
 }
 
 export function buildNoRateQuoteEmailHTML(data: NoRateQuoteEmailData): string {
@@ -125,8 +96,13 @@ export function buildNoRateQuoteEmailHTML(data: NoRateQuoteEmailData): string {
     dateStyle: 'long',
     timeStyle: 'short',
   });
-  const serviceLabel = getServiceLabel(data.quoteType);
-  const serviceColor = getServiceColor(data.quoteType);
+  const titulo = tipoTitulo(data.quoteType);
+  const badgeLine2Text = badgeLine2(data.quoteType);
+  const labels = routeLabels(data.quoteType);
+  const clienteLine = formatClienteLine(data);
+  const quoteNumber = data.quoteNumber ? escapeHtml(data.quoteNumber) : '—';
+  const origen = escapeHtml(getOrigen(data) || '—');
+  const destino = escapeHtml(getDestino(data) || '—');
 
   return `
 <!DOCTYPE html>
@@ -134,119 +110,98 @@ export function buildNoRateQuoteEmailHTML(data: NoRateQuoteEmailData): string {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Cotización sin tarifa - Seemann Group</title>
+  <title>${escapeHtml(titulo)} — Seemann Group</title>
   <style>
-    @media only screen and (max-width: 620px) {
-      .card { width: 100% !important; min-width: 0 !important; }
-      .card-body { padding: 24px 16px !important; }
-      .card-header { padding: 20px 16px !important; }
-      .card-footer { padding: 16px !important; }
-      .detail-label { display: block !important; width: 100% !important; padding-bottom: 2px !important; }
-      .detail-value { display: block !important; width: 100% !important; padding-top: 0 !important; padding-bottom: 12px !important; }
-      .cta-btn { display: block !important; text-align: center !important; }
+    @media only screen and (max-width: 720px) {
+      .shell-pad { padding: 16px 8px !important; }
+      .header-pad { padding: 24px 20px !important; }
+      .header-logo-col { display: block !important; width: 100% !important; text-align: left !important; padding-bottom: 14px !important; }
+      .header-badge-col { display: block !important; width: 100% !important; text-align: left !important; }
+      .header-title-row { padding-top: 16px !important; }
+      .title-main { font-size: 22px !important; }
+      .route-pad { padding: 0 20px 24px !important; }
+      .route-col { display: block !important; width: 100% !important; text-align: center !important; padding: 8px 0 !important; }
+      .route-arrow { display: block !important; width: 100% !important; text-align: center !important; padding: 4px 0 !important; }
+      .summary-col { display: block !important; width: 100% !important; text-align: left !important; padding: 10px 0 !important; border-left: none !important; border-right: none !important; border-top: 1px solid ${C.border} !important; }
+      .summary-col-first { border-top: none !important; }
     }
   </style>
 </head>
-<body style="margin:0;padding:0;background-color:#f4f4f5;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;">
+<body style="margin:0;padding:0;background-color:${C.canvas};font-family:${FONT};-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;">
 
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f5;">
+  <table role="presentation" class="shell-pad" width="100%" cellpadding="0" cellspacing="0" style="background-color:${C.canvas};font-family:${FONT};">
     <tr>
-      <td align="center" style="padding:32px 12px;">
+      <td align="center" style="padding:40px 20px;">
 
-        <!-- Card -->
-        <table role="presentation" class="card" width="600" cellpadding="0" cellspacing="0" style="background-color:${C.white};border-radius:4px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.08);max-width:600px;min-width:320px;">
+        <table role="presentation" width="680" cellpadding="0" cellspacing="0" style="max-width:680px;min-width:300px;width:100%;background-color:${C.card};border-radius:14px;overflow:hidden;border:1px solid ${C.border};box-shadow:0 8px 32px rgba(17,24,39,0.08);">
 
-          <!-- Header -->
           <tr>
-            <td class="card-header" style="background-color:${C.dark};padding:24px 32px;">
+            <td class="header-pad" style="background-color:${C.card};padding:28px 36px;">
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                 <tr>
-                  <td>
-                    <img src="${LOGO_URL}" alt="Seemann Group" width="130" style="display:block;max-width:130px;height:auto;" />
+                  <td class="header-logo-col" valign="middle">
+                    <img src="${LOGO_URL}" alt="Seemann Group" width="140" style="display:block;max-width:140px;height:auto;" />
                   </td>
-                  <td align="right" style="vertical-align:middle;">
-                    <span style="color:${C.primary};font-size:11px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;">Tarificación Manual</span>
+                  <td class="header-badge-col" align="right" valign="middle">
+                    <table role="presentation" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td width="3" style="width:3px;background-color:${C.primary};border-radius:1px;font-size:0;line-height:0;">&nbsp;</td>
+                        <td style="padding-left:10px;">
+                          <p style="margin:0;font-family:${FONT};font-size:9px;font-weight:600;letter-spacing:0.16em;text-transform:uppercase;color:#9ca3af;line-height:1.3;">Sin tarifa</p>
+                          <p style="margin:3px 0 0;font-family:${FONT};font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:${C.primary};line-height:1.2;">${escapeHtml(badgeLine2Text)}</p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="header-title-row" colspan="2" style="padding-top:22px;">
+                    <p class="title-main" style="margin:0 0 6px;font-family:${FONT};font-size:26px;font-weight:600;color:${C.text};line-height:1.2;letter-spacing:-0.02em;">
+                      ${escapeHtml(titulo)}
+                    </p>
+                    <p style="margin:0;font-family:${FONT};font-size:14px;color:${C.muted};line-height:1.5;">
+                      Cliente <span style="color:${C.text};font-weight:600;">${clienteLine}</span>
+                    </p>
                   </td>
                 </tr>
               </table>
             </td>
           </tr>
 
-          <!-- Orange accent bar -->
           <tr>
-            <td style="background-color:${C.primary};height:3px;font-size:0;line-height:0;">&nbsp;</td>
-          </tr>
-
-          <!-- Body -->
-          <tr>
-            <td class="card-body" style="padding:28px 32px;">
-
-              <!-- Greeting -->
-              <p style="margin:0 0 16px;font-size:15px;color:${C.text};line-height:1.5;">
-                Estimado/a <strong>${data.ejecutivoNombre}</strong>,
-              </p>
-
-              <p style="margin:0 0 20px;font-size:14px;color:${C.text};line-height:1.6;">
-                Tu cliente <strong style="color:${C.primary};">${data.clienteUsername}</strong> ha generado una cotización en una ruta sin tarifa configurada y requiere tarificación manual.
-              </p>
-
-              <!-- Service type badge -->
-              <table role="presentation" cellpadding="0" cellspacing="0" style="margin-bottom:20px;">
+            <td class="route-pad" style="background-color:${C.section};padding:0 36px 28px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${C.card};border-radius:12px;border:1px solid ${C.border};">
                 <tr>
-                  <td style="background-color:${serviceColor};color:#ffffff;font-size:11px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;padding:5px 14px;border-radius:3px;">
-                    ${serviceLabel}
+                  <td class="route-col" width="42%" align="left" style="padding:22px 20px 22px 24px;">
+                    <p style="margin:0 0 6px;font-family:${FONT};font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:${C.muted};">${labels.origin}</p>
+                    <p style="margin:0;font-family:${FONT};font-size:17px;font-weight:600;color:${C.text};line-height:1.3;">${origen}</p>
+                  </td>
+                  <td class="route-arrow" width="16%" align="center" style="padding:22px 8px;">
+                    <span style="display:inline-block;font-family:Arial,sans-serif;font-size:20px;font-weight:600;color:${C.primary};line-height:1;">&rarr;</span>
+                  </td>
+                  <td class="route-col" width="42%" align="right" style="padding:22px 24px 22px 20px;">
+                    <p style="margin:0 0 6px;font-family:${FONT};font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:${C.muted};">${labels.dest}</p>
+                    <p style="margin:0;font-family:${FONT};font-size:17px;font-weight:600;color:${C.text};line-height:1.3;">${destino}</p>
                   </td>
                 </tr>
               </table>
 
-              <!-- Details table -->
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid ${C.border};border-radius:4px;overflow:hidden;margin-bottom:20px;">
-                ${data.quoteNumber ? `
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:16px;">
                 <tr>
-                  <td class="detail-label" style="padding:8px 12px;font-size:13px;color:${C.muted};white-space:nowrap;width:180px;border-bottom:1px solid ${C.border};">N° de cotización</td>
-                  <td class="detail-value" style="padding:8px 12px;font-size:13px;font-weight:600;color:${C.primary};border-bottom:1px solid ${C.border};">${data.quoteNumber}</td>
-                </tr>` : ''}
-                ${data.quoteType === 'LASTMILE' ? buildLastMileDetailRows(data.cargoDetails, (l, v) => `
-                <tr>
-                  <td class="detail-label" style="padding:8px 12px;font-size:13px;color:${C.muted};white-space:nowrap;width:180px;border-bottom:1px solid ${C.border};">${l}</td>
-                  <td class="detail-value" style="padding:8px 12px;font-size:13px;font-weight:600;color:${C.text};border-bottom:1px solid ${C.border};">${v || '—'}</td>
-                </tr>`) : buildDetailRows(data.quoteType, data.cargoDetails)}
-                <tr>
-                  <td class="detail-label" style="padding:8px 12px;font-size:13px;color:${C.muted};white-space:nowrap;width:180px;">Fecha de cotización</td>
-                  <td class="detail-value" style="padding:8px 12px;font-size:13px;font-weight:600;color:${C.text};">${fecha}</td>
-                </tr>
-              </table>
-
-              <!-- CTA -->
-              <p style="margin:0 0 24px;font-size:14px;color:${C.text};line-height:1.6;">
-                Por favor, revisa esta solicitud a la brevedad para asistirle.
-              </p>
-
-              <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;">
-                <tr>
-                  <td class="cta-btn" style="background-color:${C.primary};border-radius:4px;">
-                    <a href="${PORTAL_URL}" target="_blank" style="display:inline-block;padding:10px 28px;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;letter-spacing:0.3px;">
-                      Abrir Portal de Clientes
-                    </a>
+                  <td class="summary-col summary-col-first" width="50%" style="padding:14px 16px 14px 0;border-right:1px solid ${C.border};">
+                    <p style="margin:0 0 4px;font-family:${FONT};font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:${C.muted};">N° de cotización</p>
+                    <p style="margin:0;font-family:${FONT};font-size:15px;font-weight:700;color:${C.text};letter-spacing:0.03em;">${quoteNumber}</p>
+                  </td>
+                  <td class="summary-col" width="50%" style="padding:14px 0 14px 16px;">
+                    <p style="margin:0 0 4px;font-family:${FONT};font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:${C.muted};">Fecha de cotización</p>
+                    <p style="margin:0;font-family:${FONT};font-size:13px;font-weight:500;color:${C.labelLight};line-height:1.4;">${escapeHtml(fecha)}</p>
                   </td>
                 </tr>
               </table>
-
-            </td>
-          </tr>
-
-          <!-- Footer -->
-          <tr>
-            <td class="card-footer" style="background-color:${C.bgLight};padding:16px 32px;border-top:1px solid ${C.border};">
-              <p style="margin:0;font-size:11px;color:${C.muted};text-align:center;line-height:1.5;">
-                Este correo fue generado automáticamente por el
-                <a href="${PORTAL_URL}" style="color:${C.primary};text-decoration:none;font-weight:600;">Portal de Clientes — Seemann Group</a>.
-              </p>
             </td>
           </tr>
 
         </table>
-
       </td>
     </tr>
   </table>

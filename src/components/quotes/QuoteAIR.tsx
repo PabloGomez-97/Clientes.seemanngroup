@@ -3548,69 +3548,6 @@ function QuoteAPITester({
       if (quoteNumber) {
         trackComplete({ quoteNumber, isRecurring: !sinTarifa });
       }
-      if (sinTarifa && !isEjecutivoMode) {
-        const pkgType = summarizeAirPackageTypes();
-
-        let pesoTotalEmail: number;
-        let volumenTotalEmail: number;
-        let piezasDescEmail: string;
-
-        if (overallDimsAndWeight) {
-          pesoTotalEmail = manualWeight;
-          volumenTotalEmail = manualVolume;
-          piezasDescEmail = buildOverallPiecesSummaryAir(overallPiecesData);
-        } else {
-          // Modo por piezas: calcular desde piecesData
-          const { totalRealWeight } = calculateTotals();
-          pesoTotalEmail = totalRealWeight;
-          volumenTotalEmail = piecesData.reduce(
-            (sum: number, piece: any) => sum + (piece.totalVolume || 0),
-            0,
-          );
-          piezasDescEmail = piecesData
-            .map(
-              (p: any, i: number) =>
-                `Pieza ${i + 1}: ${p.length || 0}×${p.width || 0}×${p.height || 0} cm / ${p.weight || 0} kg`,
-            )
-            .join("; ");
-        }
-
-        fetch(`/api/send-no-rate-quote-email`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            quoteType: "AIR",
-            cargoDetails: {
-              origen:
-                originSeleccionado?.label ||
-                originNR?.label ||
-                rutaSeleccionada?.origin ||
-                "",
-              destino:
-                destinationSeleccionado?.label ||
-                destNR?.label ||
-                rutaSeleccionada?.destination ||
-                "",
-              carrier: rutaSeleccionada?.carrier || "",
-              incoterm,
-              pickupFromAddress:
-                incoterm === "EXW" ? pickupFromAddress : undefined,
-              deliveryToAddress:
-                incoterm === "EXW" ? deliveryToAddressDerived : undefined,
-              packageType: pkgType,
-              piezasDesc: piezasDescEmail,
-              pesoTotal: pesoTotalEmail.toFixed(2),
-              volumenTotal: volumenTotalEmail.toFixed(4),
-              isOverall: overallDimsAndWeight,
-            },
-            quoteNumber: quoteNumber || undefined,
-          }),
-          keepalive: true,
-        }).catch(() => { });
-      }
 
       // ── 2. Renderizar el PDF con quoteNumber real ──
       const tempDiv = document.createElement("div");
@@ -3808,6 +3745,33 @@ function QuoteAPITester({
           } catch (uploadErr) {
             console.error("Error subiendo PDF a MongoDB:", uploadErr);
           }
+        }
+
+        if (sinTarifa && !isEjecutivoMode) {
+          fetch(`/api/send-no-rate-quote-email`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              quoteType: "AIR",
+              cargoDetails: {
+                origen:
+                  originSeleccionado?.label ||
+                  originNR?.label ||
+                  rutaSeleccionada?.origin ||
+                  "",
+                destino:
+                  destinationSeleccionado?.label ||
+                  destNR?.label ||
+                  rutaSeleccionada?.destination ||
+                  "",
+              },
+              quoteNumber: quoteNumber || undefined,
+            }),
+            keepalive: true,
+          }).catch(() => { });
         }
 
         // ── 4. Descargar el PDF localmente (reutiliza el base64 ya generado, sin re-renderizar html2pdf) ──

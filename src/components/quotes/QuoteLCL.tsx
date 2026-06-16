@@ -2534,58 +2534,6 @@ function QuoteLCL({
       if (quoteNumber) {
         trackComplete({ quoteNumber, isRecurring: !sinTarifa });
       }
-      if (sinTarifa && !isEjecutivoMode) {
-        let pesoTotalEmail: number;
-        let volumenTotalEmail: number;
-        let piezasDescEmail: string;
-
-        if (overallDimsAndWeight) {
-          pesoTotalEmail = manualWeight;
-          volumenTotalEmail = manualVolume;
-          piezasDescEmail = buildOverallPiecesSummaryLCL(overallPiecesData);
-        } else {
-          pesoTotalEmail = piecesData.reduce(
-            (sum: number, p: any) => sum + (Number(p.weight) || 0),
-            0,
-          );
-          volumenTotalEmail = piecesData.reduce(
-            (sum: number, p: any) => sum + (Number(p.volume) || 0),
-            0,
-          );
-          piezasDescEmail = piecesData
-            .map(
-              (p: any, i: number) =>
-                `Pieza ${i + 1}: ${p.length || 0}×${p.width || 0}×${p.height || 0} cm / ${p.weight || 0} kg`,
-            )
-            .join("; ");
-        }
-        fetch(`/api/send-no-rate-quote-email`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${jwtToken}`,
-          },
-          body: JSON.stringify({
-            quoteType: "LCL",
-            cargoDetails: {
-              pol: polSeleccionado?.label || polNR?.label || "",
-              pod: podSeleccionado?.label || podNR?.label || "",
-              operador: rutaSeleccionada?.operador || "",
-              incoterm,
-              pickupFromAddress:
-                incoterm === "EXW" ? pickupFromAddress : undefined,
-              deliveryToAddress:
-                incoterm === "EXW" ? deliveryToAddressDerived : undefined,
-              piezasDesc: piezasDescEmail,
-              pesoTotal: pesoTotalEmail.toFixed(2),
-              volumenTotal: volumenTotalEmail.toFixed(4),
-              isOverall: overallDimsAndWeight,
-            },
-            quoteNumber: quoteNumber || undefined,
-          }),
-          keepalive: true,
-        }).catch(() => { });
-      }
 
       // -- 2. Renderizar el PDF con quoteNumber real --
       const tempDiv = document.createElement("div");
@@ -2776,6 +2724,25 @@ function QuoteLCL({
           } catch (uploadErr) {
             console.error("Error subiendo PDF a MongoDB:", uploadErr);
           }
+        }
+
+        if (sinTarifa && !isEjecutivoMode) {
+          fetch(`/api/send-no-rate-quote-email`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${jwtToken}`,
+            },
+            body: JSON.stringify({
+              quoteType: "LCL",
+              cargoDetails: {
+                pol: polSeleccionado?.label || polNR?.label || "",
+                pod: podSeleccionado?.label || podNR?.label || "",
+              },
+              quoteNumber: quoteNumber || undefined,
+            }),
+            keepalive: true,
+          }).catch(() => { });
         }
 
         // -- 4. Descargar el PDF localmente (reutiliza el base64 ya generado, sin re-renderizar html2pdf) --

@@ -2140,40 +2140,6 @@ function QuoteFCL({
       if (quoteNumber) {
         trackComplete({ quoteNumber, isRecurring: !sinTarifa });
       }
-      if (sinTarifa && !isEjecutivoMode) {
-        fetch(`/api/send-no-rate-quote-email`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            quoteType: "FCL",
-            cargoDetails: {
-              pol:
-                polSeleccionado?.label ||
-                polNR?.label ||
-                rutaSeleccionada?.pol ||
-                "",
-              pod:
-                podSeleccionado?.label ||
-                podNR?.label ||
-                rutaSeleccionada?.pod ||
-                "",
-              carrier: rutaSeleccionada?.carrier || "",
-              containerType: containerSeleccionado?.type || "",
-              cantidadContenedores,
-              incoterm,
-              pickupFromAddress:
-                incoterm === "EXW" ? pickupFromAddress : undefined,
-              deliveryToAddress:
-                incoterm === "EXW" ? deliveryToAddressDerived : undefined,
-            },
-            quoteNumber: quoteNumber || undefined,
-          }),
-          keepalive: true,
-        }).catch(() => { });
-      }
 
       // ── 2. Renderizar el PDF con quoteNumber real ──
       const tempDiv = document.createElement("div");
@@ -2322,6 +2288,33 @@ function QuoteFCL({
           } catch (uploadErr) {
             console.error("Error subiendo PDF a MongoDB:", uploadErr);
           }
+        }
+
+        if (sinTarifa && !isEjecutivoMode) {
+          fetch(`/api/send-no-rate-quote-email`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              quoteType: "FCL",
+              cargoDetails: {
+                pol:
+                  polSeleccionado?.label ||
+                  polNR?.label ||
+                  rutaSeleccionada?.pol ||
+                  "",
+                pod:
+                  podSeleccionado?.label ||
+                  podNR?.label ||
+                  rutaSeleccionada?.pod ||
+                  "",
+              },
+              quoteNumber: quoteNumber || undefined,
+            }),
+            keepalive: true,
+          }).catch(() => { });
         }
 
         // ── 4. Descargar el PDF localmente (reutiliza el base64 ya generado, sin re-renderizar html2pdf) ──

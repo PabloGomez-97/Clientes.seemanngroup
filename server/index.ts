@@ -24,7 +24,7 @@ import { buildLclQuoteEmailHTML, getLclQuoteEmailSubject, type LclQuoteEmailData
 import { buildSpecialQuoteEmailHTML, getSpecialQuoteEmailSubject, type SpecialQuoteEmailData } from '../api/emails/specialQuoteEmailTemplate.ts';
 import { buildR2Key, getPublicUrl, uploadPDF, deletePDF, deleteAllUserPDFs, downloadPDFBuffer } from '../api/services/r2Storage.ts';
 import { buildDocR2Key, uploadDocument, downloadDocumentBuffer, deleteDocument } from '../api/services/r2DocumentStorage.ts';
-import { resolveEjecutivoForEmail, loadQuotePdfAttachment } from '../api/utils/operationEmailHelpers.ts';
+import { resolveEjecutivoForEmail, loadQuotePdfAttachment, loadQuotePdfAttachmentWithRetry } from '../api/utils/operationEmailHelpers.ts';
 
 /** =========================
  *  Entorno + JWT
@@ -5858,6 +5858,7 @@ app.post('/api/send-no-rate-quote-email', auth, async (req, res) => {
     const ejecutivoEmail = (currentUser.ejecutivoId as any).email;
     const ejecutivoNombre = (currentUser.ejecutivoId as any).nombre || 'Ejecutivo';
     const clienteUsername = currentUser.username || currentUser.email;
+    const clienteNombre = currentUser.nombreuser || undefined;
 
     const { quoteType, cargoDetails } = req.body as {
       quoteType: 'AIR' | 'FCL' | 'LCL' | 'LASTMILE';
@@ -5866,16 +5867,40 @@ app.post('/api/send-no-rate-quote-email', auth, async (req, res) => {
     };
     const noRateQuoteNumber: string | undefined = req.body.quoteNumber;
 
+    const pdfUsuarioId = clienteUsername;
+    const pdfAttachment =
+      noRateQuoteNumber && pdfUsuarioId
+        ? await loadQuotePdfAttachmentWithRetry(String(noRateQuoteNumber), pdfUsuarioId, QuotePDF)
+        : null;
+
+    if (!pdfAttachment && noRateQuoteNumber) {
+      console.warn(
+        `[no-rate-email] Correo sin adjunto PDF para quoteNumber=${noRateQuoteNumber}, usuarioId=${pdfUsuarioId}`,
+      );
+    }
+
     const emailData: NoRateQuoteEmailData = {
       ejecutivoNombre,
       clienteUsername,
+      clienteNombre,
       quoteType,
       cargoDetails,
       quoteNumber: noRateQuoteNumber || undefined,
+      pdfAdjunto: Boolean(pdfAttachment),
     };
 
     const subject = getNoRateQuoteEmailSubject(emailData);
     const htmlContent = buildNoRateQuoteEmailHTML(emailData);
+
+    const brevoPayload: Record<string, unknown> = {
+      sender: { name: 'Portal Clientes Seemann Group', email: 'noreply@sphereglobal.io' },
+      to: [{ email: ejecutivoEmail }],
+      subject,
+      htmlContent,
+    };
+    if (pdfAttachment) {
+      brevoPayload.attachment = [pdfAttachment];
+    }
 
     const brevoRes = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
@@ -5883,19 +5908,14 @@ app.post('/api/send-no-rate-quote-email', auth, async (req, res) => {
         'api-key': process.env.BREVO_API_KEY!,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        sender: { name: 'Portal Clientes Seemann Group', email: 'noreply@sphereglobal.io' },
-        to: [{ email: ejecutivoEmail }],
-        subject,
-        htmlContent,
-      }),
+      body: JSON.stringify(brevoPayload),
     });
 
     if (!brevoRes.ok) {
       console.error('[no-rate-email] Brevo error:', await brevoRes.text());
     }
 
-    res.json({ success: true });
+    res.json({ success: true, pdfAdjunto: Boolean(pdfAttachment) });
   } catch (err) {
     console.error('Error en /api/send-no-rate-quote-email:', err);
     res.status(500).json({ error: 'Error interno del servidor' });

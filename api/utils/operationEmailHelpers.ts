@@ -103,3 +103,23 @@ export async function loadQuotePdfAttachment(
     name: quotePdf.nombreArchivo || `${quoteNumber}.pdf`,
   };
 }
+
+export async function loadQuotePdfAttachmentWithRetry(
+  quoteNumber: string,
+  usuarioId: string,
+  QuotePDFModel: Parameters<typeof loadQuotePdfAttachment>[2],
+  options?: { attempts?: number; delayMs?: number },
+): Promise<{ content: string; name: string } | null> {
+  const attempts = options?.attempts ?? 4;
+  const delayMs = options?.delayMs ?? 1200;
+
+  for (let i = 0; i < attempts; i++) {
+    const attachment = await loadQuotePdfAttachment(quoteNumber, usuarioId, QuotePDFModel);
+    if (attachment) return attachment;
+    if (i < attempts - 1) {
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+
+  return null;
+}
