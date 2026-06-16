@@ -248,7 +248,8 @@ async function fetchShipsgo(url: string): Promise<any[]> {
     headers: { 'X-Shipsgo-User-Token': token },
   });
   if (!res.ok) {
-    console.error('[shipsgo-cron] Fetch failed', url, res.status);
+    const errorBody = await res.text().catch(() => '');
+    console.error('[shipsgo-cron] Fetch failed', url, res.status, errorBody);
     return [];
   }
   const data = (await res.json()) as { shipments?: any[] };
@@ -332,10 +333,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     await connectDB();
 
     const airShipments = await fetchShipsgo(
-      'https://api.shipsgo.com/v2/air/shipments?order_by=updated_at,desc&take=200',
+      'https://api.shipsgo.com/v2/air/shipments?order_by=updated_at,desc&skip=0&take=100',
     );
     const oceanShipments = await fetchShipsgo(
-      'https://api.shipsgo.com/v2/ocean/shipments?order_by=updated_at,desc&take=200',
+      'https://api.shipsgo.com/v2/ocean/shipments?order_by=updated_at,desc&skip=0&take=100',
     );
 
     let airCount = 0;
