@@ -12,6 +12,7 @@ import { buildFclQuoteEmailHTML, getFclQuoteEmailSubject, type FclQuoteEmailData
 import { buildLclQuoteEmailHTML, getLclQuoteEmailSubject, type LclQuoteEmailData } from './emails/lclQuoteEmailTemplate.js';
 
 import { buildSpecialQuoteEmailHTML, getSpecialQuoteEmailSubject, type SpecialQuoteEmailData } from './emails/specialQuoteEmailTemplate.js';
+import { buildQuotePdfResendEmailHTML, getQuotePdfResendEmailSubject } from './emails/quotePdfResendEmailTemplate.js';
 import chatHandler from './chat.js';
 import { fetchAllExpiring, filterMaxWindow } from './services/pricingExpiryService.js';
 import {
@@ -22,7 +23,7 @@ import {
 } from './emails/pricingAlertEmailTemplate.js';
 import { buildR2Key, uploadPDF, downloadPDFBuffer, deleteAllUserPDFs } from './services/r2Storage.js';
 import { buildDocR2Key, uploadDocument, downloadDocumentBuffer, deleteDocument } from './services/r2DocumentStorage.js';
-import { resolveEjecutivoForEmail, loadQuotePdfAttachment, loadQuotePdfAttachmentWithRetry } from './utils/operationEmailHelpers.js';
+import { resolveEjecutivoForEmail, loadQuotePdfAttachment, loadQuotePdfAttachmentWithRetry, normalizeQuoteResendEmails } from './utils/operationEmailHelpers.js';
 
 /** =========================
  *  Entorno + JWT
@@ -6429,6 +6430,116 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
         console.error('[quote-pdf] Error al descargar:', error);
         return res.status(500).json({ error: 'Error interno al descargar PDF' });
+      }
+    }
+
+    // POST /api/quote-pdf/resend - Reenviar PDF de cotización por correo (BCC)
+    if (path === '/api/quote-pdf/resend' && method === 'POST') {
+      try {
+        const currentUser = requireAuth(req);
+
+        if (!currentUser || !currentUser.username) {
+          return res.status(401).json({ error: 'Usuario no autenticado' });
+        }
+
+        const body = (req.body || {}) as {
+          quoteNumber?: unknown;
+          emails?: unknown;
+          customerReference?: unknown;
+          ownerUsername?: unknown;
+        };
+
+        if (
+          !body.quoteNumber ||
+          typeof body.quoteNumber !== 'string' ||
+          !body.quoteNumber.trim()
+        ) {
+          return res.status(400).json({ error: 'quoteNumber es requerido' });
+        }
+
+        const emailResult = normalizeQuoteResendEmails(body.emails, EMAIL_REGEX);
+        if (!emailResult.ok) {
+          return res.status(400).json({ error: emailResult.error });
+        }
+
+        const ownerUsername = await resolveDocumentOwnerUsername(
+          currentUser,
+          typeof body.ownerUsername === 'string' && body.ownerUsername.trim()
+            ? body.ownerUsername.trim()
+            : getRequestedDocumentOwnerUsername(req),
+        );
+
+        const quotePdf = await QuotePDF.findOne({
+          quoteNumber: String(body.quoteNumber).trim(),
+          usuarioId: ownerUsername,
+        }).lean();
+
+        if (!quotePdf) {
+          return res.status(404).json({ error: 'PDF de cotización no encontrado' });
+        }
+
+        const pdfAttachment = await loadQuotePdfAttachment(
+          String(body.quoteNumber).trim(),
+          ownerUsername,
+          QuotePDF,
+        );
+
+        if (!pdfAttachment) {
+          return res.status(404).json({ error: 'PDF de cotización no disponible' });
+        }
+
+        const emailData = {
+          quoteNumber: String(body.quoteNumber).trim(),
+          customerReference:
+            typeof body.customerReference === 'string'
+              ? body.customerReference.trim()
+              : undefined,
+          origen: quotePdf.origen || undefined,
+          destino: quotePdf.destino || undefined,
+          tipoServicio: quotePdf.tipoServicio || undefined,
+        };
+
+        const subject = getQuotePdfResendEmailSubject(emailData);
+        const htmlContent = buildQuotePdfResendEmailHTML(emailData);
+
+        const brevoPayload: Record<string, unknown> = {
+          sender: { name: 'Portal Clientes Seemann Group', email: 'noreply@sphereglobal.io' },
+          to: [{ email: 'noreply@sphereglobal.io' }],
+          bcc: emailResult.emails.map((email) => ({ email })),
+          subject,
+          htmlContent,
+          attachment: [pdfAttachment],
+        };
+
+        const brevoResponse = await fetch('https://api.brevo.com/v3/smtp/email', {
+          method: 'POST',
+          headers: {
+            'api-key': process.env.BREVO_API_KEY!,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(brevoPayload),
+        });
+
+        if (!brevoResponse.ok) {
+          const errorText = await brevoResponse.text();
+          console.error('[quote-pdf] Error enviando reenvío con Brevo:', errorText);
+          return res.status(502).json({ error: 'No se pudo enviar el correo. Intenta nuevamente.' });
+        }
+
+        console.log(
+          `[quote-pdf] Reenvío enviado cotización ${body.quoteNumber} a ${emailResult.emails.length} destinatario(s)`,
+        );
+
+        return res.status(200).json({
+          success: true,
+          recipientCount: emailResult.emails.length,
+        });
+      } catch (error: any) {
+        if (error?.message === 'No auth token' || error?.message === 'Invalid token') {
+          return res.status(401).json({ error: error.message });
+        }
+        console.error('[quote-pdf] Error al reenviar:', error);
+        return res.status(500).json({ error: 'Error interno al reenviar PDF' });
       }
     }
 

@@ -10,6 +10,7 @@ import PageBannerHeader from "../PageBannerHeader";
 import LoadingTips from "../shipments/LoadingTips";
 import { DocumentosSection } from "./Documents/DocumentosSection";
 import TrackingEmailSuggestions from "../tracking/TrackingEmailSuggestions";
+import QuotePdfResendCell from "./QuotePdfResendCell";
 import { linbisFetch } from "../../services/linbisFetch";
 import { buildLinbisListParams } from "../../services/linbisListFetch";
 import {
@@ -388,16 +389,21 @@ function FieldGridCell({
   value,
   children,
   action,
+  className,
 }: {
   label: string;
   value?: unknown;
   children?: React.ReactNode;
   action?: boolean;
+  className?: string;
 }) {
   const display = formatFieldValue(value);
-  const cellClass = action
-    ? "qv-field-cell qv-field-cell--action"
-    : "qv-field-cell";
+  const cellClass = [
+    action ? "qv-field-cell qv-field-cell--action" : "qv-field-cell",
+    className,
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <div className={cellClass}>
@@ -427,6 +433,15 @@ interface QuoteGeneralTabContentProps {
   hasPdf?: boolean;
   isDownloadingPdf?: boolean;
   onDownloadPdf?: () => void;
+  isResendingPdf?: boolean;
+  onResendPdf?: (params: {
+    quoteNumber: string;
+    emails: string[];
+    customerReference?: string;
+    ownerUsername?: string;
+  }) => Promise<void>;
+  resendToken?: string | null;
+  resendOwnerUsername?: string;
 }
 
 function QuoteGeneralTabContent({
@@ -443,6 +458,10 @@ function QuoteGeneralTabContent({
   hasPdf = false,
   isDownloadingPdf = false,
   onDownloadPdf,
+  isResendingPdf = false,
+  onResendPdf,
+  resendToken = null,
+  resendOwnerUsername,
 }: QuoteGeneralTabContentProps) {
   const showTracking = shouldShowQuoteTracking(quote);
   const alreadyTracked = isQuoteAlreadyTracked(quote);
@@ -578,6 +597,25 @@ function QuoteGeneralTabContent({
         />
         <FieldGridCell label="Flujo actual" value={quote.currentFlow} />
         <FieldGridCell label="Ejecutivo comercial" value={quote.salesRep} />
+        <FieldGridCell
+          label={t("quotesView.resendQuote")}
+          action={hasPdf}
+        >
+          <QuotePdfResendCell
+            quoteNumber={quote.number || ""}
+            hasPdf={hasPdf}
+            customerReference={quote.customerReference}
+            ownerUsername={resendOwnerUsername}
+            token={resendToken}
+            isSending={isResendingPdf}
+            onSend={async (params) => {
+              if (!onResendPdf) {
+                throw new Error("No se pudo enviar el PDF.");
+              }
+              await onResendPdf(params);
+            }}
+          />
+        </FieldGridCell>
         {showPdfAction ? (
           <FieldGridCell label={t("quotesView.thPDF")} action>
             {hasPdf ? (
@@ -630,6 +668,15 @@ interface QuoteDetailPanelProps {
   availablePDFs: Set<string>;
   downloadingPDF: string | null;
   onDownloadPdf: (quoteNumber: string) => void;
+  resendingPDF: string | null;
+  onResendPdf: (params: {
+    quoteNumber: string;
+    emails: string[];
+    customerReference?: string;
+    ownerUsername?: string;
+  }) => Promise<void>;
+  resendToken: string | null;
+  resendOwnerUsername?: string;
 }
 
 function QuoteDetailPanel({
@@ -649,6 +696,10 @@ function QuoteDetailPanel({
   availablePDFs,
   downloadingPDF,
   onDownloadPdf,
+  resendingPDF,
+  onResendPdf,
+  resendToken,
+  resendOwnerUsername,
 }: QuoteDetailPanelProps) {
   const quoteNumber = quote.number || "";
   const hasPdf = availablePDFs.has(quoteNumber);
@@ -753,6 +804,10 @@ function QuoteDetailPanel({
                     hasPdf={hasPdf}
                     isDownloadingPdf={downloadingPDF === quoteNumber}
                     onDownloadPdf={() => onDownloadPdf(quoteNumber)}
+                    isResendingPdf={resendingPDF === quoteNumber}
+                    onResendPdf={onResendPdf}
+                    resendToken={resendToken}
+                    resendOwnerUsername={resendOwnerUsername}
                   />
                 ),
               },
@@ -842,6 +897,7 @@ function QuotesView({
   // PDF state
   const [availablePDFs, setAvailablePDFs] = useState<Set<string>>(new Set());
   const [downloadingPDF, setDownloadingPDF] = useState<string | null>(null);
+  const [resendingPDF, setResendingPDF] = useState<string | null>(null);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -1838,6 +1894,66 @@ function QuotesView({
     [token, activeUsername],
   );
 
+  const handleResendQuotePdf = useCallback(
+    async ({
+      quoteNumber,
+      emails,
+      customerReference,
+      ownerUsername,
+    }: {
+      quoteNumber: string;
+      emails: string[];
+      customerReference?: string;
+      ownerUsername?: string;
+    }) => {
+      if (!token || !quoteNumber) {
+        throw new Error("Tu sesión expiró. Vuelve a iniciar sesión.");
+      }
+
+      setResendingPDF(quoteNumber);
+      try {
+        const res = await fetch("/api/quote-pdf/resend", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            quoteNumber,
+            emails,
+            customerReference,
+            ownerUsername: ownerUsername || activeUsername,
+          }),
+        });
+
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+          throw new Error(
+            typeof data.error === "string"
+              ? data.error
+              : "No se pudo enviar el correo.",
+          );
+        }
+
+        registrarEvento({
+          accion: "COTIZACION_PDF_REENVIADO",
+          categoria: "COTIZACIONES",
+          descripcion: `PDF de cotización ${quoteNumber} reenviado a ${data.recipientCount ?? emails.length} destinatario(s)`,
+          detalles: {
+            quoteNumber,
+            recipientCount: data.recipientCount ?? emails.length,
+            cuenta: activeUsername,
+          },
+          clienteAfectado: activeUsername || undefined,
+        });
+      } finally {
+        setResendingPDF(null);
+      }
+    },
+    [token, activeUsername, registrarEvento],
+  );
+
   /* -- Sort icon -------------------------------------------- */
   const SortIcon = ({ column }: { column: string }) => {
     const active = sortColumn === column;
@@ -2441,6 +2557,10 @@ function QuotesView({
                 availablePDFs={availablePDFs}
                 downloadingPDF={downloadingPDF}
                 onDownloadPdf={handleDownloadPDF}
+                resendingPDF={resendingPDF}
+                onResendPdf={handleResendQuotePdf}
+                resendToken={token}
+                resendOwnerUsername={activeUsername}
               />
             </aside>
           )}

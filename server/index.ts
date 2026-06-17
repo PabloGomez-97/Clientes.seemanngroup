@@ -22,9 +22,10 @@ import { buildFclQuoteEmailHTML, getFclQuoteEmailSubject, type FclQuoteEmailData
 import { buildLclQuoteEmailHTML, getLclQuoteEmailSubject, type LclQuoteEmailData } from '../api/emails/lclQuoteEmailTemplate.ts';
 
 import { buildSpecialQuoteEmailHTML, getSpecialQuoteEmailSubject, type SpecialQuoteEmailData } from '../api/emails/specialQuoteEmailTemplate.ts';
+import { buildQuotePdfResendEmailHTML, getQuotePdfResendEmailSubject } from '../api/emails/quotePdfResendEmailTemplate.ts';
 import { buildR2Key, getPublicUrl, uploadPDF, deletePDF, deleteAllUserPDFs, downloadPDFBuffer } from '../api/services/r2Storage.ts';
 import { buildDocR2Key, uploadDocument, downloadDocumentBuffer, deleteDocument } from '../api/services/r2DocumentStorage.ts';
-import { resolveEjecutivoForEmail, loadQuotePdfAttachment, loadQuotePdfAttachmentWithRetry } from '../api/utils/operationEmailHelpers.ts';
+import { resolveEjecutivoForEmail, loadQuotePdfAttachment, loadQuotePdfAttachmentWithRetry, normalizeQuoteResendEmails } from '../api/utils/operationEmailHelpers.ts';
 
 /** =========================
  *  Entorno + JWT
@@ -6289,6 +6290,102 @@ app.get('/api/quote-pdf/download/:quoteNumber', auth, async (req, res) => {
   } catch (error: any) {
     console.error('[quote-pdf] Error al descargar:', error);
     return res.status(500).json({ error: 'Error interno al descargar PDF' });
+  }
+});
+
+// POST /api/quote-pdf/resend - Reenviar PDF de cotización por correo (BCC)
+app.post('/api/quote-pdf/resend', auth, async (req, res) => {
+  try {
+    const currentUser = (req as any).user as AuthPayload;
+
+    if (!currentUser || !currentUser.username) {
+      return res.status(401).json({ error: 'Usuario no autenticado' });
+    }
+
+    const { quoteNumber, emails, customerReference } = req.body || {};
+
+    if (!quoteNumber || typeof quoteNumber !== 'string' || !quoteNumber.trim()) {
+      return res.status(400).json({ error: 'quoteNumber es requerido' });
+    }
+
+    const emailResult = normalizeQuoteResendEmails(emails, EMAIL_REGEX);
+    if (!emailResult.ok) {
+      return res.status(400).json({ error: emailResult.error });
+    }
+
+    const ownerUsername = await resolveDocumentOwnerUsername(
+      currentUser,
+      typeof req.body?.ownerUsername === 'string' && req.body.ownerUsername.trim()
+        ? req.body.ownerUsername.trim()
+        : getRequestedDocumentOwnerUsername(req),
+    );
+
+    const quotePdf = await QuotePDF.findOne({
+      quoteNumber: String(quoteNumber).trim(),
+      usuarioId: ownerUsername,
+    }).lean();
+
+    if (!quotePdf) {
+      return res.status(404).json({ error: 'PDF de cotización no encontrado' });
+    }
+
+    const pdfAttachment = await loadQuotePdfAttachment(
+      String(quoteNumber).trim(),
+      ownerUsername,
+      QuotePDF,
+    );
+
+    if (!pdfAttachment) {
+      return res.status(404).json({ error: 'PDF de cotización no disponible' });
+    }
+
+    const emailData = {
+      quoteNumber: String(quoteNumber).trim(),
+      customerReference:
+        typeof customerReference === 'string' ? customerReference.trim() : undefined,
+      origen: quotePdf.origen || undefined,
+      destino: quotePdf.destino || undefined,
+      tipoServicio: quotePdf.tipoServicio || undefined,
+    };
+
+    const subject = getQuotePdfResendEmailSubject(emailData);
+    const htmlContent = buildQuotePdfResendEmailHTML(emailData);
+
+    const brevoPayload: Record<string, unknown> = {
+      sender: { name: 'Portal Clientes Seemann Group', email: 'noreply@sphereglobal.io' },
+      to: [{ email: 'noreply@sphereglobal.io' }],
+      bcc: emailResult.emails.map((email) => ({ email })),
+      subject,
+      htmlContent,
+      attachment: [pdfAttachment],
+    };
+
+    const brevoResponse = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'api-key': process.env.BREVO_API_KEY!,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(brevoPayload),
+    });
+
+    if (!brevoResponse.ok) {
+      const errorText = await brevoResponse.text();
+      console.error('[quote-pdf] Error enviando reenvío con Brevo:', errorText);
+      return res.status(502).json({ error: 'No se pudo enviar el correo. Intenta nuevamente.' });
+    }
+
+    console.log(
+      `[quote-pdf] Reenvío enviado cotización ${quoteNumber} a ${emailResult.emails.length} destinatario(s)`,
+    );
+
+    return res.json({
+      success: true,
+      recipientCount: emailResult.emails.length,
+    });
+  } catch (error: any) {
+    console.error('[quote-pdf] Error al reenviar:', error);
+    return res.status(500).json({ error: 'Error interno al reenviar PDF' });
   }
 });
 

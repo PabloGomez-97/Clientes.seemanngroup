@@ -519,6 +519,69 @@
   justify-content: center;
 }
 
+.qv-resend-toggle {
+  width: 100%;
+  justify-content: center;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.qv-resend__message {
+  margin: 6px 0 0;
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+.qv-resend__message--success {
+  color: #047857;
+}
+
+.qv-modal--resend {
+  max-width: 480px;
+}
+
+.qv-resend-modal__subtitle {
+  margin: 0 0 16px;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: #6b7280;
+}
+
+.qv-resend-modal__quote {
+  margin-bottom: 16px;
+}
+
+.qv-resend-modal__emails {
+  margin-bottom: 16px;
+}
+
+.qv-resend-modal__emails-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.qv-resend-emails {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.qv-resend-email-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.qv-resend-email-row .qv-input {
+  flex: 1;
+  min-width: 0;
+  height: 44px;
+  font-size: 0.875rem;
+}
+
 /* ── Accordion interior: minimalist polish ── */
 .qv-split-detail__body .qv-route-card {
   gap: 20px;

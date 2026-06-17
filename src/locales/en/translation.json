@@ -1082,7 +1082,24 @@
     "repeatNoRoutes": "This quote cannot be repeated because there are no available routes currently.",
     "repeatNotPortal": "Only quotes created from the portal can be repeated.",
     "repeatNavigating": "Redirecting to quoter...",
-    "unknownError": "Unknown error"
+    "unknownError": "Unknown error",
+    "resendQuote": "Resend quote",
+    "resendModalTitle": "Resend quote",
+    "resendModalSubtitle": "Enter up to 5 emails. A single message with the PDF attached will be sent.",
+    "resendModalEmailsLabel": "Email addresses",
+    "resendAddRecipients": "Add recipients",
+    "resendSendPdf": "Send PDF",
+    "resendSending": "Sending...",
+    "resendMaxEmails": "Up to 5 emails",
+    "resendEmailPlaceholder": "Email {{index}}",
+    "resendAddEmail": "Add email",
+    "resendRemoveEmail": "Remove email",
+    "resendSuccess": "PDF sent successfully.",
+    "resendErrorNoEmails": "You must enter at least one email address.",
+    "resendErrorMaxEmails": "Maximum 5 email addresses.",
+    "resendErrorInvalid": "The email {{email}} is not valid.",
+    "resendErrorDuplicate": "Do not repeat email addresses.",
+    "resendErrorGeneric": "Could not send the email. Please try again."
   },
   "admin": {
     "sidebar": {

@@ -1083,7 +1083,24 @@
     "repeatNoRoutes": "No se puede repetir esta cotización porque no hay rutas disponibles actualmente.",
     "repeatNotPortal": "Solo las cotizaciones creadas desde el portal pueden ser repetidas.",
     "repeatNavigating": "Redirigiendo al cotizador...",
-    "unknownError": "Error desconocido"
+    "unknownError": "Error desconocido",
+    "resendQuote": "Reenvío de cotización",
+    "resendModalTitle": "Reenvío de cotización",
+    "resendModalSubtitle": "Ingresa hasta 5 correos. Se enviará un solo mensaje con el PDF adjunto.",
+    "resendModalEmailsLabel": "Correos electrónicos",
+    "resendAddRecipients": "Agregar destinatarios",
+    "resendSendPdf": "Enviar PDF",
+    "resendSending": "Enviando...",
+    "resendMaxEmails": "Máximo 5 correos",
+    "resendEmailPlaceholder": "Correo {{index}}",
+    "resendAddEmail": "Agregar correo",
+    "resendRemoveEmail": "Quitar correo",
+    "resendSuccess": "PDF enviado correctamente.",
+    "resendErrorNoEmails": "Debes ingresar al menos un correo electrónico.",
+    "resendErrorMaxEmails": "Máximo 5 correos electrónicos.",
+    "resendErrorInvalid": "El correo {{email}} no es válido.",
+    "resendErrorDuplicate": "No repitas correos electrónicos.",
+    "resendErrorGeneric": "No se pudo enviar el correo. Intenta nuevamente."
   },
   "admin": {
     "sidebar": {
