@@ -1870,6 +1870,14 @@ import {
   type IClienteProveedorDoc,
   type ClienteProveedorModel,
 } from '../api/models/ClienteProveedor.ts';
+import {
+  listProviderAgents,
+  createProviderAgent,
+  updateProviderAgent,
+  deactivateProviderAgent,
+  sendProviderAgentEmailAndSave,
+  handleProviderAgentError,
+} from '../api/services/providerAgentService.ts';
 
 const Operacion = (
   mongoose.models.Operacion ||
@@ -8264,6 +8272,72 @@ app.post('/api/pricing/send-alerts', auth, async (req: any, res: any) => {
   } catch (e: any) {
     console.error('[pricing/send-alerts] Error:', e);
     return res.status(500).json({ error: 'Error al enviar alertas' });
+  }
+});
+
+// ============================================================
+// RUTAS DE AGENTES DE PROVEEDORES (CORREOS PROVEEDORES)
+// ============================================================
+
+app.get('/api/provider-agents', auth, async (req: any, res: any) => {
+  try {
+    const incluirInactivos = req.query?.incluirInactivos === 'true';
+    const agentes = await listProviderAgents(req.user.sub, incluirInactivos);
+    return res.json({ success: true, agentes });
+  } catch (e: any) {
+    const err = handleProviderAgentError(e);
+    return res.status(err.status).json(err.body);
+  }
+});
+
+app.post('/api/provider-agents', auth, async (req: any, res: any) => {
+  try {
+    const agente = await createProviderAgent(req.user.sub, req.body || {}, {
+      usuario: req.user.username || 'Ejecutivo',
+    });
+    return res.status(201).json({ success: true, agente });
+  } catch (e: any) {
+    const err = handleProviderAgentError(e);
+    return res.status(err.status).json(err.body);
+  }
+});
+
+app.patch('/api/provider-agents/:id/deactivate', auth, async (req: any, res: any) => {
+  try {
+    const agente = await deactivateProviderAgent(req.user.sub, req.params.id, {
+      usuario: req.user.username || 'Ejecutivo',
+    });
+    return res.json({ success: true, agente });
+  } catch (e: any) {
+    const err = handleProviderAgentError(e);
+    return res.status(err.status).json(err.body);
+  }
+});
+
+app.post('/api/provider-agents/:id/send-email', auth, async (req: any, res: any) => {
+  try {
+    const result = await sendProviderAgentEmailAndSave(
+      req.user.sub,
+      req.params.id,
+      String(req.body?.descripcion ?? ''),
+      { usuario: req.user.username || 'Ejecutivo' },
+    );
+    return res.json({ success: true, ...result });
+  } catch (e: any) {
+    const err = handleProviderAgentError(e);
+    return res.status(err.status).json(err.body);
+  }
+});
+
+app.put('/api/provider-agents/:id', auth, async (req: any, res: any) => {
+  try {
+    const agente = await updateProviderAgent(req.user.sub, req.params.id, req.body || {}, {
+      usuario: req.user.username || 'Ejecutivo',
+    });
+    return res.json({ success: true, agente });
+  } catch (e: any) {
+    const err = handleProviderAgentError(e);
+    return res.status(err.status).json(err.body);
   }
 });
 

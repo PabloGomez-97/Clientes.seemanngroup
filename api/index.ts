@@ -1923,6 +1923,14 @@ import {
   type IClienteProveedorDoc,
   type ClienteProveedorModel,
 } from './models/ClienteProveedor.js';
+import {
+  listProviderAgents,
+  createProviderAgent,
+  updateProviderAgent,
+  deactivateProviderAgent,
+  sendProviderAgentEmailAndSave,
+  handleProviderAgentError,
+} from './services/providerAgentService.js';
 
 const Operacion = (
   mongoose.models.Operacion ||
@@ -8736,6 +8744,101 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
         console.error('[simulated-quote-email] Error:', e);
         return res.status(500).json({ error: 'Error interno del servidor' });
+      }
+    }
+
+    // ============================================================
+    // RUTAS DE AGENTES DE PROVEEDORES (CORREOS PROVEEDORES)
+    // ============================================================
+
+    if (path === '/api/provider-agents' && method === 'GET') {
+      try {
+        const currentUser = requireAuth(req);
+        const incluirInactivos = req.query?.incluirInactivos === 'true';
+        const agentes = await listProviderAgents(currentUser.sub, incluirInactivos);
+        return res.json({ success: true, agentes });
+      } catch (e: any) {
+        if (e?.message === 'No auth token' || e?.message === 'Invalid token') {
+          return res.status(401).json({ error: e.message });
+        }
+        const err = handleProviderAgentError(e);
+        return res.status(err.status).json(err.body);
+      }
+    }
+
+    if (path === '/api/provider-agents' && method === 'POST') {
+      try {
+        const currentUser = requireAuth(req);
+        const body = (req.body as Record<string, unknown>) || {};
+        const agente = await createProviderAgent(currentUser.sub, body, {
+          usuario: currentUser.username || 'Ejecutivo',
+        });
+        return res.status(201).json({ success: true, agente });
+      } catch (e: any) {
+        if (e?.message === 'No auth token' || e?.message === 'Invalid token') {
+          return res.status(401).json({ error: e.message });
+        }
+        const err = handleProviderAgentError(e);
+        return res.status(err.status).json(err.body);
+      }
+    }
+
+    if (path?.match(/^\/api\/provider-agents\/[^/]+\/deactivate$/) && method === 'PATCH') {
+      try {
+        const currentUser = requireAuth(req);
+        const id = path.split('/')[3];
+        const agente = await deactivateProviderAgent(currentUser.sub, id, {
+          usuario: currentUser.username || 'Ejecutivo',
+        });
+        return res.json({ success: true, agente });
+      } catch (e: any) {
+        if (e?.message === 'No auth token' || e?.message === 'Invalid token') {
+          return res.status(401).json({ error: e.message });
+        }
+        const err = handleProviderAgentError(e);
+        return res.status(err.status).json(err.body);
+      }
+    }
+
+    if (path?.match(/^\/api\/provider-agents\/[^/]+\/send-email$/) && method === 'POST') {
+      try {
+        const currentUser = requireAuth(req);
+        const id = path.split('/')[3];
+        const body = (req.body as Record<string, unknown>) || {};
+        const result = await sendProviderAgentEmailAndSave(
+          currentUser.sub,
+          id,
+          String(body.descripcion ?? ''),
+          { usuario: currentUser.username || 'Ejecutivo' },
+        );
+        return res.json({ success: true, ...result });
+      } catch (e: any) {
+        if (e?.message === 'No auth token' || e?.message === 'Invalid token') {
+          return res.status(401).json({ error: e.message });
+        }
+        const err = handleProviderAgentError(e);
+        return res.status(err.status).json(err.body);
+      }
+    }
+
+    if (path?.startsWith('/api/provider-agents/') && method === 'PUT') {
+      try {
+        const currentUser = requireAuth(req);
+        const id = path.split('/').pop();
+        if (!id || id === 'provider-agents') {
+          return res.status(400).json({ error: 'ID de agente requerido' });
+        }
+        const body = (req.body as Record<string, unknown>) || {};
+        const agente = await updateProviderAgent(currentUser.sub, id, body, {
+          usuario: currentUser.username || 'Ejecutivo',
+        });
+        return res.json({ success: true, agente });
+      } catch (e: any) {
+        if (e?.message === 'No auth token' || e?.message === 'Invalid token') {
+          return res.status(401).json({ error: e.message });
+        }
+        const err = handleProviderAgentError(e);
+        return res.status(err.status).json(err.body);
       }
     }
 

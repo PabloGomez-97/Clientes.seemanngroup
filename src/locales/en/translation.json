@@ -1177,6 +1177,7 @@
       "generalTariff": "General Tariff",
       "priceHistory": "Price history",
       "supplierDocumentation": "Supplier Documentation",
+      "providerEmails": "Provider Emails",
       "tariffAlerts": "Tariff Alerts",
       "sectionReports": "Reports",
       "reports": "Reports",
@@ -1841,6 +1842,68 @@
       "badge": "My Documents",
       "title": "Documentation",
       "description": "View and manage all documents related to your shipments. Here you'll find invoices, air waybills, manifests and more — all in one place for your convenience."
+    }
+  },
+  "providerEmails": {
+    "title": "Provider Emails",
+    "subtitle": "Manage provider agents and send emails with the corporate template",
+    "createAgent": "Create Agent",
+    "showInactive": "Show inactive agents",
+    "empty": "No agents registered. Create the first one using the button above.",
+    "edit": "Edit",
+    "sendEmail": "Send Email",
+    "confirmSend": "Confirm send",
+    "deactivate": "Deactivate",
+    "cancel": "Cancel",
+    "save": "Save",
+    "saving": "Saving...",
+    "sending": "Sending...",
+    "descriptionPlaceholder": "Email content (HTML allowed)...",
+    "unsavedDescription": "Unsaved changes — will be persisted when sending the email",
+    "columns": {
+      "agentName": "Agent name",
+      "email": "Email",
+      "phone": "Phone",
+      "responsible": "Responsible",
+      "subject": "Subject",
+      "description": "Description",
+      "actions": "Actions"
+    },
+    "fields": {
+      "agentName": "Agent name",
+      "email": "Agent email",
+      "phone": "Agent phone",
+      "phoneOptional": "Optional",
+      "responsible": "Responsible person",
+      "subject": "Email subject",
+      "description": "Description / email body",
+      "descriptionHint": "This text will be inserted into the corporate template when sending"
+    },
+    "modal": {
+      "createTitle": "Create agent",
+      "editTitle": "Edit agent",
+      "editDescriptionHint": "Description can only be edited in the table and is saved when sending the email.",
+      "sendTitle": "Confirm email send",
+      "sendDescriptionWarning": "Description was modified and will be saved to the database when confirming the send.",
+      "sendBrevoNote": "The email will be sent with the Seemann Group corporate template."
+    },
+    "confirm": {
+      "deactivate": "Deactivate agent \"{{name}}\"? They will no longer receive emails."
+    },
+    "success": {
+      "created": "Agent created successfully",
+      "updated": "Agent updated successfully",
+      "deactivated": "Agent deactivated",
+      "sent": "Email sent successfully",
+      "sentWithSave": "Email sent and description saved"
+    },
+    "errors": {
+      "load": "Error loading agents",
+      "create": "Error creating agent",
+      "update": "Error updating agent",
+      "deactivate": "Error deactivating agent",
+      "send": "Error sending email",
+      "connection": "Connection error"
     }
   }
 }

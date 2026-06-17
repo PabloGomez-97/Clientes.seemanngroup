@@ -51,6 +51,20 @@ const quickActions = [
     ],
   },
   {
+    key: "correos",
+    title: "Correos Proveedores",
+    description: "Gestiona agentes de proveedores y envía correos con plantilla corporativa",
+    icon: "fa fa-envelope",
+    path: "/admin/correos-proveedores",
+    accent: "#0d9488",
+    bgHover: "#f0fdfa",
+    features: [
+      "Base de agentes de proveedores",
+      "Envío de correos vía Brevo",
+      "Plantilla corporativa Seemann",
+    ],
+  },
+  {
     key: "cotizador",
     title: "Cotizador",
     description: "Genera cotizaciones de envíos aéreos, marítimos y terrestres",

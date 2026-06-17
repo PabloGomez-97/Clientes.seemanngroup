@@ -31,6 +31,7 @@ import GestorTarifas from "./components/Pricing/GestorTarifas";
 import TarifarioCompleto from "./components/Pricing/TarifarioCompleto";
 import HomePricing from "./components/Pricing/HomePricing";
 import DocumentosProveedores from "./components/Pricing/DocumentosProveedores";
+import CorreosProveedores from "./components/Pricing/CorreosProveedores";
 import HomeEjecutivo from "./components/administrador/HomeEjecutivo";
 import HomeOperaciones from "./components/administrador/HomeOperaciones";
 import ReporteriaClientes from "./components/administrador/ReporteriaClientes";
@@ -206,6 +207,7 @@ function App() {
             path="documentos-proveedores"
             element={<DocumentosProveedores />}
           />
+          <Route path="correos-proveedores" element={<CorreosProveedores />} />
           <Route path="historico-precios" element={<PriceHistoryExplorer />} />
           <Route path="consultar-tarifas" element={<ConsultaTarifas />} />
           <Route path="novedades" element={<Novedades />} />

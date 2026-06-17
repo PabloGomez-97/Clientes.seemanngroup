@@ -197,6 +197,11 @@ function SidebarAdmin({
           icon: "fa fa-file-alt",
         },
         {
+          path: "/admin/correos-proveedores",
+          name: t("admin.sidebar.providerEmails"),
+          icon: "fa fa-envelope",
+        },
+        {
           path: "/admin/alertas-pricing",
           name: t("admin.sidebar.tariffAlerts"),
           icon: "fa fa-exclamation-triangle",

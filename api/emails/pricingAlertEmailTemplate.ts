@@ -170,7 +170,7 @@ function emailWrapper(title: string, alertType: AlertType, bodyHtml: string): st
         <!-- Footer -->
         <tr>
           <td style="background-color:${C.bgLight};padding:12px 28px;border-top:1px solid ${C.border};">
-            <p style="margin:0;font-size:11px;color:${C.muted};">Generado automáticamente el ${fecha} · Seemann Group · Portal de Pricing</p>
+            <p style="margin:0;font-size:11px;color:${C.muted};">Generado automáticamente el ${fecha} · Seemann Group · Equipo de Pricing</p>
           </td>
         </tr>
 
