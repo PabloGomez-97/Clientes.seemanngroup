@@ -1938,7 +1938,7 @@ function QuotesView({
 
         registrarEvento({
           accion: "COTIZACION_PDF_REENVIADO",
-          categoria: "COTIZACIONES",
+          categoria: "COTIZACION",
           descripcion: `PDF de cotización ${quoteNumber} reenviado a ${data.recipientCount ?? emails.length} destinatario(s)`,
           detalles: {
             quoteNumber,
