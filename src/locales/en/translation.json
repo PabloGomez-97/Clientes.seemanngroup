@@ -1198,6 +1198,10 @@
       "expand": "Expand",
       "collapse": "Collapse"
     },
+    "pricingAlerts": {
+      "title": "Tariff Expiry Alerts",
+      "subtitle": "View upcoming expiries · Manual send for administrators only"
+    },
     "homeEjecutivo": {
       "loadingTitle": "Loading Control Tower...",
       "loadingMessage": "Loading",

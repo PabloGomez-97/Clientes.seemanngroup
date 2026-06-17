@@ -14,13 +14,15 @@ import { buildLclQuoteEmailHTML, getLclQuoteEmailSubject, type LclQuoteEmailData
 import { buildSpecialQuoteEmailHTML, getSpecialQuoteEmailSubject, type SpecialQuoteEmailData } from './emails/specialQuoteEmailTemplate.js';
 import { buildQuotePdfResendEmailHTML, getQuotePdfResendEmailSubject } from './emails/quotePdfResendEmailTemplate.js';
 import chatHandler from './chat.js';
-import { fetchAllExpiring, filterMaxWindow } from './services/pricingExpiryService.js';
+import { fetchAllExpiring } from './services/pricingExpiryService.js';
 import {
-  buildAirExpiryAlertHTML, buildAirExpiryAlertSubject,
-  buildFCLExpiryAlertHTML, buildFCLExpiryAlertSubject,
-  buildLCLExpiryAlertHTML, buildLCLExpiryAlertSubject,
-  type AlertType as PricingAlertType,
-} from './emails/pricingAlertEmailTemplate.js';
+  runPricingAlerts,
+  getPricingRecipients,
+  buildAlertPreview,
+  getLastPricingAlertRun,
+  getNextCronRunUtc,
+  getExpiryBucketCounts,
+} from './services/pricingAlertSender.js';
 import { buildR2Key, uploadPDF, downloadPDFBuffer, deleteAllUserPDFs } from './services/r2Storage.js';
 import { buildDocR2Key, uploadDocument, downloadDocumentBuffer, deleteDocument } from './services/r2DocumentStorage.js';
 import { resolveEjecutivoForEmail, loadQuotePdfAttachment, loadQuotePdfAttachmentWithRetry, normalizeQuoteResendEmails } from './utils/operationEmailHelpers.js';
@@ -8474,6 +8476,88 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
+    // GET /api/pricing/alert-status — estado del sistema de alertas
+    if (path === '/api/pricing/alert-status' && method === 'GET') {
+      try {
+        const currentUser = requireAuth(req);
+        const ejDoc = await Ejecutivo.findOne({ email: currentUser.sub.toLowerCase() });
+        if (!ejDoc?.roles?.administrador && !ejDoc?.roles?.pricing) {
+          return res.status(403).json({ error: 'No tienes permisos' });
+        }
+
+        const [lastRun, recipients, buckets] = await Promise.all([
+          getLastPricingAlertRun(),
+          getPricingRecipients(),
+          getExpiryBucketCounts(),
+        ]);
+
+        return res.json({
+          success: true,
+          lastRun: lastRun || null,
+          nextCronUtc: getNextCronRunUtc().toISOString(),
+          recipients: recipients.map((r) => ({ email: r.email, name: r.name || null })),
+          buckets,
+        });
+      } catch (e: any) {
+        if (e?.message === 'No auth token' || e?.message === 'Invalid token') {
+          return res.status(401).json({ error: e.message });
+        }
+        console.error('[pricing/alert-status] Error:', e);
+        return res.status(500).json({ error: 'Error al obtener estado de alertas' });
+      }
+    }
+
+    // GET /api/pricing/alert-recipients — destinatarios pricing activos
+    if (path === '/api/pricing/alert-recipients' && method === 'GET') {
+      try {
+        const currentUser = requireAuth(req);
+        const ejDoc = await Ejecutivo.findOne({ email: currentUser.sub.toLowerCase() });
+        if (!ejDoc?.roles?.administrador) {
+          return res.status(403).json({ error: 'Solo administradores' });
+        }
+
+        const recipients = await getPricingRecipients();
+        return res.json({ success: true, recipients: recipients.map((r) => r.email) });
+      } catch (e: any) {
+        if (e?.message === 'No auth token' || e?.message === 'Invalid token') {
+          return res.status(401).json({ error: e.message });
+        }
+        return res.status(500).json({ error: 'Error al obtener destinatarios' });
+      }
+    }
+
+    // GET /api/pricing/alert-preview — vista previa HTML sin enviar
+    if (path === '/api/pricing/alert-preview' && method === 'GET') {
+      try {
+        const currentUser = requireAuth(req);
+        const ejDoc = await Ejecutivo.findOne({ email: currentUser.sub.toLowerCase() });
+        if (!ejDoc?.roles?.administrador) {
+          return res.status(403).json({ error: 'Solo administradores' });
+        }
+
+        const alertType = req.query?.alertType === '24hrs' ? '24hrs' : '48hrs';
+        const tariffType =
+          req.query?.tariffType === 'fcl' ? 'fcl' : req.query?.tariffType === 'lcl' ? 'lcl' : 'air';
+
+        const preview = await buildAlertPreview(alertType, tariffType);
+        if (!preview) {
+          return res.json({
+            success: true,
+            hasData: false,
+            message: 'No hay tarifas en la ventana seleccionada',
+          });
+        }
+
+        return res.json({ success: true, hasData: true, ...preview });
+      } catch (e: any) {
+        if (e?.message === 'No auth token' || e?.message === 'Invalid token') {
+          return res.status(401).json({ error: e.message });
+        }
+        console.error('[pricing/alert-preview] Error:', e);
+        return res.status(500).json({ error: 'Error al generar vista previa' });
+      }
+    }
+
     // POST /api/pricing/send-alerts  — envío manual de alertas (solo administrador)
     if (path === '/api/pricing/send-alerts' && method === 'POST') {
       try {
@@ -8484,8 +8568,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         const body = (req.body as any) || {};
-        const alertType: PricingAlertType = body.alertType === '24hrs' ? '24hrs' : '48hrs';
-        const tariffType: 'air' | 'fcl' | 'lcl' =
+        const mode = body.mode === 'test' ? 'test' : 'manual';
+        const alertType = body.alertType === '24hrs' ? '24hrs' : '48hrs';
+        const tariffType =
           body.tariffType === 'fcl' ? 'fcl' : body.tariffType === 'lcl' ? 'lcl' : 'air';
         const extraEmailsRaw: unknown = body.extraEmails;
         const onlyExtra: boolean = body.onlyExtraEmails === true;
@@ -8500,79 +8585,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           }
         }
 
-        // Manual send uses inclusive window (0..windowDays days), so tariffs
-        // expiring TODAY (daysUntilExpiry=0) are also caught alongside tomorrow's.
-        const windowDays = alertType === '24hrs' ? 1 : 2;
-        const { air, fcl, lcl } = await fetchAllExpiring(windowDays);
-        const airFiltered = tariffType === 'air' ? filterMaxWindow(air, windowDays) : [];
-        const fclFiltered = tariffType === 'fcl' ? filterMaxWindow(fcl, windowDays) : [];
-        const lclFiltered = tariffType === 'lcl' ? filterMaxWindow(lcl, windowDays) : [];
-
-        // Build recipient list
-        let recipients: { email: string; name?: string }[] = [];
-        if (!onlyExtra) {
-          const pricingUsers = await Ejecutivo.find({ activo: true, 'roles.pricing': true })
-            .select('email nombre')
-            .lean<{ email: string; nombre?: string }[]>();
-          recipients = pricingUsers
-            .filter((u) => u.email)
-            .map((u) => ({ email: String(u.email).toLowerCase().trim(), name: u.nombre || undefined }));
-        }
-        for (const em of extraEmails) {
-          if (!recipients.some((r) => r.email === em)) recipients.push({ email: em });
-        }
-
-        if (recipients.length === 0) {
-          return res.status(400).json({ error: 'No hay destinatarios' });
-        }
-
-        const BREVO_SENDER = { name: 'Seemann Cloud · Pricing', email: 'noreply@sphereglobal.io' };
-        const sent: { type: string; count: number }[] = [];
-
-        async function sendAlert(subject: string, html: string, type: string) {
-          const r = await fetch('https://api.brevo.com/v3/smtp/email', {
-            method: 'POST',
-            headers: { 'api-key': process.env.BREVO_API_KEY!, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sender: BREVO_SENDER, to: recipients, subject, htmlContent: html }),
-          });
-          if (!r.ok) console.error(`[pricing/send-alerts] Error Brevo (${type}):`, await r.text());
-          else sent.push({ type, count: recipients.length });
-        }
-
-        if (airFiltered.length > 0) {
-          await sendAlert(
-            buildAirExpiryAlertSubject(alertType, airFiltered.length),
-            buildAirExpiryAlertHTML(airFiltered, alertType),
-            'AIR',
-          );
-        }
-        if (fclFiltered.length > 0) {
-          await sendAlert(
-            buildFCLExpiryAlertSubject(alertType, fclFiltered.length),
-            buildFCLExpiryAlertHTML(fclFiltered, alertType),
-            'FCL',
-          );
-        }
-        if (lclFiltered.length > 0) {
-          await sendAlert(
-            buildLCLExpiryAlertSubject(alertType, lclFiltered.length),
-            buildLCLExpiryAlertHTML(lclFiltered, alertType),
-            'LCL',
-          );
-        }
-
-        const noData = airFiltered.length === 0 && fclFiltered.length === 0 && lclFiltered.length === 0;
-
-        return res.json({
-          success: true,
+        const result = await runPricingAlerts({
+          mode,
           alertType,
-          recipients: recipients.map((r) => r.email),
-          sent,
-          expiring: { air: airFiltered.length, fcl: fclFiltered.length, lcl: lclFiltered.length },
-          message: noData
-            ? `No hay tarifas que venzan en la ventana de ${alertType}. No se enviaron correos.`
-            : `Alertas enviadas correctamente.`,
+          tariffType,
+          extraEmails,
+          onlyExtraEmails: onlyExtra,
+          testRecipientEmail: mode === 'test' ? currentUser.sub.toLowerCase() : undefined,
+          triggeredByEmail: currentUser.sub.toLowerCase(),
         });
+
+        const status = result.success ? 200 : result.partialFailure ? 207 : 400;
+        return res.status(status).json(result);
       } catch (e: any) {
         if (e?.message === 'No auth token' || e?.message === 'Invalid token') {
           return res.status(401).json({ error: e.message });

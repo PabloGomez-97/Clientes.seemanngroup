@@ -1,5 +1,6 @@
 // src/components/administrador/PricingAlerts/PricingAlertsPanel.tsx
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../../../auth/AuthContext";
 import "./PricingAlertsPanel.css";
 
@@ -47,8 +48,27 @@ interface ExpiryData {
   totals: { air: number; fcl: number; lcl: number; all: number };
 }
 
+interface AlertStatus {
+  lastRun: {
+    source: string;
+    createdAt: string;
+    sent: { type: string; alertType: string; count: number }[];
+    errors: string[];
+    skipped: string[];
+  } | null;
+  nextCronUtc: string;
+  recipients: { email: string; name: string | null }[];
+  buckets: {
+    bucket48: number;
+    bucket24: number;
+    bucketToday: number;
+    totals: { all: number };
+  };
+}
+
 type AlertType = "48hrs" | "24hrs";
 type TariffKind = "air" | "fcl" | "lcl";
+type UrgencyFilter = "all" | "0" | "1" | "2";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -58,8 +78,9 @@ function val(v: string | null | undefined): string {
 
 function urgencyClass(days: number | undefined): string {
   if (days === undefined) return "pa-badge pa-badge--neutral";
-  if (days <= 1) return "pa-badge pa-badge--danger";
-  if (days <= 2) return "pa-badge pa-badge--warning";
+  if (days <= 0) return "pa-badge pa-badge--danger";
+  if (days === 1) return "pa-badge pa-badge--danger";
+  if (days === 2) return "pa-badge pa-badge--warning";
   return "pa-badge pa-badge--info";
 }
 
@@ -67,7 +88,7 @@ function urgencyLabel(days: number | undefined): string {
   if (days === undefined || days < 0) return "Expirado";
   if (days === 0) return "Hoy";
   if (days === 1) return "Mañana";
-  return `En ${days} día${days > 1 ? "s" : ""}`;
+  return `En ${days} días`;
 }
 
 function statSubtext(count: number, kind: "all" | TariffKind): string {
@@ -81,24 +102,61 @@ function statSubtext(count: number, kind: "all" | TariffKind): string {
   return labels[kind];
 }
 
+function filterByUrgency<T extends TarifaBase>(
+  rows: T[],
+  urgency: UrgencyFilter,
+): T[] {
+  if (urgency === "all") return rows;
+  const d = Number(urgency);
+  return rows.filter((r) => r.daysUntilExpiry === d);
+}
+
+function exportCsv(filename: string, headers: string[], rows: string[][]) {
+  const escape = (s: string) => `"${s.replace(/"/g, '""')}"`;
+  const lines = [
+    headers.map(escape).join(","),
+    ...rows.map((r) => r.map(escape).join(",")),
+  ];
+  const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function parseExtraEmails(input: string): string[] {
+  return input
+    .split(/[\s,;]+/)
+    .map((e) => e.trim().toLowerCase())
+    .filter((e) => e && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
+}
+
 // ─── Component ──────────────────────────────────────────────────────────────
 
 export default function PricingAlertsPanel() {
-  const { token } = useAuth();
+  const { t } = useTranslation();
+  const { token, user } = useAuth();
+  const isAdmin = !!user?.roles?.administrador;
 
   const [data, setData] = useState<ExpiryData | null>(null);
+  const [status, setStatus] = useState<AlertStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [days, setDays] = useState(7);
   const [activeTab, setActiveTab] = useState<TariffKind>("air");
+  const [urgencyFilter, setUrgencyFilter] = useState<UrgencyFilter>("all");
+  const [showRecipients, setShowRecipients] = useState(false);
 
-  // Send controls
   const [alertType, setAlertType] = useState<AlertType>("48hrs");
   const [tariffType, setTariffType] = useState<TariffKind>("air");
   const [extraEmailsInput, setExtraEmailsInput] = useState("");
   const [sending, setSending] = useState(false);
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [sendResult, setSendResult] = useState<{
     success: boolean;
+    partial?: boolean;
     message: string;
     details?: string;
   } | null>(null);
@@ -111,65 +169,151 @@ export default function PricingAlertsPanel() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) {
-        const e = await res
-          .json()
-          .catch(() => ({ error: "Error desconocido" }));
+        const e = await res.json().catch(() => ({ error: "Error desconocido" }));
         throw new Error(e.error || `HTTP ${res.status}`);
       }
-      const json = await res.json();
-      setData(json);
-    } catch (e: any) {
-      setError(e.message);
+      setData(await res.json());
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Error desconocido");
     } finally {
       setLoading(false);
     }
   }, [token, days]);
 
+  const fetchStatus = useCallback(async () => {
+    try {
+      const res = await fetch("/api/pricing/alert-status", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) setStatus(await res.json());
+    } catch {
+      /* silent */
+    }
+  }, [token]);
+
   useEffect(() => {
     fetchExpiry();
-  }, [fetchExpiry]);
+    fetchStatus();
+  }, [fetchExpiry, fetchStatus]);
 
-  const handleSendAlerts = async () => {
+  const filteredRows = useMemo(() => {
+    if (!data) return { air: [], fcl: [], lcl: [] };
+    return {
+      air: filterByUrgency(data.air, urgencyFilter),
+      fcl: filterByUrgency(data.fcl, urgencyFilter),
+      lcl: filterByUrgency(data.lcl, urgencyFilter),
+    };
+  }, [data, urgencyFilter]);
+
+  const postAlerts = async (mode: "manual" | "test") => {
     setSending(true);
     setSendResult(null);
     try {
-      const extraEmails = extraEmailsInput
-        .split(/[\s,;]+/)
-        .map((e) => e.trim().toLowerCase())
-        .filter((e) => e && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
-
       const res = await fetch("/api/pricing/send-alerts", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ alertType, tariffType, extraEmails }),
+        body: JSON.stringify({
+          mode,
+          alertType,
+          tariffType,
+          extraEmails: parseExtraEmails(extraEmailsInput),
+        }),
       });
 
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
-
-      const sentTypes = (json.sent as { type: string; count: number }[]) || [];
+      const sentTypes = (json.sent as { type: string; count: number; alertType: string }[]) || [];
       const details =
         sentTypes.length > 0
-          ? sentTypes
-            .map(
-              (s) =>
-                `${s.type} → ${s.count} destinatario${s.count > 1 ? "s" : ""}`,
-            )
-            .join(" · ")
-          : "";
+          ? sentTypes.map((s) => `${s.type} (${s.alertType}) · ${s.count} tarifa(s)`).join(" · ")
+          : json.errors?.length
+            ? json.errors.join("; ")
+            : undefined;
 
-      setSendResult({ success: true, message: json.message, details });
-    } catch (e: any) {
-      setSendResult({ success: false, message: e.message });
+      setSendResult({
+        success: json.success === true,
+        partial: json.partialFailure === true,
+        message: json.message || json.error || "Operación completada",
+        details,
+      });
+
+      if (json.success) fetchStatus();
+    } catch (e: unknown) {
+      setSendResult({
+        success: false,
+        message: e instanceof Error ? e.message : "Error al enviar",
+      });
     } finally {
       setSending(false);
     }
   };
 
-  // ─── Render helpers ────────────────────────────────────────────────────────
+  const handlePreview = async () => {
+    setSending(true);
+    try {
+      const res = await fetch(
+        `/api/pricing/alert-preview?alertType=${alertType}&tariffType=${tariffType}`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      const json = await res.json();
+      if (!json.hasData) {
+        setSendResult({ success: false, message: json.message || "Sin datos para previsualizar" });
+        return;
+      }
+      setPreviewHtml(json.html);
+    } catch (e: unknown) {
+      setSendResult({
+        success: false,
+        message: e instanceof Error ? e.message : "Error en vista previa",
+      });
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleExportCsv = () => {
+    if (!data) return;
+    const tab = activeTab;
+    const rows = filteredRows[tab];
+    if (rows.length === 0) return;
+
+    if (tab === "air") {
+      const air = rows as TarifaAerea[];
+      exportCsv(
+        `tarifas-aereo-${days}d.csv`,
+        ["Origin", "Destination", "45kgs+", "100kgs+", "Carrier", "Currency", "Compañía", "Válido Hasta", "Urgencia"],
+        air.map((t) => [
+          val(t.origen), val(t.destino), val(t.kg45), val(t.kg100),
+          val(t.carrier), val(t.currency), val(t.company), val(t.validUntil),
+          urgencyLabel(t.daysUntilExpiry),
+        ]),
+      );
+    } else if (tab === "fcl") {
+      const fcl = rows as TarifaFCL[];
+      exportCsv(
+        `tarifas-fcl-${days}d.csv`,
+        ["POL", "POD", "20GP", "40HQ", "Carrier", "Currency", "Compañía", "Validez", "Urgencia"],
+        fcl.map((t) => [
+          val(t.pol), val(t.pod), val(t.gp20), val(t.hq40),
+          val(t.carrier), val(t.currency), val(t.company), val(t.validUntil),
+          urgencyLabel(t.daysUntilExpiry),
+        ]),
+      );
+    } else {
+      const lcl = rows as TarifaLCL[];
+      exportCsv(
+        `tarifas-lcl-${days}d.csv`,
+        ["POL", "Servicio", "POD", "OF W/M", "Currency", "Operador", "Validez", "Urgencia"],
+        lcl.map((t) => [
+          val(t.pol), val(t.servicio), val(t.pod), val(t.ofWM),
+          val(t.currency), val(t.operador), val(t.validUntil),
+          urgencyLabel(t.daysUntilExpiry),
+        ]),
+      );
+    }
+  };
 
   const StatItem = ({
     label,
@@ -187,53 +331,85 @@ export default function PricingAlertsPanel() {
     </div>
   );
 
-  // ─── Render ────────────────────────────────────────────────────────────────
+  const formatDate = (iso: string) =>
+    new Date(iso).toLocaleString("es-CL", {
+      dateStyle: "medium",
+      timeStyle: "short",
+      timeZone: "America/Santiago",
+    });
 
   return (
     <div className="pa-page">
       <div className="pa-page__header">
-        <h1 className="pa-page__title">Alertas de Vencimiento de Tarifas</h1>
+        <h1 className="pa-page__title">
+          {t("admin.pricingAlerts.title", "Alertas de Vencimiento de Tarifas")}
+        </h1>
         <p className="pa-page__subtitle">
-          Visualiza y notifica las tarifas próximas a vencer · Solo visible para
-          Administrador
+          {t(
+            "admin.pricingAlerts.subtitle",
+            "Visualiza tarifas próximas a vencer · Envío manual solo administradores",
+          )}
         </p>
       </div>
 
-      {/* Stats grid (4 columns, flat) */}
-      {data && (
-        <div className="pa-stats">
-          <StatItem
-            label="Total próximas"
-            value={data.totals.all}
-            sub={statSubtext(data.totals.all, "all")}
-          />
-          <StatItem
-            label="Aéreo"
-            value={data.totals.air}
-            sub={statSubtext(data.totals.air, "air")}
-          />
-          <StatItem
-            label="FCL"
-            value={data.totals.fcl}
-            sub={statSubtext(data.totals.fcl, "fcl")}
-          />
-          <StatItem
-            label="LCL"
-            value={data.totals.lcl}
-            sub={statSubtext(data.totals.lcl, "lcl")}
-          />
+      {status && (
+        <div className="pa-card pa-status">
+          <div className="pa-status__grid">
+            <div className="pa-status__item">
+              <span className="pa-status__label">Última ejecución</span>
+              <span className="pa-status__value">
+                {status.lastRun
+                  ? `${formatDate(status.lastRun.createdAt)} (${status.lastRun.source})`
+                  : "Sin registros"}
+              </span>
+              {status.lastRun?.errors?.length ? (
+                <span className="pa-status__warn">{status.lastRun.errors[0]}</span>
+              ) : null}
+            </div>
+            <div className="pa-status__item">
+              <span className="pa-status__label">Próximo cron (UTC)</span>
+              <span className="pa-status__value">{formatDate(status.nextCronUtc)}</span>
+            </div>
+            <div className="pa-status__item">
+              <span className="pa-status__label">Buckets automáticos</span>
+              <span className="pa-status__value">
+                48h: {status.buckets.bucket48} · 24h: {status.buckets.bucket24} · Hoy:{" "}
+                {status.buckets.bucketToday}
+              </span>
+            </div>
+            <div className="pa-status__item">
+              <button
+                type="button"
+                className="pa-btn pa-btn--link"
+                onClick={() => setShowRecipients((v) => !v)}
+              >
+                {status.recipients.length} destinatario(s) Pricing
+              </button>
+              {showRecipients && (
+                <ul className="pa-status__recipients">
+                  {status.recipients.map((r) => (
+                    <li key={r.email}>{r.name ? `${r.name} · ${r.email}` : r.email}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Filter + refresh bar */}
+      {data && (
+        <div className="pa-stats">
+          <StatItem label="Total próximas" value={data.totals.all} sub={statSubtext(data.totals.all, "all")} />
+          <StatItem label="Aéreo" value={data.totals.air} sub={statSubtext(data.totals.air, "air")} />
+          <StatItem label="FCL" value={data.totals.fcl} sub={statSubtext(data.totals.fcl, "fcl")} />
+          <StatItem label="LCL" value={data.totals.lcl} sub={statSubtext(data.totals.lcl, "lcl")} />
+        </div>
+      )}
+
       <div className="pa-toolbar">
         <label className="pa-toolbar__label">
           Mostrar tarifas venciendo en los próximos
-          <select
-            className="pa-select"
-            value={days}
-            onChange={(e) => setDays(Number(e.target.value))}
-          >
+          <select className="pa-select" value={days} onChange={(e) => setDays(Number(e.target.value))}>
             {[1, 2, 3, 5, 7, 14, 30].map((d) => (
               <option key={d} value={d}>
                 {d} día{d > 1 ? "s" : ""}
@@ -241,31 +417,46 @@ export default function PricingAlertsPanel() {
             ))}
           </select>
         </label>
-        <button
-          className="pa-btn pa-btn--outline"
-          onClick={fetchExpiry}
-          disabled={loading}
-        >
+
+        <label className="pa-toolbar__label">
+          Urgencia
+          <select
+            className="pa-select"
+            value={urgencyFilter}
+            onChange={(e) => setUrgencyFilter(e.target.value as UrgencyFilter)}
+          >
+            <option value="all">Todas</option>
+            <option value="0">Hoy</option>
+            <option value="1">Mañana</option>
+            <option value="2">En 2 días</option>
+          </select>
+        </label>
+
+        <button type="button" className="pa-btn pa-btn--outline" onClick={fetchExpiry} disabled={loading}>
           {loading ? "Cargando…" : "Actualizar"}
         </button>
+
+        {data && (
+          <button type="button" className="pa-btn pa-btn--outline" onClick={handleExportCsv}>
+            Exportar CSV
+          </button>
+        )}
       </div>
 
-      {/* Error */}
       {error && (
         <div className="pa-alert pa-alert--error">
           <strong>Error:</strong> {error}
         </div>
       )}
 
-      {/* Tables */}
       {data && (
         <div className="pa-card">
           <div className="pa-tabs">
             {(["air", "fcl", "lcl"] as const).map((tab) => {
               const labels = {
-                air: `Aéreo (${data.air.length})`,
-                fcl: `FCL (${data.fcl.length})`,
-                lcl: `LCL (${data.lcl.length})`,
+                air: `Aéreo (${filteredRows.air.length})`,
+                fcl: `FCL (${filteredRows.fcl.length})`,
+                lcl: `LCL (${filteredRows.lcl.length})`,
               };
               return (
                 <button
@@ -281,12 +472,9 @@ export default function PricingAlertsPanel() {
           </div>
 
           <div className="pa-table-wrap">
-            {/* AIR */}
             {activeTab === "air" &&
-              (data.air.length === 0 ? (
-                <div className="pa-empty">
-                  No hay tarifas aéreas venciendo en los próximos {days} días
-                </div>
+              (filteredRows.air.length === 0 ? (
+                <div className="pa-empty">No hay tarifas aéreas con el filtro actual</div>
               ) : (
                 <table className="pa-table">
                   <thead>
@@ -303,8 +491,8 @@ export default function PricingAlertsPanel() {
                     </tr>
                   </thead>
                   <tbody>
-                    {data.air.map((t, i) => (
-                      <tr key={i}>
+                    {filteredRows.air.map((t) => (
+                      <tr key={t.rowNumber}>
                         <td>{val(t.origen)}</td>
                         <td>{val(t.destino)}</td>
                         <td>{val(t.kg45)}</td>
@@ -312,9 +500,7 @@ export default function PricingAlertsPanel() {
                         <td>{val(t.carrier)}</td>
                         <td>{val(t.currency)}</td>
                         <td>{val(t.company)}</td>
-                        <td className="pa-table__validity">
-                          {val(t.validUntil)}
-                        </td>
+                        <td className="pa-table__validity">{val(t.validUntil)}</td>
                         <td>
                           <span className={urgencyClass(t.daysUntilExpiry)}>
                             {urgencyLabel(t.daysUntilExpiry)}
@@ -326,12 +512,9 @@ export default function PricingAlertsPanel() {
                 </table>
               ))}
 
-            {/* FCL */}
             {activeTab === "fcl" &&
-              (data.fcl.length === 0 ? (
-                <div className="pa-empty">
-                  No hay tarifas FCL venciendo en los próximos {days} días
-                </div>
+              (filteredRows.fcl.length === 0 ? (
+                <div className="pa-empty">No hay tarifas FCL con el filtro actual</div>
               ) : (
                 <table className="pa-table">
                   <thead>
@@ -348,8 +531,8 @@ export default function PricingAlertsPanel() {
                     </tr>
                   </thead>
                   <tbody>
-                    {data.fcl.map((t, i) => (
-                      <tr key={i}>
+                    {filteredRows.fcl.map((t) => (
+                      <tr key={t.rowNumber}>
                         <td>{val(t.pol)}</td>
                         <td>{val(t.pod)}</td>
                         <td>{val(t.gp20)}</td>
@@ -357,9 +540,7 @@ export default function PricingAlertsPanel() {
                         <td>{val(t.carrier)}</td>
                         <td>{val(t.currency)}</td>
                         <td>{val(t.company)}</td>
-                        <td className="pa-table__validity">
-                          {val(t.validUntil)}
-                        </td>
+                        <td className="pa-table__validity">{val(t.validUntil)}</td>
                         <td>
                           <span className={urgencyClass(t.daysUntilExpiry)}>
                             {urgencyLabel(t.daysUntilExpiry)}
@@ -371,12 +552,9 @@ export default function PricingAlertsPanel() {
                 </table>
               ))}
 
-            {/* LCL */}
             {activeTab === "lcl" &&
-              (data.lcl.length === 0 ? (
-                <div className="pa-empty">
-                  No hay tarifas LCL venciendo en los próximos {days} días
-                </div>
+              (filteredRows.lcl.length === 0 ? (
+                <div className="pa-empty">No hay tarifas LCL con el filtro actual</div>
               ) : (
                 <table className="pa-table">
                   <thead>
@@ -392,17 +570,15 @@ export default function PricingAlertsPanel() {
                     </tr>
                   </thead>
                   <tbody>
-                    {data.lcl.map((t, i) => (
-                      <tr key={i}>
+                    {filteredRows.lcl.map((t) => (
+                      <tr key={t.rowNumber}>
                         <td>{val(t.pol)}</td>
                         <td>{val(t.servicio)}</td>
                         <td>{val(t.pod)}</td>
                         <td>{val(t.ofWM)}</td>
                         <td>{val(t.currency)}</td>
                         <td>{val(t.operador)}</td>
-                        <td className="pa-table__validity">
-                          {val(t.validUntil)}
-                        </td>
+                        <td className="pa-table__validity">{val(t.validUntil)}</td>
                         <td>
                           <span className={urgencyClass(t.daysUntilExpiry)}>
                             {urgencyLabel(t.daysUntilExpiry)}
@@ -417,96 +593,134 @@ export default function PricingAlertsPanel() {
         </div>
       )}
 
-      {/* Loading */}
       {loading && !data && (
         <div className="pa-card">
           <div className="pa-loading">Cargando tarifas…</div>
         </div>
       )}
 
-      {/* Manual send section */}
-      <div className="pa-card">
-        <div className="pa-card__header">
-          <h2 className="pa-card__title">Enviar alertas manualmente</h2>
-          <p className="pa-card__subtitle">
-            Envía correos de alerta a los usuarios con rol Pricing y/o correos
-            adicionales.
-          </p>
-        </div>
-        <div className="pa-card__body">
-          <div className="pa-form-row">
-            <div className="pa-field">
-              <label className="pa-field__label">Tipo de tarifa</label>
-              <select
-                className="pa-select"
-                value={tariffType}
-                onChange={(e) => setTariffType(e.target.value as TariffKind)}
-              >
-                <option value="air">Aéreo</option>
-                <option value="fcl">FCL (Marítimo)</option>
-                <option value="lcl">LCL (Consolidado)</option>
-              </select>
+      {isAdmin && (
+        <div className="pa-card">
+          <div className="pa-card__header">
+            <h2 className="pa-card__title">Enviar alertas manualmente</h2>
+            <p className="pa-card__subtitle">
+              Envía correos a usuarios con rol Pricing y/o correos adicionales.
+            </p>
+          </div>
+          <div className="pa-card__body">
+            <div className="pa-form-row">
+              <div className="pa-field">
+                <label className="pa-field__label">Tipo de tarifa</label>
+                <select
+                  className="pa-select"
+                  value={tariffType}
+                  onChange={(e) => setTariffType(e.target.value as TariffKind)}
+                >
+                  <option value="air">Aéreo</option>
+                  <option value="fcl">FCL (Marítimo)</option>
+                  <option value="lcl">LCL (Consolidado)</option>
+                </select>
+              </div>
+
+              <div className="pa-field">
+                <label className="pa-field__label">Ventana de alerta</label>
+                <select
+                  className="pa-select"
+                  value={alertType}
+                  onChange={(e) => setAlertType(e.target.value as AlertType)}
+                >
+                  <option value="48hrs">48 horas (hoy + mañana + pasado mañana)</option>
+                  <option value="24hrs">24 horas (hoy + mañana)</option>
+                </select>
+              </div>
+
+              <div className="pa-field pa-form-row__field--grow">
+                <label className="pa-field__label">Correos adicionales</label>
+                <input
+                  className="pa-input"
+                  type="text"
+                  placeholder="ej. nombre@empresa.com"
+                  value={extraEmailsInput}
+                  onChange={(e) => setExtraEmailsInput(e.target.value)}
+                />
+              </div>
             </div>
 
-            <div className="pa-field">
-              <label className="pa-field__label">Ventana de alerta</label>
-              <select
-                className="pa-select"
-                value={alertType}
-                onChange={(e) => setAlertType(e.target.value as AlertType)}
-              >
-                <option value="48hrs">48 horas (incluye 24 hrs)</option>
-                <option value="24hrs">24 horas</option>
-              </select>
-            </div>
-
-            <div className="pa-field pa-form-row__field--grow">
-              <label className="pa-field__label">
-                Correos adicionales (separados por coma o espacio)
-              </label>
-              <input
-                className="pa-input"
-                type="text"
-                placeholder="ej. nombre@empresa.com, otro@empresa.com"
-                value={extraEmailsInput}
-                onChange={(e) => setExtraEmailsInput(e.target.value)}
-              />
-            </div>
-
-            <div>
+            <div className="pa-form-actions">
               <button
                 type="button"
                 className="pa-btn pa-btn--primary"
-                onClick={handleSendAlerts}
+                onClick={() => postAlerts("manual")}
                 disabled={sending}
               >
                 {sending ? "Enviando…" : `Enviar alerta · ${alertType}`}
               </button>
+              <button
+                type="button"
+                className="pa-btn pa-btn--outline"
+                onClick={() => postAlerts("test")}
+                disabled={sending}
+              >
+                Enviar prueba a mí
+              </button>
+              <button
+                type="button"
+                className="pa-btn pa-btn--outline"
+                onClick={handlePreview}
+                disabled={sending}
+              >
+                Vista previa
+              </button>
             </div>
+
+            <p className="pa-note">
+              El cron diario (12:00 UTC) envía alertas escalonadas por bucket: 48h, 24h y hoy.
+              Cada tarifa aparece una sola vez por día según su urgencia.
+            </p>
+
+            {sendResult && (
+              <div
+                className={`pa-alert ${
+                  sendResult.success
+                    ? sendResult.partial
+                      ? "pa-alert--warning"
+                      : "pa-alert--success"
+                    : "pa-alert--error"
+                }`}
+              >
+                <strong>{sendResult.message}</strong>
+                {sendResult.details && (
+                  <div className="pa-alert__detail">{sendResult.details}</div>
+                )}
+              </div>
+            )}
           </div>
-
-          <p className="pa-note">
-            Los correos se enviarán a todos los usuarios activos con rol{" "}
-            <strong>Pricing</strong>
-            {extraEmailsInput.trim()
-              ? " más los correos adicionales ingresados"
-              : ""}
-            . El envío automático se realiza diariamente, consolidando en un
-            solo correo las tarifas que vencen hoy, mañana y pasado mañana.
-          </p>
-
-          {sendResult && (
-            <div
-              className={`pa-alert ${sendResult.success ? "pa-alert--success" : "pa-alert--error"}`}
-            >
-              <strong>{sendResult.message}</strong>
-              {sendResult.details && (
-                <div className="pa-alert__detail">{sendResult.details}</div>
-              )}
-            </div>
-          )}
         </div>
-      </div>
+      )}
+
+      {previewHtml && (
+        <div
+          className="pa-modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setPreviewHtml(null)}
+        >
+          <div className="pa-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="pa-modal__header">
+              <h3>Vista previa del correo</h3>
+              <button type="button" className="pa-btn pa-btn--link" onClick={() => setPreviewHtml(null)}>
+                Cerrar
+              </button>
+            </div>
+            <iframe
+              className="pa-modal__iframe"
+              title="Vista previa email"
+              sandbox=""
+              srcDoc={previewHtml}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

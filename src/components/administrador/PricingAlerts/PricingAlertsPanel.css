@@ -360,6 +360,12 @@
   color: #b91c1c;
 }
 
+.pa-alert--warning {
+  background: #fffbeb;
+  border-color: #fde68a;
+  color: #b45309;
+}
+
 .pa-alert__detail {
   margin-top: 4px;
   font-size: 12px;
@@ -384,4 +390,114 @@
   font-size: 12px;
   color: var(--text-tertiary, #9ca3af);
   margin: 12px 0 0;
+}
+
+/* ────── Status card ────── */
+
+.pa-status {
+  margin-bottom: 20px;
+}
+
+.pa-status__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  padding: 16px 20px;
+}
+
+.pa-status__item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pa-status__label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-tertiary, #9ca3af);
+}
+
+.pa-status__value {
+  font-size: 13px;
+  color: var(--text-primary, #1f2937);
+}
+
+.pa-status__warn {
+  font-size: 12px;
+  color: #b91c1c;
+}
+
+.pa-status__recipients {
+  margin: 8px 0 0;
+  padding-left: 16px;
+  font-size: 12px;
+  color: var(--text-secondary, #6b7280);
+}
+
+.pa-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.pa-btn--link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--accent, #ff6200);
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.pa-btn--link:hover {
+  text-decoration: underline;
+}
+
+/* ────── Preview modal ────── */
+
+.pa-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.pa-modal {
+  background: #fff;
+  border-radius: 12px;
+  width: min(900px, 100%);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+}
+
+.pa-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 0.5px solid var(--border-tertiary, #e5e7eb);
+}
+
+.pa-modal__header h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.pa-modal__iframe {
+  flex: 1;
+  width: 100%;
+  min-height: 480px;
+  border: none;
 }

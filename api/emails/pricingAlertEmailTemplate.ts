@@ -17,7 +17,7 @@ const C = {
 
 const LOGO_URL = 'https://portalclientes.seemanngroup.com/logocompleto.png';
 
-export type AlertType = '48hrs' | '24hrs';
+export type AlertType = '48hrs' | '24hrs' | 'today';
 
 // ─── Data interfaces ─────────────────────────────────────────
 
@@ -107,12 +107,16 @@ function emailWrapper(title: string, alertType: AlertType, bodyHtml: string): st
   const badge =
     alertType === '48hrs'
       ? `<span style="background-color:${C.warning};color:#fff;padding:3px 10px;border-radius:3px;font-size:11px;font-weight:700;">⚠ 48 HORAS</span>`
-      : `<span style="background-color:${C.danger};color:#fff;padding:3px 10px;border-radius:3px;font-size:11px;font-weight:700;">🔴 24 HORAS</span>`;
+      : alertType === 'today'
+        ? `<span style="background-color:${C.danger};color:#fff;padding:3px 10px;border-radius:3px;font-size:11px;font-weight:700;">🔴 VENCE HOY</span>`
+        : `<span style="background-color:${C.danger};color:#fff;padding:3px 10px;border-radius:3px;font-size:11px;font-weight:700;">🔴 24 HORAS</span>`;
 
   const urgencyMsg =
     alertType === '48hrs'
       ? 'vence en las próximas 48 horas'
-      : 'vence mañana';
+      : alertType === 'today'
+        ? 'vence hoy'
+        : 'vence mañana';
 
   const now = new Date();
   const fecha = now.toLocaleString('es-CL', { dateStyle: 'long', timeStyle: 'short', timeZone: 'America/Santiago' });
@@ -182,7 +186,9 @@ function emailWrapper(title: string, alertType: AlertType, bodyHtml: string): st
 const AIR_COLOR = '#3b82f6';
 
 export function buildAirExpiryAlertSubject(alertType: AlertType, count: number): string {
-  return `⚠ Alerta Pricing Aéreo — ${count} tarifa${count > 1 ? 's' : ''} ${alertType === '48hrs' ? 'vence en 48 horas' : 'vence mañana'}`;
+  const label =
+    alertType === '48hrs' ? 'vence en 48 horas' : alertType === 'today' ? 'vence hoy' : 'vence mañana';
+  return `⚠ Alerta Pricing Aéreo — ${count} tarifa${count > 1 ? 's' : ''} ${label}`;
 }
 
 export function buildAirExpiryAlertHTML(tarifas: TarifaAereaExpiringData[], alertType: AlertType): string {
@@ -255,7 +261,9 @@ export function buildAirExpiryAlertHTML(tarifas: TarifaAereaExpiringData[], aler
 const FCL_COLOR = '#0ea5e9';
 
 export function buildFCLExpiryAlertSubject(alertType: AlertType, count: number): string {
-  return `⚠ Alerta Pricing FCL — ${count} tarifa${count > 1 ? 's' : ''} ${alertType === '48hrs' ? 'vence en 48 horas' : 'vence mañana'}`;
+  const label =
+    alertType === '48hrs' ? 'vence en 48 horas' : alertType === 'today' ? 'vence hoy' : 'vence mañana';
+  return `⚠ Alerta Pricing FCL — ${count} tarifa${count > 1 ? 's' : ''} ${label}`;
 }
 
 export function buildFCLExpiryAlertHTML(tarifas: TarifaFCLExpiringData[], alertType: AlertType): string {
@@ -314,7 +322,9 @@ export function buildFCLExpiryAlertHTML(tarifas: TarifaFCLExpiringData[], alertT
 const LCL_COLOR = '#8b5cf6';
 
 export function buildLCLExpiryAlertSubject(alertType: AlertType, count: number): string {
-  return `⚠ Alerta Pricing LCL — ${count} tarifa${count > 1 ? 's' : ''} ${alertType === '48hrs' ? 'vence en 48 horas' : 'vence mañana'}`;
+  const label =
+    alertType === '48hrs' ? 'vence en 48 horas' : alertType === 'today' ? 'vence hoy' : 'vence mañana';
+  return `⚠ Alerta Pricing LCL — ${count} tarifa${count > 1 ? 's' : ''} ${label}`;
 }
 
 export function buildLCLExpiryAlertHTML(tarifas: TarifaLCLExpiringData[], alertType: AlertType): string {

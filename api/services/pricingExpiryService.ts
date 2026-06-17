@@ -152,15 +152,43 @@ export function parseValidityDate(raw: string | null | undefined): Date | null {
   return null;
 }
 
+const CHILE_TZ = 'America/Santiago';
+
+/** Calendar date parts for a moment in America/Santiago. */
+function getDatePartsInChile(d: Date = new Date()): { y: number; m: number; day: number } {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: CHILE_TZ,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(d);
+  const y = Number(parts.find((p) => p.type === 'year')?.value);
+  const m = Number(parts.find((p) => p.type === 'month')?.value);
+  const day = Number(parts.find((p) => p.type === 'day')?.value);
+  return { y, m, day };
+}
+
+/** Midnight UTC for a calendar day in Chile (used for day-diff math). */
+function chileMidnightUtc(y: number, m: number, day: number): number {
+  return Date.UTC(y, m - 1, day);
+}
+
+/** Today's calendar date at midnight Chile, as a reference Date. */
+export function getTodayInChile(): Date {
+  const { y, m, day } = getDatePartsInChile();
+  return new Date(chileMidnightUtc(y, m, day));
+}
+
 /**
- * Returns how many calendar days until the given date.
- * Returns 0 if the date is today, negative if already past.
+ * Returns how many calendar days until the given date (Chile timezone).
+ * Returns 0 if the date is today in Chile, negative if already past.
  */
 export function daysUntil(date: Date): number {
-  const today = new Date();
-  const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  const expMidnight = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  return Math.round((expMidnight.getTime() - todayMidnight.getTime()) / 86400000);
+  const today = getDatePartsInChile();
+  const exp = getDatePartsInChile(date);
+  const todayMs = chileMidnightUtc(today.y, today.m, today.day);
+  const expMs = chileMidnightUtc(exp.y, exp.m, exp.day);
+  return Math.round((expMs - todayMs) / 86400000);
 }
 
 // ─── FETCH HELPERS ────────────────────────────────────────────
@@ -320,16 +348,15 @@ export async function fetchAllExpiring(maxDays: number) {
 }
 
 /**
- * Filter a list of expiring rates to only those in the exact daily window.
- * Used by the CRON job to avoid duplicate sends on consecutive days.
- * windowDays = 1 → expiring exactly tomorrow (24hr alert)
- * windowDays = 2 → expiring exactly in 2 days (48hr alert)
+ * Filter rates expiring on exactly N calendar days from today (Chile).
+ * Used by the CRON job — each tariff appears in one bucket per day.
+ *   0 → vence hoy · 1 → mañana (24hr) · 2 → pasado mañana (48hr)
  */
 export function filterExactWindow<T extends { daysUntilExpiry?: number }>(
   rates: T[],
-  windowDays: 1 | 2,
+  exactDays: 0 | 1 | 2,
 ): T[] {
-  return rates.filter((r) => r.daysUntilExpiry === windowDays);
+  return rates.filter((r) => r.daysUntilExpiry === exactDays);
 }
 
 /**

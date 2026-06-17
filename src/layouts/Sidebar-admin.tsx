@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../auth/AuthContext";
 import { canSeeSidebarItem } from "../config/roleRoutes";
+import { usePricingExpiryCount } from "../hooks/usePricingExpiryCount";
 import { imgUrl } from "../config/images";
 import logoSeemann from "./logoseemann.png";
 import { handleSidebarNavigation } from "./sidebarNavigation";
@@ -68,6 +69,9 @@ function SidebarAdmin({
   const { user } = useAuth();
   const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
+  const pricingExpiryCount = usePricingExpiryCount(
+    !!user?.roles?.administrador || !!user?.roles?.pricing,
+  );
 
   const canSeeByEmail = (restrictedTo?: string | string[]) => {
     if (!restrictedTo) return true;
@@ -560,6 +564,24 @@ function SidebarAdmin({
                                 {item.badge.text}
                               </span>
                             )}
+
+                            {item.path === "/admin/alertas-pricing" &&
+                              pricingExpiryCount > 0 && (
+                                <span
+                                  style={{
+                                    padding: "2px 7px",
+                                    borderRadius: "999px",
+                                    fontSize: "10px",
+                                    fontWeight: "700",
+                                    backgroundColor: colors.accent,
+                                    color: "#ffffff",
+                                    minWidth: "18px",
+                                    textAlign: "center",
+                                  }}
+                                >
+                                  {pricingExpiryCount > 99 ? "99+" : pricingExpiryCount}
+                                </span>
+                              )}
 
                             {hasSubItems && visibleSubItems.length > 0 && (
                               <i

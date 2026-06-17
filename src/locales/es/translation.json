@@ -1199,6 +1199,10 @@
       "expand": "Expandir",
       "collapse": "Colapsar"
     },
+    "pricingAlerts": {
+      "title": "Alertas de Vencimiento de Tarifas",
+      "subtitle": "Visualiza tarifas próximas a vencer · Envío manual solo administradores"
+    },
     "homeEjecutivo": {
       "loadingTitle": "Cargando Torre de Control...",
       "loadingMessage": "Cargando",
