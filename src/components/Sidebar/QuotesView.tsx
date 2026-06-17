@@ -2431,30 +2431,19 @@ function QuotesView({
                             className="qv-td qv-td--center qv-td--split-hidden"
                             onClick={(e) => e.stopPropagation()}
                           >
-                            {availablePDFs.has(quote.number || "") ? (
-                              <button
-                                className="qv-pdf-btn"
-                                disabled={downloadingPDF === quote.number}
-                                onClick={() =>
-                                  handleDownloadPDF(quote.number || "")
-                                }
-                              >
-                                {downloadingPDF === quote.number ? (
-                                  <span
-                                    className="spinner-border spinner-border-sm"
-                                    style={{ width: "10px", height: "10px" }}
-                                  />
-                                ) : (
-                                  t("quotesView.download")
-                                )}
-                              </button>
-                            ) : (
-                              <span
-                                style={{ color: "#d1d5db", fontSize: "11px" }}
-                              >
-                                ---
-                              </span>
-                            )}
+                            <QuotePdfResendCell
+                              quoteNumber={quote.number || ""}
+                              hasPdf={availablePDFs.has(quote.number || "")}
+                              customerReference={quote.customerReference}
+                              ownerUsername={activeUsername}
+                              token={token}
+                              isSending={resendingPDF === quote.number}
+                              onSend={handleResendQuotePdf}
+                              triggerLabel={t("quotesView.download")}
+                              triggerClassName="qv-pdf-btn"
+                              showSuccessMessage={false}
+                              emptyVariant="table"
+                            />
                           </td>
                         </tr>
                       );

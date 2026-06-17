@@ -18,6 +18,10 @@ interface QuotePdfResendCellProps {
     ownerUsername?: string;
   }) => Promise<void>;
   isSending?: boolean;
+  triggerLabel?: string;
+  triggerClassName?: string;
+  showSuccessMessage?: boolean;
+  emptyVariant?: "muted" | "table";
 }
 
 function QuotePdfResendCell({
@@ -28,6 +32,10 @@ function QuotePdfResendCell({
   token,
   onSend,
   isSending = false,
+  triggerLabel,
+  triggerClassName = "qv-btn qv-btn--ghost qv-resend-toggle",
+  showSuccessMessage = true,
+  emptyVariant = "muted",
 }: QuotePdfResendCellProps) {
   const { t } = useTranslation();
   const [showModal, setShowModal] = useState(false);
@@ -140,10 +148,18 @@ function QuotePdfResendCell({
   };
 
   if (!hasPdf) {
+    if (emptyVariant === "table") {
+      return (
+        <span style={{ color: "#d1d5db", fontSize: "11px" }}>---</span>
+      );
+    }
+
     return (
       <span className="qv-field-cell__value qv-field-cell__value--muted">—</span>
     );
   }
+
+  const buttonLabel = triggerLabel ?? t("quotesView.resendAddRecipients");
 
   const modal = showModal
     ? createPortal(
@@ -253,7 +269,7 @@ function QuotePdfResendCell({
     <>
       <button
         type="button"
-        className="qv-btn qv-btn--ghost qv-resend-toggle"
+        className={triggerClassName}
         onClick={openModal}
         disabled={isSending}
       >
@@ -263,10 +279,10 @@ function QuotePdfResendCell({
             style={{ width: "10px", height: "10px" }}
           />
         ) : (
-          t("quotesView.resendAddRecipients")
+          buttonLabel
         )}
       </button>
-      {successMessage ? (
+      {showSuccessMessage && successMessage ? (
         <p className="qv-resend__message qv-resend__message--success">
           {successMessage}
         </p>
