@@ -45,7 +45,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     console.log('[pricing-cron] Completado:', JSON.stringify(result));
     const status = result.success ? 200 : result.partialFailure ? 207 : 500;
-    return res.status(status).json({ success: result.success, ...result });
+    return res.status(status).json(result);
   } catch (err: any) {
     console.error('[pricing-cron] Error:', err);
     return res.status(500).json({ success: false, error: err.message });

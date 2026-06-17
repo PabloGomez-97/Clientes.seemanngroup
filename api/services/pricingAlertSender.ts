@@ -124,6 +124,8 @@ type TariffRates =
   | TarifaFCLExpiringData[]
   | TarifaLCLExpiringData[];
 
+type ExpiringRow = { daysUntilExpiry?: number };
+
 // ─── Brevo ────────────────────────────────────────────────────
 
 export async function sendBrevoEmail(
@@ -256,7 +258,10 @@ async function runCronAlerts(
     const bucketSent: SentEntry[] = [];
 
     for (const type of types) {
-      const filtered = filterExactWindow(ratesMap[type], bucket.days);
+      const filtered = filterExactWindow(
+        ratesMap[type] as ExpiringRow[],
+        bucket.days,
+      ) as TariffRates;
       if (filtered.length === 0) continue;
 
       try {
@@ -313,7 +318,10 @@ async function runManualAlerts(
     tariffType === 'all' ? ['air', 'fcl', 'lcl'] : [tariffType];
 
   for (const type of types) {
-    const filtered = filterMaxWindow(ratesMapFromAll(all, type), windowDays);
+    const filtered = filterMaxWindow(
+      ratesMapFromAll(all, type) as ExpiringRow[],
+      windowDays,
+    ) as TariffRates;
     if (filtered.length === 0) {
       skipped.push(`No hay tarifas ${type.toUpperCase()} en ventana ${alertType}`);
       continue;
@@ -485,7 +493,7 @@ export async function buildAlertPreview(
   const windowDays = alertType === '24hrs' ? 1 : 2;
   const { air, fcl, lcl } = await fetchAllExpiring(windowDays);
   const rates = ratesMapFromAll({ air, fcl, lcl }, tariffType);
-  const filtered = filterMaxWindow(rates, windowDays);
+  const filtered = filterMaxWindow(rates as ExpiringRow[], windowDays) as TariffRates;
   if (filtered.length === 0) return null;
   const { subject, html } = buildEmail(tariffType, filtered, alertType);
   return { html, subject, count: filtered.length };
