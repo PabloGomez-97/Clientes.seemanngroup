@@ -283,6 +283,7 @@
       "financial": "Financial",
       "operational": "Operational",
       "priceHistory": "Price history",
+      "rateConsult": "Rates",
       "news": "News",
       "novedades": "News",
       "promesas": "Our Promises",
@@ -779,6 +780,58 @@
       "lcl": "LCL"
     }
   },
+  "consultaTarifas": {
+    "title": "Browse rates",
+    "subtitle": "Review, filter, compare, and download today's active rates for your import or export.",
+    "loading": "Loading rates…",
+    "error": "Could not load rates. Check your connection and try again.",
+    "retry": "Retry",
+    "mode": {
+      "air": "Air",
+      "fcl": "Ocean FCL",
+      "lcl": "Ocean LCL"
+    },
+    "filters": {
+      "country": "Origin country",
+      "city": "Origin city",
+      "destination": "Destination",
+      "container": "Container",
+      "weightTier": "Weight band (kg)",
+      "allCountries": "All countries",
+      "allCities": "All cities",
+      "allDestinations": "All destinations",
+      "allTiers": "All"
+    },
+    "includeExpired": "Include expired rates (history)",
+    "resultsCount": "{{count}} rate(s)",
+    "rowsPerPage": "Rows per page:",
+    "prevPage": "Previous page",
+    "nextPage": "Next page",
+    "downloadHint": "Select a route or country and destination to download the rates PDF.",
+    "colActions": "Trend",
+    "viewHistory": "View trend",
+    "expiredBadge": "Expired",
+    "expiringSoonBadge": "Expiring soon",
+    "historyModalTitle": "Price trend",
+    "noHistory": "We don't have price history for this route yet. The current rate is still shown in the table.",
+    "popularRoutes": {
+      "openButton": "View busiest routes",
+      "title": "Seemann's most used routes",
+      "desc": "Based on real movements from our clients. Click a route to see its active rates above. Ocean routes show both FCL and LCL tables.",
+      "air": "Most used air routes",
+      "ocean": "Most used ocean routes",
+      "emptyAir": "No air route data yet.",
+      "emptyOcean": "No ocean route data yet.",
+      "clickHint": "View rates for this route",
+      "activeFilter": "Showing rates for the selected route.",
+      "clearFilter": "Clear filter"
+    },
+    "empty": {
+      "title": "No rates for these filters",
+      "desc": "We couldn't find active rates matching your selection. Try another country, city, or destination, or clear a filter to see more options.",
+      "tryExpired": "Also show expired rates (history)"
+    }
+  },
   "novedades": {
     "title": "News",
     "subtitle": "Latest news and blog posts",
@@ -1085,7 +1138,7 @@
     "unknownError": "Unknown error",
     "resendQuote": "Resend quote",
     "resendModalTitle": "Resend quote",
-    "resendModalSubtitle": "Enter up to 5 emails. A single message with the PDF attached will be sent.",
+    "resendModalSubtitle": "Enter up to 5 emails. The PDF will be sent.",
     "resendModalEmailsLabel": "Email addresses",
     "resendAddRecipients": "Add recipients",
     "resendSendPdf": "Send PDF",

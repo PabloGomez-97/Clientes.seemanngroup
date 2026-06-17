@@ -65,6 +65,7 @@ import Financiera from "./components/Sidebar/ReporteriaFinanciera";
 import Settings from "./components/settings/Settings";
 import ReporteriaOperacional from "./components/Sidebar/ReporteriaOperacional";
 import PriceHistoryExplorer from "./components/Sidebar/priceHistory/PriceHistoryExplorer";
+import ConsultaTarifas from "./components/Sidebar/rateConsult/ConsultaTarifas";
 import ShipsGoTracking from "./components/Sidebar/Shipsgotracking";
 import CreateShipmentForm from "./components/Sidebar/New-tracking";
 import CreateOceanShipmentForm from "./components/Sidebar/New-ocean-tracking";
@@ -288,6 +289,7 @@ function App() {
           <Route path="settings" element={<Settings />} />
           <Route path="operacional" element={<ReporteriaOperacional />} />
           <Route path="historico-precios" element={<PriceHistoryExplorer />} />
+          <Route path="consultar-tarifas" element={<ConsultaTarifas />} />
           <Route path="new-tracking" element={<CreateShipmentForm />} />
           <Route
             path="new-ocean-tracking"

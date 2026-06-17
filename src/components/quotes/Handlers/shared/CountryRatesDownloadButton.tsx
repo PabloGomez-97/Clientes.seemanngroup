@@ -102,10 +102,10 @@ export function CountryRatesDownloadButton({
       const routeRows =
         scope === "route" && selectedOriginLabel
           ? rows.filter(
-              (r) =>
-                r.origin.trim().toLowerCase() ===
-                selectedOriginLabel.trim().toLowerCase(),
-            )
+            (r) =>
+              r.origin.trim().toLowerCase() ===
+              selectedOriginLabel.trim().toLowerCase(),
+          )
           : rows;
 
       await new Promise<void>((resolve) => {
@@ -167,8 +167,8 @@ export function CountryRatesDownloadButton({
 
   const fullDesc = destinationLabel
     ? t(`${translationNs}.downloadCountryRatesFullDesc`, {
-        destination: destinationLabel,
-      })
+      destination: destinationLabel,
+    })
     : undefined;
 
   return (

@@ -159,6 +159,11 @@ function Sidebar({
       title: t("home.sidebar.sectionReference"),
       items: [
         {
+          path: "/consultar-tarifas",
+          name: t("home.sidebar.rateConsult"),
+          icon: "fa fa-tags",
+        },
+        {
           path: "/historico-precios",
           name: t("home.sidebar.priceHistory"),
           icon: "fa fa-chart-line",

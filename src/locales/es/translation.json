@@ -283,6 +283,7 @@
       "financial": "Financiera",
       "operational": "Operacional",
       "priceHistory": "Histórico de precios",
+      "rateConsult": "Tarifario",
       "news": "Novedades",
       "novedades": "Novedades",
       "promesas": "Nuestras Promesas",
@@ -780,6 +781,58 @@
       "lcl": "LCL"
     }
   },
+  "consultaTarifas": {
+    "title": "Consultar tarifas",
+    "subtitle": "Revisa, filtra, compara y descarga las tarifas vigentes del día para tu importación o exportación.",
+    "loading": "Cargando tarifas…",
+    "error": "No se pudieron cargar las tarifas. Revisa tu conexión e inténtalo nuevamente.",
+    "retry": "Reintentar",
+    "mode": {
+      "air": "Aéreo",
+      "fcl": "Marítimo FCL",
+      "lcl": "Marítimo LCL"
+    },
+    "filters": {
+      "country": "País de origen",
+      "city": "Ciudad de origen",
+      "destination": "Destino",
+      "container": "Contenedor",
+      "weightTier": "Tramo (kg)",
+      "allCountries": "Todos los países",
+      "allCities": "Todas las ciudades",
+      "allDestinations": "Todos los destinos",
+      "allTiers": "Todos"
+    },
+    "includeExpired": "Incluir tarifas vencidas (historial)",
+    "resultsCount": "{{count}} tarifa(s)",
+    "rowsPerPage": "Filas por página:",
+    "prevPage": "Página anterior",
+    "nextPage": "Página siguiente",
+    "downloadHint": "Selecciona una ruta o país y destino para descargar el PDF de tarifas.",
+    "colActions": "Evolución",
+    "viewHistory": "Ver evolución",
+    "expiredBadge": "Vencida",
+    "expiringSoonBadge": "Por vencer",
+    "historyModalTitle": "Evolución de precios",
+    "noHistory": "Aún no tenemos histórico de precios para esta ruta. La tarifa vigente sí aparece en la tabla.",
+    "popularRoutes": {
+      "openButton": "Ver rutas más concurridas",
+      "title": "Rutas más usadas en Seemann",
+      "desc": "Basado en movimientos reales de nuestros clientes. Haz clic en una ruta para ver sus tarifas vigentes arriba. Las rutas marítimas muestran tablas FCL y LCL.",
+      "air": "Rutas aéreas más usadas",
+      "ocean": "Rutas marítimas más usadas",
+      "emptyAir": "Sin datos de rutas aéreas por ahora.",
+      "emptyOcean": "Sin datos de rutas marítimas por ahora.",
+      "clickHint": "Ver tarifas de esta ruta",
+      "activeFilter": "Mostrando tarifas de la ruta seleccionada.",
+      "clearFilter": "Quitar filtro"
+    },
+    "empty": {
+      "title": "Sin tarifas para estos filtros",
+      "desc": "No encontramos tarifas activas que coincidan con tu selección. Prueba con otro país, ciudad o destino, o limpia algún filtro para ver más opciones.",
+      "tryExpired": "Ver también tarifas vencidas (historial)"
+    }
+  },
   "novedades": {
     "title": "Novedades",
     "subtitle": "Últimas noticias y artículos del blog",
@@ -1086,7 +1139,7 @@
     "unknownError": "Error desconocido",
     "resendQuote": "Reenvío de cotización",
     "resendModalTitle": "Reenvío de cotización",
-    "resendModalSubtitle": "Ingresa hasta 5 correos. Se enviará un solo mensaje con el PDF adjunto.",
+    "resendModalSubtitle": "Ingresa hasta 5 correos. Se enviará el PDF adjunto.",
     "resendModalEmailsLabel": "Correos electrónicos",
     "resendAddRecipients": "Agregar destinatarios",
     "resendSendPdf": "Enviar PDF",
