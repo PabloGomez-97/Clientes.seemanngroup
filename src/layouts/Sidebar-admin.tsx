@@ -192,11 +192,6 @@ function SidebarAdmin({
           icon: "fa fa-table",
         },
         {
-          path: "/admin/historico-precios",
-          name: t("admin.sidebar.priceHistory"),
-          icon: "fa fa-line-chart",
-        },
-        {
           path: "/admin/documentos-proveedores",
           name: t("admin.sidebar.supplierDocumentation"),
           icon: "fa fa-file-alt",
@@ -233,6 +228,32 @@ function SidebarAdmin({
               badge: { text: t("admin.sidebar.badgeChief"), type: "admin" as const },
             },
           ],
+        },
+      ],
+    },
+
+    {
+      title: t("home.sidebar.sectionReference"),
+      items: [
+        {
+          path: "/admin/consultar-tarifas",
+          name: t("home.sidebar.rateConsult"),
+          icon: "fa fa-tags",
+        },
+        {
+          path: "/admin/historico-precios",
+          name: t("home.sidebar.priceHistory"),
+          icon: "fa fa-chart-line",
+        },
+        {
+          path: "/admin/novedades",
+          name: t("home.sidebar.novedades"),
+          icon: "fa fa-newspaper",
+        },
+        {
+          path: "/admin/promesas",
+          name: t("home.sidebar.promesas"),
+          icon: "fa fa-handshake",
         },
       ],
     },

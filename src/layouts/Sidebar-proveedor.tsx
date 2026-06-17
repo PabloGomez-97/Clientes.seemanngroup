@@ -88,6 +88,31 @@ function SidebarProveedor({
       ],
     },
     {
+      title: t("home.sidebar.sectionReference"),
+      items: [
+        {
+          path: "/proveedor/consultar-tarifas",
+          name: t("home.sidebar.rateConsult"),
+          icon: "fa fa-tags",
+        },
+        {
+          path: "/proveedor/historico-precios",
+          name: t("home.sidebar.priceHistory"),
+          icon: "fa fa-chart-line",
+        },
+        {
+          path: "/proveedor/novedades",
+          name: t("home.sidebar.novedades"),
+          icon: "fa fa-newspaper",
+        },
+        {
+          path: "/proveedor/promesas",
+          name: t("home.sidebar.promesas"),
+          icon: "fa fa-handshake",
+        },
+      ],
+    },
+    {
       items: [
         {
           path: "/proveedor/internacionalizacion",
@@ -256,7 +281,21 @@ function SidebarProveedor({
                 marginBottom: isCollapsed && !isMobile ? "10px" : "4px",
               }}
             >
-              {sectionIdx > 0 && isCollapsed ? (
+              {section.title && !isCollapsed ? (
+                <div
+                  style={{
+                    padding: "20px 20px 8px",
+                    fontSize: "11px",
+                    fontWeight: "600",
+                    color: colors.textMuted,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.8px",
+                    marginTop: sectionIdx > 0 ? "8px" : "0",
+                  }}
+                >
+                  {section.title}
+                </div>
+              ) : sectionIdx > 0 && isCollapsed ? (
                 <div
                   style={{
                     margin: "8px 14px",

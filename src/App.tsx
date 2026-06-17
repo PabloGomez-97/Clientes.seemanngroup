@@ -207,6 +207,9 @@ function App() {
             element={<DocumentosProveedores />}
           />
           <Route path="historico-precios" element={<PriceHistoryExplorer />} />
+          <Route path="consultar-tarifas" element={<ConsultaTarifas />} />
+          <Route path="novedades" element={<Novedades />} />
+          <Route path="promesas" element={<PromesasPage />} />
 
           {/* Rutas de Reportería con subrutas */}
           <Route path="reporteria" element={<ReporteriaLayout />}>
@@ -254,6 +257,10 @@ function App() {
           />
           <Route path="archivos" element={<ArchivosProveedor />} />
           <Route path="ayuda" element={<NecesitasAyuda />} />
+          <Route path="consultar-tarifas" element={<ConsultaTarifas />} />
+          <Route path="historico-precios" element={<PriceHistoryExplorer />} />
+          <Route path="novedades" element={<Novedades />} />
+          <Route path="promesas" element={<PromesasPage />} />
         </Route>
 
         {/* Rutas de Usuario Regular */}

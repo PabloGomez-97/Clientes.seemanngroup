@@ -40,7 +40,10 @@ export const PRICING_ROUTES: string[] = [
   '/admin/documentos-proveedores',
   '/admin/alertas-pricing',
   '/admin/settings',
+  '/admin/consultar-tarifas',
   '/admin/historico-precios',
+  '/admin/novedades',
+  '/admin/promesas',
 ];
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -57,7 +60,10 @@ export const EJECUTIVO_ROUTES: string[] = [
   '/admin/documentacion',
   '/admin/comportamiento-clientes',
   '/admin/settings',
+  '/admin/consultar-tarifas',
   '/admin/historico-precios',
+  '/admin/novedades',
+  '/admin/promesas',
 ];
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -72,7 +78,10 @@ export const OPERACIONES_ROUTES: string[] = [
   '/admin/op-documentacion',
   '/admin/op-trackeos',
   '/admin/settings',
+  '/admin/consultar-tarifas',
   '/admin/historico-precios',
+  '/admin/novedades',
+  '/admin/promesas',
 ];
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -88,6 +97,10 @@ export const PROVEEDOR_ROUTES: string[] = [
   '/proveedor/archivos',
   '/proveedor/ayuda',
   '/proveedor/settings',
+  '/proveedor/consultar-tarifas',
+  '/proveedor/historico-precios',
+  '/proveedor/novedades',
+  '/proveedor/promesas',
 ];
 
 // ────────────────────────────────────────────────────────────────────────────
