@@ -154,11 +154,11 @@ export default function PricingAlertsPanel() {
       const details =
         sentTypes.length > 0
           ? sentTypes
-              .map(
-                (s) =>
-                  `${s.type} → ${s.count} destinatario${s.count > 1 ? "s" : ""}`,
-              )
-              .join(" · ")
+            .map(
+              (s) =>
+                `${s.type} → ${s.count} destinatario${s.count > 1 ? "s" : ""}`,
+            )
+            .join(" · ")
           : "";
 
       setSendResult({ success: true, message: json.message, details });

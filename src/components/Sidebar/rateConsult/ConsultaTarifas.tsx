@@ -437,9 +437,9 @@ export default function ConsultaTarifas() {
     () =>
       snapshot
         ? filterBrowsableRows(snapshot.fcl, "fcl", {
-            ...effectiveFilters,
-            showTierFilter: true,
-          })
+          ...effectiveFilters,
+          showTierFilter: true,
+        })
         : [],
     [snapshot, effectiveFilters],
   );
@@ -448,10 +448,10 @@ export default function ConsultaTarifas() {
     () =>
       snapshot
         ? filterBrowsableRows(snapshot.lcl, "lcl", {
-            ...effectiveFilters,
-            tierKey: "",
-            showTierFilter: false,
-          })
+          ...effectiveFilters,
+          tierKey: "",
+          showTierFilter: false,
+        })
         : [],
     [snapshot, effectiveFilters],
   );
@@ -678,9 +678,6 @@ export default function ConsultaTarifas() {
               style={{ width: `${pct}%`, background: accent }}
             />
           </div>
-          <span className="ct-popular-item__count" style={{ color: accent }}>
-            {route.count}
-          </span>
         </button>
       );
     });

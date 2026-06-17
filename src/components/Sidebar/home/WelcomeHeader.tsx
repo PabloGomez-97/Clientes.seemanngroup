@@ -14,11 +14,7 @@ const WelcomeHeader: React.FC = () => {
   const { accessToken, refreshAccessToken } = useLinbisToken();
   const { activeCount, loading: shipmentsLoading } =
     useHomeShipments(activeUsername);
-  const { count: quotesCount, loading: quotesLoading } = useHomeQuotesSummary(
-    activeUsername,
-    accessToken,
-    refreshAccessToken,
-  );
+  void useHomeQuotesSummary(activeUsername, accessToken, refreshAccessToken);
   const { count: docsCount, loading: docsLoading } =
     useHomeDocumentsCount(activeUsername);
 
@@ -26,13 +22,6 @@ const WelcomeHeader: React.FC = () => {
     user?.nombreuser?.trim() || activeUsername || user?.username || "";
 
   const kpis = [
-    {
-      key: "quotes",
-      label: t("home.welcome.kpiQuotes"),
-      value: quotesCount,
-      loading: quotesLoading,
-      path: "/quotes",
-    },
     {
       key: "shipments",
       label: t("home.welcome.kpiShipments"),

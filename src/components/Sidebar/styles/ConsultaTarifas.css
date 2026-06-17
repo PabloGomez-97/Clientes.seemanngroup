@@ -512,7 +512,7 @@
 
 .ct-popular-item {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 1fr auto;
+  grid-template-columns: minmax(0, 1fr) 1fr;
   align-items: center;
   gap: 10px;
   width: 100%;
@@ -557,13 +557,6 @@
   border-radius: 999px;
   min-width: 4px;
   transition: width 0.2s ease;
-}
-
-.ct-popular-item__count {
-  font-size: 0.75rem;
-  font-weight: 700;
-  min-width: 20px;
-  text-align: right;
 }
 
 .ct-popular__active {
