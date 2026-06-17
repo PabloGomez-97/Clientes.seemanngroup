@@ -183,9 +183,8 @@ export function buildOversizeEmailHTML(data: OversizeEmailData): string {
               </table>
 
               <!-- Pieces table -->
-              ${
-                data.piezas && data.piezas.length > 0
-                  ? `
+              ${data.piezas && data.piezas.length > 0
+      ? `
               <p style="margin:0 0 12px;font-size:12px;font-weight:600;color:${C.muted};text-transform:uppercase;letter-spacing:0.5px;">Detalle de piezas</p>
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid ${C.border};border-radius:4px;overflow:hidden;margin-bottom:24px;border-collapse:collapse;">
                 <thead>
@@ -201,8 +200,8 @@ export function buildOversizeEmailHTML(data: OversizeEmailData): string {
                 </tbody>
               </table>
               `
-                  : ''
-              }
+      : ''
+    }
 
               <!-- Charges summary -->
               ${data.cargos && data.cargos.items.length > 0 ? `

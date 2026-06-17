@@ -674,42 +674,6 @@ function QuoteDetailPanel({
         </button>
       </div>
       <div className="qv-split-detail__body">
-        <div className="qv-split-meta">
-          <div className="qv-split-meta__item">
-            <span className="qv-split-meta__label">
-              {t("quotesView.quoteNumber")}
-            </span>
-            <span className="qv-split-meta__value">{quote.number || "—"}</span>
-          </div>
-          <div className="qv-split-meta__item">
-            <span className="qv-split-meta__label">Vigencia</span>
-            <StatusBadge validUntilDate={quote.validUntil_Date} />
-          </div>
-          <div className="qv-split-meta__item">
-            <span className="qv-split-meta__label">
-              {t("quotesView.thTransport")}
-            </span>
-            <span className="qv-split-meta__value">
-              {getQuoteTransportDisplay(quote)}
-            </span>
-          </div>
-          <div className="qv-split-meta__item">
-            <span className="qv-split-meta__label">
-              {t("quotesView.thIssueDate")}
-            </span>
-            <span className="qv-split-meta__value">
-              {formatDateShort(quote.date)}
-            </span>
-          </div>
-          <div className="qv-split-meta__item">
-            <span className="qv-split-meta__label">
-              {t("quotesView.thTransit")}
-            </span>
-            <span className="qv-split-meta__value">
-              {quote.transitDays != null ? `${quote.transitDays}d` : "—"}
-            </span>
-          </div>
-        </div>
 
         <div className="qv-route-card">
           <div className="qv-route-card__point">
