@@ -191,12 +191,64 @@ Object.assign(typeColors, {
 
 const QUOTE_TYPES = ["AIR", "FCL", "LCL", "LASTMILE"] as const;
 
-const STALE_IN_PROGRESS_MS = 24 * 60 * 60 * 1000;
+function hasSelectedRoute(route: Session["route"] | null | undefined): boolean {
+  if (!route) return false;
+  return Boolean(
+    String(route.origin || "").trim() || String(route.destination || "").trim(),
+  );
+}
 
-function isStaleInProgressSession(session: Session): boolean {
-  if (session.status !== "in_progress") return false;
-  const lastMs = new Date(session.endedAt || session.startedAt).getTime();
-  return Date.now() - lastMs > STALE_IN_PROGRESS_MS;
+/** Solo cotizaciones terminadas (completada o abandonada) con ruta definida. */
+function isRelevantQuoteSession(session: Session): boolean {
+  return (
+    (session.status === "completed" || session.status === "abandoned") &&
+    hasSelectedRoute(session.route)
+  );
+}
+
+function filterRelevantSessions(sessions: Session[]): Session[] {
+  return sessions.filter(isRelevantQuoteSession);
+}
+
+function buildSummaryFromSessions(sessions: Session[]): ClientDetail["summary"] {
+  const relevant = filterRelevantSessions(sessions);
+  const byType: ClientDetail["summary"]["byType"] = {
+    AIR: { started: 0, completed: 0, abandoned: 0 },
+    FCL: { started: 0, completed: 0, abandoned: 0 },
+    LCL: { started: 0, completed: 0, abandoned: 0 },
+    LASTMILE: { started: 0, completed: 0, abandoned: 0 },
+  };
+  let completed = 0;
+  let abandoned = 0;
+  for (const s of relevant) {
+    const bucket = byType[s.quoteType as keyof typeof byType];
+    if (!bucket) continue;
+    bucket.started++;
+    if (s.status === "completed") {
+      bucket.completed++;
+      completed++;
+    }
+    if (s.status === "abandoned") {
+      bucket.abandoned++;
+      abandoned++;
+    }
+  }
+  return {
+    totalSessions: relevant.length,
+    completed,
+    abandoned,
+    byType,
+  };
+}
+
+function normalizeClientDetail(raw: ClientDetail): ClientDetail {
+  const sessions = filterRelevantSessions(raw.sessions || []).sort(
+    (a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
+  );
+  return {
+    sessions,
+    summary: buildSummaryFromSessions(raw.sessions || []),
+  };
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -207,8 +259,7 @@ function ClientAnalyticsPanel({ detail }: { detail: ClientDetail }) {
   const { summary, sessions } = detail;
   const completed = summary.completed;
   const abandoned = summary.abandoned;
-  const inProgress = summary.totalSessions - completed - abandoned;
-  const total = summary.totalSessions || 1;
+  const total = completed + abandoned || 1;
 
   const completionRate = Math.round((completed / total) * 100);
 
@@ -227,7 +278,6 @@ function ClientAnalyticsPanel({ detail }: { detail: ClientDetail }) {
 
   const completedFrac = completed / total;
   const abandonedFrac = abandoned / total;
-  const inProgressFrac = inProgress / total;
 
   // Step abandonment — count how many abandoned sessions had each lastStep
   const stepAbandonment: Record<string, number> = {};
@@ -245,15 +295,11 @@ function ClientAnalyticsPanel({ detail }: { detail: ClientDetail }) {
   const DONUT_COLORS = {
     completed: "#10b981",
     abandoned: "#ef4444",
-    in_progress: "#f59e0b",
   };
 
-  // rotation offsets for donut segments
-  // we rotate the SVG so that completed starts at top (-90deg)
   const startAngles = {
     completed: 0,
     abandoned: completedFrac,
-    in_progress: completedFrac + abandonedFrac,
   };
 
   return (
@@ -335,19 +381,6 @@ function ClientAnalyticsPanel({ detail }: { detail: ClientDetail }) {
                 transform={`rotate(-90 ${CX} ${CY})`}
                 strokeLinecap="butt"
               />
-              {/* in_progress segment */}
-              <circle
-                cx={CX}
-                cy={CY}
-                r={R}
-                fill="none"
-                stroke={DONUT_COLORS.in_progress}
-                strokeWidth={14}
-                strokeDasharray={segmentDash(inProgressFrac)}
-                strokeDashoffset={segmentOffset(startAngles.in_progress)}
-                transform={`rotate(-90 ${CX} ${CY})`}
-                strokeLinecap="butt"
-              />
               {/* center text */}
               <text
                 x={CX}
@@ -382,11 +415,6 @@ function ClientAnalyticsPanel({ detail }: { detail: ClientDetail }) {
                   color: DONUT_COLORS.abandoned,
                   label: "Abandonadas",
                   count: abandoned,
-                },
-                {
-                  color: DONUT_COLORS.in_progress,
-                  label: "En progreso",
-                  count: inProgress,
                 },
               ].map((item) => (
                 <div
@@ -618,7 +646,7 @@ export default function ComportamientoDeClientes({
 
   // Modal for clickable summary cards
   const [modalType, setModalType] = useState<
-    "iniciadas" | "completadas" | "abandonadas" | null
+    "completadas" | "abandonadas" | null
   >(null);
 
   // Modal for clickable temperature cards (frío/tibio/caliente/abandonos)
@@ -739,19 +767,20 @@ export default function ComportamientoDeClientes({
         replace: true,
       });
       try {
+        const scopeQuery = isAdminScope ? "?scope=admin" : "";
         const resp = await fetch(
-          `${API_BASE_URL}/api/behavior-tracking/client/${encodeURIComponent(client.email)}`,
+          `${API_BASE_URL}/api/behavior-tracking/client/${encodeURIComponent(client.email)}${scopeQuery}`,
           { headers: { Authorization: `Bearer ${token}` } },
         );
         if (!resp.ok) throw new Error("Error al cargar detalle");
-        setClientDetail(await resp.json());
+        setClientDetail(normalizeClientDetail(await resp.json()));
       } catch {
         setClientDetail(null);
       } finally {
         setDetailLoading(false);
       }
     },
-    [token, navigate],
+    [token, navigate, ROUTE_BASE, isAdminScope],
   );
 
   const handleBack = () => {
@@ -769,12 +798,14 @@ export default function ComportamientoDeClientes({
     }
     if (loading || clients.length === 0) return;
     const decoded = decodeURIComponent(clientUsername).toLowerCase();
-    const match = clients.find((c) => c.username.toLowerCase() === decoded);
+    const match = clients.find(
+      (c) =>
+        c.username.toLowerCase() === decoded ||
+        (c.usernames || []).some((u) => u.toLowerCase() === decoded),
+    );
     if (!match) return;
     setSelectedClient((prev) => {
-      if (prev?.username.toLowerCase() === match.username.toLowerCase())
-        return prev;
-      // Fetch detail for newly selected client
+      if (prev?.email.toLowerCase() === match.email.toLowerCase()) return prev;
       openClientDetail(match);
       return match;
     });
@@ -813,10 +844,6 @@ export default function ComportamientoDeClientes({
     [clients],
   );
 
-  const totalStarted = clients.reduce(
-    (s, c) => s + (c.stats?.quotesStarted || 0),
-    0,
-  );
   const totalCompleted = clients.reduce(
     (s, c) => s + (c.stats?.quotesCompleted || 0),
     0,
@@ -825,12 +852,10 @@ export default function ComportamientoDeClientes({
     (s, c) => s + (c.stats?.quotesAbandoned || 0),
     0,
   );
-  const totalInProgress = Math.max(
-    0,
-    totalStarted - totalCompleted - totalAbandoned,
-  );
   const overallRate =
-    totalStarted > 0 ? Math.round((totalCompleted / totalStarted) * 100) : 0;
+    totalCompleted + totalAbandoned > 0
+      ? Math.round((totalCompleted / (totalCompleted + totalAbandoned)) * 100)
+      : 0;
 
   // ═══════════════ LOADING ═══════════════
   if (loading) {
@@ -1012,7 +1037,7 @@ export default function ComportamientoDeClientes({
             }}
           >
             <SummaryCard
-              label="Cotizaciones iniciadas"
+              label="Total con resultado"
               value={clientDetail.summary.totalSessions}
             />
             <SummaryCard
@@ -1266,7 +1291,7 @@ export default function ComportamientoDeClientes({
                 fontSize: 13,
               }}
             >
-              Este cliente aún no tiene actividad de cotización registrada.
+              Este cliente aún no tiene cotizaciones completadas ni abandonadas con ruta registrada.
             </div>
           ) : (
             (() => {
@@ -1312,7 +1337,7 @@ export default function ComportamientoDeClientes({
                         {paginated.map((session) => {
                           const sc =
                             statusColors[session.status] ||
-                            statusColors.in_progress;
+                            statusColors.abandoned;
                           return (
                             <div
                               key={session.sessionId}
@@ -1345,27 +1370,16 @@ export default function ComportamientoDeClientes({
 
                               {/* Route */}
                               <div style={{ flex: 1, minWidth: 120 }}>
-                                {session.route ? (
-                                  <span
-                                    style={{
-                                      fontSize: 13,
-                                      fontWeight: 500,
-                                      color: "#1f2937",
-                                    }}
-                                  >
-                                    {session.route.origin} →{" "}
-                                    {session.route.destination}
-                                  </span>
-                                ) : (
-                                  <span
-                                    style={{
-                                      fontSize: 13,
-                                      color: "#9ca3af",
-                                    }}
-                                  >
-                                    Sin ruta seleccionada
-                                  </span>
-                                )}
+                                <span
+                                  style={{
+                                    fontSize: 13,
+                                    fontWeight: 500,
+                                    color: "#1f2937",
+                                  }}
+                                >
+                                  {session.route!.origin} →{" "}
+                                  {session.route!.destination}
+                                </span>
                               </div>
 
                               {/* Recurring badge */}
@@ -1439,18 +1453,6 @@ export default function ComportamientoDeClientes({
                                   }}
                                 />
                                 {statusLabels[session.status]}
-                                {isStaleInProgressSession(session) && (
-                                  <span
-                                    style={{
-                                      marginLeft: 4,
-                                      fontSize: 10,
-                                      color: "#b45309",
-                                    }}
-                                    title="Sin actividad en más de 24 horas"
-                                  >
-                                    (inactiva)
-                                  </span>
-                                )}
                               </span>
 
                               {/* Quote number + Ver Cotizaciones (completed only) */}
@@ -2089,11 +2091,6 @@ export default function ComportamientoDeClientes({
         <SummaryCard label="Cuentas" value={uniqueAccountCount} />
         <SummaryCard label="Empresas" value={sortedClients.length} />
         <SummaryCard
-          label="Cotizaciones iniciadas"
-          value={totalStarted}
-          onClick={() => setModalType("iniciadas")}
-        />
-        <SummaryCard
           label="Completadas"
           value={totalCompleted}
           onClick={() => setModalType("completadas")}
@@ -2103,7 +2100,6 @@ export default function ComportamientoDeClientes({
           value={totalAbandoned}
           onClick={() => setModalType("abandonadas")}
         />
-        <SummaryCard label="En progreso" value={totalInProgress} />
         <SummaryCard label="Tasa global" value={`${overallRate}%`} />
       </div>
 
@@ -2278,7 +2274,9 @@ export default function ComportamientoDeClientes({
               </div>
 
               {/* Stats */}
-              {client.stats ? (
+              {client.stats &&
+              (client.stats.quotesCompleted > 0 ||
+                client.stats.quotesAbandoned > 0) ? (
                 <>
                   {/* Quote types */}
                   <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
@@ -2309,12 +2307,6 @@ export default function ComportamientoDeClientes({
                       flexShrink: 0,
                     }}
                   >
-                    <span>
-                      Iniciadas:{" "}
-                      <strong style={{ color: "#1f2937" }}>
-                        {client.stats.quotesStarted}
-                      </strong>
-                    </span>
                     <span>
                       Completadas:{" "}
                       <strong style={{ color: "#10b981" }}>
@@ -2416,11 +2408,9 @@ export default function ComportamientoDeClientes({
                   margin: 0,
                 }}
               >
-                {modalType === "iniciadas"
-                  ? "Clientes con cotizaciones iniciadas"
-                  : modalType === "completadas"
-                    ? "Clientes con cotizaciones completadas"
-                    : "Clientes con cotizaciones abandonadas"}
+                {modalType === "completadas"
+                  ? "Clientes con cotizaciones completadas"
+                  : "Clientes con cotizaciones abandonadas"}
               </h2>
               <button
                 onClick={() => setModalType(null)}
@@ -2443,34 +2433,24 @@ export default function ComportamientoDeClientes({
               {clients
                 .filter((c) => {
                   if (!c.stats) return false;
-                  if (modalType === "iniciadas")
-                    return c.stats.quotesStarted > 0;
                   if (modalType === "completadas")
                     return c.stats.quotesCompleted > 0;
                   return c.stats.quotesAbandoned > 0;
                 })
                 .sort((a, b) => {
                   const getVal = (c: ClientBehavior) =>
-                    modalType === "iniciadas"
-                      ? c.stats!.quotesStarted
-                      : modalType === "completadas"
-                        ? c.stats!.quotesCompleted
-                        : c.stats!.quotesAbandoned;
+                    modalType === "completadas"
+                      ? c.stats!.quotesCompleted
+                      : c.stats!.quotesAbandoned;
                   return getVal(b) - getVal(a);
                 })
                 .map((client) => {
                   const val =
-                    modalType === "iniciadas"
-                      ? client.stats!.quotesStarted
-                      : modalType === "completadas"
-                        ? client.stats!.quotesCompleted
-                        : client.stats!.quotesAbandoned;
-                  const valColor =
                     modalType === "completadas"
-                      ? "#10b981"
-                      : modalType === "abandonadas"
-                        ? "#ef4444"
-                        : "#1f2937";
+                      ? client.stats!.quotesCompleted
+                      : client.stats!.quotesAbandoned;
+                  const valColor =
+                    modalType === "completadas" ? "#10b981" : "#ef4444";
                   return (
                     <div
                       key={`${client.email}-${client.username}`}

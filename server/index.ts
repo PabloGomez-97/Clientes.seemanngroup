@@ -28,7 +28,7 @@ import { buildQuotePdfResendEmailHTML, getQuotePdfResendEmailSubject } from '../
 import { buildR2Key, getPublicUrl, uploadPDF, deletePDF, deleteAllUserPDFs, downloadPDFBuffer } from '../api/services/r2Storage.ts';
 import { buildDocR2Key, uploadDocument, downloadDocumentBuffer, deleteDocument } from '../api/services/r2DocumentStorage.ts';
 import { resolveEjecutivoForEmail, loadQuotePdfAttachment, loadQuotePdfAttachmentWithRetry, normalizeQuoteResendEmails } from '../api/utils/operationEmailHelpers.ts';
-import { authorizeBehaviorTrackingPost } from '../lib/behavior-tracking-auth.ts';
+import { authorizeBehaviorTrackingPost, clientBelongsToEjecutivo, resolveEjecutivoObjectId } from '../lib/behavior-tracking-auth.ts';
 import { shouldResetNotificationRead } from '../lib/portal-notifications.ts';
 
 /** =========================
@@ -7465,6 +7465,7 @@ app.post('/api/behavior-tracking', auth, async (req, res) => {
           username: c.username,
         }));
       },
+      async (email) => Ejecutivo.findOne({ email }).lean(),
     );
     if (!authResult.ok) {
       console.warn('[behavior-tracking] POST rejected:', authResult.error, currentUser.sub);
@@ -7630,14 +7631,20 @@ app.get('/api/behavior-tracking/client/:email', auth, async (req, res) => {
       return res.status(400).json({ error: 'Email de cliente requerido' });
     }
 
-    const ejecutivoUser = await User.findOne({ email: currentUser.sub }).lean();
+    const scopeAdmin = (req.query as Record<string, string>)?.scope === 'admin';
     const clientUser = await User.findOne({ email: clientEmail }).lean();
-    if (
-      !ejecutivoUser?.ejecutivoId ||
-      !clientUser ||
-      String(clientUser.ejecutivoId) !== String(ejecutivoUser.ejecutivoId)
-    ) {
-      return res.status(403).json({ error: 'No autorizado para este cliente' });
+
+    if (!scopeAdmin) {
+      const ejecutivoUser = await User.findOne({ email: currentUser.sub }).lean();
+      const ejecutivoObjectId = await resolveEjecutivoObjectId(
+        ejecutivoUser || {},
+        async (email) => Ejecutivo.findOne({ email }).lean(),
+      );
+      if (!clientBelongsToEjecutivo(clientUser, ejecutivoObjectId)) {
+        return res.status(403).json({ error: 'No autorizado para este cliente' });
+      }
+    } else if (!clientUser) {
+      return res.status(404).json({ error: 'Cliente no encontrado' });
     }
 
     const { desde, hasta, limit: limitStr } = req.query as Record<string, string>;

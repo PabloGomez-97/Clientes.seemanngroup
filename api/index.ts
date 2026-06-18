@@ -26,7 +26,7 @@ import {
 import { buildR2Key, uploadPDF, downloadPDFBuffer, deleteAllUserPDFs } from './services/r2Storage.js';
 import { buildDocR2Key, uploadDocument, downloadDocumentBuffer, deleteDocument } from './services/r2DocumentStorage.js';
 import { resolveEjecutivoForEmail, loadQuotePdfAttachment, loadQuotePdfAttachmentWithRetry, normalizeQuoteResendEmails } from './utils/operationEmailHelpers.js';
-import { authorizeBehaviorTrackingPost } from '../lib/behavior-tracking-auth.js';
+import { authorizeBehaviorTrackingPost, clientBelongsToEjecutivo, resolveEjecutivoObjectId } from '../lib/behavior-tracking-auth.js';
 import { shouldResetNotificationRead } from '../lib/portal-notifications.js';
 
 /** =========================
@@ -7710,6 +7710,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               username: c.username,
             }));
           },
+          async (email) => Ejecutivo.findOne({ email }).lean(),
         );
         if (!authResult.ok) {
           console.warn('[behavior-tracking] POST rejected:', authResult.error, decoded.sub);
@@ -7893,14 +7894,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           return res.status(400).json({ error: 'Email de cliente requerido' });
         }
 
-        const ejecutivoUser = await User.findOne({ email: decoded.sub }).lean();
+        const scopeAdmin = (req.query as Record<string, string>)?.scope === 'admin';
         const clientUser = await User.findOne({ email: clientEmail }).lean();
-        if (
-          !ejecutivoUser?.ejecutivoId ||
-          !clientUser ||
-          String(clientUser.ejecutivoId) !== String(ejecutivoUser.ejecutivoId)
-        ) {
-          return res.status(403).json({ error: 'No autorizado para este cliente' });
+
+        if (!scopeAdmin) {
+          const ejecutivoUser = await User.findOne({ email: decoded.sub }).lean();
+          const ejecutivoObjectId = await resolveEjecutivoObjectId(
+            ejecutivoUser || {},
+            async (email) => Ejecutivo.findOne({ email }).lean(),
+          );
+          if (!clientBelongsToEjecutivo(clientUser, ejecutivoObjectId)) {
+            return res.status(403).json({ error: 'No autorizado para este cliente' });
+          }
+        } else if (!clientUser) {
+          return res.status(404).json({ error: 'Cliente no encontrado' });
         }
 
         const { desde, hasta, limit: limitStr } = req.query as Record<string, string>;

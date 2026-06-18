@@ -18,6 +18,45 @@ export type BehaviorTrackingAuthResult =
   | { ok: true }
   | { ok: false; status: number; error: string };
 
+/** Normalizes ejecutivoId whether populated document or raw ObjectId. */
+export function normalizeEjecutivoObjectId(ejecutivoId: unknown): string | null {
+  if (ejecutivoId == null) return null;
+  if (typeof ejecutivoId === "object" && "_id" in (ejecutivoId as object)) {
+    return String((ejecutivoId as { _id: unknown })._id);
+  }
+  return String(ejecutivoId);
+}
+
+/**
+ * Resolves the Ejecutivo document id for a portal user — same fallback as
+ * GET /behavior-tracking/clients when User.ejecutivoId is unset.
+ */
+export async function resolveEjecutivoObjectId(
+  ejecutivoUser: { email?: string; ejecutivoId?: unknown },
+  findEjecutivoByEmail: (
+    email: string,
+  ) => Promise<{ _id: unknown } | null>,
+): Promise<string | null> {
+  const fromUser = normalizeEjecutivoObjectId(ejecutivoUser.ejecutivoId);
+  if (fromUser) return fromUser;
+  const email = String(ejecutivoUser.email || "")
+    .toLowerCase()
+    .trim();
+  if (!email) return null;
+  const ej = await findEjecutivoByEmail(email);
+  return ej ? String(ej._id) : null;
+}
+
+export function clientBelongsToEjecutivo(
+  clientUser: { ejecutivoId?: unknown } | null | undefined,
+  ejecutivoObjectId: string | null,
+): boolean {
+  if (!clientUser || !ejecutivoObjectId) return false;
+  return (
+    normalizeEjecutivoObjectId(clientUser.ejecutivoId) === ejecutivoObjectId
+  );
+}
+
 /**
  * Validates that the authenticated user may record events for clientEmail.
  * - Portal clients: email must match token sub.
@@ -32,6 +71,9 @@ export async function authorizeBehaviorTrackingPost(
   findClientsByEjecutivoId: (
     ejecutivoId: unknown,
   ) => Promise<BehaviorTrackingClientUser[]>,
+  findEjecutivoByEmail?: (
+    email: string,
+  ) => Promise<{ _id: unknown } | null>,
 ): Promise<BehaviorTrackingAuthResult> {
   const normalizedClientEmail = String(clientEmail).toLowerCase().trim();
   if (!normalizedClientEmail) {
@@ -60,12 +102,14 @@ export async function authorizeBehaviorTrackingPost(
     return { ok: true };
   }
 
-  const ejecutivoId = actor.ejecutivoId;
-  if (!ejecutivoId) {
+  const ejecutivoObjectId = findEjecutivoByEmail
+    ? await resolveEjecutivoObjectId(actor, findEjecutivoByEmail)
+    : normalizeEjecutivoObjectId(actor.ejecutivoId);
+  if (!ejecutivoObjectId) {
     return { ok: false, status: 403, error: "Ejecutivo sin cartera asignada" };
   }
 
-  const portfolio = await findClientsByEjecutivoId(ejecutivoId);
+  const portfolio = await findClientsByEjecutivoId(ejecutivoObjectId);
   const allowed = portfolio.some(
     (c) => String(c.email).toLowerCase().trim() === normalizedClientEmail,
   );
