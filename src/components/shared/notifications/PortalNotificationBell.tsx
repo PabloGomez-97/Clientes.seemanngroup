@@ -182,18 +182,40 @@ export default function PortalNotificationBell({
     }
   };
 
-  const handleNotificationClick = (n: PortalNotification) => {
-    setOpen(false);
+  const resolveNotificationRoute = (n: PortalNotification): string => {
+    const clientUsername =
+      n.clientUsername ||
+      (typeof n.payload?.clientUsername === "string"
+        ? n.payload.clientUsername
+        : undefined);
+
     const route = n.payload?.route;
     if (!route) {
-      // fallback for legacy quote notifications
-      const target = n.clientUsername
-        ? `/admin/clientes/comportamiento/${encodeURIComponent(n.clientUsername)}`
+      return clientUsername
+        ? `/admin/clientes/comportamiento/${encodeURIComponent(clientUsername)}`
         : "/admin/clientes/comportamiento";
-      navigate(target);
-      return;
     }
-    navigate(route, {
+
+    // Legacy URLs stored in older notifications
+    if (
+      route === "/admin/comportamiento-clientes" ||
+      route === "/admin/op-comportamiento-clientes"
+    ) {
+      const base =
+        route === "/admin/op-comportamiento-clientes"
+          ? "/admin/operaciones/clientes/comportamiento"
+          : "/admin/clientes/comportamiento";
+      return clientUsername
+        ? `${base}/${encodeURIComponent(clientUsername)}`
+        : base;
+    }
+
+    return route;
+  };
+
+  const handleNotificationClick = (n: PortalNotification) => {
+    setOpen(false);
+    navigate(resolveNotificationRoute(n), {
       state: {
         openModal: n.payload?.openModal,
         modalTab: n.payload?.modalTab,

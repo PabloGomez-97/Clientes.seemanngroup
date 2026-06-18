@@ -1451,7 +1451,10 @@ async function emitQuoteEventNotification(opts: {
       clientEmail,
       clientUsername: opts.clientUsername,
       clientNombre: clientUser.nombreuser || undefined,
-      payload: { route: '/admin/comportamiento-clientes', clientUsername: opts.clientUsername },
+      payload: {
+        route: `/admin/clientes/comportamiento/${encodeURIComponent(opts.clientUsername)}`,
+        clientUsername: opts.clientUsername,
+      },
     });
   } catch (err) {
     console.error('[portal-notification] quote emit failed:', err);
@@ -1731,7 +1734,7 @@ async function emitColdClientNotifications(
         clientUsername: r.username,
         clientNombre: r.nombreuser,
         payload: {
-          route: '/admin/comportamiento-clientes',
+          route: `/admin/clientes/comportamiento/${encodeURIComponent(r.username)}`,
           clientUsername: r.username,
           daysSinceActivity: daysSince,
           hasEverQuoted: r.lastActivity !== null,

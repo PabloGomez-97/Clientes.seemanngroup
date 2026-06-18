@@ -46,15 +46,6 @@ function AdminLayout() {
     }
   }, [location.pathname]);
 
-  // Verificar acceso por rol a la ruta actual
-  if (
-    user?.username === "Ejecutivo" &&
-    user?.roles &&
-    !canAccessRoute(user.roles, location.pathname)
-  ) {
-    return <Navigate to="/admin/home" replace />;
-  }
-
   useEffect(() => {
     const handleResize = () => {
       const mobile = isMobileViewport();
@@ -71,6 +62,15 @@ function AdminLayout() {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, [hasUserPref]);
+
+  // Verificar acceso por rol a la ruta actual (después de todos los hooks)
+  if (
+    user?.username === "Ejecutivo" &&
+    user?.roles &&
+    !canAccessRoute(user.roles, location.pathname)
+  ) {
+    return <Navigate to="/admin/home" replace />;
+  }
 
   const handleLogout = () => {
     // Token state is managed by useLinbisToken hook

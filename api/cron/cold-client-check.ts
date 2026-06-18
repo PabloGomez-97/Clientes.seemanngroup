@@ -171,7 +171,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               clientUsername: u.username,
               clientNombre: u.nombreuser,
               payload: {
-                route: '/admin/comportamiento-clientes',
+                route: `/admin/clientes/comportamiento/${encodeURIComponent(u.username)}`,
                 clientUsername: u.username,
                 daysSinceActivity: daysSince,
                 hasEverQuoted: lastActivity !== null,
