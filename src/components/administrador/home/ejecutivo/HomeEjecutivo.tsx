@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo, useCallback, Fragment } from "react";
 import { useNavigate, useOutletContext, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/auth/AuthContext";
+import { clearRouterLocationState } from "@/lib/notification-navigation";
 import type {
   AirShipment,
   AirResponse,
@@ -675,20 +676,19 @@ export default function HomeEjecutivo() {
   // Auto-open modal when navigated from a notification (router state)
   const location = useLocation();
   useEffect(() => {
-    const s = (location.state as any) || null;
-    if (s && typeof s === "object" && s.openModal) {
-      setListModal(s.openModal as ListModalType);
-      if (
-        s.modalTab &&
-        (s.modalTab === "air" || s.modalTab === "ocean" || s.modalTab === "all")
-      ) {
-        setListModalTab(s.modalTab);
-      }
-      // Clear router state to prevent re-trigger on re-render
-      window.history.replaceState({}, "");
+    const s = (location.state as Record<string, unknown> | null) ?? null;
+    if (!s || typeof s !== "object" || !s.openModal) return;
+
+    setListModal(s.openModal as ListModalType);
+    if (
+      s.modalTab === "air" ||
+      s.modalTab === "ocean" ||
+      s.modalTab === "all"
+    ) {
+      setListModalTab(s.modalTab);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.state]);
+    clearRouterLocationState(navigate, location);
+  }, [location, navigate]);
 
   const displayName = user?.nombreuser || user?.username || t("admin.homeEjecutivo.defaultName");
 

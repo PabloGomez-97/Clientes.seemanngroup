@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, type MutableRefObject } from "react";
 import { useOutletContext } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { useAuditLog } from "../../hooks/useAuditLog";
@@ -199,7 +199,10 @@ function QuoteLCL({
   preselectedPOD,
   isEjecutivoMode = false,
   isSimulationMode = false,
-}: QuoteLCLProps = {}) {
+  abandonRef,
+}: QuoteLCLProps & {
+  abandonRef?: MutableRefObject<(() => void) | null>;
+} = {}) {
   const { accessToken, refreshAccessToken } = useOutletContext<OutletContext>();
   const token = accessToken;
   const {
@@ -213,8 +216,6 @@ function QuoteLCL({
   const ejecutivo = user?.ejecutivo;
   const { t } = useTranslation();
   const { registrarEvento } = useAuditLog();
-  const { trackStart, trackStep, trackRouteSelected, trackComplete } =
-    useQuoteTracking("LCL");
   const { config: gestionCotizadorConfig } = useGestionCotizador();
   const lclTtConfig = gestionCotizadorConfig.lcl;
   const vespucioExtendedMultiplierLcl = useMemo(
@@ -233,6 +234,26 @@ function QuoteLCL({
     useState<ClienteAsignado | null>(null);
   const [loadingClientes, setLoadingClientes] = useState(true);
   const [errorClientes, setErrorClientes] = useState<string | null>(null);
+
+  const quoteTrackingSubject = useMemo(
+    () =>
+      isEjecutivoMode && clienteSeleccionado
+        ? {
+            clientEmail: clienteSeleccionado.email,
+            clientUsername: clienteSeleccionado.username,
+          }
+        : null,
+    [isEjecutivoMode, clienteSeleccionado],
+  );
+
+  const { trackStep, trackRouteSelected, trackComplete } = useQuoteTracking(
+    "LCL",
+    {
+      subject: quoteTrackingSubject,
+      waitForSubject: isEjecutivoMode,
+      abandonRef,
+    },
+  );
 
   // -- Username efectivo: en modo ejecutivo usa el cliente seleccionado --
   const effectiveUsername = isEjecutivoMode
@@ -741,11 +762,6 @@ function QuoteLCL({
 
   // -- Cargar clientes asignados al ejecutivo (solo en modo ejecutivo) --
   const isPricingRole = user?.roles?.pricing === true;
-
-  // Track quote start on mount
-  useEffect(() => {
-    trackStart();
-  }, [trackStart]);
 
   useEffect(() => {
     if (!isEjecutivoMode) {

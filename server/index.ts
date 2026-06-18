@@ -28,6 +28,8 @@ import { buildQuotePdfResendEmailHTML, getQuotePdfResendEmailSubject } from '../
 import { buildR2Key, getPublicUrl, uploadPDF, deletePDF, deleteAllUserPDFs, downloadPDFBuffer } from '../api/services/r2Storage.ts';
 import { buildDocR2Key, uploadDocument, downloadDocumentBuffer, deleteDocument } from '../api/services/r2DocumentStorage.ts';
 import { resolveEjecutivoForEmail, loadQuotePdfAttachment, loadQuotePdfAttachmentWithRetry, normalizeQuoteResendEmails } from '../api/utils/operationEmailHelpers.ts';
+import { authorizeBehaviorTrackingPost } from '../lib/behavior-tracking-auth.ts';
+import { shouldResetNotificationRead } from '../lib/portal-notifications.ts';
 
 /** =========================
  *  Entorno + JWT
@@ -1396,20 +1398,26 @@ async function upsertPortalNotification(doc: Partial<IPortalNotification> & {
   try {
     const recipient = String(doc.recipientEmail).toLowerCase().trim();
     if (!recipient) return;
-    const { audience, type, dedupKey, ...rest } = doc;
+    const { audience, type, dedupKey, recipientEmail: _docRecipient, ...rest } = doc;
+    const existing = await PortalNotification.findOne({ recipientEmail: recipient, dedupKey }).lean();
+    const incoming = { audience, type, recipientEmail: recipient, dedupKey, ...rest };
+    const resetRead = shouldResetNotificationRead(existing as any, incoming);
+    const $set: Record<string, unknown> = {
+      ...rest,
+      audience,
+      type,
+      recipientEmail: recipient,
+      updatedAt: new Date(),
+    };
+    if (resetRead) {
+      $set.read = false;
+      $set.readAt = undefined;
+    }
     await PortalNotification.updateOne(
       { recipientEmail: recipient, dedupKey },
       {
-        $set: {
-          ...rest,
-          audience,
-          type,
-          recipientEmail: recipient,
-          read: false,
-          readAt: undefined,
-          updatedAt: new Date(),
-        },
-        $setOnInsert: { dedupKey, createdAt: new Date() },
+        $set,
+        $setOnInsert: { dedupKey, createdAt: new Date(), read: false },
       },
       { upsert: true },
     );
@@ -1439,6 +1447,10 @@ async function emitQuoteEventNotification(opts: {
       ? (opts.metadata as any).quoteNumber as string
       : undefined;
 
+    const reporteriaRoute = quoteNumber
+      ? `/admin/clientes/reporteria/${encodeURIComponent(opts.clientUsername)}`
+      : `/admin/clientes/comportamiento/${encodeURIComponent(opts.clientUsername)}`;
+
     await upsertPortalNotification({
       audience: 'EJECUTIVO',
       recipientEmail: ejecutivoEmail,
@@ -1452,8 +1464,10 @@ async function emitQuoteEventNotification(opts: {
       clientUsername: opts.clientUsername,
       clientNombre: clientUser.nombreuser || undefined,
       payload: {
-        route: `/admin/clientes/comportamiento/${encodeURIComponent(opts.clientUsername)}`,
+        route: reporteriaRoute,
         clientUsername: opts.clientUsername,
+        targetTab: quoteNumber ? 'quotes' : undefined,
+        quoteFilterNumber: quoteNumber,
       },
     });
   } catch (err) {
@@ -1504,7 +1518,13 @@ async function emitTrackingNotification(opts: {
         recipientUsername: clientUser.username,
         type: opts.type,
         dedupKey,
-        payload: { route: '/shipsgo', shipmentMode: opts.shipmentMode, shipmentId: opts.shipmentId },
+        payload: {
+          route: '/shipsgo',
+          shipmentMode: opts.shipmentMode,
+          shipmentId: opts.shipmentId,
+          awbNumber: opts.awbNumber,
+          containerNumber: opts.containerNumber,
+        },
       });
     }
 
@@ -7352,7 +7372,9 @@ app.get('/api/notifications', auth, async (req, res) => {
       .limit(50)
       .lean();
 
-    const unreadCount = items.filter((n: any) => !n.read).length;
+    const unreadCount = items.filter(
+      (n: any) => !n.read && n.type !== 'CLIENT_COLD',
+    ).length;
     return res.json({ notifications: items, unreadCount });
   } catch (error: any) {
     console.error('[notifications] Error GET:', error);
@@ -7375,6 +7397,25 @@ app.patch('/api/notifications/read-all', auth, async (req, res) => {
   }
 });
 
+app.patch('/api/notifications/:id/read', auth, async (req, res) => {
+  try {
+    const currentUser = (req as any).user as AuthPayload;
+    const recipientEmail = String(currentUser.sub || '').toLowerCase().trim();
+    const { id } = req.params;
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ error: 'ID inválido' });
+    }
+    await PortalNotification.updateOne(
+      { _id: id, recipientEmail },
+      { $set: { read: true, readAt: new Date() } },
+    );
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error('[notifications] Error PATCH read:', error);
+    return res.status(500).json({ error: 'Error al marcar notificación' });
+  }
+});
+
 app.delete('/api/notifications/:id', auth, async (req, res) => {
   try {
     const currentUser = (req as any).user as AuthPayload;
@@ -7392,12 +7433,42 @@ app.delete('/api/notifications/:id', auth, async (req, res) => {
 });
 
 // POST /api/behavior-tracking — Receive tracking event
-app.post('/api/behavior-tracking', async (req, res) => {
+app.post('/api/behavior-tracking', auth, async (req, res) => {
   try {
+    const currentUser = (req as any).user as AuthPayload;
     const { clientEmail, clientUsername, sessionId, event, quoteType, step, route, incoterm, container, metadata, timestamp } = req.body || {};
 
     if (!clientEmail || !sessionId || !event || !quoteType) {
       return res.status(400).json({ error: 'clientEmail, sessionId, event y quoteType son requeridos' });
+    }
+
+    const authResult = await authorizeBehaviorTrackingPost(
+      { sub: currentUser.sub, username: currentUser.username },
+      clientEmail,
+      async (email) => {
+        const u = await User.findOne({ email: email.toLowerCase().trim() }).lean();
+        if (!u) return null;
+        return {
+          email: String(u.email),
+          username: u.username,
+          ejecutivoId: u.ejecutivoId,
+          roles: (u as any).roles,
+        };
+      },
+      async (ejecutivoId) => {
+        const clients = await User.find(
+          { ejecutivoId: ejecutivoId as mongoose.Types.ObjectId, username: { $ne: 'Ejecutivo' } },
+          { email: 1, username: 1 },
+        ).lean();
+        return clients.map((c) => ({
+          email: String(c.email),
+          username: c.username,
+        }));
+      },
+    );
+    if (!authResult.ok) {
+      console.warn('[behavior-tracking] POST rejected:', authResult.error, currentUser.sub);
+      return res.status(authResult.status).json({ error: authResult.error });
     }
 
     const validEvents = ['QUOTE_STARTED', 'QUOTE_STEP_CHANGED', 'QUOTE_ROUTE_SELECTED', 'QUOTE_COMPLETED', 'QUOTE_ABANDONED'];
@@ -7557,6 +7628,16 @@ app.get('/api/behavior-tracking/client/:email', auth, async (req, res) => {
     const clientEmail = decodeURIComponent(req.params.email || '').toLowerCase().trim();
     if (!clientEmail) {
       return res.status(400).json({ error: 'Email de cliente requerido' });
+    }
+
+    const ejecutivoUser = await User.findOne({ email: currentUser.sub }).lean();
+    const clientUser = await User.findOne({ email: clientEmail }).lean();
+    if (
+      !ejecutivoUser?.ejecutivoId ||
+      !clientUser ||
+      String(clientUser.ejecutivoId) !== String(ejecutivoUser.ejecutivoId)
+    ) {
+      return res.status(403).json({ error: 'No autorizado para este cliente' });
     }
 
     const { desde, hasta, limit: limitStr } = req.query as Record<string, string>;
@@ -8131,11 +8212,6 @@ app.get('/api/behavior-tracking/temperature', auth, async (req, res) => {
 
     const records = await buildClientTemperatureRecords(inputs);
     const summary = summarizeTemperature(records);
-
-    const myRecords = records.filter(
-      (r) => r.ejecutivoEmail === String(decoded.sub).toLowerCase().trim(),
-    );
-    void emitColdClientNotifications(myRecords);
 
     return res.json(summary);
   } catch (error: any) {

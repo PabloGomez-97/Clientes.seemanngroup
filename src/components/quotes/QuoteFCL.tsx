@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, type MutableRefObject } from "react";
 import { Modal, Button, OverlayTrigger, Tooltip } from "react-bootstrap";
 import { useOutletContext } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
@@ -146,7 +146,10 @@ function QuoteFCL({
   preselectedPOD,
   isEjecutivoMode = false,
   isSimulationMode = false,
-}: QuoteFCLProps = {}) {
+  abandonRef,
+}: QuoteFCLProps & {
+  abandonRef?: MutableRefObject<(() => void) | null>;
+} = {}) {
   const { accessToken, refreshAccessToken } = useOutletContext<OutletContext>();
   const {
     user,
@@ -159,8 +162,6 @@ function QuoteFCL({
   const ejecutivo = user?.ejecutivo;
   const { t } = useTranslation();
   const { registrarEvento } = useAuditLog();
-  const { trackStart, trackStep, trackRouteSelected, trackComplete } =
-    useQuoteTracking("FCL");
   const { config: gestionCotizadorConfig } = useGestionCotizador();
   const fclTtConfig = gestionCotizadorConfig.fcl;
   const { config: fclExwConfig } = useFclExwConfig();
@@ -189,6 +190,26 @@ function QuoteFCL({
     useState<ClienteAsignado | null>(null);
   const [loadingClientes, setLoadingClientes] = useState(true);
   const [errorClientes, setErrorClientes] = useState<string | null>(null);
+
+  const quoteTrackingSubject = useMemo(
+    () =>
+      isEjecutivoMode && clienteSeleccionado
+        ? {
+            clientEmail: clienteSeleccionado.email,
+            clientUsername: clienteSeleccionado.username,
+          }
+        : null,
+    [isEjecutivoMode, clienteSeleccionado],
+  );
+
+  const { trackStep, trackRouteSelected, trackComplete } = useQuoteTracking(
+    "FCL",
+    {
+      subject: quoteTrackingSubject,
+      waitForSubject: isEjecutivoMode,
+      abandonRef,
+    },
+  );
 
   // effectiveUsername: en modo ejecutivo usa el cliente seleccionado, en modo normal usa activeUsername
   const effectiveUsername = isEjecutivoMode
@@ -635,11 +656,6 @@ function QuoteFCL({
 
   // Cargar clientes asignados al ejecutivo (solo en modo ejecutivo)
   const isPricingRole = user?.roles?.pricing === true;
-
-  // Track quote start on mount
-  useEffect(() => {
-    trackStart();
-  }, [trackStart]);
 
   useEffect(() => {
     if (!isSimulationMode) return;

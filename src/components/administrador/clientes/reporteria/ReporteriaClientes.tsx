@@ -8,6 +8,7 @@ import {
   useLocation,
 } from "react-router-dom";
 import { useAuth } from "@/auth/AuthContext";
+import { clearRouterLocationState } from "@/lib/notification-navigation";
 import { ClientOverrideProvider } from "@/contexts/ClientOverrideContext";
 import AirShipmentsView from "@/components/cliente/embarques/AirShipmentsView";
 import OceanShipmentsView from "@/components/cliente/embarques/OceanShipmentsView";
@@ -247,8 +248,8 @@ function ReporteriaClientes() {
       setQuoteFilterNumber(state.quoteFilterNumber);
     }
 
-    navigate(location.pathname, { replace: true, state: {} });
-  }, [location.pathname, location.state, navigate, selectedClient]);
+    clearRouterLocationState(navigate, location);
+  }, [location, navigate, selectedClient]);
 
   // Filtered client list
   const filteredClients = useMemo(() => {

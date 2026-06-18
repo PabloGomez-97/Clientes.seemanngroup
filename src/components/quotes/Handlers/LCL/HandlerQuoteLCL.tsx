@@ -15,6 +15,7 @@ export interface QuoteLCLProps {
   preselectedPOD?: { value: string; label: string } | null;
   isEjecutivoMode?: boolean;
   isSimulationMode?: boolean;
+  abandonRef?: import("react").MutableRefObject<(() => void) | null>;
 }
 
 export interface PieceData {

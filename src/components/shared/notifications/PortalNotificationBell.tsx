@@ -8,6 +8,11 @@ import {
   usePortalNotifications,
   type PortalNotification,
 } from "@/hooks/usePortalNotifications";
+import {
+  buildNotificationNavigation,
+  clearRouterLocationState,
+  isVisibleInNotificationBell,
+} from "@/lib/notification-navigation";
 
 interface Props {
   enabled: boolean;
@@ -147,7 +152,7 @@ export default function PortalNotificationBell({
 }: Props) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { notifications, unreadCount, markAllRead, dismiss } =
+  const { notifications, unreadCount, markRead, dismiss } =
     usePortalNotifications(enabled);
   const [open, setOpen] = useState(false);
   const [hovered, setHovered] = useState(false);
@@ -175,52 +180,15 @@ export default function PortalNotificationBell({
   }, [open]);
 
   const handleToggle = () => {
-    const next = !open;
-    setOpen(next);
-    if (next && unreadCount > 0) {
-      void markAllRead();
-    }
-  };
-
-  const resolveNotificationRoute = (n: PortalNotification): string => {
-    const clientUsername =
-      n.clientUsername ||
-      (typeof n.payload?.clientUsername === "string"
-        ? n.payload.clientUsername
-        : undefined);
-
-    const route = n.payload?.route;
-    if (!route) {
-      return clientUsername
-        ? `/admin/clientes/comportamiento/${encodeURIComponent(clientUsername)}`
-        : "/admin/clientes/comportamiento";
-    }
-
-    // Legacy URLs stored in older notifications
-    if (
-      route === "/admin/comportamiento-clientes" ||
-      route === "/admin/op-comportamiento-clientes"
-    ) {
-      const base =
-        route === "/admin/op-comportamiento-clientes"
-          ? "/admin/operaciones/clientes/comportamiento"
-          : "/admin/clientes/comportamiento";
-      return clientUsername
-        ? `${base}/${encodeURIComponent(clientUsername)}`
-        : base;
-    }
-
-    return route;
+    setOpen((prev) => !prev);
   };
 
   const handleNotificationClick = (n: PortalNotification) => {
     setOpen(false);
-    navigate(resolveNotificationRoute(n), {
-      state: {
-        openModal: n.payload?.openModal,
-        modalTab: n.payload?.modalTab,
-      },
-    });
+    void markRead(n._id);
+    const { route, state } = buildNotificationNavigation(n);
+    const hasState = Object.keys(state).length > 0;
+    navigate(route, hasState ? { state } : undefined);
   };
 
   const swing = useMemo(
@@ -230,8 +198,8 @@ export default function PortalNotificationBell({
 
   if (!enabled) return null;
 
-  const filteredNotifications = notifications.filter(
-    (n) => n.type !== "CLIENT_COLD",
+  const filteredNotifications = notifications.filter((n) =>
+    isVisibleInNotificationBell(n.type),
   );
   const visibleCount = Math.min(filteredNotifications.length, 5);
   const dropdownListMaxHeight =

@@ -26,6 +26,7 @@ import {
   matchesAirOpenTrackingTarget,
   matchesOceanOpenTrackingTarget,
 } from "@/services/shipsgoTrackingNavigation";
+import { clearRouterLocationState } from "@/lib/notification-navigation";
 
 type TabType = "air" | "ocean";
 
@@ -397,7 +398,7 @@ function ShipsGoTracking({
       }
       if (locationState?.openTracking && !consumedLocationOpenRef.current) {
         consumedLocationOpenRef.current = true;
-        navigate(location.pathname, { replace: true, state: {} });
+        clearRouterLocationState(navigate, location);
       }
       return;
     }
@@ -418,7 +419,7 @@ function ShipsGoTracking({
     }
     if (locationState?.openTracking && !consumedLocationOpenRef.current) {
       consumedLocationOpenRef.current = true;
-      navigate(location.pathname, { replace: true, state: {} });
+      clearRouterLocationState(navigate, location);
     }
   }, [
     pendingOpenTracking,

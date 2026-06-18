@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback, type MutableRefObject } from "react";
 import { useOutletContext } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { useAuditLog } from "../../hooks/useAuditLog";
@@ -233,7 +233,10 @@ function QuoteLASTMILE({
   preselectedOrigin,
   preselectedDestination,
   isEjecutivoMode = false,
-}: QuoteLastMileProps = {}) {
+  abandonRef,
+}: QuoteLastMileProps & {
+  abandonRef?: MutableRefObject<(() => void) | null>;
+} = {}) {
   const { accessToken, refreshAccessToken } = useOutletContext<OutletContext>();
   const {
     user,
@@ -245,8 +248,6 @@ function QuoteLASTMILE({
   } = useAuth();
   const ejecutivo = user?.ejecutivo;
   const { registrarEvento } = useAuditLog();
-  const { trackStart, trackStep, trackRouteSelected, trackComplete } =
-    useQuoteTracking("LASTMILE");
 
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<any>(null);
@@ -268,6 +269,26 @@ function QuoteLASTMILE({
     useState<ClienteAsignadoLM | null>(null);
   const [loadingClientes, setLoadingClientes] = useState(true);
   const [errorClientes, setErrorClientes] = useState<string | null>(null);
+
+  const quoteTrackingSubject = useMemo(
+    () =>
+      isEjecutivoMode && clienteSeleccionado
+        ? {
+            clientEmail: clienteSeleccionado.email,
+            clientUsername: clienteSeleccionado.username,
+          }
+        : null,
+    [isEjecutivoMode, clienteSeleccionado],
+  );
+
+  const { trackStep, trackRouteSelected, trackComplete } = useQuoteTracking(
+    "LASTMILE",
+    {
+      subject: quoteTrackingSubject,
+      waitForSubject: isEjecutivoMode,
+      abandonRef,
+    },
+  );
 
   const effectiveUsername = isEjecutivoMode
     ? clienteSeleccionado?.username || "Ejecutivo"
@@ -399,10 +420,6 @@ function QuoteLASTMILE({
 
   // Permisos
   const isPricingRole = user?.roles?.pricing === true;
-
-  useEffect(() => {
-    trackStart();
-  }, [trackStart]);
 
   // Cargar clientes asignados (modo ejecutivo)
   useEffect(() => {

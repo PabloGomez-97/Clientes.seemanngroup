@@ -36,6 +36,6 @@ export const handleSidebarNavigation = ({
     return;
   }
 
-  navigate(targetPath);
+  navigate(targetPath, { state: null });
   onAfterNavigate?.();
 };

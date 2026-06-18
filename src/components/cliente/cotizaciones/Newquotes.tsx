@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import CotizadorAereo from "@/components/quotes/QuoteAIR";
@@ -66,6 +66,7 @@ const Cotizador: React.FC = () => {
   const [preselectedData, setPreselectedData] = useState<ItineraryState | null>(
     null,
   );
+  const quoteAbandonRef = useRef<(() => void) | null>(null);
 
   // Detectar si viene con datos pre-seleccionados desde ItineraryFinder
   useEffect(() => {
@@ -94,6 +95,7 @@ const Cotizador: React.FC = () => {
   };
 
   const handleVolver = () => {
+    quoteAbandonRef.current?.();
     setTipoCotizacion(null);
     setPreselectedData(null);
   };
@@ -180,6 +182,7 @@ const Cotizador: React.FC = () => {
             {tipoCotizacion === "AEREO" && (
               <CotizadorAereo
                 key="aereo"
+                abandonRef={quoteAbandonRef}
                 preselectedOrigin={preselectedData?.origin}
                 preselectedDestination={preselectedData?.destination}
               />
@@ -187,6 +190,7 @@ const Cotizador: React.FC = () => {
             {tipoCotizacion === "FCL" && (
               <CotizadorFCL
                 key="fcl"
+                abandonRef={quoteAbandonRef}
                 preselectedPOL={preselectedData?.origin}
                 preselectedPOD={preselectedData?.destination}
               />
@@ -194,6 +198,7 @@ const Cotizador: React.FC = () => {
             {tipoCotizacion === "LCL" && (
               <CotizadorLCL
                 key="lcl"
+                abandonRef={quoteAbandonRef}
                 preselectedPOL={preselectedData?.origin}
                 preselectedPOD={preselectedData?.destination}
               />
@@ -201,6 +206,7 @@ const Cotizador: React.FC = () => {
             {tipoCotizacion === "LASTMILE" && (
               <CotizadorLastMile
                 key="lastmile"
+                abandonRef={quoteAbandonRef}
                 preselectedOrigin={preselectedData?.origin}
                 preselectedDestination={preselectedData?.destination}
               />

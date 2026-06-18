@@ -1,8 +1,8 @@
 // src/hooks/usePortalNotifications.ts
 // Polls the multi-audience portal notification feed and exposes actions for the navbar bell.
-// Replaces the legacy useExecutiveNotifications hook.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "../auth/AuthContext";
+import { isVisibleInNotificationBell } from "@/lib/notification-navigation";
 
 const API_BASE_URL =
   import.meta.env.MODE === "development"
@@ -45,6 +45,8 @@ export interface PortalNotification {
     route?: string;
     openModal?: string;
     modalTab?: string;
+    targetTab?: string;
+    quoteFilterNumber?: string;
     [key: string]: unknown;
   };
   read: boolean;
@@ -59,6 +61,7 @@ interface UsePortalNotificationsReturn {
   loading: boolean;
   refresh: () => Promise<void>;
   markAllRead: () => Promise<void>;
+  markRead: (id: string) => Promise<void>;
   dismiss: (id: string) => Promise<void>;
 }
 
@@ -123,6 +126,27 @@ export function usePortalNotifications(
     }
   }, [enabled, token]);
 
+  const markRead = useCallback(
+    async (id: string) => {
+      if (!token) return;
+      setNotifications((prev) =>
+        prev.map((n) => (n._id === id ? { ...n, read: true } : n)),
+      );
+      try {
+        await fetch(
+          `${API_BASE_URL}/api/notifications/${encodeURIComponent(id)}/read`,
+          {
+            method: "PATCH",
+            headers: { Authorization: `Bearer ${token}` },
+          },
+        );
+      } catch {
+        /* ignore */
+      }
+    },
+    [token],
+  );
+
   const dismiss = useCallback(
     async (id: string) => {
       if (!token) return;
@@ -147,9 +171,18 @@ export function usePortalNotifications(
   );
 
   const unreadCount = notifications.reduce(
-    (acc, n) => acc + (n.read ? 0 : 1),
+    (acc, n) =>
+      acc + (!n.read && isVisibleInNotificationBell(n.type) ? 1 : 0),
     0,
   );
 
-  return { notifications, unreadCount, loading, refresh, markAllRead, dismiss };
+  return {
+    notifications,
+    unreadCount,
+    loading,
+    refresh,
+    markAllRead,
+    markRead,
+    dismiss,
+  };
 }

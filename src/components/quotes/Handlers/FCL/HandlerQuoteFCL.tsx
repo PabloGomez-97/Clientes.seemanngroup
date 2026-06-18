@@ -270,4 +270,5 @@ export interface QuoteFCLProps {
   preselectedPOD?: { value: string; label: string } | null;
   isEjecutivoMode?: boolean;
   isSimulationMode?: boolean;
+  abandonRef?: import("react").MutableRefObject<(() => void) | null>;
 }

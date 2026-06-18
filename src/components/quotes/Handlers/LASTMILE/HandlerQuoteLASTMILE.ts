@@ -29,6 +29,7 @@ export interface QuoteLastMileProps {
   preselectedOrigin?: { value: string; label: string } | null;
   preselectedDestination?: { value: string; label: string } | null;
   isEjecutivoMode?: boolean;
+  abandonRef?: import("react").MutableRefObject<(() => void) | null>;
 }
 
 /**

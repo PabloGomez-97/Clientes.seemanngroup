@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import CotizadorAereo from "./QuoteAIR-ejecutivo";
 import CotizadorFCL from "./QuoteFCL-ejecutivo";
 import CotizadorLCL from "./QuoteLCL-ejecutivo";
@@ -43,6 +43,7 @@ const Cotizadoradministrador: React.FC = () => {
   const [preselectedData, setPreselectedData] = useState<ItineraryState | null>(
     null,
   );
+  const quoteAbandonRef = useRef<(() => void) | null>(null);
 
   // Detectar si viene con datos pre-seleccionados desde ItineraryFinder
   // o solo con tipo (ej. acceso directo desde HomeEjecutivo)
@@ -65,6 +66,7 @@ const Cotizadoradministrador: React.FC = () => {
   };
 
   const handleVolver = () => {
+    quoteAbandonRef.current?.();
     setTipoCotizacion(null);
     setPreselectedData(null);
   };
@@ -157,6 +159,7 @@ const Cotizadoradministrador: React.FC = () => {
           {tipoCotizacion === "AEREO" && (
             <CotizadorAereo
               key="aereo"
+              abandonRef={quoteAbandonRef}
               preselectedOrigin={preselectedData?.origin}
               preselectedDestination={preselectedData?.destination}
             />
@@ -164,6 +167,7 @@ const Cotizadoradministrador: React.FC = () => {
           {tipoCotizacion === "FCL" && (
             <CotizadorFCL
               key="fcl"
+              abandonRef={quoteAbandonRef}
               preselectedPOL={preselectedData?.origin}
               preselectedPOD={preselectedData?.destination}
             />
@@ -171,6 +175,7 @@ const Cotizadoradministrador: React.FC = () => {
           {tipoCotizacion === "LCL" && (
             <CotizadorLCL
               key="lcl"
+              abandonRef={quoteAbandonRef}
               preselectedPOL={preselectedData?.origin}
               preselectedPOD={preselectedData?.destination}
             />
@@ -178,6 +183,7 @@ const Cotizadoradministrador: React.FC = () => {
           {tipoCotizacion === "LASTMILE" && (
             <CotizadorLastMile
               key="lastmile"
+              abandonRef={quoteAbandonRef}
               preselectedOrigin={preselectedData?.origin}
               preselectedDestination={preselectedData?.destination}
             />

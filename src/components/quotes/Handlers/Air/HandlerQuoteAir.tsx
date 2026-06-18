@@ -294,6 +294,7 @@ export interface QuoteAIRProps {
   preselectedDestination?: { value: string; label: string } | null;
   isEjecutivoMode?: boolean;
   isSimulationMode?: boolean;
+  abandonRef?: import("react").MutableRefObject<(() => void) | null>;
 }
 
 // ============================================================================

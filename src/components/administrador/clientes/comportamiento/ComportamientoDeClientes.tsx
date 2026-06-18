@@ -36,6 +36,7 @@ interface ClientBehavior {
   usernames?: string[];
   nombreuser?: string;
   parentUsername?: string;
+  isAlias?: boolean;
   stats: ClientStats | null;
 }
 
@@ -117,10 +118,13 @@ function expandClients(rawClients: ClientBehavior[]): ClientBehavior[] {
         ? client.usernames
         : [client.username];
     for (let i = 0; i < names.length; i++) {
+      const isAlias = i > 0;
       expanded.push({
         ...client,
         username: names[i],
-        parentUsername: i > 0 ? names[0] : undefined,
+        parentUsername: isAlias ? names[0] : undefined,
+        isAlias,
+        stats: isAlias ? null : client.stats,
       });
     }
   }
@@ -186,6 +190,14 @@ Object.assign(typeColors, {
 });
 
 const QUOTE_TYPES = ["AIR", "FCL", "LCL", "LASTMILE"] as const;
+
+const STALE_IN_PROGRESS_MS = 24 * 60 * 60 * 1000;
+
+function isStaleInProgressSession(session: Session): boolean {
+  if (session.status !== "in_progress") return false;
+  const lastMs = new Date(session.endedAt || session.startedAt).getTime();
+  return Date.now() - lastMs > STALE_IN_PROGRESS_MS;
+}
 
 // ══════════════════════════════════════════════════════════════════════════════
 // INDIVIDUAL CLIENT ANALYTICS PANEL
@@ -618,6 +630,8 @@ export default function ComportamientoDeClientes({
   const [temperature, setTemperature] = useState<TemperatureSummary | null>(
     null,
   );
+  const [temperatureError, setTemperatureError] = useState<string | null>(null);
+  const [analyticsError, setAnalyticsError] = useState<string | null>(null);
 
   // Session history filters (client detail)
   const [sessionTab, setSessionTab] = useState<
@@ -656,14 +670,25 @@ export default function ComportamientoDeClientes({
     let cancelled = false;
     const fetchTemperature = async () => {
       try {
+        setTemperatureError(null);
         const resp = await fetch(`${API_BASE_URL}${TEMPERATURE_ENDPOINT}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        if (!resp.ok) return;
+        if (!resp.ok) {
+          const data = await resp.json().catch(() => ({}));
+          throw new Error(
+            (data as { error?: string })?.error ||
+              "Error al cargar temperatura de clientes",
+          );
+        }
         const data = (await resp.json()) as TemperatureSummary;
         if (!cancelled) setTemperature(data);
-      } catch {
-        /* silent */
+      } catch (e) {
+        if (!cancelled) {
+          setTemperatureError(
+            e instanceof Error ? e.message : "Error al cargar temperatura",
+          );
+        }
       }
     };
     fetchTemperature();
@@ -676,14 +701,22 @@ export default function ComportamientoDeClientes({
   const fetchAnalytics = useCallback(async () => {
     if (!token) return;
     setAnalyticsLoading(true);
+    setAnalyticsError(null);
     try {
       const resp = await fetch(`${API_BASE_URL}${ANALYTICS_ENDPOINT}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!resp.ok) throw new Error("Error al cargar analytics");
+      if (!resp.ok) {
+        const data = await resp.json().catch(() => ({}));
+        throw new Error(
+          (data as { error?: string })?.error || "Error al cargar analytics",
+        );
+      }
       setAnalytics(await resp.json());
-    } catch {
-      /* silent */
+    } catch (e) {
+      setAnalyticsError(
+        e instanceof Error ? e.message : "Error al cargar analytics",
+      );
     } finally {
       setAnalyticsLoading(false);
     }
@@ -1406,6 +1439,18 @@ export default function ComportamientoDeClientes({
                                   }}
                                 />
                                 {statusLabels[session.status]}
+                                {isStaleInProgressSession(session) && (
+                                  <span
+                                    style={{
+                                      marginLeft: 4,
+                                      fontSize: 10,
+                                      color: "#b45309",
+                                    }}
+                                    title="Sin actividad en más de 24 horas"
+                                  >
+                                    (inactiva)
+                                  </span>
+                                )}
                               </span>
 
                               {/* Quote number + Ver Cotizaciones (completed only) */}
@@ -1433,7 +1478,14 @@ export default function ComportamientoDeClientes({
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       navigate(
-                                        `${QUOTE_VIEW_ROUTE_BASE}/${selectedClient.username}`,
+                                        `${QUOTE_VIEW_ROUTE_BASE}/${encodeURIComponent(selectedClient.username)}`,
+                                        {
+                                          state: {
+                                            targetTab: "quotes",
+                                            quoteFilterNumber:
+                                              session.quoteNumber || undefined,
+                                          },
+                                        },
                                       );
                                     }}
                                     style={{
@@ -1638,6 +1690,21 @@ export default function ComportamientoDeClientes({
               Patrones de abandono y comportamiento en el proceso de cotización
             </p>
           </div>
+          {analyticsError && (
+            <div
+              style={{
+                width: "100%",
+                padding: "10px 14px",
+                borderRadius: 8,
+                background: "#fef2f2",
+                border: "1px solid #fecaca",
+                color: "#991b1b",
+                fontSize: 13,
+              }}
+            >
+              {analyticsError}
+            </div>
+          )}
           <button
             onClick={() => setView("clients")}
             style={{
@@ -2046,6 +2113,22 @@ export default function ComportamientoDeClientes({
           últimos 30 días
         </p>
       </div>
+
+      {temperatureError && (
+        <div
+          style={{
+            marginTop: 12,
+            padding: "10px 14px",
+            borderRadius: 8,
+            background: "#fef2f2",
+            border: "1px solid #fecaca",
+            color: "#991b1b",
+            fontSize: 13,
+          }}
+        >
+          {temperatureError}
+        </div>
+      )}
 
       {/* Temperature strip (frío/tibio/caliente/más abandonos) */}
       <div className="cb-metrics-strip cb-metrics-strip--four mt-3">

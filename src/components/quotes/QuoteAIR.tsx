@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, type MutableRefObject } from "react";
 import { useOutletContext } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { useAuditLog } from "../../hooks/useAuditLog";
@@ -257,7 +257,10 @@ function QuoteAPITester({
   preselectedDestination,
   isEjecutivoMode = false,
   isSimulationMode = false,
-}: QuoteAIRProps = {}) {
+  abandonRef,
+}: QuoteAIRProps & {
+  abandonRef?: MutableRefObject<(() => void) | null>;
+} = {}) {
   const { accessToken, refreshAccessToken } = useOutletContext<OutletContext>();
   const {
     user,
@@ -270,8 +273,6 @@ function QuoteAPITester({
   const ejecutivo = user?.ejecutivo;
   const { t } = useTranslation();
   const { registrarEvento } = useAuditLog();
-  const { trackStart, trackStep, trackRouteSelected, trackComplete } =
-    useQuoteTracking("AIR");
   const { config: gestionCotizadorConfig } = useGestionCotizador();
   const { config: airConnectSpainConfig } = useAirConnectSpainConfig();
   const aereoTtConfig = gestionCotizadorConfig.aereo;
@@ -368,6 +369,26 @@ function QuoteAPITester({
     useState<ClienteAsignado | null>(null);
   const [loadingClientes, setLoadingClientes] = useState(isEjecutivoMode);
   const [errorClientes, setErrorClientes] = useState<string | null>(null);
+
+  const quoteTrackingSubject = useMemo(
+    () =>
+      isEjecutivoMode && clienteSeleccionado
+        ? {
+            clientEmail: clienteSeleccionado.email,
+            clientUsername: clienteSeleccionado.username,
+          }
+        : null,
+    [isEjecutivoMode, clienteSeleccionado],
+  );
+
+  const { trackStep, trackRouteSelected, trackComplete } = useQuoteTracking(
+    "AIR",
+    {
+      subject: quoteTrackingSubject,
+      waitForSubject: isEjecutivoMode,
+      abandonRef,
+    },
+  );
 
   // Username efectivo: en modo ejecutivo usa el cliente seleccionado, en modo normal usa activeUsername
   const effectiveUsername = isEjecutivoMode
@@ -717,11 +738,6 @@ function QuoteAPITester({
 
     setWeightError(null);
   }, [overallDimsAndWeight, manualWeight]);
-
-  // Track quote start on mount
-  useEffect(() => {
-    trackStart();
-  }, [trackStart]);
 
   // ============================================================================
   // CARGA DE DATOS DESDE GOOGLE SHEETS (CSV)

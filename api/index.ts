@@ -26,6 +26,8 @@ import {
 import { buildR2Key, uploadPDF, downloadPDFBuffer, deleteAllUserPDFs } from './services/r2Storage.js';
 import { buildDocR2Key, uploadDocument, downloadDocumentBuffer, deleteDocument } from './services/r2DocumentStorage.js';
 import { resolveEjecutivoForEmail, loadQuotePdfAttachment, loadQuotePdfAttachmentWithRetry, normalizeQuoteResendEmails } from './utils/operationEmailHelpers.js';
+import { authorizeBehaviorTrackingPost } from '../lib/behavior-tracking-auth.js';
+import { shouldResetNotificationRead } from '../lib/portal-notifications.js';
 
 /** =========================
  *  Entorno + JWT
@@ -1441,20 +1443,26 @@ async function upsertPortalNotification(doc: Partial<IPortalNotification> & {
   try {
     const recipient = String(doc.recipientEmail).toLowerCase().trim();
     if (!recipient) return;
-    const { audience, type, dedupKey, ...rest } = doc;
+    const { audience, type, dedupKey, recipientEmail: _docRecipient, ...rest } = doc;
+    const existing = await PortalNotification.findOne({ recipientEmail: recipient, dedupKey }).lean();
+    const incoming = { audience, type, recipientEmail: recipient, dedupKey, ...rest };
+    const resetRead = shouldResetNotificationRead(existing as any, incoming);
+    const $set: Record<string, unknown> = {
+      ...rest,
+      audience,
+      type,
+      recipientEmail: recipient,
+      updatedAt: new Date(),
+    };
+    if (resetRead) {
+      $set.read = false;
+      $set.readAt = undefined;
+    }
     await PortalNotification.updateOne(
       { recipientEmail: recipient, dedupKey },
       {
-        $set: {
-          ...rest,
-          audience,
-          type,
-          recipientEmail: recipient,
-          read: false,
-          readAt: undefined,
-          updatedAt: new Date(),
-        },
-        $setOnInsert: { dedupKey, createdAt: new Date() },
+        $set,
+        $setOnInsert: { dedupKey, createdAt: new Date(), read: false },
       },
       { upsert: true },
     );
@@ -1489,6 +1497,10 @@ async function emitQuoteEventNotification(opts: {
       ? (opts.metadata as any).quoteNumber as string
       : undefined;
 
+    const reporteriaRoute = quoteNumber
+      ? `/admin/clientes/reporteria/${encodeURIComponent(opts.clientUsername)}`
+      : `/admin/clientes/comportamiento/${encodeURIComponent(opts.clientUsername)}`;
+
     await upsertPortalNotification({
       audience: 'EJECUTIVO',
       recipientEmail: ejecutivoEmail,
@@ -1502,8 +1514,10 @@ async function emitQuoteEventNotification(opts: {
       clientUsername: opts.clientUsername,
       clientNombre: clientUser.nombreuser || undefined,
       payload: {
-        route: `/admin/clientes/comportamiento/${encodeURIComponent(opts.clientUsername)}`,
+        route: reporteriaRoute,
         clientUsername: opts.clientUsername,
+        targetTab: quoteNumber ? 'quotes' : undefined,
+        quoteFilterNumber: quoteNumber,
       },
     });
   } catch (err) {
@@ -1557,7 +1571,13 @@ async function emitTrackingNotification(opts: {
         recipientUsername: clientUser.username,
         type: opts.type,
         dedupKey,
-        payload: { route: '/shipsgo', shipmentMode: opts.shipmentMode, shipmentId: opts.shipmentId },
+        payload: {
+          route: '/shipsgo',
+          shipmentMode: opts.shipmentMode,
+          shipmentId: opts.shipmentId,
+          awbNumber: opts.awbNumber,
+          containerNumber: opts.containerNumber,
+        },
       });
     }
 
@@ -7575,7 +7595,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           .limit(50)
           .lean();
 
-        const unreadCount = items.filter((n: any) => !n.read).length;
+        const unreadCount = items.filter(
+          (n: any) => !n.read && n.type !== 'CLIENT_COLD',
+        ).length;
         return res.json({ notifications: items, unreadCount });
       } catch (error: any) {
         console.error('[notifications] Error GET:', error);
@@ -7600,6 +7622,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       } catch (error: any) {
         console.error('[notifications] Error read-all:', error);
         return res.status(500).json({ error: 'Error al marcar como leídas' });
+      }
+    }
+
+    // PATCH /api/notifications/:id/read — mark one notification as read
+    if (path?.match(/^\/api\/notifications\/[^/]+\/read$/) && method === 'PATCH') {
+      try {
+        const authHeader = req.headers.authorization;
+        if (!authHeader?.startsWith('Bearer ')) {
+          return res.status(401).json({ error: 'Token requerido' });
+        }
+        const decoded = verifyToken(authHeader.slice(7));
+        const recipientEmail = String(decoded.sub || '').toLowerCase().trim();
+        const id = path.replace('/api/notifications/', '').replace(/\/read$/, '');
+        if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+          return res.status(400).json({ error: 'ID inválido' });
+        }
+        await PortalNotification.updateOne(
+          { _id: id, recipientEmail },
+          { $set: { read: true, readAt: new Date() } },
+        );
+        return res.json({ success: true });
+      } catch (error: any) {
+        console.error('[notifications] Error PATCH read:', error);
+        return res.status(500).json({ error: 'Error al marcar notificación' });
       }
     }
 
@@ -7629,10 +7675,45 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // ============================================================
     if (path === '/api/behavior-tracking' && method === 'POST') {
       try {
+        const authHeader = req.headers.authorization;
+        if (!authHeader?.startsWith('Bearer ')) {
+          return res.status(401).json({ error: 'Token requerido' });
+        }
+        const decoded = verifyToken(authHeader.slice(7));
+
         const { clientEmail, clientUsername, sessionId, event, quoteType, step, route, incoterm, container, metadata, timestamp } = (req.body as any) || {};
 
         if (!clientEmail || !sessionId || !event || !quoteType) {
           return res.status(400).json({ error: 'clientEmail, sessionId, event y quoteType son requeridos' });
+        }
+
+        const authResult = await authorizeBehaviorTrackingPost(
+          { sub: decoded.sub, username: decoded.username },
+          clientEmail,
+          async (email) => {
+            const u = await User.findOne({ email: email.toLowerCase().trim() }).lean();
+            if (!u) return null;
+            return {
+              email: String(u.email),
+              username: u.username,
+              ejecutivoId: u.ejecutivoId,
+              roles: (u as any).roles,
+            };
+          },
+          async (ejecutivoId) => {
+            const clients = await User.find(
+              { ejecutivoId: ejecutivoId as mongoose.Types.ObjectId, username: { $ne: 'Ejecutivo' } },
+              { email: 1, username: 1 },
+            ).lean();
+            return clients.map((c) => ({
+              email: String(c.email),
+              username: c.username,
+            }));
+          },
+        );
+        if (!authResult.ok) {
+          console.warn('[behavior-tracking] POST rejected:', authResult.error, decoded.sub);
+          return res.status(authResult.status).json({ error: authResult.error });
         }
 
         const validEvents = ['QUOTE_STARTED', 'QUOTE_STEP_CHANGED', 'QUOTE_ROUTE_SELECTED', 'QUOTE_COMPLETED', 'QUOTE_ABANDONED'];
@@ -7647,7 +7728,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         await QuoteTrackingEvent.create({
           clientEmail: String(clientEmail).toLowerCase().trim(),
-          clientUsername: String(clientUsername).trim(),
+          clientUsername: String(clientUsername || '').trim() || (await User.findOne({ email: String(clientEmail).toLowerCase().trim() }).lean())?.username || 'unknown',
           sessionId: String(sessionId),
           event,
           quoteType,
@@ -7810,6 +7891,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const clientEmail = decodeURIComponent(path.split('/api/behavior-tracking/client/')[1] || '').toLowerCase().trim();
         if (!clientEmail) {
           return res.status(400).json({ error: 'Email de cliente requerido' });
+        }
+
+        const ejecutivoUser = await User.findOne({ email: decoded.sub }).lean();
+        const clientUser = await User.findOne({ email: clientEmail }).lean();
+        if (
+          !ejecutivoUser?.ejecutivoId ||
+          !clientUser ||
+          String(clientUser.ejecutivoId) !== String(ejecutivoUser.ejecutivoId)
+        ) {
+          return res.status(403).json({ error: 'No autorizado para este cliente' });
         }
 
         const { desde, hasta, limit: limitStr } = req.query as Record<string, string>;
@@ -8437,13 +8528,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         const records = await buildClientTemperatureRecords(inputs);
         const summary = summarizeTemperature(records);
-
-        // Lazy-emit cold notifications when an ejecutivo views the dashboard.
-        // Always emit only for clients of this ejecutivo (regardless of scope).
-        const myRecords = records.filter(
-          (r) => r.ejecutivoEmail === String(decoded.sub).toLowerCase().trim(),
-        );
-        void emitColdClientNotifications(myRecords);
 
         return res.json(summary);
       } catch (error: any) {
