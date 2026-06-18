@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
 import ChatWidget from "../components/Chatbot/ChatWidget";
-import Footer from "../components/Footer/Footer";
+import Footer from "../components/footer/Footer";
 import { ChatbotProvider } from "../contexts/ChatbotContext";
 import { useLinbisToken } from "../hooks/useLinbisToken";
 

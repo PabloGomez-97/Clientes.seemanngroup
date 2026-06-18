@@ -21,7 +21,7 @@ type Roles = {
   operaciones: boolean;
 } | null;
 
-type User = {
+export type User = {
   email: string;
   username: string;
   usernames: string[]; // Múltiples empresas/cuentas asignadas

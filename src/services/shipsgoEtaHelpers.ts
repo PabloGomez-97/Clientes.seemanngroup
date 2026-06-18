@@ -1,4 +1,4 @@
-import { formatDateTime } from "../components/Sidebar/shipsgo/types";
+import { formatDateTime } from "../components/cliente/tracking/shipsgo/types";
 
 export interface ShipsgoEtaEntry {
   current: string;

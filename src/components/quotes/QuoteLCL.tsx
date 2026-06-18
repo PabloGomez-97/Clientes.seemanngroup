@@ -5,14 +5,14 @@ import { useAuditLog } from "../../hooks/useAuditLog";
 import * as XLSX from "xlsx";
 import Select from "react-select";
 import { Modal, Button, OverlayTrigger, Tooltip } from "react-bootstrap";
-import { PDFTemplateLCL } from "./Pdftemplate/Pdftemplatelcl";
+import { PDFTemplateLCL } from "./pdf-template/PdfTemplateLcl";
 import * as bootstrap from "bootstrap";
 import {
   generatePDF,
   generatePDFBase64,
   downloadPDFFromBase64,
   formatDateForFilename,
-} from "./Pdftemplate/Pdfutils";
+} from "./pdf-template/pdfUtils";
 import ReactDOM from "react-dom/client";
 import { PieceAccordionLCL } from "./Handlers/LCL/PieceAccordionLCL.tsx";
 import {
@@ -20,8 +20,8 @@ import {
   type OverallPieceDataLCL,
 } from "./Handlers/LCL/OverallPieceAccordionLCL.tsx";
 import { useTranslation } from "react-i18next";
-import CotizadorAddressMap from "../Map/CotizadorAddressMap";
-import CotizadorAddressMapDual from "../Map/CotizadorAddressMapDual";
+import CotizadorAddressMap from "@/components/shared/maps/CotizadorAddressMap";
+import CotizadorAddressMapDual from "@/components/shared/maps/CotizadorAddressMapDual";
 import {
   applyVespucioTransportSurcharge,
   type VespucioDeliveryZone,
@@ -34,7 +34,7 @@ import {
 } from "../../hooks/useGestionCotizador";
 import type { LclDeliveryBracketResult } from "../../types/gestionCotizador";
 import { imgUrl } from "../../config/images";
-import type { DestinationCoords } from "../Map/CotizadorAddressMap";
+import type { DestinationCoords } from "@/components/shared/maps/CotizadorAddressMap";
 import { getPortByPOL, portCoordinates } from "../../config/portCoordinates";
 import "flag-icons/css/flag-icons.min.css";
 import { useScrollToTopOnStepChange } from "./hooks/useScrollToTopOnStepChange";

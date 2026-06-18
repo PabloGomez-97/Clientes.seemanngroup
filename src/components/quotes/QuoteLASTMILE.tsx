@@ -5,14 +5,14 @@ import { useAuditLog } from "../../hooks/useAuditLog";
 import Select from "react-select";
 import { routeSelectStyles } from "./Selectroute";
 import ReactDOM from "react-dom/client";
-import { PDFTemplateLastMile } from "./Pdftemplate/Pdftemplatelastmile";
+import { PDFTemplateLastMile } from "./pdf-template/PdfTemplateLastMile";
 import {
   generatePDF,
   generatePDFBase64,
   downloadPDFFromBase64,
   formatDateForFilename,
-} from "./Pdftemplate/Pdfutils";
-import CotizadorAddressMapDual from "../Map/CotizadorAddressMapDual";
+} from "./pdf-template/pdfUtils";
+import CotizadorAddressMapDual from "@/components/shared/maps/CotizadorAddressMapDual";
 import {
   applyVespucioTransportSurcharge,
   type VespucioDeliveryZone,

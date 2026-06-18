@@ -2,12 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "react-bootstrap";
 import { useTranslation } from "react-i18next";
 import ReactDOM from "react-dom/client";
-import { PdfTemplateCountryRates } from "../../Pdftemplate/PdfTemplateCountryRates";
+import { PdfTemplateCountryRates } from "../../pdf-template/PdfTemplateCountryRates";
 import {
   formatDateForFilename,
   generateFlattenedPDF,
   preloadLogoAsDataUrl,
-} from "../../Pdftemplate/Pdfutils";
+} from "../../pdf-template/pdfUtils";
 import {
   SERVICE_FILENAME_LABELS,
   SERVICE_SUFFIX_LABELS,

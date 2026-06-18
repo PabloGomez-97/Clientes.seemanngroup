@@ -4,13 +4,13 @@ import { useAuth } from "../../auth/AuthContext";
 import { useAuditLog } from "../../hooks/useAuditLog";
 import Select from "react-select";
 import { Modal, Button, OverlayTrigger, Tooltip } from "react-bootstrap";
-import { PDFTemplateAIR } from "./Pdftemplate/Pdftemplateair";
+import { PDFTemplateAIR } from "./pdf-template/PdfTemplateAir";
 import {
   generatePDF,
   generatePDFBase64,
   downloadPDFFromBase64,
   formatDateForFilename,
-} from "./Pdftemplate/Pdfutils";
+} from "./pdf-template/pdfUtils";
 import { useTranslation } from "react-i18next";
 import ReactDOM from "react-dom/client";
 import * as bootstrap from "bootstrap";
@@ -61,8 +61,8 @@ import GenerateOperationModal from "./Operations/GenerateOperationModal";
 import { useOperationModalAfterPdf } from "./Operations/useOperationModalAfterPdf";
 import CotizadorAddressMap, {
   type DestinationCoords,
-} from "../Map/CotizadorAddressMap";
-import CotizadorAddressMapDual from "../Map/CotizadorAddressMapDual";
+} from "@/components/shared/maps/CotizadorAddressMap";
+import CotizadorAddressMapDual from "@/components/shared/maps/CotizadorAddressMapDual";
 import {
   airportCoordinates,
   getAirportByOrigin,

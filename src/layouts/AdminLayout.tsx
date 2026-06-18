@@ -4,7 +4,7 @@ import { Outlet, useLocation, Navigate } from "react-router-dom";
 import NavbarAdmin from "./Navbar-admin";
 import SidebarAdmin from "./Sidebar-admin";
 import ChatWidget from "../components/Chatbot/ChatWidget";
-import Footer from "../components/Footer/Footer";
+import Footer from "../components/footer/Footer";
 import { ChatbotProvider } from "../contexts/ChatbotContext";
 import { useAuth } from "../auth/AuthContext";
 import { canAccessRoute } from "../config/roleRoutes";

@@ -101,7 +101,7 @@ function SidebarAdmin({
       title: t("admin.sidebar.sectionQuote"),
       items: [
         {
-          path: "/admin/cotizador-administrador",
+          path: "/admin/cotizador",
           name: t("admin.sidebar.quoter"),
           icon: "bi bi-currency-dollar",
         },
@@ -123,24 +123,24 @@ function SidebarAdmin({
       title: t("admin.sidebar.sectionClients"),
       items: [
         {
-          path: "/admin/comportamiento-clientes",
+          path: "/admin/clientes/comportamiento",
           name: t("admin.sidebar.clientAnalysis"),
           icon: "fa fa-chart-line",
           hiddenForAdmin: true,
         },
         {
-          path: "/admin/op-comportamiento-clientes",
+          path: "/admin/operaciones/clientes/comportamiento",
           name: t("admin.sidebar.clientAnalysisGlobal"),
           icon: "fa fa-chart-line",
         },
         {
-          path: "/admin/reporteriaclientes",
+          path: "/admin/clientes/reporteria",
           name: t("admin.sidebar.clientDirectory"),
           icon: "fa fa-address-book",
           hiddenForAdmin: true,
         },
         {
-          path: "/admin/op-reporteriaclientes",
+          path: "/admin/operaciones/clientes/reporteria",
           name: t("admin.sidebar.clientDirectoryGlobal"),
           icon: "fa fa-address-book",
         },
@@ -156,21 +156,21 @@ function SidebarAdmin({
           icon: "fa fa-route",
           subItems: [
             {
-              path: "/admin/documentacion",
+              path: "/admin/clientes/documentacion",
               name: t("admin.sidebar.clientDocumentation"),
               hiddenForAdmin: true,
             },
             {
-              path: "/admin/op-documentacion",
+              path: "/admin/operaciones/clientes/documentacion",
               name: t("admin.sidebar.globalDocumentation"),
             },
             {
-              path: "/admin/trackeos",
+              path: "/admin/clientes/tracking",
               name: t("admin.sidebar.shipmentMonitoring"),
               hiddenForAdmin: true,
             },
             {
-              path: "/admin/op-trackeos",
+              path: "/admin/operaciones/tracking",
               name: t("admin.sidebar.shipmentMonitoringGlobal"),
             },
           ],
@@ -202,7 +202,7 @@ function SidebarAdmin({
           icon: "fa fa-envelope",
         },
         {
-          path: "/admin/alertas-pricing",
+          path: "/admin/pricing/alertas",
           name: t("admin.sidebar.tariffAlerts"),
           icon: "fa fa-exclamation-triangle",
         },
@@ -223,12 +223,12 @@ function SidebarAdmin({
               name: t("admin.sidebar.reportsLinbis"),
             },
             {
-              path: "/admin/reportexecutive",
+              path: "/admin/reporteria/financiera/ejecutivo",
               name: t("admin.sidebar.quotesReport"),
               badge: { text: t("admin.sidebar.badgeChief"), type: "admin" as const },
             },
             {
-              path: "/admin/reportoperational",
+              path: "/admin/reporteria/financiera/operacional",
               name: t("admin.sidebar.billingReport"),
               badge: { text: t("admin.sidebar.badgeChief"), type: "admin" as const },
             },
@@ -591,7 +591,7 @@ function SidebarAdmin({
                               </span>
                             )}
 
-                            {item.path === "/admin/alertas-pricing" &&
+                            {item.path === "/admin/pricing/alertas" &&
                               pricingExpiryCount > 0 && (
                                 <span
                                   style={{

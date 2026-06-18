@@ -5,7 +5,7 @@ import { useAuth } from "../auth/AuthContext";
 import { useTranslation } from "react-i18next";
 import i18n from "../i18n";
 import { imgUrl } from "../config/images";
-import PortalNotificationBell from "../components/notifications/PortalNotificationBell";
+import PortalNotificationBell from "@/components/shared/notifications/PortalNotificationBell";
 import { useChatbotContext } from "../contexts/ChatbotContext";
 import SidebarToggleButton from "./SidebarToggleButton";
 

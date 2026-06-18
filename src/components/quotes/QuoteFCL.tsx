@@ -5,19 +5,19 @@ import { useAuth } from "../../auth/AuthContext";
 import { useAuditLog } from "../../hooks/useAuditLog";
 import * as XLSX from "xlsx";
 import Select from "react-select";
-import { PDFTemplateFCL } from "./Pdftemplate/Pdftemplatefcl";
+import { PDFTemplateFCL } from "./pdf-template/PdfTemplateFcl";
 import {
   generatePDF,
   generatePDFBase64,
   downloadPDFFromBase64,
   formatDateForFilename,
-} from "./Pdftemplate/Pdfutils";
+} from "./pdf-template/pdfUtils";
 import { useTranslation } from "react-i18next";
 import ReactDOM from "react-dom/client";
 import CotizadorAddressMap, {
   type DestinationCoords,
-} from "../Map/CotizadorAddressMap";
-import CotizadorAddressMapDual from "../Map/CotizadorAddressMapDual";
+} from "@/components/shared/maps/CotizadorAddressMap";
+import CotizadorAddressMapDual from "@/components/shared/maps/CotizadorAddressMapDual";
 import {
   applyVespucioTransportSurcharge,
   type VespucioDeliveryZone,

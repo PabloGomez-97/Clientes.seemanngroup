@@ -1,4 +1,4 @@
-import type { AirShipment, OceanShipment } from "../../../Sidebar/shipsgo/types";
+import type { AirShipment, OceanShipment } from "@/components/cliente/tracking/shipsgo/types";
 import {
   findAirportCatalogKeyByIata,
   labelFromAirCatalogKey,
