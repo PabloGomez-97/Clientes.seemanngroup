@@ -29,6 +29,12 @@ import { buildR2Key, getPublicUrl, uploadPDF, deletePDF, deleteAllUserPDFs, down
 import { buildDocR2Key, uploadDocument, downloadDocumentBuffer, deleteDocument } from '../api/services/r2DocumentStorage.ts';
 import { resolveEjecutivoForEmail, loadQuotePdfAttachment, loadQuotePdfAttachmentWithRetry, normalizeQuoteResendEmails } from '../api/utils/operationEmailHelpers.ts';
 import { authorizeBehaviorTrackingPost, clientBelongsToEjecutivo, resolveEjecutivoObjectId } from '../lib/behavior-tracking-auth.ts';
+import {
+  behaviorClientStatsGroupStage,
+  behaviorRelevantSessionFilterStage,
+  behaviorSessionGroupStage,
+  formatBehaviorClientStats,
+} from '../lib/behavior-tracking-stats.ts';
 import { shouldResetNotificationRead } from '../lib/portal-notifications.ts';
 
 /** =========================
@@ -7553,36 +7559,9 @@ app.get('/api/behavior-tracking/clients', auth, async (req, res) => {
 
     const behaviorStats = await QuoteTrackingEvent.aggregate([
       { $match: { clientEmail: { $in: clientEmails } } },
-      // Stage 1: group events by session to determine per-session status
-      {
-        $group: {
-          _id: { email: '$clientEmail', sessionId: '$sessionId' },
-          hasStarted: { $max: { $cond: [{ $eq: ['$event', 'QUOTE_STARTED'] }, 1, 0] } },
-          hasCompleted: { $max: { $cond: [{ $eq: ['$event', 'QUOTE_COMPLETED'] }, 1, 0] } },
-          hasAbandoned: { $max: { $cond: [{ $eq: ['$event', 'QUOTE_ABANDONED'] }, 1, 0] } },
-          lastActivity: { $max: '$timestamp' },
-          quoteType: { $first: '$quoteType' },
-        },
-      },
-      // Stage 2: roll up to client level counting sessions (not raw events)
-      {
-        $group: {
-          _id: '$_id.email',
-          totalEvents: { $sum: 1 },
-          quotesStarted: { $sum: '$hasStarted' },
-          quotesCompleted: { $sum: '$hasCompleted' },
-          quotesAbandoned: {
-            $sum: {
-              $cond: [
-                { $and: [{ $eq: ['$hasAbandoned', 1] }, { $eq: ['$hasCompleted', 0] }] },
-                1, 0,
-              ],
-            },
-          },
-          lastActivity: { $max: '$lastActivity' },
-          quoteTypes: { $addToSet: '$quoteType' },
-        },
-      },
+      behaviorSessionGroupStage,
+      behaviorRelevantSessionFilterStage,
+      behaviorClientStatsGroupStage,
     ]);
 
     const statsMap = new Map(behaviorStats.map((s: any) => [s._id, s]));
@@ -7594,20 +7573,7 @@ app.get('/api/behavior-tracking/clients', auth, async (req, res) => {
         username: c.username,
         usernames: c.usernames,
         nombreuser: c.nombreuser,
-        stats: stats
-          ? {
-              totalEvents: stats.totalEvents,
-              quotesStarted: stats.quotesStarted,
-              quotesCompleted: stats.quotesCompleted,
-              quotesAbandoned: stats.quotesAbandoned,
-              completionRate:
-                stats.quotesStarted > 0
-                  ? Math.round((stats.quotesCompleted / stats.quotesStarted) * 100)
-                  : 0,
-              lastActivity: stats.lastActivity,
-              quoteTypes: stats.quoteTypes,
-            }
-          : null,
+        stats: stats ? formatBehaviorClientStats(stats) : null,
       };
     });
 
@@ -7943,34 +7909,9 @@ app.get('/api/behavior-tracking/all-clients', auth, async (req, res) => {
 
     const behaviorStats = await QuoteTrackingEvent.aggregate([
       { $match: { clientEmail: { $in: clientEmails } } },
-      {
-        $group: {
-          _id: { email: '$clientEmail', sessionId: '$sessionId' },
-          hasStarted: { $max: { $cond: [{ $eq: ['$event', 'QUOTE_STARTED'] }, 1, 0] } },
-          hasCompleted: { $max: { $cond: [{ $eq: ['$event', 'QUOTE_COMPLETED'] }, 1, 0] } },
-          hasAbandoned: { $max: { $cond: [{ $eq: ['$event', 'QUOTE_ABANDONED'] }, 1, 0] } },
-          lastActivity: { $max: '$timestamp' },
-          quoteType: { $first: '$quoteType' },
-        },
-      },
-      {
-        $group: {
-          _id: '$_id.email',
-          totalEvents: { $sum: 1 },
-          quotesStarted: { $sum: '$hasStarted' },
-          quotesCompleted: { $sum: '$hasCompleted' },
-          quotesAbandoned: {
-            $sum: {
-              $cond: [
-                { $and: [{ $eq: ['$hasAbandoned', 1] }, { $eq: ['$hasCompleted', 0] }] },
-                1, 0,
-              ],
-            },
-          },
-          lastActivity: { $max: '$lastActivity' },
-          quoteTypes: { $addToSet: '$quoteType' },
-        },
-      },
+      behaviorSessionGroupStage,
+      behaviorRelevantSessionFilterStage,
+      behaviorClientStatsGroupStage,
     ]);
 
     const statsMap = new Map(behaviorStats.map((s: any) => [s._id, s]));
@@ -7982,20 +7923,7 @@ app.get('/api/behavior-tracking/all-clients', auth, async (req, res) => {
         username: c.username,
         usernames: c.usernames,
         nombreuser: c.nombreuser,
-        stats: stats
-          ? {
-              totalEvents: stats.totalEvents,
-              quotesStarted: stats.quotesStarted,
-              quotesCompleted: stats.quotesCompleted,
-              quotesAbandoned: stats.quotesAbandoned,
-              completionRate:
-                stats.quotesStarted > 0
-                  ? Math.round((stats.quotesCompleted / stats.quotesStarted) * 100)
-                  : 0,
-              lastActivity: stats.lastActivity,
-              quoteTypes: stats.quoteTypes,
-            }
-          : null,
+        stats: stats ? formatBehaviorClientStats(stats) : null,
       };
     });
 

@@ -27,6 +27,12 @@ import { buildR2Key, uploadPDF, downloadPDFBuffer, deleteAllUserPDFs } from './s
 import { buildDocR2Key, uploadDocument, downloadDocumentBuffer, deleteDocument } from './services/r2DocumentStorage.js';
 import { resolveEjecutivoForEmail, loadQuotePdfAttachment, loadQuotePdfAttachmentWithRetry, normalizeQuoteResendEmails } from './utils/operationEmailHelpers.js';
 import { authorizeBehaviorTrackingPost, clientBelongsToEjecutivo, resolveEjecutivoObjectId } from '../lib/behavior-tracking-auth.js';
+import {
+  behaviorClientStatsGroupStage,
+  behaviorRelevantSessionFilterStage,
+  behaviorSessionGroupStage,
+  formatBehaviorClientStats,
+} from '../lib/behavior-tracking-stats.js';
 import { shouldResetNotificationRead } from '../lib/portal-notifications.js';
 
 /** =========================
@@ -7808,36 +7814,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         // Aggregate behavior data per client (session-based, not raw event counts)
         const pipeline = [
           { $match: { clientEmail: { $in: clientEmails } } },
-          // Stage 1: group events by session to determine per-session status
-          {
-            $group: {
-              _id: { email: '$clientEmail', sessionId: '$sessionId' },
-              hasStarted: { $max: { $cond: [{ $eq: ['$event', 'QUOTE_STARTED'] }, 1, 0] } },
-              hasCompleted: { $max: { $cond: [{ $eq: ['$event', 'QUOTE_COMPLETED'] }, 1, 0] } },
-              hasAbandoned: { $max: { $cond: [{ $eq: ['$event', 'QUOTE_ABANDONED'] }, 1, 0] } },
-              lastActivity: { $max: '$timestamp' },
-              quoteType: { $first: '$quoteType' },
-            },
-          },
-          // Stage 2: roll up to client level counting sessions (not raw events)
-          {
-            $group: {
-              _id: '$_id.email',
-              totalEvents: { $sum: 1 },
-              quotesStarted: { $sum: '$hasStarted' },
-              quotesCompleted: { $sum: '$hasCompleted' },
-              quotesAbandoned: {
-                $sum: {
-                  $cond: [
-                    { $and: [{ $eq: ['$hasAbandoned', 1] }, { $eq: ['$hasCompleted', 0] }] },
-                    1, 0,
-                  ],
-                },
-              },
-              lastActivity: { $max: '$lastActivity' },
-              quoteTypes: { $addToSet: '$quoteType' },
-            },
-          },
+          behaviorSessionGroupStage,
+          behaviorRelevantSessionFilterStage,
+          behaviorClientStatsGroupStage,
         ];
 
         const behaviorStats = await QuoteTrackingEvent.aggregate(pipeline);
@@ -7850,20 +7829,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             username: c.username,
             usernames: c.usernames,
             nombreuser: c.nombreuser,
-            stats: stats
-              ? {
-                  totalEvents: stats.totalEvents,
-                  quotesStarted: stats.quotesStarted,
-                  quotesCompleted: stats.quotesCompleted,
-                  quotesAbandoned: stats.quotesAbandoned,
-                  completionRate:
-                    stats.quotesStarted > 0
-                      ? Math.round((stats.quotesCompleted / stats.quotesStarted) * 100)
-                      : 0,
-                  lastActivity: stats.lastActivity,
-                  quoteTypes: stats.quoteTypes,
-                }
-              : null,
+            stats: stats ? formatBehaviorClientStats(stats) : null,
           };
         });
 
@@ -8244,34 +8210,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         const pipeline = [
           { $match: { clientEmail: { $in: clientEmails } } },
-          {
-            $group: {
-              _id: { email: '$clientEmail', sessionId: '$sessionId' },
-              hasStarted: { $max: { $cond: [{ $eq: ['$event', 'QUOTE_STARTED'] }, 1, 0] } },
-              hasCompleted: { $max: { $cond: [{ $eq: ['$event', 'QUOTE_COMPLETED'] }, 1, 0] } },
-              hasAbandoned: { $max: { $cond: [{ $eq: ['$event', 'QUOTE_ABANDONED'] }, 1, 0] } },
-              lastActivity: { $max: '$timestamp' },
-              quoteType: { $first: '$quoteType' },
-            },
-          },
-          {
-            $group: {
-              _id: '$_id.email',
-              totalEvents: { $sum: 1 },
-              quotesStarted: { $sum: '$hasStarted' },
-              quotesCompleted: { $sum: '$hasCompleted' },
-              quotesAbandoned: {
-                $sum: {
-                  $cond: [
-                    { $and: [{ $eq: ['$hasAbandoned', 1] }, { $eq: ['$hasCompleted', 0] }] },
-                    1, 0,
-                  ],
-                },
-              },
-              lastActivity: { $max: '$lastActivity' },
-              quoteTypes: { $addToSet: '$quoteType' },
-            },
-          },
+          behaviorSessionGroupStage,
+          behaviorRelevantSessionFilterStage,
+          behaviorClientStatsGroupStage,
         ];
 
         const behaviorStats = await QuoteTrackingEvent.aggregate(pipeline);
@@ -8284,20 +8225,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             username: c.username,
             usernames: c.usernames,
             nombreuser: c.nombreuser,
-            stats: stats
-              ? {
-                  totalEvents: stats.totalEvents,
-                  quotesStarted: stats.quotesStarted,
-                  quotesCompleted: stats.quotesCompleted,
-                  quotesAbandoned: stats.quotesAbandoned,
-                  completionRate:
-                    stats.quotesStarted > 0
-                      ? Math.round((stats.quotesCompleted / stats.quotesStarted) * 100)
-                      : 0,
-                  lastActivity: stats.lastActivity,
-                  quoteTypes: stats.quoteTypes,
-                }
-              : null,
+            stats: stats ? formatBehaviorClientStats(stats) : null,
           };
         });
 

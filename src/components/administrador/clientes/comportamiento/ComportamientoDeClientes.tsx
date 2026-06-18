@@ -251,6 +251,30 @@ function normalizeClientDetail(raw: ClientDetail): ClientDetail {
   };
 }
 
+/** KPIs de cotizaciones con resultado — misma base que las summary cards. */
+function getQuoteOutcomeStats(stats: ClientStats | null) {
+  if (!stats) {
+    return {
+      completed: 0,
+      abandoned: 0,
+      totalWithOutcome: 0,
+      completionRate: 0,
+    };
+  }
+  const completed = stats.quotesCompleted;
+  const abandoned = stats.quotesAbandoned;
+  const totalWithOutcome = completed + abandoned;
+  return {
+    completed,
+    abandoned,
+    totalWithOutcome,
+    completionRate:
+      totalWithOutcome > 0
+        ? Math.round((completed / totalWithOutcome) * 100)
+        : 0,
+  };
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
 // INDIVIDUAL CLIENT ANALYTICS PANEL
 // ══════════════════════════════════════════════════════════════════════════════
@@ -845,11 +869,11 @@ export default function ComportamientoDeClientes({
   );
 
   const totalCompleted = clients.reduce(
-    (s, c) => s + (c.stats?.quotesCompleted || 0),
+    (s, c) => s + getQuoteOutcomeStats(c.stats).completed,
     0,
   );
   const totalAbandoned = clients.reduce(
-    (s, c) => s + (c.stats?.quotesAbandoned || 0),
+    (s, c) => s + getQuoteOutcomeStats(c.stats).abandoned,
     0,
   );
   const overallRate =
@@ -2205,7 +2229,9 @@ export default function ComportamientoDeClientes({
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {sortedClients.map((client) => (
+          {sortedClients.map((client) => {
+            const quoteStats = getQuoteOutcomeStats(client.stats);
+            return (
             <div
               key={`${client.email}-${client.username}`}
               onClick={() => openClientDetail(client)}
@@ -2274,9 +2300,7 @@ export default function ComportamientoDeClientes({
               </div>
 
               {/* Stats */}
-              {client.stats &&
-                (client.stats.quotesCompleted > 0 ||
-                  client.stats.quotesAbandoned > 0) ? (
+              {client.stats && quoteStats.totalWithOutcome > 0 ? (
                 <>
                   {/* Quote types */}
                   <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
@@ -2310,13 +2334,13 @@ export default function ComportamientoDeClientes({
                     <span>
                       Completadas:{" "}
                       <strong style={{ color: "#10b981" }}>
-                        {client.stats.quotesCompleted}
+                        {quoteStats.completed}
                       </strong>
                     </span>
                     <span>
                       Abandonadas:{" "}
                       <strong style={{ color: "#ef4444" }}>
-                        {client.stats.quotesAbandoned}
+                        {quoteStats.abandoned}
                       </strong>
                     </span>
                   </div>
@@ -2328,14 +2352,14 @@ export default function ComportamientoDeClientes({
                         fontSize: 14,
                         fontWeight: 700,
                         color:
-                          client.stats.completionRate >= 70
+                          quoteStats.completionRate >= 70
                             ? "#10b981"
-                            : client.stats.completionRate >= 40
+                            : quoteStats.completionRate >= 40
                               ? "#f59e0b"
                               : "#ef4444",
                       }}
                     >
-                      {client.stats.completionRate}%
+                      {quoteStats.completionRate}%
                     </span>
                   </div>
 
@@ -2358,7 +2382,8 @@ export default function ComportamientoDeClientes({
                 </span>
               )}
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -2432,23 +2457,23 @@ export default function ComportamientoDeClientes({
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {clients
                 .filter((c) => {
-                  if (!c.stats) return false;
-                  if (modalType === "completadas")
-                    return c.stats.quotesCompleted > 0;
-                  return c.stats.quotesAbandoned > 0;
+                  const stats = getQuoteOutcomeStats(c.stats);
+                  if (modalType === "completadas") return stats.completed > 0;
+                  return stats.abandoned > 0;
                 })
                 .sort((a, b) => {
                   const getVal = (c: ClientBehavior) =>
                     modalType === "completadas"
-                      ? c.stats!.quotesCompleted
-                      : c.stats!.quotesAbandoned;
+                      ? getQuoteOutcomeStats(c.stats).completed
+                      : getQuoteOutcomeStats(c.stats).abandoned;
                   return getVal(b) - getVal(a);
                 })
                 .map((client) => {
+                  const quoteStats = getQuoteOutcomeStats(client.stats);
                   const val =
                     modalType === "completadas"
-                      ? client.stats!.quotesCompleted
-                      : client.stats!.quotesAbandoned;
+                      ? quoteStats.completed
+                      : quoteStats.abandoned;
                   const valColor =
                     modalType === "completadas" ? "#10b981" : "#ef4444";
                   return (
