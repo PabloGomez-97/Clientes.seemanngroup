@@ -706,7 +706,7 @@ export default function ComportamientoDeClientes({
           const data = await resp.json().catch(() => ({}));
           throw new Error(
             (data as { error?: string })?.error ||
-              "Error al cargar temperatura de clientes",
+            "Error al cargar temperatura de clientes",
           );
         }
         const data = (await resp.json()) as TemperatureSummary;
@@ -2275,8 +2275,8 @@ export default function ComportamientoDeClientes({
 
               {/* Stats */}
               {client.stats &&
-              (client.stats.quotesCompleted > 0 ||
-                client.stats.quotesAbandoned > 0) ? (
+                (client.stats.quotesCompleted > 0 ||
+                  client.stats.quotesAbandoned > 0) ? (
                 <>
                   {/* Quote types */}
                   <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
