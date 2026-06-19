@@ -25,11 +25,16 @@ import {
 import "./OceanShipmentsView.css";
 import { linbisFetch } from "@/services/linbisFetch";
 import {
-  buildLinbisListParams,
   consigneeMatches,
   fetchShippingOrderTrackingIndex,
-  LINBIS_PAGE_SIZE,
 } from "@/services/linbisListFetch";
+import {
+  extractHbliFromCharges,
+  extractHbliFromCommodities,
+  fetchQuoteProfitIndex,
+  lookupQuoteFromProfitIndex,
+  type QuoteProfitIndex,
+} from "@/services/linbisQuoteLookup";
 import { mapLinbisOceanToShippingOrder } from "@/services/linbisShipmentMappers";
 import {
   type ShipsgoEtaEntry,
@@ -100,6 +105,9 @@ interface HBLICacheEntry {
   fetched: boolean;
   hbliNumber: string | null;
   containerNumber: string | null;
+  quoteNumber: string | null;
+  quoteLoading: boolean;
+  quoteFetched: boolean;
 }
 
 interface TrackingNumberCacheEntry {
@@ -108,10 +116,10 @@ interface TrackingNumberCacheEntry {
   byNumber: Record<string, string>;
 }
 
-interface QuoteNumberCacheEntry {
+interface ProfitIndexCacheEntry {
   loading: boolean;
   fetched: boolean;
-  quoteNumber: string | null;
+  index: QuoteProfitIndex;
 }
 
 /* -- DetailTabs  -------------------------------------------- */
@@ -201,9 +209,14 @@ function FieldGridCell({
   );
 }
 
+interface QuoteDisplayState {
+  loading: boolean;
+  quoteNumber: string | null;
+}
+
 interface OceanGeneralTabContentProps {
   shipment: OceanShippingOrder;
-  quoteEntry: QuoteNumberCacheEntry | undefined;
+  quoteDisplay: QuoteDisplayState;
   hbliEntry: HBLICacheEntry | undefined;
   renderAccordionArrivalDate: () => React.ReactNode;
   getHBLIFromShipment: (s: OceanShippingOrder) => string | null;
@@ -219,7 +232,7 @@ interface OceanGeneralTabContentProps {
 
 function OceanGeneralTabContent({
   shipment,
-  quoteEntry,
+  quoteDisplay,
   hbliEntry,
   renderAccordionArrivalDate,
   getHBLIFromShipment,
@@ -252,21 +265,21 @@ function OceanGeneralTabContent({
           label="Referencia cliente"
           value={shipment.customerReference}
         />
-        {quoteEntry?.loading ? (
+        {quoteDisplay.loading ? (
           <FieldGridCell label="Número de cotización" value="Cargando..." />
-        ) : quoteEntry?.quoteNumber ? (
+        ) : quoteDisplay.quoteNumber ? (
           <FieldGridCell label="Número de cotización">
             <span
               className="osv-field-cell__value osv-field-cell__value--accent"
               onClick={(e) => {
                 e.stopPropagation();
-                onOpenQuote(quoteEntry.quoteNumber!);
+                onOpenQuote(quoteDisplay.quoteNumber!);
               }}
               role="button"
               tabIndex={0}
               title="Ver cotización"
             >
-              {quoteEntry.quoteNumber}
+              {quoteDisplay.quoteNumber}
             </span>
           </FieldGridCell>
         ) : (
@@ -418,7 +431,7 @@ interface OceanShipmentDetailPanelProps {
   formatDateInline: (dateString?: string | null) => string;
   effectiveArrivalDate: string | null | undefined;
   effectiveArrivalIsShipsgo: boolean;
-  quoteEntry: QuoteNumberCacheEntry | undefined;
+  quoteDisplay: QuoteDisplayState;
   hbliEntry: HBLICacheEntry | undefined;
   renderAccordionArrivalDate: () => React.ReactNode;
   getHBLIFromShipment: (s: OceanShippingOrder) => string | null;
@@ -440,7 +453,7 @@ function OceanShipmentDetailPanel({
   formatDateInline,
   effectiveArrivalDate,
   effectiveArrivalIsShipsgo,
-  quoteEntry,
+  quoteDisplay,
   hbliEntry,
   renderAccordionArrivalDate,
   getHBLIFromShipment,
@@ -535,7 +548,7 @@ function OceanShipmentDetailPanel({
                 content: (
                   <OceanGeneralTabContent
                     shipment={shipment}
-                    quoteEntry={quoteEntry}
+                    quoteDisplay={quoteDisplay}
                     hbliEntry={hbliEntry}
                     renderAccordionArrivalDate={renderAccordionArrivalDate}
                     getHBLIFromShipment={getHBLIFromShipment}
@@ -706,10 +719,11 @@ function OceanShipmentsView({
     [accessToken, activeUsername, refreshAccessToken],
   );
 
-  // Quote number cache
-  const [quoteNumberCache, setQuoteNumberCache] = useState<
-    Record<string, QuoteNumberCacheEntry>
-  >({});
+  const [profitIndex, setProfitIndex] = useState<ProfitIndexCacheEntry>({
+    loading: false,
+    fetched: false,
+    index: { byHbli: {}, bySog: {}, byShipmentId: {} },
+  });
 
   const [showingAll, setShowingAll] = useState(false);
 
@@ -983,19 +997,42 @@ function OceanShipmentsView({
 
   /* -- Synchronous HBLI helper: reads from already-loaded charges[] --- */
   const getHBLIFromShipment = (shipment: OceanShippingOrder): string | null => {
-    if (!Array.isArray(shipment.charges)) return null;
-    for (const charge of shipment.charges) {
-      const ref: string | undefined = charge.income?.reference;
-      if (typeof ref === "string" && ref.toUpperCase().startsWith("HBLI")) {
-        return ref;
-      }
-    }
+    const fromCharges = extractHbliFromCharges(shipment.charges);
+    if (fromCharges) return fromCharges;
+    const number = shipment.number?.trim() ?? "";
+    if (number.toUpperCase().startsWith("HBLI")) return number;
     return null;
   };
 
-  /* -- HBLI fetch: finds container/tracking number via /commodities chain */
-  const fetchHBLIForShipment = useCallback(
-    async (sogNumber: string) => {
+  const resolveShipmentHbli = useCallback(
+    (shipment: OceanShippingOrder): string | null =>
+      getHBLIFromShipment(shipment) ??
+      hbliCache[shipment.number]?.hbliNumber ??
+      null,
+    [hbliCache],
+  );
+
+  const getQuoteDisplayState = useCallback(
+    (shipment: OceanShippingOrder) => {
+      const cache = hbliCache[shipment.number];
+      const hbli = resolveShipmentHbli(shipment);
+      const quoteNumber =
+        cache?.quoteNumber ??
+        (profitIndex.fetched
+          ? lookupQuoteFromProfitIndex(profitIndex.index, {
+              hbli,
+              sogNumber: shipment.number,
+              shipmentId: shipment.id,
+            })
+          : null);
+      return { quoteNumber, loading: !!cache?.quoteLoading };
+    },
+    [hbliCache, profitIndex, resolveShipmentHbli],
+  );
+
+  /* -- HBLI fetch (tracking): commodities chain, sin búsqueda de QUO */
+  const fetchHbliModuleForShipment = useCallback(
+    async (sogNumber: string, shipment?: OceanShippingOrder) => {
       if (!accessToken) return;
       if (hbliCache[sogNumber]?.fetched || hbliCache[sogNumber]?.loading)
         return;
@@ -1005,13 +1042,35 @@ function OceanShipmentsView({
         [sogNumber]: {
           loading: true,
           fetched: false,
-          hbliNumber: null,
-          containerNumber: null,
+          hbliNumber: prev[sogNumber]?.hbliNumber ?? null,
+          containerNumber: prev[sogNumber]?.containerNumber ?? null,
+          quoteNumber: prev[sogNumber]?.quoteNumber ?? null,
+          quoteLoading: prev[sogNumber]?.quoteLoading ?? false,
+          quoteFetched: prev[sogNumber]?.quoteFetched ?? false,
         },
       }));
 
+      const finishHbli = (
+        entry: Pick<
+          HBLICacheEntry,
+          "hbliNumber" | "containerNumber"
+        >,
+      ) => {
+        setHbliCache((prev) => ({
+          ...prev,
+          [sogNumber]: {
+            loading: false,
+            fetched: true,
+            hbliNumber: entry.hbliNumber,
+            containerNumber: entry.containerNumber,
+            quoteNumber: prev[sogNumber]?.quoteNumber ?? null,
+            quoteLoading: prev[sogNumber]?.quoteLoading ?? false,
+            quoteFetched: prev[sogNumber]?.quoteFetched ?? false,
+          },
+        }));
+      };
+
       try {
-        // Step 1: Get commodities for this SOG number
         const resp1 = await linbisFetch(
           `https://api.linbis.com/commodities?Number=${encodeURIComponent(sogNumber)}&PageNumber=1&PageSize=5`,
           {
@@ -1026,15 +1085,7 @@ function OceanShipmentsView({
         );
 
         if (!resp1.ok) {
-          setHbliCache((prev) => ({
-            ...prev,
-            [sogNumber]: {
-              loading: false,
-              fetched: true,
-              hbliNumber: null,
-              containerNumber: null,
-            },
-          }));
+          finishHbli({ hbliNumber: null, containerNumber: null });
           return;
         }
 
@@ -1042,33 +1093,16 @@ function OceanShipmentsView({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const items1: any[] = data1.items || [];
         if (items1.length === 0) {
-          setHbliCache((prev) => ({
-            ...prev,
-            [sogNumber]: {
-              loading: false,
-              fetched: true,
-              hbliNumber: null,
-              containerNumber: null,
-            },
-          }));
+          finishHbli({ hbliNumber: null, containerNumber: null });
           return;
         }
 
         const moduleId = items1[0].moduleId;
         if (!moduleId) {
-          setHbliCache((prev) => ({
-            ...prev,
-            [sogNumber]: {
-              loading: false,
-              fetched: true,
-              hbliNumber: null,
-              containerNumber: null,
-            },
-          }));
+          finishHbli({ hbliNumber: null, containerNumber: null });
           return;
         }
 
-        // Step 2: Get commodities by module
         const resp2 = await linbisFetch(
           `https://api.linbis.com/commodities/by-module/${moduleId}?pageNumber=1&pageSize=50`,
           {
@@ -1083,72 +1117,98 @@ function OceanShipmentsView({
         );
 
         if (!resp2.ok) {
-          setHbliCache((prev) => ({
-            ...prev,
-            [sogNumber]: {
-              loading: false,
-              fetched: true,
-              hbliNumber: null,
-              containerNumber: null,
-            },
-          }));
+          finishHbli({ hbliNumber: null, containerNumber: null });
           return;
         }
 
         const data2 = await resp2.json();
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const items2: any[] = data2.items || [];
+        const items2: unknown[] = data2.items || [];
+        const { hbliNumber, containerNumber } =
+          extractHbliFromCommodities(items2);
+        const hbliFromCharges = shipment
+          ? getHBLIFromShipment(shipment)
+          : null;
 
-        // Find item whose number starts with HBLI
-        const hbliItem = items2.find(
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (item: any) =>
-            typeof item.number === "string" &&
-            item.number.toUpperCase().startsWith("HBLI"),
-        );
-
-        let hbliNumber: string | null = null;
-        let containerNumber: string | null = null;
-
-        if (hbliItem) {
-          hbliNumber = hbliItem.number;
-          const description: string | null = hbliItem.description || null;
-          // Extract container number from description (4 letters + 7 digits)
-          if (description) {
-            const lines = description.split("\n");
-            for (const line of lines) {
-              const trimmed = line.trim();
-              if (/^[A-Z]{4}[0-9]{7}$/.test(trimmed)) {
-                containerNumber = trimmed;
-                break;
-              }
-            }
-          }
-        }
-
-        setHbliCache((prev) => ({
-          ...prev,
-          [sogNumber]: {
-            loading: false,
-            fetched: true,
-            hbliNumber,
-            containerNumber,
-          },
-        }));
+        finishHbli({
+          hbliNumber: hbliNumber ?? hbliFromCharges,
+          containerNumber,
+        });
       } catch (err) {
         console.error("Error fetching HBLI:", err);
-        setHbliCache((prev) => ({
-          ...prev,
-          [sogNumber]: {
-            loading: false,
-            fetched: true,
-            hbliNumber: null,
-            containerNumber: null,
-          },
-        }));
+        finishHbli({ hbliNumber: null, containerNumber: null });
       }
     },
     [accessToken, refreshAccessToken, hbliCache],
+  );
+
+  /* -- QUO fetch: solo GET /Quotes/Profit al seleccionar una operación */
+  const fetchQuoteForShipment = useCallback(
+    async (sogNumber: string, shipment: OceanShippingOrder) => {
+      if (!accessToken) return;
+
+      const existing = hbliCache[sogNumber];
+      if (existing?.quoteLoading) return;
+      if (existing?.quoteFetched && existing.quoteNumber) return;
+
+      setHbliCache((prev) => ({
+        ...prev,
+        [sogNumber]: {
+          loading: prev[sogNumber]?.loading ?? false,
+          fetched: prev[sogNumber]?.fetched ?? false,
+          hbliNumber:
+            prev[sogNumber]?.hbliNumber ??
+            getHBLIFromShipment(shipment) ??
+            null,
+          containerNumber: prev[sogNumber]?.containerNumber ?? null,
+          quoteNumber: prev[sogNumber]?.quoteNumber ?? null,
+          quoteLoading: true,
+          quoteFetched: false,
+        },
+      }));
+
+      const finishQuote = (quoteNumber: string | null) => {
+        setHbliCache((prev) => ({
+          ...prev,
+          [sogNumber]: {
+            loading: prev[sogNumber]?.loading ?? false,
+            fetched: prev[sogNumber]?.fetched ?? false,
+            hbliNumber:
+              prev[sogNumber]?.hbliNumber ??
+              getHBLIFromShipment(shipment) ??
+              null,
+            containerNumber: prev[sogNumber]?.containerNumber ?? null,
+            quoteNumber,
+            quoteLoading: false,
+            quoteFetched: true,
+          },
+        }));
+      };
+
+      try {
+        let profit = profitIndex.index;
+        if (!profitIndex.fetched) {
+          profit = await fetchQuoteProfitIndex({
+            accessToken,
+            refreshAccessToken,
+          });
+          setProfitIndex({ loading: false, fetched: true, index: profit });
+        }
+
+        const hbli = resolveShipmentHbli(shipment);
+
+        const quoteNumber = lookupQuoteFromProfitIndex(profit, {
+          hbli,
+          sogNumber,
+          shipmentId: shipment.id,
+        });
+
+        finishQuote(quoteNumber);
+      } catch (err) {
+        console.error("Error fetching QUO from /Quotes/Profit:", err);
+        finishQuote(null);
+      }
+    },
+    [accessToken, refreshAccessToken, hbliCache, profitIndex, resolveShipmentHbli],
   );
 
   useEffect(() => {
@@ -1159,80 +1219,15 @@ function OceanShipmentsView({
         !shipment.bookingNumber &&
         shipment.number
       ) {
-        void fetchHBLIForShipment(shipment.number);
+        void fetchHbliModuleForShipment(shipment.number, shipment);
       }
     }
-  }, [accessToken, paginatedShipments, fetchHBLIForShipment, trackingIndex]);
-
-  /* -- Quote number fetch (lazy on accordion open) ---------- */
-  const fetchQuoteNumberForShipment = useCallback(
-    async (sogNumber: string, customerReference: string | null | undefined) => {
-      if (!accessToken || !activeUsername) return;
-      if (
-        quoteNumberCache[sogNumber]?.fetched ||
-        quoteNumberCache[sogNumber]?.loading
-      )
-        return;
-
-      if (!customerReference) {
-        setQuoteNumberCache((prev) => ({
-          ...prev,
-          [sogNumber]: { loading: false, fetched: true, quoteNumber: null },
-        }));
-        return;
-      }
-
-      setQuoteNumberCache((prev) => ({
-        ...prev,
-        [sogNumber]: { loading: true, fetched: false, quoteNumber: null },
-      }));
-
-      try {
-        const quoteParams = buildLinbisListParams(
-          activeUsername,
-          1,
-          LINBIS_PAGE_SIZE,
-        );
-        const resp = await linbisFetch(
-          `https://api.linbis.com/Quotes?${quoteParams}`,
-          {
-            method: "GET",
-            headers: {
-              Accept: "application/json",
-              "Content-Type": "application/json",
-            },
-          },
-          accessToken,
-          refreshAccessToken,
-        );
-        if (!resp.ok) throw new Error(`Status ${resp.status}`);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const data: any = await resp.json();
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const items: any[] = data.items ?? data ?? [];
-        const match = items.find(
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (q: any) =>
-            q.customerReference?.trim().toLowerCase() ===
-            customerReference.trim().toLowerCase(),
-        );
-        setQuoteNumberCache((prev) => ({
-          ...prev,
-          [sogNumber]: {
-            loading: false,
-            fetched: true,
-            quoteNumber: match?.number ?? null,
-          },
-        }));
-      } catch {
-        setQuoteNumberCache((prev) => ({
-          ...prev,
-          [sogNumber]: { loading: false, fetched: true, quoteNumber: null },
-        }));
-      }
-    },
-    [accessToken, refreshAccessToken, quoteNumberCache, activeUsername],
-  );
+  }, [
+    accessToken,
+    paginatedShipments,
+    fetchHbliModuleForShipment,
+    trackingIndex,
+  ]);
 
   /* -- API: Fetch ocean shipments via shipping-orders ------- */
   const readOceanAllCache = (): unknown[] | null => {
@@ -1489,7 +1484,11 @@ function OceanShipmentsView({
 
   useEffect(() => {
     setHbliCache({});
-    setQuoteNumberCache({});
+    setProfitIndex({
+      loading: false,
+      fetched: false,
+      index: { byHbli: {}, bySog: {}, byShipmentId: {} },
+    });
     setTrackedOceanNumbers(new Set());
     setShipsgoArrivalByNumber({});
   }, [activeUsername]);
@@ -1560,8 +1559,8 @@ function OceanShipmentsView({
         return id === shipmentId;
       });
     if (shipment?.number) {
-      fetchHBLIForShipment(shipment.number);
-      fetchQuoteNumberForShipment(shipment.number, shipment.customerReference);
+      void fetchHbliModuleForShipment(shipment.number, shipment);
+      void fetchQuoteForShipment(shipment.number, shipment);
     }
   };
 
@@ -1950,6 +1949,11 @@ function OceanShipmentsView({
     localStorage.removeItem(OCEAN_ALL_CACHE_KEY);
     localStorage.removeItem(OCEAN_ALL_CACHE_TS_KEY);
     loadTrackingIndex();
+    setProfitIndex({
+      loading: false,
+      fetched: false,
+      index: { byHbli: {}, bySog: {}, byShipmentId: {} },
+    });
     setOceanShipments([]);
     setDisplayedOceanShipments([]);
     fetchOceanShipments();
@@ -2475,7 +2479,7 @@ function OceanShipmentsView({
                 effectiveArrivalIsShipsgo={isOceanArrivalFromShipsgo(
                   selectedShipment,
                 )}
-                quoteEntry={quoteNumberCache[selectedShipment.number]}
+                quoteDisplay={getQuoteDisplayState(selectedShipment)}
                 hbliEntry={hbliCache[selectedShipment.number]}
                 renderAccordionArrivalDate={() =>
                   renderAccordionArrivalDate(selectedShipment)
