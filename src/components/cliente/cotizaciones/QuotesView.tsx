@@ -1142,6 +1142,7 @@ function QuotesView({
   // Tracks whether an external filter (from initial prop / navigation state) is active
   // Using a ref avoids stale-closure issues inside the quick-search setTimeout
   const externalFilterApplied = React.useRef(false);
+  const appliedInitialQuoteFilterRef = React.useRef("");
 
   // Search
   const [quickSearch, setQuickSearch] = useState("");
@@ -1881,12 +1882,16 @@ function QuotesView({
       ?.quoteFilter;
     const quoteFilter =
       filterFromProp || filterFromState || legacyFilterFromState;
-    if (!quoteFilter || quotes.length === 0) return;
+    const trimmedFilter = quoteFilter?.trim();
+    if (!trimmedFilter || quotes.length === 0) return;
+    if (appliedInitialQuoteFilterRef.current === trimmedFilter) return;
+
+    appliedInitialQuoteFilterRef.current = trimmedFilter;
 
     // Lock: prevent the quick-search effect from resetting this filter
     externalFilterApplied.current = true;
-    setFilterNumber(quoteFilter);
-    const term = quoteFilter.trim().toLowerCase();
+    setFilterNumber(trimmedFilter);
+    const term = trimmedFilter.toLowerCase();
     const filtered = quotes.filter((q) =>
       toSortableText(q.number).includes(term) ||
       toSortableText(q.customerReference).includes(term),
@@ -1894,6 +1899,14 @@ function QuotesView({
     setDisplayedQuotes(filtered);
     setShowingAll(true);
     setTablePage(1);
+
+    if (filtered.length > 0) {
+      const firstQuote = filtered[0];
+      const quoteIndex = quotes.indexOf(firstQuote);
+      setSelectedQuoteId(
+        getQuoteRowId(firstQuote, quoteIndex >= 0 ? quoteIndex : 0),
+      );
+    }
 
     // Clear location state so it doesn't re-apply on re-renders
     if (filterFromState) {

@@ -1574,25 +1574,20 @@ function OceanShipmentsView({
   }, [activeUsername]);
 
   const toggleShipmentSelection = (shipmentId: string | number) => {
-    if (selectedShipmentId === shipmentId) {
-      setSelectedShipmentId(null);
-      return;
-    }
-
-    setSelectedShipmentId(shipmentId);
-    const shipment =
-      paginatedShipments.find(
-        (sh, index) => getShipmentRowId(sh, index) === shipmentId,
-      ) ??
-      displayedOceanShipments.find((sh) => {
-        const id = sh.id || sh.number;
-        return id === shipmentId;
-      });
-    if (shipment?.number) {
-      void fetchHbliModuleForShipment(shipment.number, shipment);
-      void fetchQuoteForShipment(shipment.number, shipment);
-    }
+    setSelectedShipmentId((prev) => (prev === shipmentId ? null : shipmentId));
   };
+
+  useEffect(() => {
+    if (!selectedShipment?.number || !accessToken) return;
+
+    void fetchHbliModuleForShipment(selectedShipment.number, selectedShipment);
+    void fetchQuoteForShipment(selectedShipment.number, selectedShipment);
+  }, [
+    selectedShipment,
+    accessToken,
+    fetchHbliModuleForShipment,
+    fetchQuoteForShipment,
+  ]);
 
   /* -- Tracking helpers ------------------------------------- */
   const getTrackOceanNumber = (shipment: OceanShippingOrder | null) => {

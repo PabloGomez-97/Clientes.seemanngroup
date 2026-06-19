@@ -1400,22 +1400,19 @@ function AirShipmentsView({
   }, [loadTrackingIndex, activeUsername]);
 
   const toggleShipmentSelection = (shipmentId: string | number) => {
-    if (selectedShipmentId === shipmentId) {
-      setSelectedShipmentId(null);
-      return;
-    }
-
-    setSelectedShipmentId(shipmentId);
-    const shipment =
-      paginatedShipments.find(
-        (sh, index) => getShipmentRowId(sh, index) === shipmentId,
-      ) ??
-      shipments.find((sh) => (sh.id || sh.number) === shipmentId);
-    if (shipment) {
-      void fetchRouteForShipment(shipment);
-      fetchQuoteNumber(shipmentId, shipment);
-    }
+    setSelectedShipmentId((prev) => (prev === shipmentId ? null : shipmentId));
   };
+
+  useEffect(() => {
+    if (!selectedShipment || selectedShipmentIndex < 0 || !accessToken) return;
+
+    const shipmentId = getShipmentRowId(
+      selectedShipment,
+      selectedShipmentIndex,
+    );
+    void fetchRouteForShipment(selectedShipment);
+    void fetchQuoteNumber(shipmentId, selectedShipment);
+  }, [selectedShipment, selectedShipmentIndex, accessToken]);
 
   useEffect(() => {
     setCargoDetailsCache({});
@@ -2410,14 +2407,14 @@ function AirShipmentsView({
                   selectedShipment,
                 )}
                 cargoDetail={
-                  selectedShipment.id != null
-                    ? cargoDetailsCache[selectedShipment.id]
-                    : undefined
+                  cargoDetailsCache[
+                    getShipmentRowId(selectedShipment, selectedShipmentIndex)
+                  ]
                 }
                 quoteEntry={
-                  selectedShipment.id != null
-                    ? quoteNumberCache[selectedShipment.id]
-                    : undefined
+                  quoteNumberCache[
+                    getShipmentRowId(selectedShipment, selectedShipmentIndex)
+                  ]
                 }
                 renderAccordionArrivalDate={() =>
                   renderAccordionArrivalDate(selectedShipment)
