@@ -6,6 +6,8 @@ export interface DocItem {
   tipoArchivo: string;
   tamanoMB: string;
   fechaSubida: string;
+  scope?: "cotizacion" | "operacional";
+  modoOperacional?: "aereo" | "maritimo" | null;
 }
 
 export type TransportType = "all" | "air" | "ocean" | "ground" | "quotes";

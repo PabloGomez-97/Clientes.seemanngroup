@@ -24,7 +24,13 @@ import {
   getExpiryBucketCounts,
 } from './services/pricingAlertSender.js';
 import { buildR2Key, uploadPDF, downloadPDFBuffer, deleteAllUserPDFs } from './services/r2Storage.js';
-import { buildDocR2Key, uploadDocument, downloadDocumentBuffer, deleteDocument } from './services/r2DocumentStorage.js';
+import { buildDocR2Key, buildQuoteDocR2Key, uploadDocument, downloadDocumentBuffer, deleteDocument } from './services/r2DocumentStorage.js';
+import {
+  TIPOS_DOCUMENTO_COTIZACION,
+  TIPOS_DOCUMENTO_OPERACIONAL_AEREO,
+  TIPOS_DOCUMENTO_OPERACIONAL_MARITIMO,
+  type QuoteOperacionalModo,
+} from './constants/quoteDocuments.js';
 import { resolveEjecutivoForEmail, loadQuotePdfAttachment, loadQuotePdfAttachmentWithRetry, normalizeQuoteResendEmails } from './utils/operationEmailHelpers.js';
 import { authorizeBehaviorTrackingPost, clientBelongsToEjecutivo, resolveEjecutivoObjectId } from '../lib/behavior-tracking-auth.js';
 import {
@@ -741,7 +747,40 @@ function mapDocumentSummary(doc: any) {
     tipoArchivo: doc.tipoArchivo,
     tamanoMB: (bytes / (1024 * 1024)).toFixed(2),
     fechaSubida: doc.createdAt,
+    scope: doc.scope || 'cotizacion',
+    modoOperacional: doc.modoOperacional || null,
   };
+}
+
+function buildCotizacionDocumentQuery(quoteNumber: string, ownerUsername: string) {
+  return {
+    quoteId: String(quoteNumber),
+    $or: [{ scope: 'cotizacion' as const }, { scope: { $exists: false } }],
+    ...buildDocumentOwnerScopeQuery(ownerUsername),
+  };
+}
+
+function buildOperacionalDocumentQuery(
+  quoteNumber: string,
+  ownerUsername: string,
+  modo: QuoteOperacionalModo,
+) {
+  return {
+    quoteId: String(quoteNumber),
+    scope: 'operacional' as const,
+    modoOperacional: modo,
+    ...buildDocumentOwnerScopeQuery(ownerUsername),
+  };
+}
+
+function getOperacionalTiposPermitidos(modo: QuoteOperacionalModo): readonly string[] {
+  return modo === 'aereo'
+    ? TIPOS_DOCUMENTO_OPERACIONAL_AEREO
+    : TIPOS_DOCUMENTO_OPERACIONAL_MARITIMO;
+}
+
+function getOperacionalR2Subfolder(modo: QuoteOperacionalModo): 'aereo' | 'maritimo' {
+  return modo === 'aereo' ? 'aereo' : 'maritimo';
 }
 
 // ============================================================
@@ -1062,7 +1101,9 @@ const GroundShipmentDocumento =
 
 interface IDocumento {
   quoteId: string;
-  tipo: 'Orden de compra' | 'Invoice' | 'Packing List' | 'Certificado de Origen' | 'Póliza de seguro' | 'Guía de Despacho' | 'Declaración de Ingreso';
+  tipo: string;
+  scope?: 'cotizacion' | 'operacional';
+  modoOperacional?: QuoteOperacionalModo;
   nombreArchivo: string;
   tipoArchivo: string;
   tamanoBytes: number;
@@ -1082,10 +1123,16 @@ type DocumentoModel = mongoose.Model<IDocumentoDoc>;
 const DocumentoSchema = new mongoose.Schema<IDocumentoDoc>(
   {
     quoteId: { type: String, required: true, index: true },
-    tipo: { 
-      type: String, 
-      required: true,
-      enum: ['Orden de compra', 'Invoice', 'Packing List', 'Certificado de Origen', 'Póliza de seguro', 'Guía de Despacho', 'Declaración de Ingreso']
+    tipo: { type: String, required: true },
+    scope: {
+      type: String,
+      enum: ['cotizacion', 'operacional'],
+      default: 'cotizacion',
+      index: true,
+    },
+    modoOperacional: {
+      type: String,
+      enum: ['aereo', 'maritimo'],
     },
     nombreArchivo: { type: String, required: true },
     tipoArchivo: { type: String, required: true },
@@ -1099,6 +1146,7 @@ const DocumentoSchema = new mongoose.Schema<IDocumentoDoc>(
 );
 
 DocumentoSchema.index({ quoteId: 1, usuarioId: 1 });
+DocumentoSchema.index({ quoteId: 1, usuarioId: 1, scope: 1, modoOperacional: 1 });
 
 const Documento = (mongoose.models.Documento || 
   mongoose.model<IDocumentoDoc>('Documento', DocumentoSchema)) as DocumentoModel;
@@ -4337,6 +4385,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         const { quoteId, tipo, nombreArchivo, contenidoBase64 } = req.body;
+        const quoteNumber = String(quoteId);
 
         if (!quoteId || !tipo || !nombreArchivo || !contenidoBase64) {
           return res.status(400).json({ 
@@ -4344,7 +4393,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           });
         }
 
-        const tiposPermitidos = ['Orden de compra', 'Invoice', 'Packing List', 'Certificado de Origen', 'Póliza de seguro', 'Guía de Despacho', 'Declaración de Ingreso'];
+        const tiposPermitidos = [...TIPOS_DOCUMENTO_COTIZACION];
         if (!tiposPermitidos.includes(tipo)) {
           return res.status(400).json({ 
             error: `Tipo de documento inválido. Debe ser uno de: ${tiposPermitidos.join(', ')}` 
@@ -4382,13 +4431,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           : contenidoBase64;
         const fileBuffer = Buffer.from(base64Content, 'base64');
         const docId = new mongoose.Types.ObjectId();
-        const r2Key = buildDocR2Key('documentos', ownerUsername, String(quoteId), docId.toString(), String(nombreArchivo));
+        const r2Key = buildQuoteDocR2Key(
+          ownerUsername,
+          quoteNumber,
+          'cotizacion',
+          docId.toString(),
+          String(nombreArchivo),
+        );
 
         await uploadDocument(r2Key, fileBuffer, mimeType);
 
         const nuevoDocumento = await Documento.create({
           _id: docId,
-          quoteId: String(quoteId),
+          quoteId: quoteNumber,
+          scope: 'cotizacion',
           tipo,
           nombreArchivo: String(nombreArchivo),
           tipoArchivo: mimeType,
@@ -4404,7 +4460,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         sendDocumentUploadNotification({
           uploaderEmail: currentUser.sub,
           ownerUsername,
-          numero: String(quoteId),
+          numero: quoteNumber,
           tipoOperacion: 'Cotización',
           tipoDocumento: tipo,
           nombreArchivo: String(nombreArchivo),
@@ -4435,8 +4491,266 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
+    // POST /api/documentos/operacionales/upload
+    if (path === '/api/documentos/operacionales/upload' && method === 'POST') {
+      try {
+        const currentUser = requireAuth(req);
+        if (!currentUser?.sub || !currentUser?.username) {
+          return res.status(401).json({ error: 'Usuario no autenticado' });
+        }
+
+        const { quoteNumber, modo, tipo, nombreArchivo, contenidoBase64 } = req.body;
+        if (!quoteNumber || !modo || !tipo || !nombreArchivo || !contenidoBase64) {
+          return res.status(400).json({
+            error: 'Faltan campos requeridos: quoteNumber, modo, tipo, nombreArchivo, contenidoBase64',
+          });
+        }
+        if (modo !== 'aereo' && modo !== 'maritimo') {
+          return res.status(400).json({ error: 'modo debe ser aereo o maritimo' });
+        }
+
+        const tiposPermitidos = getOperacionalTiposPermitidos(modo);
+        if (!tiposPermitidos.includes(tipo)) {
+          return res.status(400).json({
+            error: `Tipo de documento inválido. Debe ser uno de: ${tiposPermitidos.join(', ')}`,
+          });
+        }
+        if (!validateBase64(contenidoBase64)) {
+          return res.status(400).json({ error: 'El archivo debe estar en formato base64 válido' });
+        }
+        const mimeType = getMimeTypeFromBase64(contenidoBase64);
+        if (!mimeType || !ALLOWED_MIME_TYPES.includes(mimeType)) {
+          return res.status(400).json({ error: 'Tipo de archivo no permitido. Solo PDF, Excel y Word' });
+        }
+        const fileSize = getBase64Size(contenidoBase64);
+        if (fileSize > MAX_FILE_SIZE) {
+          return res.status(400).json({
+            error: `El archivo excede el tamaño máximo de 5MB. Tamaño: ${(fileSize / 1024 / 1024).toFixed(2)}MB`,
+          });
+        }
+
+        const ownerUsername = await resolveDocumentOwnerUsername(
+          currentUser,
+          getRequestedDocumentOwnerUsername(req),
+        );
+
+        const base64Content = contenidoBase64.includes('base64,')
+          ? contenidoBase64.split('base64,')[1]
+          : contenidoBase64;
+        const fileBuffer = Buffer.from(base64Content, 'base64');
+        const docId = new mongoose.Types.ObjectId();
+        const r2Key = buildQuoteDocR2Key(
+          ownerUsername,
+          String(quoteNumber),
+          getOperacionalR2Subfolder(modo),
+          docId.toString(),
+          String(nombreArchivo),
+        );
+
+        await uploadDocument(r2Key, fileBuffer, mimeType);
+
+        const nuevoDocumento = await Documento.create({
+          _id: docId,
+          quoteId: String(quoteNumber),
+          scope: 'operacional',
+          modoOperacional: modo,
+          tipo,
+          nombreArchivo: String(nombreArchivo),
+          tipoArchivo: mimeType,
+          tamanoBytes: fileSize,
+          r2Key,
+          subidoPor: currentUser.sub,
+          usuarioId: ownerUsername,
+        });
+
+        sendDocumentUploadNotification({
+          uploaderEmail: currentUser.sub,
+          ownerUsername,
+          numero: String(quoteNumber),
+          tipoOperacion: modo === 'aereo' ? 'Cotización Aérea' : 'Cotización Marítima',
+          tipoDocumento: tipo,
+          nombreArchivo: String(nombreArchivo),
+        }).catch(() => {});
+
+        return res.status(201).json({
+          success: true,
+          message: 'Documento subido exitosamente',
+          documento: {
+            id: nuevoDocumento._id,
+            quoteId: nuevoDocumento.quoteId,
+            tipo: nuevoDocumento.tipo,
+            nombreArchivo: nuevoDocumento.nombreArchivo,
+            tipoArchivo: nuevoDocumento.tipoArchivo,
+            tamanoMB: (nuevoDocumento.tamanoBytes / 1024 / 1024).toFixed(2),
+            fechaSubida: nuevoDocumento.createdAt,
+          },
+        });
+      } catch (error: any) {
+        if (error?.message === 'No auth token' || error?.message === 'Invalid token') {
+          return res.status(401).json({ error: error.message });
+        }
+        console.error('[documentos-operacionales] Error al subir:', error);
+        return res.status(500).json({ error: 'Error interno al subir documento' });
+      }
+    }
+
+    // GET /api/documentos/operacionales/:quoteNumber?modo=aereo|maritimo
+    if (
+      path?.startsWith('/api/documentos/operacionales/') &&
+      !path.includes('/download/') &&
+      method === 'GET'
+    ) {
+      try {
+        const currentUser = requireAuth(req);
+        if (!currentUser?.username) {
+          return res.status(401).json({ error: 'Usuario no autenticado' });
+        }
+
+        const quoteNumber = path.split('/api/documentos/operacionales/')[1];
+        const modo = req.query?.modo as string;
+        if (!quoteNumber) {
+          return res.status(400).json({ error: 'quoteNumber es requerido' });
+        }
+        if (modo !== 'aereo' && modo !== 'maritimo') {
+          return res.status(400).json({ error: 'modo debe ser aereo o maritimo' });
+        }
+
+        const ownerUsername = await resolveDocumentOwnerUsername(
+          currentUser,
+          getRequestedDocumentOwnerUsername(req),
+        );
+
+        const documentos = await Documento.find(
+          buildOperacionalDocumentQuery(String(quoteNumber), ownerUsername, modo),
+        )
+          .select('-contenidoBase64')
+          .sort({ createdAt: -1 });
+
+        return res.json({
+          success: true,
+          documentos: documentos.map((doc) => ({
+            id: doc._id,
+            quoteId: doc.quoteId,
+            tipo: doc.tipo,
+            nombreArchivo: doc.nombreArchivo,
+            tipoArchivo: doc.tipoArchivo,
+            tamanoMB: (doc.tamanoBytes / 1024 / 1024).toFixed(2),
+            fechaSubida: doc.createdAt,
+          })),
+        });
+      } catch (error: any) {
+        if (error?.message === 'No auth token' || error?.message === 'Invalid token') {
+          return res.status(401).json({ error: error.message });
+        }
+        console.error('[documentos-operacionales] Error al obtener:', error);
+        return res.status(500).json({ error: 'Error interno al obtener documentos' });
+      }
+    }
+
+    // GET /api/documentos/operacionales/download/:documentoId
+    if (path?.startsWith('/api/documentos/operacionales/download/') && method === 'GET') {
+      try {
+        const currentUser = requireAuth(req);
+        if (!currentUser?.username) {
+          return res.status(401).json({ error: 'Usuario no autenticado' });
+        }
+
+        const documentoId = path.split('/api/documentos/operacionales/download/')[1];
+        const ownerUsername = await resolveDocumentOwnerUsername(
+          currentUser,
+          getRequestedDocumentOwnerUsername(req),
+        );
+
+        const documento = await Documento.findById(documentoId);
+        if (!documento || documento.scope !== 'operacional') {
+          return res.status(404).json({ error: 'Documento no encontrado' });
+        }
+        if (!documentBelongsToOwnerScope(documento, ownerUsername)) {
+          return res.status(403).json({ error: 'No tienes permiso para descargar este documento' });
+        }
+
+        if (documento.r2Key) {
+          const docBuffer = await downloadDocumentBuffer(documento.r2Key);
+          res.setHeader('Content-Type', documento.tipoArchivo);
+          res.setHeader(
+            'Content-Disposition',
+            `attachment; filename="${encodeURIComponent(documento.nombreArchivo)}"`,
+          );
+          return res.send(docBuffer);
+        }
+
+        if (documento.contenidoBase64) {
+          return res.json({
+            success: true,
+            documento: {
+              nombreArchivo: documento.nombreArchivo,
+              contenidoBase64: documento.contenidoBase64,
+            },
+          });
+        }
+
+        return res.status(404).json({ error: 'Contenido del documento no disponible' });
+      } catch (error: any) {
+        if (error?.message === 'No auth token' || error?.message === 'Invalid token') {
+          return res.status(401).json({ error: error.message });
+        }
+        console.error('[documentos-operacionales] Error al descargar:', error);
+        return res.status(500).json({ error: 'Error interno al descargar documento' });
+      }
+    }
+
+    // DELETE /api/documentos/operacionales/:documentoId
+    if (
+      path?.startsWith('/api/documentos/operacionales/') &&
+      !path.includes('/download/') &&
+      method === 'DELETE'
+    ) {
+      try {
+        const currentUser = requireAuth(req);
+        if (!currentUser?.username) {
+          return res.status(401).json({ error: 'Usuario no autenticado' });
+        }
+
+        const documentoId = path.split('/api/documentos/operacionales/')[1];
+        const ownerUsername = await resolveDocumentOwnerUsername(
+          currentUser,
+          getRequestedDocumentOwnerUsername(req),
+        );
+
+        const documento = await Documento.findById(documentoId);
+        if (!documento || documento.scope !== 'operacional') {
+          return res.status(404).json({ error: 'Documento no encontrado' });
+        }
+        if (!documentBelongsToOwnerScope(documento, ownerUsername)) {
+          return res.status(403).json({ error: 'No tienes permiso para eliminar este documento' });
+        }
+
+        if (documento.r2Key) {
+          try {
+            await deleteDocument(documento.r2Key);
+          } catch (r2Err) {
+            console.error('[documentos-operacionales] Error al eliminar de R2:', r2Err);
+          }
+        }
+
+        await Documento.findByIdAndDelete(documentoId);
+        return res.json({ success: true, message: 'Documento eliminado exitosamente' });
+      } catch (error: any) {
+        if (error?.message === 'No auth token' || error?.message === 'Invalid token') {
+          return res.status(401).json({ error: error.message });
+        }
+        console.error('[documentos-operacionales] Error al eliminar:', error);
+        return res.status(500).json({ error: 'Error interno al eliminar documento' });
+      }
+    }
+
     // GET /api/documentos/:quoteId - Obtener documentos de una cotización
-    if (path?.startsWith('/api/documentos/') && !path.includes('/download/') && method === 'GET') {
+    if (
+      path?.startsWith('/api/documentos/') &&
+      !path.includes('/download/') &&
+      !path.includes('/operacionales/') &&
+      method === 'GET'
+    ) {
       try {
         const currentUser = requireAuth(req);
         
@@ -4455,10 +4769,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           getRequestedDocumentOwnerUsername(req),
         );
 
-        const documentos = await Documento.find({ 
-          quoteId: String(quoteId),
-          ...buildDocumentOwnerScopeQuery(ownerUsername)
-        })
+        const documentos = await Documento.find(buildCotizacionDocumentQuery(String(quoteId), ownerUsername))
         .select('-contenidoBase64')
         .sort({ createdAt: -1 });
 
@@ -4561,7 +4872,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // DELETE /api/documentos/:documentoId - Eliminar documento
-    if (path?.startsWith('/api/documentos/') && !path.includes('/download/') && method === 'DELETE') {
+    if (
+      path?.startsWith('/api/documentos/') &&
+      !path.includes('/download/') &&
+      !path.includes('/operacionales/') &&
+      method === 'DELETE'
+    ) {
       try {
         const currentUser = requireAuth(req);
         

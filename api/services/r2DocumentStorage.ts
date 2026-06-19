@@ -36,6 +36,19 @@ export function buildDocR2Key(
 }
 
 /**
+ * R2 key for quote documents under documentos/{usuario}/{quoteNumber}/{subfolder}/.
+ */
+export function buildQuoteDocR2Key(
+  usuarioId: string,
+  quoteNumber: string,
+  subfolder: 'cotizacion' | 'aereo' | 'maritimo',
+  docId: string,
+  nombreArchivo: string,
+): string {
+  return `documentos/${encodeURIComponent(usuarioId)}/${encodeURIComponent(quoteNumber)}/${encodeURIComponent(subfolder)}/${docId}_${encodeURIComponent(nombreArchivo)}`;
+}
+
+/**
  * Upload a document (as Buffer) to R2.
  */
 export async function uploadDocument(

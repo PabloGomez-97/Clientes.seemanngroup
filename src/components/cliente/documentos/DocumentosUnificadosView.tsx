@@ -350,12 +350,18 @@ export function DocumentosUnificadosView({
 
                 quotes.forEach((quote: any) => {
                   const quoteId = normalizeText(String(quote?.id ?? ""));
-                  if (!quoteId || !quoteIds.has(quoteId)) return;
-
-                  nextMap[getReferenceKey("quotes", quoteId)] = {
-                    number: normalizeText(quote?.number),
+                  const quoteNumber = normalizeText(String(quote?.number ?? ""));
+                  const meta: ReferenceMeta = {
+                    number: quoteNumber,
                     customerReference: normalizeText(quote?.customerReference),
                   };
+
+                  if (quoteId && quoteIds.has(quoteId)) {
+                    nextMap[getReferenceKey("quotes", quoteId)] = meta;
+                  }
+                  if (quoteNumber && quoteIds.has(quoteNumber)) {
+                    nextMap[getReferenceKey("quotes", quoteNumber)] = meta;
+                  }
                 });
               } catch {
                 // Keep the fallback reference if the lookup fails.
@@ -592,14 +598,17 @@ export function DocumentosUnificadosView({
       setDownloadingId(doc.id);
 
       try {
+        const ownerQuery = `ownerUsername=${encodeURIComponent(ownerUsername)}`;
         const endpoint =
           doc._type === "air"
-            ? `/api/air-shipments/documentos/download/${doc.id}?ownerUsername=${encodeURIComponent(ownerUsername)}`
+            ? `/api/air-shipments/documentos/download/${doc.id}?${ownerQuery}`
             : doc._type === "ocean"
-              ? `/api/ocean-shipments/documentos/download/${doc.id}?ownerUsername=${encodeURIComponent(ownerUsername)}`
+              ? `/api/ocean-shipments/documentos/download/${doc.id}?${ownerQuery}`
               : doc._type === "ground"
-                ? `/api/ground-shipments/documentos/download/${doc.id}?ownerUsername=${encodeURIComponent(ownerUsername)}`
-                : `/api/documentos/download/${doc.id}?ownerUsername=${encodeURIComponent(ownerUsername)}`;
+                ? `/api/ground-shipments/documentos/download/${doc.id}?${ownerQuery}`
+                : doc.scope === "operacional"
+                  ? `/api/documentos/operacionales/download/${doc.id}?${ownerQuery}`
+                  : `/api/documentos/download/${doc.id}?${ownerQuery}`;
 
         const res = await fetch(endpoint, {
           headers: { Authorization: `Bearer ${token}` },
@@ -643,14 +652,17 @@ export function DocumentosUnificadosView({
       setDeletingId(doc.id);
 
       try {
+        const ownerQuery = `ownerUsername=${encodeURIComponent(ownerUsername)}`;
         const endpoint =
           doc._type === "air"
-            ? `/api/air-shipments/documentos/${doc.id}?ownerUsername=${encodeURIComponent(ownerUsername)}`
+            ? `/api/air-shipments/documentos/${doc.id}?${ownerQuery}`
             : doc._type === "ocean"
-              ? `/api/ocean-shipments/documentos/${doc.id}?ownerUsername=${encodeURIComponent(ownerUsername)}`
+              ? `/api/ocean-shipments/documentos/${doc.id}?${ownerQuery}`
               : doc._type === "ground"
-                ? `/api/ground-shipments/documentos/${doc.id}?ownerUsername=${encodeURIComponent(ownerUsername)}`
-                : `/api/documentos/${doc.id}?ownerUsername=${encodeURIComponent(ownerUsername)}`;
+                ? `/api/ground-shipments/documentos/${doc.id}?${ownerQuery}`
+                : doc.scope === "operacional"
+                  ? `/api/documentos/operacionales/${doc.id}?${ownerQuery}`
+                  : `/api/documentos/${doc.id}?${ownerQuery}`;
 
         const res = await fetch(endpoint, {
           method: "DELETE",
