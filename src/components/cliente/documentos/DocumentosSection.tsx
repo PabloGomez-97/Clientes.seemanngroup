@@ -67,15 +67,21 @@ export const DocumentosSection: React.FC<DocumentosSectionProps> = ({
   // CARGAR DOCUMENTOS AL MONTAR
   // ============================================================
 
+  const onCountChangeRef = useRef(onCountChange);
+  onCountChangeRef.current = onCountChange;
+
+  const lastReportedCountRef = useRef<number | null>(null);
+
   useEffect(() => {
     loadDocumentos();
   }, [quoteId, ownerUsername]);
 
   useEffect(() => {
-    if (onCountChange) {
-      onCountChange(documentos.length);
-    }
-  }, [documentos.length, onCountChange]);
+    const count = documentos.length;
+    if (lastReportedCountRef.current === count) return;
+    lastReportedCountRef.current = count;
+    onCountChangeRef.current?.(count);
+  }, [documentos.length]);
 
   const loadDocumentos = async () => {
     if (!token || !quoteId || !ownerUsername) return;
