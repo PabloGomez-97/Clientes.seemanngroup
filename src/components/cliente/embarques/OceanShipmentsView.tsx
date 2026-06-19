@@ -1020,10 +1020,10 @@ function OceanShipmentsView({
         cache?.quoteNumber ??
         (profitIndex.fetched
           ? lookupQuoteFromProfitIndex(profitIndex.index, {
-              hbli,
-              sogNumber: shipment.number,
-              shipmentId: shipment.id,
-            })
+            hbli,
+            sogNumber: shipment.number,
+            shipmentId: shipment.id,
+          })
           : null);
       return { quoteNumber, loading: !!cache?.quoteLoading };
     },
