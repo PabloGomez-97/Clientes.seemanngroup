@@ -1104,6 +1104,7 @@
     "tabNotes": "Notas",
     "quoteDetails": "Detalles de Cotización",
     "quoteNumber": "Número de Cotización",
+    "quoteOperationNumber": "Número de Operación",
     "issueDate": "Fecha de Emisión",
     "validUntil": "Válida Hasta",
     "logistics": "Logística",

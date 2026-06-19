@@ -505,31 +505,10 @@ function QuoteGeneralTabContent({
     <div className="qv-field-sections">
       <FieldGridSection title={t("quotesView.quoteDetails")}>
         <FieldGridCell label={t("quotesView.quoteNumber")} value={quote.number} />
-        <FieldGridCell
-          label={t("quotesView.issueDate")}
-          value={quote.date ? formatDateLong(quote.date) : null}
-        />
-        <FieldGridCell
-          label={t("quotesView.validUntil")}
-          value={
-            quote.validUntil_Date
-              ? formatDateLong(quote.validUntil_Date)
-              : null
-          }
-        />
-        <FieldGridCell
-          label={t("quotesView.customerRef")}
-          value={quote.customerReference}
-        />
-        <FieldGridCell
-          label={t("quotesView.carrierBroker")}
-          value={quote.carrierBroker}
-        />
-        <FieldGridCell label="ID interno" value={quote.id} />
         {operationNumberLoading ? (
-          <FieldGridCell label="Número de operación" value="Cargando..." />
+          <FieldGridCell label={t("quotesView.quoteOperationNumber")} value="Cargando..." />
         ) : canOpenShipment ? (
-          <FieldGridCell label="Número de operación">
+          <FieldGridCell label={t("quotesView.quoteOperationNumber")}>
             <span
               className="qv-field-cell__value qv-field-cell__value--accent"
               onClick={(e) => {
@@ -551,8 +530,29 @@ function QuoteGeneralTabContent({
             </span>
           </FieldGridCell>
         ) : (
-          <FieldGridCell label="Número de operación" value={operationNumber} />
+          <FieldGridCell label={t("quotesView.quoteOperationNumber")} value={operationNumber} />
         )}
+        <FieldGridCell
+          label={t("quotesView.issueDate")}
+          value={quote.date ? formatDateLong(quote.date) : null}
+        />
+        <FieldGridCell
+          label={t("quotesView.validUntil")}
+          value={
+            quote.validUntil_Date
+              ? formatDateLong(quote.validUntil_Date)
+              : null
+          }
+        />
+        <FieldGridCell
+          label={t("quotesView.customerRef")}
+          value={quote.customerReference}
+        />
+        <FieldGridCell
+          label={t("quotesView.carrierBroker")}
+          value={quote.carrierBroker}
+        />
+        <FieldGridCell label="ID interno" value={quote.id} />
       </FieldGridSection>
 
       <FieldGridSection title={t("quotesView.logistics")}>

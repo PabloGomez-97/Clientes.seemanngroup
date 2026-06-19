@@ -1103,6 +1103,7 @@
     "tabNotes": "Notes",
     "quoteDetails": "Quote Details",
     "quoteNumber": "Quote Number",
+    "quoteOperationNumber": "Operation Number",
     "issueDate": "Issue Date",
     "validUntil": "Valid Until",
     "logistics": "Logistics",
