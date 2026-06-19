@@ -100,6 +100,26 @@ interface OceanShippingOrder {
   [key: string]: any;
 }
 
+function oceanShipmentMatchesNumberFilter(
+  shipment: OceanShippingOrder,
+  term: string,
+): boolean {
+  const lower = term.trim().toLowerCase();
+  if (!lower) return true;
+
+  if ((shipment.number || "").toLowerCase().includes(lower)) return true;
+
+  const hbliFromCharges = extractHbliFromCharges(shipment.charges);
+  if (hbliFromCharges?.toLowerCase().includes(lower)) return true;
+
+  const number = shipment.number?.trim() ?? "";
+  if (number.toUpperCase().startsWith("HBLI") && number.toLowerCase().includes(lower)) {
+    return true;
+  }
+
+  return false;
+}
+
 interface HBLICacheEntry {
   loading: boolean;
   fetched: boolean;
@@ -1461,7 +1481,7 @@ function OceanShipmentsView({
     if (appliedInitialFilterRef.current === incomingFilter) return;
 
     const filtered = oceanShipments.filter((s) =>
-      (s.number || "").toLowerCase().includes(incomingFilter.toLowerCase()),
+      oceanShipmentMatchesNumberFilter(s, incomingFilter),
     );
 
     appliedInitialFilterRef.current = incomingFilter;
@@ -1862,7 +1882,7 @@ function OceanShipmentsView({
     let filtered = oceanShipments;
     if (filterNumber.trim()) {
       filtered = filtered.filter((s) =>
-        (s.number || "").toLowerCase().includes(filterNumber.toLowerCase()),
+        oceanShipmentMatchesNumberFilter(s, filterNumber),
       );
     }
     if (filterWaybill.trim()) {

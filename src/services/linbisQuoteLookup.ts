@@ -5,12 +5,17 @@ const LINBIS_JSON_HEADERS = {
   "Content-Type": "application/json",
 } as const;
 
+export interface QuoteProfitShipmentLink {
+  shipmentNumber: string;
+  shippingOrderNumber: string | null;
+}
+
 export interface QuoteProfitIndex {
   byHbli: Record<string, string>;
   bySog: Record<string, string>;
   byShipmentId: Record<string, string>;
-  /** QUO normalizado → shipmentNumber (HBLI, etc.) */
-  byQuote: Record<string, string>;
+  /** QUO normalizado → datos de operación vinculada */
+  byQuote: Record<string, QuoteProfitShipmentLink>;
 }
 
 export type LinbisFetchOptions = {
@@ -109,7 +114,7 @@ export function parseQuoteProfitPayload(data: unknown): QuoteProfitIndex {
   const byHbli: Record<string, string> = {};
   const bySog: Record<string, string> = {};
   const byShipmentId: Record<string, string> = {};
-  const byQuote: Record<string, string> = {};
+  const byQuote: Record<string, QuoteProfitShipmentLink> = {};
 
   for (const row of rows) {
     if (!row || typeof row !== "object") continue;
@@ -134,7 +139,12 @@ export function parseQuoteProfitPayload(data: unknown): QuoteProfitIndex {
     if (typeof shipmentId === "number" && shipmentId > 0) {
       byShipmentId[String(shipmentId)] = quoteNumber;
     }
-    if (hbli) byQuote[normalizeLookupKey(quoteNumber)] = hbli;
+    if (hbli || sog) {
+      byQuote[normalizeLookupKey(quoteNumber)] = {
+        shipmentNumber: hbli,
+        shippingOrderNumber: sog || null,
+      };
+    }
   }
 
   return { byHbli, bySog, byShipmentId, byQuote };
@@ -189,16 +199,40 @@ export function lookupQuoteFromProfitIndex(
   return null;
 }
 
-/** Resuelve shipmentNumber (HBLI, etc.) desde índice Profit por número de cotización QUO. */
-export function lookupShipmentNumberFromProfitIndex(
+/** Resuelve vínculo cotización → operación desde índice Profit por número QUO. */
+export function lookupShipmentLinkFromProfitIndex(
   index: QuoteProfitIndex | undefined,
   quoteNumber: string | null | undefined,
-): string | null {
+): QuoteProfitShipmentLink | null {
   if (!index) return null;
 
   const normalized = normalizeQuoteNumber(quoteNumber);
   if (!normalized) return null;
 
-  const shipmentNumber = index.byQuote[normalizeLookupKey(normalized)];
-  return shipmentNumber?.trim() || null;
+  return index.byQuote[normalizeLookupKey(normalized)] ?? null;
+}
+
+/** Resuelve shipmentNumber (HBLI, etc.) desde índice Profit por número de cotización QUO. */
+export function lookupShipmentNumberFromProfitIndex(
+  index: QuoteProfitIndex | undefined,
+  quoteNumber: string | null | undefined,
+): string | null {
+  const link = lookupShipmentLinkFromProfitIndex(index, quoteNumber);
+  return link?.shipmentNumber?.trim() || null;
+}
+
+/** Número con el que filtran air/ocean-shipments. Marítimo: HBLI; aéreo: SOG. */
+export function getShipmentFilterNumberFromProfitLink(
+  link: QuoteProfitShipmentLink | null | undefined,
+  shipmentType?: "air" | "ocean" | null,
+): string | null {
+  if (!link) return null;
+
+  if (shipmentType === "ocean") {
+    const hbli = link.shipmentNumber?.trim() || "";
+    return hbli || link.shippingOrderNumber?.trim() || null;
+  }
+
+  const sog = link.shippingOrderNumber?.trim() || "";
+  return sog || link.shipmentNumber?.trim() || null;
 }

@@ -455,6 +455,13 @@ function ReporteriaClientes() {
       setQuoteFilterNumber(quoteNumber);
       setActiveTab("quotes");
     };
+    const openShipmentsTab = (
+      tab: "air" | "ocean",
+      filterNumber?: string,
+    ) => {
+      setShipmentFilterNumber(filterNumber);
+      setActiveTab(tab);
+    };
 
     return (
       <div style={{ fontFamily: FONT }}>
@@ -842,7 +849,12 @@ function ReporteriaClientes() {
 
         {/* Tab Content — wraps views with the client's username override */}
         <ReporteriaClientesProvider
-          value={{ openTrackingTab, openQuotesTab, quoteFilterNumber }}
+          value={{
+            openTrackingTab,
+            openQuotesTab,
+            openShipmentsTab,
+            quoteFilterNumber,
+          }}
         >
           <ClientOverrideProvider value={selectedClient.username}>
             {activeTab === "air" && (

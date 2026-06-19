@@ -502,6 +502,28 @@
   color: #9ca3af;
 }
 
+.qv-field-cell__value--accent {
+  color: var(--primary-color);
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.qv-field-cell__value--accent:hover {
+  opacity: 0.8;
+}
+
+.qv-split-detail__body .qv-field-cell__value--accent {
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: rgba(255, 98, 0, 0.35);
+  text-underline-offset: 3px;
+}
+
+.qv-split-detail__body .qv-field-cell__value--accent:hover {
+  opacity: 1;
+  text-decoration-color: var(--primary-color);
+}
+
 .qv-field-cell__value--finance {
   font-size: 1rem;
   font-weight: 700;

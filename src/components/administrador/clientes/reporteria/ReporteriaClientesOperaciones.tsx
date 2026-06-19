@@ -100,6 +100,9 @@ function OPReporteriaClientes() {
   const [quoteFilterNumber, setQuoteFilterNumber] = useState<
     string | undefined
   >();
+  const [shipmentFilterNumber, setShipmentFilterNumber] = useState<
+    string | undefined
+  >();
   const [trackingInitialTab, setTrackingInitialTab] = useState<"air" | "ocean">(
     "air",
   );
@@ -397,6 +400,13 @@ function OPReporteriaClientes() {
     const openQuotesTab = (quoteNumber?: string) => {
       setQuoteFilterNumber(quoteNumber);
       setActiveTab("quotes");
+    };
+    const openShipmentsTab = (
+      tab: "air" | "ocean",
+      filterNumber?: string,
+    ) => {
+      setShipmentFilterNumber(filterNumber);
+      setActiveTab(tab);
     };
 
     return (
@@ -784,11 +794,20 @@ function OPReporteriaClientes() {
         </div>
 
         <ReporteriaClientesProvider
-          value={{ openTrackingTab, openQuotesTab, quoteFilterNumber }}
+          value={{
+            openTrackingTab,
+            openQuotesTab,
+            openShipmentsTab,
+            quoteFilterNumber,
+          }}
         >
           <ClientOverrideProvider value={selectedClient.username}>
-            {activeTab === "air" && <AirShipmentsView />}
-            {activeTab === "ocean" && <OceanShipmentsView />}
+            {activeTab === "air" && (
+              <AirShipmentsView initialFilterNumber={shipmentFilterNumber} />
+            )}
+            {activeTab === "ocean" && (
+              <OceanShipmentsView initialFilterNumber={shipmentFilterNumber} />
+            )}
             {activeTab === "ground" && <GroundShipmentsView />}
             {activeTab === "quotes" && (
               <QuotesView initialQuoteFilter={quoteFilterNumber} />

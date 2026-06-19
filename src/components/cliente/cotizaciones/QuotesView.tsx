@@ -17,6 +17,8 @@ import { linbisFetch } from "@/services/linbisFetch";
 import { buildLinbisListParams } from "@/services/linbisListFetch";
 import {
   fetchQuoteProfitIndex,
+  getShipmentFilterNumberFromProfitLink,
+  lookupShipmentLinkFromProfitIndex,
   lookupShipmentNumberFromProfitIndex,
   normalizeQuoteNumber,
   type QuoteProfitIndex,
@@ -457,7 +459,12 @@ interface QuoteGeneralTabContentProps {
   resendToken?: string | null;
   resendOwnerUsername?: string;
   operationNumber?: string | null;
+  operationFilterNumber?: string | null;
   operationNumberLoading?: boolean;
+  onOpenShipment?: (params: {
+    shipmentType: "air" | "ocean";
+    filterNumber: string;
+  }) => void;
 }
 
 function QuoteGeneralTabContent({
@@ -479,11 +486,20 @@ function QuoteGeneralTabContent({
   resendToken = null,
   resendOwnerUsername,
   operationNumber = null,
+  operationFilterNumber = null,
   operationNumberLoading = false,
+  onOpenShipment,
 }: QuoteGeneralTabContentProps) {
   const showTracking = shouldShowQuoteTracking(quote);
   const alreadyTracked = isQuoteAlreadyTracked(quote);
   const trackType = getQuoteTrackType(quote);
+  const shipmentType = getQuoteTrackType(quote);
+  const canOpenShipment =
+    !operationNumberLoading &&
+    !!operationNumber &&
+    !!operationFilterNumber &&
+    !!shipmentType &&
+    !!onOpenShipment;
 
   return (
     <div className="qv-field-sections">
@@ -510,10 +526,33 @@ function QuoteGeneralTabContent({
           value={quote.carrierBroker}
         />
         <FieldGridCell label="ID interno" value={quote.id} />
-        <FieldGridCell
-          label="Número de operación"
-          value={operationNumberLoading ? "Cargando..." : operationNumber}
-        />
+        {operationNumberLoading ? (
+          <FieldGridCell label="Número de operación" value="Cargando..." />
+        ) : canOpenShipment ? (
+          <FieldGridCell label="Número de operación">
+            <span
+              className="qv-field-cell__value qv-field-cell__value--accent"
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenShipment!({
+                  shipmentType: shipmentType!,
+                  filterNumber: operationFilterNumber!,
+                });
+              }}
+              role="button"
+              tabIndex={0}
+              title={
+                shipmentType === "air"
+                  ? "Ver envío aéreo"
+                  : "Ver envío marítimo"
+              }
+            >
+              {operationNumber}
+            </span>
+          </FieldGridCell>
+        ) : (
+          <FieldGridCell label="Número de operación" value={operationNumber} />
+        )}
       </FieldGridSection>
 
       <FieldGridSection title={t("quotesView.logistics")}>
@@ -796,7 +835,12 @@ interface QuoteDetailPanelProps {
   resendToken: string | null;
   resendOwnerUsername?: string;
   operationNumber?: string | null;
+  operationFilterNumber?: string | null;
   operationNumberLoading?: boolean;
+  onOpenShipment?: (params: {
+    shipmentType: "air" | "ocean";
+    filterNumber: string;
+  }) => void;
 }
 
 function QuoteDetailPanel({
@@ -821,7 +865,9 @@ function QuoteDetailPanel({
   resendToken,
   resendOwnerUsername,
   operationNumber = null,
+  operationFilterNumber = null,
   operationNumberLoading = false,
+  onOpenShipment,
 }: QuoteDetailPanelProps) {
   const quoteNumber = quote.number || "";
   const hasPdf = availablePDFs.has(quoteNumber);
@@ -932,7 +978,9 @@ function QuoteDetailPanel({
                         resendToken={resendToken}
                         resendOwnerUsername={resendOwnerUsername}
                         operationNumber={operationNumber}
+                        operationFilterNumber={operationFilterNumber}
                         operationNumberLoading={operationNumberLoading}
+                        onOpenShipment={onOpenShipment}
                       />
                     ),
                   },
@@ -1076,7 +1124,15 @@ function QuotesView({
   });
 
   const [operationNumberCache, setOperationNumberCache] = useState<
-    Record<string, { value: string | null; loading: boolean; fetched: boolean }>
+    Record<
+      string,
+      {
+        value: string | null;
+        filterNumber: string | null;
+        loading: boolean;
+        fetched: boolean;
+      }
+    >
   >({});
 
   // Sorting
@@ -1275,13 +1331,18 @@ function QuotesView({
 
       setOperationNumberCache((prev) => ({
         ...prev,
-        [cacheKey]: { value: null, loading: true, fetched: false },
+        [cacheKey]: {
+          value: null,
+          filterNumber: null,
+          loading: true,
+          fetched: false,
+        },
       }));
 
-      const finish = (value: string | null) => {
+      const finish = (value: string | null, filterNumber: string | null) => {
         setOperationNumberCache((prev) => ({
           ...prev,
-          [cacheKey]: { value, loading: false, fetched: true },
+          [cacheKey]: { value, filterNumber, loading: false, fetched: true },
         }));
       };
 
@@ -1295,10 +1356,14 @@ function QuotesView({
           setProfitIndex({ loading: false, fetched: true, index: profit });
         }
 
-        finish(lookupShipmentNumberFromProfitIndex(profit, quote.number));
+        const link = lookupShipmentLinkFromProfitIndex(profit, quote.number);
+        finish(
+          lookupShipmentNumberFromProfitIndex(profit, quote.number),
+          getShipmentFilterNumberFromProfitLink(link, getQuoteTrackType(quote)),
+        );
       } catch (err) {
         console.error("Error fetching operation number from /Quotes/Profit:", err);
-        finish(null);
+        finish(null, null);
       }
     },
     [
@@ -1319,11 +1384,17 @@ function QuotesView({
     if (!selectedQuote) return null;
     const cacheKey = normalizeQuoteNumber(selectedQuote.number);
     if (!cacheKey) {
-      return { value: null, loading: false, fetched: true };
+      return {
+        value: null,
+        filterNumber: null,
+        loading: false,
+        fetched: true,
+      };
     }
     return (
       operationNumberCache[cacheKey] ?? {
         value: null,
+        filterNumber: null,
         loading: true,
         fetched: false,
       }
@@ -1740,6 +1811,29 @@ function QuotesView({
       setTrackLoading(false);
     }
   };
+
+  const handleOpenShipment = useCallback(
+    ({
+      shipmentType,
+      filterNumber,
+    }: {
+      shipmentType: "air" | "ocean";
+      filterNumber: string;
+    }) => {
+      const trimmed = filterNumber.trim();
+      if (!trimmed) return;
+
+      if (reporteriaClientesContext) {
+        reporteriaClientesContext.openShipmentsTab(shipmentType, trimmed);
+        return;
+      }
+
+      const route =
+        shipmentType === "air" ? "/air-shipments" : "/ocean-shipments";
+      navigate(route, { state: { shipmentFilterNumber: trimmed } });
+    },
+    [navigate, reporteriaClientesContext],
+  );
 
   /* -- Quick search ----------------------------------------- */
   useEffect(() => {
@@ -2784,7 +2878,13 @@ function QuotesView({
                 resendToken={token}
                 resendOwnerUsername={activeUsername}
                 operationNumber={selectedQuoteOperationEntry?.value ?? null}
-                operationNumberLoading={selectedQuoteOperationEntry?.loading ?? false}
+                operationFilterNumber={
+                  selectedQuoteOperationEntry?.filterNumber ?? null
+                }
+                operationNumberLoading={
+                  selectedQuoteOperationEntry?.loading ?? false
+                }
+                onOpenShipment={handleOpenShipment}
               />
             </aside>
           )}
