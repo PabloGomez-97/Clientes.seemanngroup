@@ -58,7 +58,7 @@ const PricingAlertRunSchema = new mongoose.Schema(
       default: [],
     },
     skipped: { type: [String], default: [] },
-    errors: { type: [String], default: [] },
+    errorMessages: { type: [String], default: [] },
     totals: {
       air: { type: Number, default: 0 },
       fcl: { type: Number, default: 0 },
@@ -386,7 +386,7 @@ export async function savePricingAlertRun(
       recipients: result.recipients,
       sent: result.sent,
       skipped: result.skipped,
-      errors: result.errors,
+      errorMessages: result.errors,
       totals: result.totals,
     });
   } catch (err) {
@@ -395,7 +395,22 @@ export async function savePricingAlertRun(
 }
 
 export async function getLastPricingAlertRun() {
-  return PricingAlertRun.findOne().sort({ createdAt: -1 }).lean();
+  const doc = await PricingAlertRun.findOne().sort({ createdAt: -1 }).lean();
+  if (!doc) return null;
+
+  const { errorMessages, errors: legacyErrors, ...rest } = doc as typeof doc & {
+    errorMessages?: string[];
+    errors?: string[];
+  };
+
+  return {
+    ...rest,
+    errors: Array.isArray(errorMessages)
+      ? errorMessages
+      : Array.isArray(legacyErrors)
+        ? legacyErrors
+        : [],
+  };
 }
 
 export function getNextCronRunUtc(): Date {
