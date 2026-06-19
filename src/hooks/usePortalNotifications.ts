@@ -80,6 +80,10 @@ export function usePortalNotifications(
       const resp = await fetch(`${API_BASE_URL}/api/notifications`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+      if (resp.status === 401) {
+        setNotifications([]);
+        return;
+      }
       if (!resp.ok) return;
       const data = await resp.json();
       setNotifications(

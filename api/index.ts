@@ -2021,10 +2021,17 @@ const Alumno = (mongoose.models.Alumno || mongoose.model<IAlumnoDoc>('Alumno', A
 let cachedDb: typeof mongoose | null = null;
 
 async function connectDB() {
-  if (cachedDb) return cachedDb;
+  if (cachedDb && mongoose.connection.readyState === 1) return cachedDb;
   const db = await mongoose.connect(MONGODB_URI, { bufferCommands: false });
   cachedDb = db;
   return db;
+}
+
+function isAuthError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    (error.message === 'No auth token' || error.message === 'Invalid token')
+  );
 }
 
 /** =========================
@@ -7588,11 +7595,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // GET /api/notifications — list active notifications for current user
     if (path === '/api/notifications' && method === 'GET') {
       try {
-        const authHeader = req.headers.authorization;
-        if (!authHeader?.startsWith('Bearer ')) {
-          return res.status(401).json({ error: 'Token requerido' });
-        }
-        const decoded = verifyToken(authHeader.slice(7));
+        const decoded = requireAuth(req);
         const recipientEmail = String(decoded.sub || '').toLowerCase().trim();
         if (!recipientEmail) return res.json({ notifications: [], unreadCount: 0 });
 
@@ -7605,7 +7608,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           (n: any) => !n.read && n.type !== 'CLIENT_COLD',
         ).length;
         return res.json({ notifications: items, unreadCount });
-      } catch (error: any) {
+      } catch (error: unknown) {
+        if (isAuthError(error)) {
+          return res.status(401).json({ error: (error as Error).message });
+        }
         console.error('[notifications] Error GET:', error);
         return res.status(500).json({ error: 'Error al obtener notificaciones' });
       }
@@ -7614,18 +7620,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // PATCH /api/notifications/read-all
     if (path === '/api/notifications/read-all' && method === 'PATCH') {
       try {
-        const authHeader = req.headers.authorization;
-        if (!authHeader?.startsWith('Bearer ')) {
-          return res.status(401).json({ error: 'Token requerido' });
-        }
-        const decoded = verifyToken(authHeader.slice(7));
+        const decoded = requireAuth(req);
         const recipientEmail = String(decoded.sub || '').toLowerCase().trim();
         await PortalNotification.updateMany(
           { recipientEmail, read: false },
           { $set: { read: true, readAt: new Date() } }
         );
         return res.json({ success: true });
-      } catch (error: any) {
+      } catch (error: unknown) {
+        if (isAuthError(error)) {
+          return res.status(401).json({ error: (error as Error).message });
+        }
         console.error('[notifications] Error read-all:', error);
         return res.status(500).json({ error: 'Error al marcar como leídas' });
       }
@@ -7634,11 +7639,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // PATCH /api/notifications/:id/read — mark one notification as read
     if (path?.match(/^\/api\/notifications\/[^/]+\/read$/) && method === 'PATCH') {
       try {
-        const authHeader = req.headers.authorization;
-        if (!authHeader?.startsWith('Bearer ')) {
-          return res.status(401).json({ error: 'Token requerido' });
-        }
-        const decoded = verifyToken(authHeader.slice(7));
+        const decoded = requireAuth(req);
         const recipientEmail = String(decoded.sub || '').toLowerCase().trim();
         const id = path.replace('/api/notifications/', '').replace(/\/read$/, '');
         if (!id || !mongoose.Types.ObjectId.isValid(id)) {
@@ -7649,7 +7650,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           { $set: { read: true, readAt: new Date() } },
         );
         return res.json({ success: true });
-      } catch (error: any) {
+      } catch (error: unknown) {
+        if (isAuthError(error)) {
+          return res.status(401).json({ error: (error as Error).message });
+        }
         console.error('[notifications] Error PATCH read:', error);
         return res.status(500).json({ error: 'Error al marcar notificación' });
       }
@@ -7658,11 +7662,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // DELETE /api/notifications/:id
     if (path?.startsWith('/api/notifications/') && method === 'DELETE') {
       try {
-        const authHeader = req.headers.authorization;
-        if (!authHeader?.startsWith('Bearer ')) {
-          return res.status(401).json({ error: 'Token requerido' });
-        }
-        const decoded = verifyToken(authHeader.slice(7));
+        const decoded = requireAuth(req);
         const recipientEmail = String(decoded.sub || '').toLowerCase().trim();
         const id = path.replace('/api/notifications/', '').split('/')[0];
         if (!id || !mongoose.Types.ObjectId.isValid(id)) {
@@ -7670,7 +7670,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
         await PortalNotification.deleteOne({ _id: id, recipientEmail });
         return res.json({ success: true });
-      } catch (error: any) {
+      } catch (error: unknown) {
+        if (isAuthError(error)) {
+          return res.status(401).json({ error: (error as Error).message });
+        }
         console.error('[notifications] Error DELETE:', error);
         return res.status(500).json({ error: 'Error al eliminar notificación' });
       }
