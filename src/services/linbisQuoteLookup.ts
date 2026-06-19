@@ -9,6 +9,8 @@ export interface QuoteProfitIndex {
   byHbli: Record<string, string>;
   bySog: Record<string, string>;
   byShipmentId: Record<string, string>;
+  /** QUO normalizado → shipmentNumber (HBLI, etc.) */
+  byQuote: Record<string, string>;
 }
 
 export type LinbisFetchOptions = {
@@ -107,6 +109,7 @@ export function parseQuoteProfitPayload(data: unknown): QuoteProfitIndex {
   const byHbli: Record<string, string> = {};
   const bySog: Record<string, string> = {};
   const byShipmentId: Record<string, string> = {};
+  const byQuote: Record<string, string> = {};
 
   for (const row of rows) {
     if (!row || typeof row !== "object") continue;
@@ -131,9 +134,10 @@ export function parseQuoteProfitPayload(data: unknown): QuoteProfitIndex {
     if (typeof shipmentId === "number" && shipmentId > 0) {
       byShipmentId[String(shipmentId)] = quoteNumber;
     }
+    if (hbli) byQuote[normalizeLookupKey(quoteNumber)] = hbli;
   }
 
-  return { byHbli, bySog, byShipmentId };
+  return { byHbli, bySog, byShipmentId, byQuote };
 }
 
 /** Única fuente de verdad para QUO: GET /Quotes/Profit */
@@ -149,7 +153,7 @@ export async function fetchQuoteProfitIndex(
   );
 
   if (!response.ok) {
-    return { byHbli: {}, bySog: {}, byShipmentId: {} };
+    return { byHbli: {}, bySog: {}, byShipmentId: {}, byQuote: {} };
   }
 
   const data = await response.json();
@@ -183,4 +187,18 @@ export function lookupQuoteFromProfitIndex(
   }
 
   return null;
+}
+
+/** Resuelve shipmentNumber (HBLI, etc.) desde índice Profit por número de cotización QUO. */
+export function lookupShipmentNumberFromProfitIndex(
+  index: QuoteProfitIndex | undefined,
+  quoteNumber: string | null | undefined,
+): string | null {
+  if (!index) return null;
+
+  const normalized = normalizeQuoteNumber(quoteNumber);
+  if (!normalized) return null;
+
+  const shipmentNumber = index.byQuote[normalizeLookupKey(normalized)];
+  return shipmentNumber?.trim() || null;
 }

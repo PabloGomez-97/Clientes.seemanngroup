@@ -16,6 +16,12 @@ import QuotePdfResendCell from "./QuotePdfResendCell";
 import { linbisFetch } from "@/services/linbisFetch";
 import { buildLinbisListParams } from "@/services/linbisListFetch";
 import {
+  fetchQuoteProfitIndex,
+  lookupShipmentNumberFromProfitIndex,
+  normalizeQuoteNumber,
+  type QuoteProfitIndex,
+} from "@/services/linbisQuoteLookup";
+import {
   addUniqueEmail,
   MAX_VISIBLE_TRACK_FOLLOWERS,
   OPERATIONS_FOLLOWER_EMAIL,
@@ -450,6 +456,8 @@ interface QuoteGeneralTabContentProps {
   }) => Promise<void>;
   resendToken?: string | null;
   resendOwnerUsername?: string;
+  operationNumber?: string | null;
+  operationNumberLoading?: boolean;
 }
 
 function QuoteGeneralTabContent({
@@ -470,6 +478,8 @@ function QuoteGeneralTabContent({
   onResendPdf,
   resendToken = null,
   resendOwnerUsername,
+  operationNumber = null,
+  operationNumberLoading = false,
 }: QuoteGeneralTabContentProps) {
   const showTracking = shouldShowQuoteTracking(quote);
   const alreadyTracked = isQuoteAlreadyTracked(quote);
@@ -500,6 +510,10 @@ function QuoteGeneralTabContent({
           value={quote.carrierBroker}
         />
         <FieldGridCell label="ID interno" value={quote.id} />
+        <FieldGridCell
+          label="Número de operación"
+          value={operationNumberLoading ? "Cargando..." : operationNumber}
+        />
       </FieldGridSection>
 
       <FieldGridSection title={t("quotesView.logistics")}>
@@ -781,6 +795,8 @@ interface QuoteDetailPanelProps {
   }) => Promise<void>;
   resendToken: string | null;
   resendOwnerUsername?: string;
+  operationNumber?: string | null;
+  operationNumberLoading?: boolean;
 }
 
 function QuoteDetailPanel({
@@ -804,6 +820,8 @@ function QuoteDetailPanel({
   onResendPdf,
   resendToken,
   resendOwnerUsername,
+  operationNumber = null,
+  operationNumberLoading = false,
 }: QuoteDetailPanelProps) {
   const quoteNumber = quote.number || "";
   const hasPdf = availablePDFs.has(quoteNumber);
@@ -913,6 +931,8 @@ function QuoteDetailPanel({
                         onResendPdf={onResendPdf}
                         resendToken={resendToken}
                         resendOwnerUsername={resendOwnerUsername}
+                        operationNumber={operationNumber}
+                        operationNumberLoading={operationNumberLoading}
                       />
                     ),
                   },
@@ -1043,6 +1063,20 @@ function QuotesView({
   >(null);
   const [documentCounts, setDocumentCounts] = useState<
     Record<string | number, number>
+  >({});
+
+  const [profitIndex, setProfitIndex] = useState<{
+    loading: boolean;
+    fetched: boolean;
+    index: QuoteProfitIndex;
+  }>({
+    loading: false,
+    fetched: false,
+    index: { byHbli: {}, bySog: {}, byShipmentId: {}, byQuote: {} },
+  });
+
+  const [operationNumberCache, setOperationNumberCache] = useState<
+    Record<string, { value: string | null; loading: boolean; fetched: boolean }>
   >({});
 
   // Sorting
@@ -1227,6 +1261,74 @@ function QuotesView({
     );
     if (!stillVisible) setSelectedQuoteId(null);
   }, [paginatedQuotes, selectedQuoteId, getQuoteRowId]);
+
+  const fetchOperationNumberForQuote = useCallback(
+    async (quote: Quote) => {
+      if (!accessToken) return;
+
+      const cacheKey = normalizeQuoteNumber(quote.number);
+      if (!cacheKey) return;
+
+      const existing = operationNumberCache[cacheKey];
+      if (existing?.loading) return;
+      if (existing?.fetched) return;
+
+      setOperationNumberCache((prev) => ({
+        ...prev,
+        [cacheKey]: { value: null, loading: true, fetched: false },
+      }));
+
+      const finish = (value: string | null) => {
+        setOperationNumberCache((prev) => ({
+          ...prev,
+          [cacheKey]: { value, loading: false, fetched: true },
+        }));
+      };
+
+      try {
+        let profit = profitIndex.index;
+        if (!profitIndex.fetched) {
+          profit = await fetchQuoteProfitIndex({
+            accessToken,
+            refreshAccessToken,
+          });
+          setProfitIndex({ loading: false, fetched: true, index: profit });
+        }
+
+        finish(lookupShipmentNumberFromProfitIndex(profit, quote.number));
+      } catch (err) {
+        console.error("Error fetching operation number from /Quotes/Profit:", err);
+        finish(null);
+      }
+    },
+    [
+      accessToken,
+      refreshAccessToken,
+      operationNumberCache,
+      profitIndex.fetched,
+      profitIndex.index,
+    ],
+  );
+
+  useEffect(() => {
+    if (!selectedQuote) return;
+    fetchOperationNumberForQuote(selectedQuote);
+  }, [selectedQuote, fetchOperationNumberForQuote]);
+
+  const selectedQuoteOperationEntry = useMemo(() => {
+    if (!selectedQuote) return null;
+    const cacheKey = normalizeQuoteNumber(selectedQuote.number);
+    if (!cacheKey) {
+      return { value: null, loading: false, fetched: true };
+    }
+    return (
+      operationNumberCache[cacheKey] ?? {
+        value: null,
+        loading: true,
+        fetched: false,
+      }
+    );
+  }, [selectedQuote, operationNumberCache]);
 
   useEffect(() => {
     setTablePage(1);
@@ -2681,6 +2783,8 @@ function QuotesView({
                 onResendPdf={handleResendQuotePdf}
                 resendToken={token}
                 resendOwnerUsername={activeUsername}
+                operationNumber={selectedQuoteOperationEntry?.value ?? null}
+                operationNumberLoading={selectedQuoteOperationEntry?.loading ?? false}
               />
             </aside>
           )}

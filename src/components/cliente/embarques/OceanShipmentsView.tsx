@@ -722,7 +722,7 @@ function OceanShipmentsView({
   const [profitIndex, setProfitIndex] = useState<ProfitIndexCacheEntry>({
     loading: false,
     fetched: false,
-    index: { byHbli: {}, bySog: {}, byShipmentId: {} },
+    index: { byHbli: {}, bySog: {}, byShipmentId: {}, byQuote: {} },
   });
 
   const [showingAll, setShowingAll] = useState(false);
@@ -1487,7 +1487,7 @@ function OceanShipmentsView({
     setProfitIndex({
       loading: false,
       fetched: false,
-      index: { byHbli: {}, bySog: {}, byShipmentId: {} },
+      index: { byHbli: {}, bySog: {}, byShipmentId: {}, byQuote: {} },
     });
     setTrackedOceanNumbers(new Set());
     setShipsgoArrivalByNumber({});
@@ -1952,7 +1952,7 @@ function OceanShipmentsView({
     setProfitIndex({
       loading: false,
       fetched: false,
-      index: { byHbli: {}, bySog: {}, byShipmentId: {} },
+      index: { byHbli: {}, bySog: {}, byShipmentId: {}, byQuote: {} },
     });
     setOceanShipments([]);
     setDisplayedOceanShipments([]);
