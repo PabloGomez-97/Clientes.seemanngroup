@@ -1463,16 +1463,20 @@ async function upsertPortalNotification(doc: Partial<IPortalNotification> & {
       recipientEmail: recipient,
       updatedAt: new Date(),
     };
+    const $setOnInsert: Record<string, unknown> = {
+      dedupKey,
+      createdAt: new Date(),
+    };
+    // MongoDB rejects the same path in both $set and $setOnInsert (error code 40).
     if (resetRead) {
       $set.read = false;
       $set.readAt = undefined;
+    } else {
+      $setOnInsert.read = false;
     }
     await PortalNotification.updateOne(
       { recipientEmail: recipient, dedupKey },
-      {
-        $set,
-        $setOnInsert: { dedupKey, createdAt: new Date(), read: false },
-      },
+      { $set, $setOnInsert },
       { upsert: true },
     );
   } catch (err) {
