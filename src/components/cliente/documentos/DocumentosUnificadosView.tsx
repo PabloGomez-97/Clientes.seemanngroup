@@ -600,15 +600,11 @@ export function DocumentosUnificadosView({
       try {
         const ownerQuery = `ownerUsername=${encodeURIComponent(ownerUsername)}`;
         const endpoint =
-          doc._type === "air"
-            ? `/api/air-shipments/documentos/download/${doc.id}?${ownerQuery}`
-            : doc._type === "ocean"
-              ? `/api/ocean-shipments/documentos/download/${doc.id}?${ownerQuery}`
-              : doc._type === "ground"
-                ? `/api/ground-shipments/documentos/download/${doc.id}?${ownerQuery}`
-                : doc.scope === "operacional"
-                  ? `/api/documentos/operacionales/download/${doc.id}?${ownerQuery}`
-                  : `/api/documentos/download/${doc.id}?${ownerQuery}`;
+          doc._type === "ground"
+            ? `/api/ground-shipments/documentos/download/${doc.id}?${ownerQuery}`
+            : doc.scope === "operacional"
+              ? `/api/documentos/operacionales/download/${doc.id}?${ownerQuery}`
+              : `/api/documentos/download/${doc.id}?${ownerQuery}`;
 
         const res = await fetch(endpoint, {
           headers: { Authorization: `Bearer ${token}` },
@@ -654,15 +650,11 @@ export function DocumentosUnificadosView({
       try {
         const ownerQuery = `ownerUsername=${encodeURIComponent(ownerUsername)}`;
         const endpoint =
-          doc._type === "air"
-            ? `/api/air-shipments/documentos/${doc.id}?${ownerQuery}`
-            : doc._type === "ocean"
-              ? `/api/ocean-shipments/documentos/${doc.id}?${ownerQuery}`
-              : doc._type === "ground"
-                ? `/api/ground-shipments/documentos/${doc.id}?${ownerQuery}`
-                : doc.scope === "operacional"
-                  ? `/api/documentos/operacionales/${doc.id}?${ownerQuery}`
-                  : `/api/documentos/${doc.id}?${ownerQuery}`;
+          doc._type === "ground"
+            ? `/api/ground-shipments/documentos/${doc.id}?${ownerQuery}`
+            : doc.scope === "operacional"
+              ? `/api/documentos/operacionales/${doc.id}?${ownerQuery}`
+              : `/api/documentos/${doc.id}?${ownerQuery}`;
 
         const res = await fetch(endpoint, {
           method: "DELETE",

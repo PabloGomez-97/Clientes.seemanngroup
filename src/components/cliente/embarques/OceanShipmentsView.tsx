@@ -15,7 +15,7 @@ import { useAuditLog } from "@/hooks/useAuditLog";
 import { useTrackingEmailPreferences } from "@/hooks/useTrackingEmailPreferences";
 import { type OutletContext } from "@/components/cliente/embarques/Handlers/HandlerOceanShipments";
 import { MUNDOGAMING_DUMMY_OCEAN_SHIPMENTS } from "@/mocks/mundogaming";
-import { DocumentosSectionOcean } from "@/components/cliente/documentos/DocumentosSectionOcean";
+import { QuoteOperationalDocumentsSection } from "@/components/cliente/documentos/QuoteOperationalDocumentsSection";
 import TrackingEmailSuggestions from "@/components/shared/tracking/TrackingEmailSuggestions";
 import {
   addUniqueEmail,
@@ -544,7 +544,11 @@ function OceanShipmentDetailPanel({
         </div>
 
         {documentsOnly ? (
-          <DocumentosSectionOcean shipmentId={shipmentId} />
+          <QuoteOperationalDocumentsSection
+            mode="ocean"
+            quoteNumber={quoteDisplay.quoteNumber}
+            loading={quoteDisplay.loading}
+          />
         ) : (
           <DetailTabs
             tabs={[
@@ -585,7 +589,7 @@ function OceanShipmentDetailPanel({
               },
               {
                 key: "docs",
-                label: "Documentos",
+                label: "Documentos Operacionales",
                 icon: (
                   <svg
                     width="14"
@@ -601,7 +605,13 @@ function OceanShipmentDetailPanel({
                     <line x1="16" y1="17" x2="8" y2="17" />
                   </svg>
                 ),
-                content: <DocumentosSectionOcean shipmentId={shipmentId} />,
+                content: (
+                  <QuoteOperationalDocumentsSection
+                    mode="ocean"
+                    quoteNumber={quoteDisplay.quoteNumber}
+                    loading={quoteDisplay.loading}
+                  />
+                ),
               },
               {
                 key: "notes",

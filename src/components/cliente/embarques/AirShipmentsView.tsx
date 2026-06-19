@@ -8,7 +8,7 @@ import { useReporteriaClientesContext } from "@/contexts/ReporteriaClientesConte
 import { useAuditLog } from "@/hooks/useAuditLog";
 import { useTrackingEmailPreferences } from "@/hooks/useTrackingEmailPreferences";
 import "./AirShipmentsView.css";
-import { DocumentosSectionAir } from "@/components/cliente/documentos/DocumentosSectionAir";
+import { QuoteOperationalDocumentsSection } from "@/components/cliente/documentos/QuoteOperationalDocumentsSection";
 import TrackingEmailSuggestions from "@/components/shared/tracking/TrackingEmailSuggestions";
 import {
   addUniqueEmail,
@@ -43,6 +43,11 @@ import {
   buildAirOpenTrackingTarget,
   type ShipsGoTrackingLocationState,
 } from "@/services/shipsgoTrackingNavigation";
+import {
+  fetchQuoteProfitIndex,
+  lookupQuoteFromProfitIndex,
+  type QuoteProfitIndex,
+} from "@/services/linbisQuoteLookup";
 
 const ITEMS_PER_PAGE = 15;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -544,7 +549,11 @@ function AirShipmentDetailPanel({
         </div>
 
         {documentsOnly ? (
-          <DocumentosSectionAir shipmentId={shipmentId} />
+          <QuoteOperationalDocumentsSection
+            mode="air"
+            quoteNumber={quoteEntry?.quoteNumber}
+            loading={!!quoteEntry?.loading}
+          />
         ) : (
           <DetailTabs
             tabs={[
@@ -586,7 +595,7 @@ function AirShipmentDetailPanel({
               },
               {
                 key: "docs",
-                label: "Documentos",
+                label: "Documentos Operacionales",
                 icon: (
                   <svg
                     width="14"
@@ -600,7 +609,13 @@ function AirShipmentDetailPanel({
                     <polyline points="14 2 14 8 20 8" />
                   </svg>
                 ),
-                content: <DocumentosSectionAir shipmentId={shipmentId} />,
+                content: (
+                  <QuoteOperationalDocumentsSection
+                    mode="air"
+                    quoteNumber={quoteEntry?.quoteNumber}
+                    loading={!!quoteEntry?.loading}
+                  />
+                ),
               },
               {
                 key: "notes",
@@ -681,6 +696,15 @@ function AirShipmentsView({
   const [quoteNumberCache, setQuoteNumberCache] = useState<
     Record<string | number, QuoteNumberCacheEntry>
   >({});
+  const [profitIndex, setProfitIndex] = useState<{
+    loading: boolean;
+    fetched: boolean;
+    index: QuoteProfitIndex;
+  }>({
+    loading: false,
+    fetched: false,
+    index: { byHbli: {}, bySog: {}, byShipmentId: {}, byQuote: {} },
+  });
 
   // Aeropuertos — lazy, fetched solo para la página visible
   const [routeCache, setRouteCache] = useState<
@@ -1113,13 +1137,12 @@ function AirShipmentsView({
     }
   };
 
-  // Fetches quote number — triggered lazily when accordion opens
+  // Fetches quote number — triggered when a shipment is selected
   const fetchQuoteNumber = async (
     shipmentId: string | number | undefined,
-    customerReference: string | null | undefined,
+    shipment?: AirShipment | null,
   ) => {
-    if (!shipmentId || !customerReference || !accessToken || !activeUsername)
-      return;
+    if (!shipmentId || !accessToken) return;
     if (
       quoteNumberCache[shipmentId]?.fetched ||
       quoteNumberCache[shipmentId]?.loading
@@ -1131,7 +1154,46 @@ function AirShipmentsView({
       [shipmentId]: { loading: true, fetched: false, quoteNumber: null },
     }));
 
+    const finishQuote = (quoteNumber: string | null) => {
+      setQuoteNumberCache((prev) => ({
+        ...prev,
+        [shipmentId]: {
+          loading: false,
+          fetched: true,
+          quoteNumber,
+        },
+      }));
+    };
+
     try {
+      let profit = profitIndex.index;
+      if (!profitIndex.fetched) {
+        profit = await fetchQuoteProfitIndex({
+          accessToken,
+          refreshAccessToken,
+        });
+        setProfitIndex({ loading: false, fetched: true, index: profit });
+      }
+
+      const quoteFromProfit = lookupQuoteFromProfitIndex(profit, {
+        sogNumber: shipment?.number,
+        shipmentId:
+          typeof shipment?.id === "number"
+            ? shipment.id
+            : Number(shipment?.id) || null,
+      });
+
+      if (quoteFromProfit) {
+        finishQuote(quoteFromProfit);
+        return;
+      }
+
+      const customerReference = shipment?.customerReference;
+      if (!customerReference || !activeUsername) {
+        finishQuote(null);
+        return;
+      }
+
       const quoteParams = buildLinbisListParams(
         activeUsername,
         1,
@@ -1160,19 +1222,9 @@ function AirShipmentsView({
           q.customerReference?.trim().toLowerCase() ===
           customerReference.trim().toLowerCase(),
       );
-      setQuoteNumberCache((prev) => ({
-        ...prev,
-        [shipmentId]: {
-          loading: false,
-          fetched: true,
-          quoteNumber: match?.number ?? null,
-        },
-      }));
+      finishQuote(match?.number ?? null);
     } catch {
-      setQuoteNumberCache((prev) => ({
-        ...prev,
-        [shipmentId]: { loading: false, fetched: true, quoteNumber: null },
-      }));
+      finishQuote(null);
     }
   };
 
@@ -1361,13 +1413,18 @@ function AirShipmentsView({
       shipments.find((sh) => (sh.id || sh.number) === shipmentId);
     if (shipment) {
       void fetchRouteForShipment(shipment);
-      fetchQuoteNumber(shipmentId, shipment.customerReference);
+      fetchQuoteNumber(shipmentId, shipment);
     }
   };
 
   useEffect(() => {
     setCargoDetailsCache({});
     setQuoteNumberCache({});
+    setProfitIndex({
+      loading: false,
+      fetched: false,
+      index: { byHbli: {}, bySog: {}, byShipmentId: {}, byQuote: {} },
+    });
     setRouteCache({});
     routeInFlightRef.current.clear();
     routeFetchedRef.current.clear();
