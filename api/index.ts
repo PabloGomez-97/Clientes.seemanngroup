@@ -3,6 +3,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import mongoose from 'mongoose';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
+import { Ejecutivo, type IEjecutivo, type IEjecutivoDoc } from './models/Ejecutivo.js';
 import { buildOversizeEmailHTML, getOversizeEmailSubject, type OversizeEmailData } from './emails/oversizeEmailTemplate.js';
 import { buildOceanOversizeEmailHTML, getOceanOversizeEmailSubject, type OceanOversizeEmailData } from './emails/oversizeEmailTemplateOcean.js';
 import { buildDocumentUploadEmailHTML, getDocumentUploadEmailSubject, type DocumentUploadEmailData } from './emails/documentUploadEmailTemplate.js';
@@ -223,47 +224,6 @@ async function getShipsgoShipmentFollowerEmail(
 /** =========================
  *  Mongoose / Modelos tipados
  *  ========================= */
-
-// ✅ Modelo Ejecutivo
-interface IEjecutivo {
-  nombre: string;
-  email: string;
-  telefono: string;
-  activo: boolean;
-  roles: {
-    administrador: boolean;
-    pricing: boolean;
-    ejecutivo: boolean;
-    proveedor: boolean;
-    operaciones: boolean;
-  };
-}
-
-interface IEjecutivoDoc extends IEjecutivo, mongoose.Document {
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-type EjecutivoModel = mongoose.Model<IEjecutivoDoc>;
-
-const EjecutivoSchema = new mongoose.Schema<IEjecutivoDoc>(
-  {
-    nombre: { type: String, required: true, trim: true },
-    email: { type: String, required: true, lowercase: true, trim: true },
-    telefono: { type: String, required: true, trim: true },
-    activo: { type: Boolean, default: true },
-    roles: {
-      administrador: { type: Boolean, default: false },
-      pricing: { type: Boolean, default: false },
-      ejecutivo: { type: Boolean, default: true },
-      proveedor: { type: Boolean, default: false },
-      operaciones: { type: Boolean, default: false },
-    },
-  },
-  { timestamps: true }
-);
-
-const Ejecutivo = (mongoose.models.Ejecutivo || mongoose.model<IEjecutivoDoc>('Ejecutivo', EjecutivoSchema)) as EjecutivoModel;
 
 // ✅ Modelo User con referencia a Ejecutivo
 interface IUser {

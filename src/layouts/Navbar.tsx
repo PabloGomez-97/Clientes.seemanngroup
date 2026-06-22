@@ -752,8 +752,9 @@ function Navbar({
                         </span>
                       </a>
 
+                      {ejecutivo.telefono ? (
                       <a
-                        href={`tel:${ejecutivo.telefono}`}
+                        href={`tel:${ejecutivo.telefono.replace(/\s/g, "")}`}
                         style={{
                           display: "flex",
                           alignItems: "center",
@@ -793,6 +794,7 @@ function Navbar({
                           {ejecutivo.telefono}
                         </span>
                       </a>
+                      ) : null}
                     </div>
                   </div>
                 )}

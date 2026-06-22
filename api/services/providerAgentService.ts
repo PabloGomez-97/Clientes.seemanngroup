@@ -4,6 +4,7 @@
  */
 
 import mongoose from 'mongoose';
+import { Ejecutivo } from '../models/Ejecutivo.js';
 import {
   UserAgentSchema,
   serializeUserAgent,
@@ -16,23 +17,6 @@ const UserAgent = (
   mongoose.models.UserAgent ||
   mongoose.model<IUserAgentDoc>('UserAgent', UserAgentSchema)
 ) as UserAgentModel;
-
-const EjecutivoSchema = new mongoose.Schema({
-  nombre: String,
-  email: String,
-  activo: Boolean,
-  roles: {
-    administrador: Boolean,
-    pricing: Boolean,
-    ejecutivo: Boolean,
-    proveedor: Boolean,
-    operaciones: Boolean,
-  },
-});
-
-const Ejecutivo =
-  (mongoose.models.Ejecutivo as mongoose.Model<any>) ||
-  mongoose.model('Ejecutivo', EjecutivoSchema);
 
 const AuditLogSchema = new mongoose.Schema(
   {

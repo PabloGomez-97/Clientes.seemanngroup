@@ -5,6 +5,7 @@ import mongoose from 'mongoose';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import 'dotenv/config';
+import { Ejecutivo, type IEjecutivo, type IEjecutivoDoc } from '../api/models/Ejecutivo.ts';
 import chatHandler from '../api/chat.ts'; 
 import { fetchAllExpiring } from '../api/services/pricingExpiryService.ts';
 import {
@@ -235,47 +236,6 @@ app.all('/api/chat', (req, res) => chatHandler(req as any, res as any));
 /** =========================
  *  Mongoose / Modelos tipados
  *  ========================= */
-
-// ✅ NUEVO: Modelo Ejecutivo
-interface IEjecutivo {
-  nombre: string;
-  email: string;
-  telefono: string;
-  activo: boolean;
-  roles: {
-    administrador: boolean;
-    pricing: boolean;
-    ejecutivo: boolean;
-    proveedor: boolean;
-    operaciones: boolean;
-  };
-}
-
-interface IEjecutivoDoc extends IEjecutivo, mongoose.Document {
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-type EjecutivoModel = mongoose.Model<IEjecutivoDoc>;
-
-const EjecutivoSchema = new mongoose.Schema<IEjecutivoDoc>(
-  {
-    nombre: { type: String, required: true, trim: true },
-    email: { type: String, required: true, lowercase: true, trim: true },
-    telefono: { type: String, required: true, trim: true },
-    activo: { type: Boolean, default: true },
-    roles: {
-      administrador: { type: Boolean, default: false },
-      pricing: { type: Boolean, default: false },
-      ejecutivo: { type: Boolean, default: true },
-      proveedor: { type: Boolean, default: false },
-      operaciones: { type: Boolean, default: false },
-    },
-  },
-  { timestamps: true }
-);
-
-const Ejecutivo = (mongoose.models.Ejecutivo || mongoose.model<IEjecutivoDoc>('Ejecutivo', EjecutivoSchema)) as EjecutivoModel;
 
 // ✅ MODIFICADO: Modelo User con referencia a Ejecutivo
 interface IUser {

@@ -3,6 +3,7 @@
  */
 
 import mongoose from 'mongoose';
+import { Ejecutivo } from '../models/Ejecutivo.js';
 import {
   fetchAllExpiring,
   filterExactWindow,
@@ -22,23 +23,6 @@ import {
 } from '../emails/pricingAlertEmailTemplate.js';
 
 // ─── Models ───────────────────────────────────────────────────
-
-const EjecutivoSchema = new mongoose.Schema({
-  nombre: String,
-  email: String,
-  activo: Boolean,
-  roles: {
-    administrador: Boolean,
-    pricing: Boolean,
-    ejecutivo: Boolean,
-    proveedor: Boolean,
-    operaciones: Boolean,
-  },
-});
-
-const Ejecutivo =
-  (mongoose.models.Ejecutivo as mongoose.Model<any>) ||
-  mongoose.model('Ejecutivo', EjecutivoSchema);
 
 const PricingAlertRunSchema = new mongoose.Schema(
   {

@@ -3,29 +3,13 @@
  */
 
 import mongoose from 'mongoose';
+import { Ejecutivo } from '../models/Ejecutivo.js';
 import {
   getProviderEmailProvider,
   listProviderEmailProvidersPublic,
 } from '../config/providerEmailProviders.js';
 import { N8nWorkflowError, triggerN8nWorkflow } from './n8nWorkflowService.js';
 import { ProviderAgentHttpError } from './providerAgentService.js';
-
-const EjecutivoSchema = new mongoose.Schema({
-  nombre: String,
-  email: String,
-  activo: Boolean,
-  roles: {
-    administrador: Boolean,
-    pricing: Boolean,
-    ejecutivo: Boolean,
-    proveedor: Boolean,
-    operaciones: Boolean,
-  },
-});
-
-const Ejecutivo =
-  (mongoose.models.Ejecutivo as mongoose.Model<any>) ||
-  mongoose.model('Ejecutivo', EjecutivoSchema);
 
 const AuditLogSchema = new mongoose.Schema(
   {
