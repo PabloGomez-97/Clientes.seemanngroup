@@ -162,11 +162,13 @@ function Sidebar({
           path: "/consultar-tarifas",
           name: t("home.sidebar.rateConsult"),
           icon: "fa fa-tags",
+          badge: { text: t("home.sidebar.badgeNew"), type: "new" },
         },
         {
           path: "/historico-precios",
           name: t("home.sidebar.priceHistory"),
           icon: "fa fa-chart-line",
+          badge: { text: t("home.sidebar.badgeNew"), type: "new" },
         },
         {
           path: "/novedades",
@@ -177,6 +179,7 @@ function Sidebar({
           path: "/promesas",
           name: t("home.sidebar.promesas"),
           icon: "fa fa-handshake",
+          badge: { text: t("home.sidebar.badgeNew"), type: "new" },
         },
       ],
     },
@@ -571,10 +574,17 @@ function Sidebar({
                                   borderRadius: "4px",
                                   fontSize: "9px",
                                   fontWeight: "700",
-                                  backgroundColor: "rgba(255, 255, 255, 0.12)",
-                                  color: "rgba(255,255,255,0.75)",
+                                  backgroundColor:
+                                    item.badge.type === "new"
+                                      ? colors.accent
+                                      : "rgba(255, 255, 255, 0.12)",
+                                  color:
+                                    item.badge.type === "new"
+                                      ? "#ffffff"
+                                      : "rgba(255,255,255,0.75)",
                                   textTransform: "uppercase",
                                   letterSpacing: "0.4px",
+                                  flexShrink: 0,
                                 }}
                               >
                                 {item.badge.text}

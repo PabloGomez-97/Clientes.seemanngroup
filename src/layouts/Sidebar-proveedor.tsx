@@ -23,6 +23,10 @@ interface MenuItem {
   path?: string;
   name: string;
   icon: string;
+  badge?: {
+    text: string;
+    type: "new" | "beta";
+  };
   subItems?: SubMenuItem[];
 }
 
@@ -94,11 +98,13 @@ function SidebarProveedor({
           path: "/proveedor/consultar-tarifas",
           name: t("home.sidebar.rateConsult"),
           icon: "fa fa-tags",
+          badge: { text: t("home.sidebar.badgeNew"), type: "new" },
         },
         {
           path: "/proveedor/historico-precios",
           name: t("home.sidebar.priceHistory"),
           icon: "fa fa-chart-line",
+          badge: { text: t("home.sidebar.badgeNew"), type: "new" },
         },
         {
           path: "/proveedor/novedades",
@@ -109,6 +115,7 @@ function SidebarProveedor({
           path: "/proveedor/promesas",
           name: t("home.sidebar.promesas"),
           icon: "fa fa-handshake",
+          badge: { text: t("home.sidebar.badgeNew"), type: "new" },
         },
       ],
     },
@@ -390,6 +397,29 @@ function SidebarProveedor({
                             >
                               {item.name}
                             </span>
+                            {item.badge && (
+                              <span
+                                style={{
+                                  padding: "2px 7px",
+                                  borderRadius: "4px",
+                                  fontSize: "9px",
+                                  fontWeight: "700",
+                                  backgroundColor:
+                                    item.badge.type === "new"
+                                      ? colors.accent
+                                      : "rgba(255, 255, 255, 0.12)",
+                                  color:
+                                    item.badge.type === "new"
+                                      ? "#ffffff"
+                                      : "rgba(255,255,255,0.75)",
+                                  textTransform: "uppercase",
+                                  letterSpacing: "0.4px",
+                                  flexShrink: 0,
+                                }}
+                              >
+                                {item.badge.text}
+                              </span>
+                            )}
                             {hasSubItems && (
                               <i
                                 className="fa fa-chevron-right"
