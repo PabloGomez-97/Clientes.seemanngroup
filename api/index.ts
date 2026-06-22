@@ -1876,14 +1876,52 @@ AlumnoSchema.index({ nombre: 1 });
 
 const Alumno = (mongoose.models.Alumno || mongoose.model<IAlumnoDoc>('Alumno', AlumnoSchema)) as AlumnoModel;
 
-// Reutilizar la conexión de mongoose en serverless
-let cachedDb: typeof mongoose | null = null;
+// Reutilizar la conexión de mongoose en serverless (Fluid Compute / Vercel).
+// Un promise compartido evita carreras cuando varias peticiones llegan en cold start.
+interface MongooseCache {
+  conn: typeof mongoose | null;
+  promise: Promise<typeof mongoose> | null;
+}
 
-async function connectDB() {
-  if (cachedDb && mongoose.connection.readyState === 1) return cachedDb;
-  const db = await mongoose.connect(MONGODB_URI, { bufferCommands: false });
-  cachedDb = db;
-  return db;
+const globalForMongoose = globalThis as typeof globalThis & {
+  __mongooseCache?: MongooseCache;
+};
+
+const mongooseCache: MongooseCache = globalForMongoose.__mongooseCache ?? {
+  conn: null,
+  promise: null,
+};
+
+if (!globalForMongoose.__mongooseCache) {
+  globalForMongoose.__mongooseCache = mongooseCache;
+  mongoose.connection.on('disconnected', () => {
+    mongooseCache.conn = null;
+    mongooseCache.promise = null;
+  });
+}
+
+async function connectDB(): Promise<typeof mongoose> {
+  if (mongooseCache.conn && mongoose.connection.readyState === 1) {
+    return mongooseCache.conn;
+  }
+
+  if (!mongooseCache.promise) {
+    mongooseCache.promise = mongoose.connect(MONGODB_URI, {
+      bufferCommands: false,
+      maxPoolSize: 10,
+      serverSelectionTimeoutMS: 10_000,
+    });
+  }
+
+  try {
+    mongooseCache.conn = await mongooseCache.promise;
+  } catch (error) {
+    mongooseCache.promise = null;
+    mongooseCache.conn = null;
+    throw error;
+  }
+
+  return mongooseCache.conn;
 }
 
 function isAuthError(error: unknown): boolean {
