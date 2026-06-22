@@ -133,12 +133,12 @@ async function upsert(doc: any): Promise<void> {
   try {
     const recipient = String(doc.recipientEmail || '').toLowerCase().trim();
     if (!recipient) return;
-    const { dedupKey } = doc;
+    const { dedupKey, recipientEmail: _recipient, ...rest } = doc;
     await PortalNotification.updateOne(
       { recipientEmail: recipient, dedupKey },
       {
         $set: {
-          ...doc,
+          ...rest,
           recipientEmail: recipient,
           read: false,
           readAt: undefined,
