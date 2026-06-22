@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "linbis-analyzer": {
+      "command": "node",
+      "args": [
+        "C:/Users/elxpa/OneDrive/Documentos/GitHub/Clientes.seemanngroup/mcp-linbis-analyzer/dist/index.js"
+      ],
+      "env": {
+        "PORTAL_SRC_PATH": "C:/Users/elxpa/OneDrive/Documentos/GitHub/Clientes.seemanngroup/src",
+        "LINBIS_SWAGGER_FALLBACK_PATH": "C:/Users/elxpa/OneDrive/Documentos/GitHub/Clientes.seemanngroup/mcp-linbis-analyzer/swagger.json"
+      }
+    }
+  }
+}

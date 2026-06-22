@@ -1,0 +1,26 @@
+{
+  "name": "mcp-linbis-analyzer",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "MCP server to analyze Linbis API endpoints vs customer portal usage",
+  "bin": {
+    "mcp-linbis-analyzer": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.21",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
+  }
+}

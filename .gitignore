@@ -28,7 +28,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-mcp-linbis-analyzer/
 n8n
 
 # Otros
