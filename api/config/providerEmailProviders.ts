@@ -17,10 +17,10 @@ export const PROVIDER_EMAIL_PROVIDERS: ProviderEmailProviderConfig[] = [
   {
     id: 'craft',
     label: 'Craft',
-    asunto: 'Revisión de correos',
+    asunto: 'Tarifario Aéreo Craft - SEEMANN Y COMPANIA LIMITADA',
     workflowKey: 'provider-agent-email',
     defaultDescripcion:
-      'Dear Craft, Good Day. Can you please update us the rate for the upcoming month? Thanks!',
+      'Estimada Carla, buenos días. ¿Podrías por favor actualizarnos la tarifa para el próximo mes? Muchas gracias!',
   },
   {
     id: 'msl',
@@ -29,6 +29,14 @@ export const PROVIDER_EMAIL_PROVIDERS: ProviderEmailProviderConfig[] = [
     workflowKey: 'provider-agent-email-msl',
     defaultDescripcion:
       'Dear MSL, Good Day. Can you please update us the rate for the upcoming month? Thanks!',
+  },
+  {
+    id: 'e2e',
+    label: 'E2E',
+    asunto: 'Revisión de tarifas E2E',
+    workflowKey: 'provider-agent-email-e2e',
+    defaultDescripcion:
+      'Dear E2E, Good Day. Can you please update us the rate for the upcoming month? Thanks!',
   },
 ];
 

@@ -3,7 +3,7 @@
  * Cada entrada apunta a una variable de entorno con la URL del webhook.
  */
 
-export const N8N_WORKFLOW_KEYS = ['provider-agent-email', 'provider-agent-email-msl'] as const;
+export const N8N_WORKFLOW_KEYS = ['provider-agent-email', 'provider-agent-email-msl', 'provider-agent-email-e2e'] as const;
 
 export type N8nWorkflowKey = (typeof N8N_WORKFLOW_KEYS)[number];
 
@@ -21,6 +21,10 @@ export const N8N_WORKFLOWS: Record<N8nWorkflowKey, N8nWorkflowConfig> = {
   },
   'provider-agent-email-msl': {
     envWebhook: 'N8N_WEBHOOK_PROVIDER_AGENT_EMAIL_MSL',
+    roles: ['pricing', 'administrador'],
+  },
+  'provider-agent-email-e2e': {
+    envWebhook: 'N8N_WEBHOOK_PROVIDER_AGENT_EMAIL_E2E',
     roles: ['pricing', 'administrador'],
   },
 };
