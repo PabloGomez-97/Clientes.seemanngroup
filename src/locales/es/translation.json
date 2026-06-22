@@ -1848,64 +1848,22 @@
   },
   "providerEmails": {
     "title": "Correos Proveedores",
-    "subtitle": "Gestiona agentes de proveedores y envía correos con plantilla corporativa",
-    "createAgent": "Crear Agente",
-    "showInactive": "Ver agentes inactivos",
-    "empty": "No hay agentes registrados. Crea el primero con el botón superior.",
-    "edit": "Editar",
-    "sendEmail": "Enviar Correo",
-    "confirmSend": "Confirmar envío",
-    "deactivate": "Desactivar",
-    "cancel": "Cancelar",
-    "save": "Guardar",
-    "saving": "Guardando...",
+    "subtitle": "Envía recordatorios de tarifas a tus agentes",
+    "sendEmail": "Enviar correo",
     "sending": "Enviando...",
-    "descriptionPlaceholder": "Contenido del correo (HTML permitido)...",
-    "unsavedDescription": "Cambios sin guardar — se persistirán al enviar el correo",
-    "columns": {
-      "agentName": "Nombre agente",
-      "email": "Correo",
-      "phone": "Teléfono",
-      "responsible": "Responsable",
-      "subject": "Asunto",
-      "description": "Descripción",
-      "actions": "Acciones"
-    },
+    "descriptionPlaceholder": "Escribe el mensaje del correo...",
     "fields": {
-      "agentName": "Nombre del agente",
-      "email": "Correo del agente",
-      "phone": "Teléfono del agente",
-      "phoneOptional": "Opcional",
-      "responsible": "Persona responsable",
-      "subject": "Asunto del correo",
-      "description": "Descripción / cuerpo del correo",
-      "descriptionHint": "Este texto se insertará en la plantilla corporativa al enviar"
-    },
-    "modal": {
-      "createTitle": "Crear agente",
-      "editTitle": "Editar agente",
-      "editDescriptionHint": "La descripción solo se edita en la tabla y se guarda al enviar el correo.",
-      "sendTitle": "Confirmar envío de correo",
-      "sendDescriptionWarning": "La descripción fue modificada y se guardará en la base de datos al confirmar el envío.",
-      "sendBrevoNote": "El correo se enviará con la plantilla corporativa de Seemann Group."
-    },
-    "confirm": {
-      "deactivate": "¿Desactivar al agente \"{{name}}\"? No podrá recibir más correos."
-    },
-    "success": {
-      "created": "Agente creado correctamente",
-      "updated": "Agente actualizado correctamente",
-      "deactivated": "Agente desactivado",
-      "sent": "Correo enviado correctamente",
-      "sentWithSave": "Correo enviado y descripción guardada"
+      "provider": "Agente",
+      "subject": "Asunto del hilo",
+      "description": "Cuerpo del correo"
     },
     "errors": {
-      "load": "Error al cargar agentes",
-      "create": "Error al crear agente",
-      "update": "Error al actualizar agente",
-      "deactivate": "Error al desactivar agente",
-      "send": "Error al enviar correo",
+      "load": "No se pudo cargar la lista de agentes",
+      "send": "No se pudo enviar el correo",
       "connection": "Error de conexión"
+    },
+    "success": {
+      "sent": "Correo enviado correctamente"
     }
   }
 }

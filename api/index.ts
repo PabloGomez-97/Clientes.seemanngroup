@@ -1851,8 +1851,14 @@ import {
   updateProviderAgent,
   deactivateProviderAgent,
   sendProviderAgentEmailAndSave,
+  triggerProviderAgentEmailWorkflowManual,
   handleProviderAgentError,
 } from './services/providerAgentService.js';
+import {
+  getProviderEmailCatalog,
+  sendProviderEmail,
+  handleProviderEmailError,
+} from './services/providerEmailService.js';
 
 const Operacion = (
   mongoose.models.Operacion ||
@@ -8426,6 +8432,65 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
         const err = handleProviderAgentError(e);
         return res.status(err.status).json(err.body);
+      }
+    }
+
+    if (path === '/api/provider-emails/providers' && method === 'GET') {
+      try {
+        requireAuth(req);
+        return res.json({ success: true, providers: getProviderEmailCatalog() });
+      } catch (e: any) {
+        if (e?.message === 'No auth token' || e?.message === 'Invalid token') {
+          return res.status(401).json({ error: e.message });
+        }
+        const err = handleProviderEmailError(e);
+        return res.status(err.status).json({ ...err.body, success: false });
+      }
+    }
+
+    if (path === '/api/provider-emails/send' && method === 'POST') {
+      try {
+        const currentUser = requireAuth(req);
+        const body = (req.body as Record<string, unknown>) || {};
+        const result = await sendProviderEmail(
+          currentUser.sub,
+          String(body.providerId ?? ''),
+          String(body.descripcion ?? ''),
+          { usuario: currentUser.username || 'Ejecutivo' },
+        );
+        return res.json({ success: true, ...result });
+      } catch (e: any) {
+        if (e?.message === 'No auth token' || e?.message === 'Invalid token') {
+          return res.status(401).json({ error: e.message });
+        }
+        const err = handleProviderEmailError(e);
+        return res.status(err.status).json({ ...err.body, success: false });
+      }
+    }
+
+    if (path === '/api/n8n/workflows/provider-agent-email/trigger' && method === 'POST') {
+      try {
+        const currentUser = requireAuth(req);
+        const body = (req.body as Record<string, unknown>) || {};
+        const result = await triggerProviderAgentEmailWorkflowManual(
+          currentUser.sub,
+          {
+            asunto: String(body.asunto ?? ''),
+            descripcion: String(body.descripcion ?? ''),
+            agentId: body.agentId ? String(body.agentId) : undefined,
+            nombreAgente: body.nombreAgente ? String(body.nombreAgente) : undefined,
+            emailAgente: body.emailAgente ? String(body.emailAgente) : undefined,
+            nombreResponsable: body.nombreResponsable ? String(body.nombreResponsable) : undefined,
+          },
+          { usuario: currentUser.username || 'Ejecutivo' },
+        );
+        return res.json({ success: true, ...result });
+      } catch (e: any) {
+        if (e?.message === 'No auth token' || e?.message === 'Invalid token') {
+          return res.status(401).json({ error: e.message });
+        }
+        const err = handleProviderAgentError(e);
+        return res.status(err.status).json({ ...err.body, success: false });
       }
     }
 

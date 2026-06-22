@@ -29,6 +29,7 @@ dist-ssr
 *.sln
 *.sw?
 mcp-linbis-analyzer/
+n8n
 
 # Otros
 # quiero colocar la carpeta security que está en la raíz del proyecto

@@ -10,7 +10,7 @@ import {
   type IUserAgentDoc,
   type UserAgentModel,
 } from '../models/UserAgent.js';
-import { sendProviderAgentEmail } from './providerAgentEmailSender.js';
+import { N8nWorkflowError, triggerN8nWorkflow } from './n8nWorkflowService.js';
 
 const UserAgent = (
   mongoose.models.UserAgent ||
@@ -269,14 +269,17 @@ export async function sendProviderAgentEmailAndSave(
     descripcionGuardada = true;
   }
 
-  await sendProviderAgentEmail({
-    toEmail: agent.emailAgente,
-    toName: agent.nombreAgente,
-    subject: agent.asunto,
-    bodyHtml: descripcionTrimmed,
-    agentName: agent.nombreAgente,
-    responsableName: agent.nombreResponsable,
-    replyTo: userEmail,
+  await triggerN8nWorkflow('provider-agent-email', {
+    agentId: id,
+    nombreAgente: agent.nombreAgente,
+    emailAgente: agent.emailAgente,
+    numeroAgente: agent.numeroAgente || '',
+    nombreResponsable: agent.nombreResponsable,
+    asunto: agent.asunto,
+    descripcion: descripcionTrimmed,
+    triggeredBy: userEmail,
+    triggeredByName: auditMeta.usuario || ejDoc.nombre,
+    triggeredAt: new Date().toISOString(),
   });
 
   await logAudit({
@@ -285,11 +288,12 @@ export async function sendProviderAgentEmailAndSave(
     ejecutivo: auditMeta.ejecutivoNombre || ejDoc.nombre,
     ejecutivoEmail: userEmail,
     accion: 'AGENTE_PROVEEDOR_CORREO_ENVIADO',
-    descripcion: `Correo enviado a ${agent.nombreAgente} (${agent.emailAgente})`,
+    descripcion: `Workflow n8n disparado para ${agent.nombreAgente} (${agent.emailAgente})`,
     detalles: {
       agentId: id,
       asunto: agent.asunto,
       descripcionGuardada,
+      workflow: 'provider-agent-email',
     },
   });
 
@@ -300,15 +304,78 @@ export async function sendProviderAgentEmailAndSave(
   };
 }
 
+export interface ManualWorkflowTriggerInput {
+  asunto: string;
+  descripcion: string;
+  agentId?: string;
+  nombreAgente?: string;
+  emailAgente?: string;
+  nombreResponsable?: string;
+}
+
+export async function triggerProviderAgentEmailWorkflowManual(
+  userEmail: string,
+  input: ManualWorkflowTriggerInput,
+  auditMeta: { usuario: string; ejecutivoNombre?: string },
+) {
+  const ejDoc = await requirePricingOrAdmin(userEmail);
+
+  const asunto = trimStr(input.asunto);
+  const descripcion = trimStr(input.descripcion);
+  if (!asunto || !descripcion) {
+    throw new ProviderAgentHttpError(400, 'Asunto y descripción son obligatorios');
+  }
+
+  let agent: IUserAgentDoc | null = null;
+  const agentId = trimStr(input.agentId);
+  if (agentId) {
+    agent = await UserAgent.findById(agentId);
+    if (!agent) throw new ProviderAgentHttpError(404, 'Agente no encontrado');
+    if (!agent.activo) throw new ProviderAgentHttpError(400, 'El agente está inactivo');
+  }
+
+  const nombreAgente = trimStr(input.nombreAgente) || agent?.nombreAgente || '';
+  const emailAgente = trimStr(input.emailAgente).toLowerCase() || agent?.emailAgente || '';
+  const nombreResponsable = trimStr(input.nombreResponsable) || agent?.nombreResponsable || '';
+
+  await triggerN8nWorkflow('provider-agent-email', {
+    agentId: agentId || undefined,
+    nombreAgente,
+    emailAgente,
+    numeroAgente: agent?.numeroAgente || '',
+    nombreResponsable,
+    asunto,
+    descripcion,
+    triggeredBy: userEmail,
+    triggeredByName: auditMeta.usuario || ejDoc.nombre,
+    triggeredAt: new Date().toISOString(),
+    manual: true,
+  });
+
+  await logAudit({
+    usuario: auditMeta.usuario,
+    email: userEmail,
+    ejecutivo: auditMeta.ejecutivoNombre || ejDoc.nombre,
+    ejecutivoEmail: userEmail,
+    accion: 'AGENTE_PROVEEDOR_WORKFLOW_MANUAL',
+    descripcion: `Workflow n8n disparado manualmente (${asunto})`,
+    detalles: {
+      agentId: agentId || null,
+      asunto,
+      emailAgente: emailAgente || null,
+      workflow: 'provider-agent-email',
+    },
+  });
+
+  return { triggered: true };
+}
+
 export function handleProviderAgentError(e: unknown) {
   if (e instanceof ProviderAgentHttpError) {
     return { status: e.status, body: { error: e.message } };
   }
-  if (e instanceof Error && e.message === 'BREVO_API_KEY no configurado') {
-    return { status: 503, body: { error: 'Servicio de correo no configurado' } };
-  }
-  if (e instanceof Error && e.message.startsWith('Error Brevo:')) {
-    return { status: 502, body: { error: e.message } };
+  if (e instanceof N8nWorkflowError) {
+    return { status: e.status, body: { error: e.message } };
   }
   console.error('[provider-agents] Error:', e);
   return { status: 500, body: { error: 'Error interno del servidor' } };

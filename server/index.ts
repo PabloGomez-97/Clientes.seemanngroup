@@ -1830,8 +1830,14 @@ import {
   updateProviderAgent,
   deactivateProviderAgent,
   sendProviderAgentEmailAndSave,
+  triggerProviderAgentEmailWorkflowManual,
   handleProviderAgentError,
 } from '../api/services/providerAgentService.ts';
+import {
+  getProviderEmailCatalog,
+  sendProviderEmail,
+  handleProviderEmailError,
+} from '../api/services/providerEmailService.ts';
 
 const Operacion = (
   mongoose.models.Operacion ||
@@ -8045,6 +8051,53 @@ app.patch('/api/provider-agents/:id/deactivate', auth, async (req: any, res: any
   } catch (e: any) {
     const err = handleProviderAgentError(e);
     return res.status(err.status).json(err.body);
+  }
+});
+
+app.get('/api/provider-emails/providers', auth, async (_req: any, res: any) => {
+  try {
+    return res.json({ success: true, providers: getProviderEmailCatalog() });
+  } catch (e: any) {
+    const err = handleProviderEmailError(e);
+    return res.status(err.status).json({ ...err.body, success: false });
+  }
+});
+
+app.post('/api/provider-emails/send', auth, async (req: any, res: any) => {
+  try {
+    const body = req.body || {};
+    const result = await sendProviderEmail(
+      req.user.sub,
+      String(body.providerId ?? ''),
+      String(body.descripcion ?? ''),
+      { usuario: req.user.username || 'Ejecutivo' },
+    );
+    return res.json({ success: true, ...result });
+  } catch (e: any) {
+    const err = handleProviderEmailError(e);
+    return res.status(err.status).json({ ...err.body, success: false });
+  }
+});
+
+app.post('/api/n8n/workflows/provider-agent-email/trigger', auth, async (req: any, res: any) => {
+  try {
+    const body = req.body || {};
+    const result = await triggerProviderAgentEmailWorkflowManual(
+      req.user.sub,
+      {
+        asunto: String(body.asunto ?? ''),
+        descripcion: String(body.descripcion ?? ''),
+        agentId: body.agentId ? String(body.agentId) : undefined,
+        nombreAgente: body.nombreAgente ? String(body.nombreAgente) : undefined,
+        emailAgente: body.emailAgente ? String(body.emailAgente) : undefined,
+        nombreResponsable: body.nombreResponsable ? String(body.nombreResponsable) : undefined,
+      },
+      { usuario: req.user.username || 'Ejecutivo' },
+    );
+    return res.json({ success: true, ...result });
+  } catch (e: any) {
+    const err = handleProviderAgentError(e);
+    return res.status(err.status).json({ ...err.body, success: false });
   }
 });
 
