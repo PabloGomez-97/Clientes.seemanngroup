@@ -22,7 +22,7 @@ interface Cliente {
 }
 
 const CACHE_TTL = 60 * 60 * 1000;
-const CLIENTS_CACHE_KEY = "rc_clients_list";
+const CLIENTS_CACHE_KEY = "rc_clients_list_v2";
 const DOCUMENT_COUNTS_CACHE_KEY = "doc_client_counts_v1";
 const DOCUMENT_COUNTS_TTL = 3 * 60 * 60 * 1000;
 const FONT =

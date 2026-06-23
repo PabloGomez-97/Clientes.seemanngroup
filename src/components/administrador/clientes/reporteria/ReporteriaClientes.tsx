@@ -70,7 +70,7 @@ function expandClients(rawClients: Cliente[]): Cliente[] {
 // ── Cache helpers (1 hour TTL) ──
 const CACHE_TTL = 60 * 60 * 1000; // 1 hour in ms
 
-const CLIENTS_CACHE_KEY = "rc_clients_list_v2";
+const CLIENTS_CACHE_KEY = "rc_clients_list_v3";
 
 function getCachedClients(): Cliente[] | null {
   try {

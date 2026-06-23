@@ -42,7 +42,7 @@ describe('buildNotificationNavigation', () => {
         awbNumber: 'AWB-1',
       },
     });
-    assert.equal(nav.route, '/shipsgo');
+    assert.equal(nav.route, '/trackings');
     assert.equal(nav.state.openTab, 'air');
     assert.deepEqual(nav.state.openTracking, {
       mode: 'air',

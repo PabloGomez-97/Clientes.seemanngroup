@@ -90,6 +90,11 @@ export function resolveNotificationRoute(n: NotificationRouteInput): string {
       : base;
   }
 
+  // Legacy tracking notifications stored route as /shipsgo; clients use /trackings
+  if (route === "/shipsgo") {
+    return "/trackings";
+  }
+
   return route;
 }
 
@@ -129,7 +134,11 @@ export function buildNotificationNavigationState(
     }
   }
 
-  if (n.payload?.route === "/shipsgo" || n.payload?.shipmentMode) {
+  if (
+    n.payload?.route === "/shipsgo" ||
+    n.payload?.route === "/trackings" ||
+    n.payload?.shipmentMode
+  ) {
     const mode = n.payload.shipmentMode === "OCEAN" ? "ocean" : "air";
     state.openTab = mode;
     if (mode === "air" && n.payload.awbNumber) {

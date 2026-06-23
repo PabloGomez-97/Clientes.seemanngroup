@@ -2379,21 +2379,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         if (!ejecutivoObjectId) {
-          return res.json({ clientes: [] });
+          return res.json({ success: true, clientes: [] });
         }
 
         const clientes = await User.find(
           { ejecutivoId: ejecutivoObjectId, username: { $ne: 'Ejecutivo' } },
           { passwordHash: 0 }
-        ).sort({ createdAt: -1 });
+        )
+          .populate('ejecutivoId')
+          .sort({ createdAt: -1 });
 
         return res.json({
+          success: true,
           clientes: clientes.map((c: any) => ({
             id: c._id,
             email: c.email,
             username: c.username,
+            usernames: (c.usernames && c.usernames.length > 0) ? c.usernames : [c.username],
             nombreuser: c.nombreuser,
-            createdAt: c.createdAt
+            createdAt: c.createdAt,
+            ejecutivo: c.ejecutivoId ? {
+              id: c.ejecutivoId._id,
+              nombre: c.ejecutivoId.nombre,
+              email: c.ejecutivoId.email,
+              telefono: c.ejecutivoId.telefono
+            } : null
           }))
         });
       } catch (e: any) {
@@ -2534,19 +2544,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // RUTAS DE EJECUTIVOS
     // ============================================================
 
-    // GET /api/ejecutivos - ✅ NUEVO ENDPOINT AGREGADO
+    // GET /api/ejecutivos
     if (path === '/api/ejecutivos' && method === 'GET') {
       try {
-        const currentUser = requireAuth(req);
-        if (currentUser.username !== 'Ejecutivo') {
-          return res.status(403).json({ error: 'No tienes permisos' });
-        }
-        
+        requireAuth(req);
+
         const ejecutivos = await Ejecutivo.find({ activo: true, 'roles.ejecutivo': true })
-          .select('nombre email telefono')
           .sort({ nombre: 1 });
 
         return res.json({
+          success: true,
           ejecutivos: ejecutivos.map(ej => ({
             id: ej._id,
             nombre: ej.nombre,
@@ -2571,25 +2578,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           return res.status(403).json({ error: 'No tienes permisos' });
         }
 
-        const ejecutivos = await Ejecutivo.find().sort({ createdAt: -1 });
+        const ejecutivos = await Ejecutivo.find().sort({ nombre: 1 });
+
+        const ejecutivosConContador = await Promise.all(
+          ejecutivos.map(async (ej) => {
+            const count = await User.countDocuments({ ejecutivoId: ej._id });
+            return {
+              id: ej._id,
+              nombre: ej.nombre,
+              email: ej.email,
+              telefono: ej.telefono,
+              activo: ej.activo,
+              roles: {
+                administrador: ej.roles?.administrador || false,
+                pricing: ej.roles?.pricing || false,
+                ejecutivo: ej.roles?.ejecutivo !== false,
+                proveedor: ej.roles?.proveedor || false,
+                operaciones: ej.roles?.operaciones || false,
+              },
+              clientesAsignados: count,
+              createdAt: ej.createdAt
+            };
+          })
+        );
 
         return res.json({
           success: true,
-          ejecutivos: ejecutivos.map((e: any) => ({
-            id: e._id,
-            nombre: e.nombre,
-            email: e.email,
-            telefono: e.telefono,
-            activo: e.activo,
-            roles: {
-              administrador: e.roles?.administrador || false,
-              pricing: e.roles?.pricing || false,
-              ejecutivo: e.roles?.ejecutivo !== false,
-              proveedor: e.roles?.proveedor || false,
-              operaciones: e.roles?.operaciones || false,
-            },
-            createdAt: e.createdAt
-          }))
+          ejecutivos: ejecutivosConContador
         });
       } catch (e: any) {
         if (e?.message === 'No auth token' || e?.message === 'Invalid token') {
@@ -2676,9 +2691,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const id = path.split('/').pop();
         const { nombre, email, telefono, activo, roles } = (req.body as any) || {};
 
-        const ejecutivo = await Ejecutivo.findById(id);
-        if (!ejecutivo) {
-          return res.status(404).json({ error: 'Ejecutivo no encontrado' });
+        if (!nombre || !email || !telefono) {
+          return res.status(400).json({ error: 'Faltan campos requeridos' });
         }
 
         // Validar roles si se envían
@@ -2696,15 +2710,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           if (!administrador && !pricing && !rolEjecutivo && !rolProveedor && !rolOperaciones) {
             return res.status(400).json({ error: 'Debe tener al menos un rol asignado' });
           }
-          ejecutivo.roles = roles;
         }
 
-        if (nombre) ejecutivo.nombre = String(nombre).trim();
-        if (email) ejecutivo.email = String(email).toLowerCase().trim();
-        if (telefono) ejecutivo.telefono = String(telefono).trim();
-        if (activo !== undefined) ejecutivo.activo = Boolean(activo);
+        const ejecutivo = await Ejecutivo.findByIdAndUpdate(
+          id,
+          {
+            nombre: String(nombre).trim(),
+            email: String(email).toLowerCase().trim(),
+            telefono: String(telefono).trim(),
+            activo: activo !== undefined ? activo : true,
+            ...(roles ? { roles } : {}),
+          },
+          { new: true }
+        );
 
-        await ejecutivo.save();
+        if (!ejecutivo) {
+          return res.status(404).json({ error: 'Ejecutivo no encontrado' });
+        }
 
         return res.json({
           success: true,
@@ -3438,7 +3460,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // POST /api/shipsgo/shipments/:id/followers - Agregar follower a shipment aéreo existente
-    const airFollowerCreateMatch = path?.match(/^\/api\/shipsgo\/shipments\/(\d+)\/followers$/);
+    const airFollowerCreateMatch = path?.match(/^\/api\/shipsgo\/shipments\/([^/]+)\/followers$/);
     if (airFollowerCreateMatch && method === 'POST') {
       const shipmentId = airFollowerCreateMatch[1];
       console.log(`✈️ [shipsgo] Adding follower to air shipment id=${shipmentId}...`);
@@ -3508,7 +3530,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // DELETE /api/shipsgo/shipments/:id/followers/:followerId - Eliminar follower de shipment aéreo existente
-    const airFollowerDeleteMatch = path?.match(/^\/api\/shipsgo\/shipments\/(\d+)\/followers\/(\d+)$/);
+    const airFollowerDeleteMatch = path?.match(/^\/api\/shipsgo\/shipments\/([^/]+)\/followers\/([^/]+)$/);
     if (airFollowerDeleteMatch && method === 'DELETE') {
       const shipmentId = airFollowerDeleteMatch[1];
       const followerId = airFollowerDeleteMatch[2];
@@ -3564,7 +3586,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // GET /api/shipsgo/shipments/:id/geojson - Ruta GeoJSON de un shipment aéreo (experimental)
-    if (path?.match(/^\/api\/shipsgo\/shipments\/\d+\/geojson$/) && method === 'GET') {
+    if (path?.match(/^\/api\/shipsgo\/shipments\/[^/]+\/geojson$/) && method === 'GET') {
       const shipmentId = path.split('/')[4];
       console.log(`✈️ [shipsgo] Fetching air shipment geojson for id=${shipmentId}...`);
       try {
@@ -3593,7 +3615,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // GET /api/shipsgo/shipments/:id - Detalles de un shipment aéreo
-    if (path?.match(/^\/api\/shipsgo\/shipments\/\d+$/) && method === 'GET') {
+    if (path?.match(/^\/api\/shipsgo\/shipments\/[^/]+$/) && method === 'GET') {
       const shipmentId = path.split('/')[4];
       console.log(`✈️ [shipsgo] Fetching air shipment detail for id=${shipmentId}...`);
       try {
@@ -3927,7 +3949,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // POST /api/shipsgo/ocean/shipments/:id/followers - Agregar follower a shipment marítimo existente
-    const oceanFollowerCreateMatch = path?.match(/^\/api\/shipsgo\/ocean\/shipments\/(\d+)\/followers$/);
+    const oceanFollowerCreateMatch = path?.match(/^\/api\/shipsgo\/ocean\/shipments\/([^/]+)\/followers$/);
     if (oceanFollowerCreateMatch && method === 'POST') {
       const shipmentId = oceanFollowerCreateMatch[1];
       console.log(`🚢 [shipsgo-ocean] Adding follower to ocean shipment id=${shipmentId}...`);
@@ -3997,7 +4019,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // DELETE /api/shipsgo/ocean/shipments/:id/followers/:followerId - Eliminar follower de shipment marítimo existente
-    const oceanFollowerDeleteMatch = path?.match(/^\/api\/shipsgo\/ocean\/shipments\/(\d+)\/followers\/(\d+)$/);
+    const oceanFollowerDeleteMatch = path?.match(/^\/api\/shipsgo\/ocean\/shipments\/([^/]+)\/followers\/([^/]+)$/);
     if (oceanFollowerDeleteMatch && method === 'DELETE') {
       const shipmentId = oceanFollowerDeleteMatch[1];
       const followerId = oceanFollowerDeleteMatch[2];
@@ -4053,7 +4075,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // GET /api/shipsgo/ocean/shipments/:id/geojson - Obtener ruta GeoJSON de un shipment marítimo (experimental)
-    const oceanGeojsonMatch = path?.match(/^\/api\/shipsgo\/ocean\/shipments\/(\d+)\/geojson$/);
+    const oceanGeojsonMatch = path?.match(/^\/api\/shipsgo\/ocean\/shipments\/([^/]+)\/geojson$/);
     if (oceanGeojsonMatch && method === 'GET') {
       const shipmentId = oceanGeojsonMatch[1];
       console.log(`🚢 [shipsgo-ocean] Fetching ocean shipment geojson for id=${shipmentId}...`);
@@ -4083,7 +4105,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // GET /api/shipsgo/ocean/shipments/:id - Obtener detalles de un shipment marítimo
-    const oceanDetailMatch = path?.match(/^\/api\/shipsgo\/ocean\/shipments\/(\d+)$/);
+    const oceanDetailMatch = path?.match(/^\/api\/shipsgo\/ocean\/shipments\/([^/]+)$/);
     if (oceanDetailMatch && method === 'GET') {
       const shipmentId = oceanDetailMatch[1];
       console.log(`🚢 [shipsgo-ocean] Fetching ocean shipment detail for id=${shipmentId}...`);
@@ -4332,8 +4354,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           return res.status(401).json({ error: error.message });
         }
         console.error('[documentos] Error al subir:', error);
-        return res.status(500).json({ 
-          error: 'Error interno al subir documento'
+        return res.status(500).json({
+          error: 'Error interno al subir documento',
+          details: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
       }
     }
@@ -4437,7 +4460,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           return res.status(401).json({ error: error.message });
         }
         console.error('[documentos-operacionales] Error al subir:', error);
-        return res.status(500).json({ error: 'Error interno al subir documento' });
+        return res.status(500).json({
+          error: 'Error interno al subir documento',
+          details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+        });
       }
     }
 
@@ -5995,7 +6021,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           getRequestedDocumentOwnerUsername(req),
         );
 
-        const pdfs = await QuotePDF.find({ usuarioId: ownerUsername })
+        const pdfs = await QuotePDF.find({
+          usuarioId: ownerUsername,
+          quoteNumber: { $exists: true, $nin: ['', null] }
+        })
           .select('-contenidoBase64')
           .sort({ createdAt: -1 });
 
@@ -6018,6 +6047,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
         console.error('[quote-pdf] Error al listar:', error);
         return res.status(500).json({ error: 'Error interno al listar PDFs' });
+      }
+    }
+
+    // DELETE /api/quote-pdf/cleanup - Eliminar todos los PDFs del usuario (R2 + MongoDB)
+    if (path === '/api/quote-pdf/cleanup' && method === 'DELETE') {
+      try {
+        const currentUser = requireAuth(req);
+        if (!currentUser || !currentUser.username) {
+          return res.status(401).json({ error: 'Usuario no autenticado' });
+        }
+
+        const r2Deleted = await deleteAllUserPDFs(currentUser.username);
+        console.log(`[quote-pdf] R2 limpieza: ${r2Deleted} archivos eliminados para ${currentUser.username}`);
+
+        const result = await QuotePDF.deleteMany({ usuarioId: currentUser.username });
+        console.log(`[quote-pdf] MongoDB limpieza: ${result.deletedCount} registros eliminados para ${currentUser.username}`);
+
+        return res.json({ success: true, deletedCount: result.deletedCount });
+      } catch (error: any) {
+        if (error?.message === 'No auth token' || error?.message === 'Invalid token') {
+          return res.status(401).json({ error: error.message });
+        }
+        console.error('[quote-pdf] Error en limpieza:', error);
+        return res.status(500).json({ error: 'Error interno' });
       }
     }
 
