@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Modal } from "react-bootstrap";
+import LoadingTips from "@/components/cliente/embarques/LoadingTips";
 import {
   fetchBrowsableRatesCached,
   listCountriesFromRows,
@@ -35,6 +36,10 @@ import {
   fetchHistoricalExplorerSnapshot,
   type HistoricalExplorerSnapshot,
 } from "@/components/quotes/Handlers/shared/historicalExplorerParse";
+import {
+  getCachedHistoricalExplorer,
+  setCachedHistoricalExplorer,
+} from "@/components/quotes/Handlers/shared/historicalExplorerCache";
 import type { AirResponse, OceanResponse } from "@/components/cliente/tracking/shipsgo/types";
 import { PriceHistoryExplorerChart } from "../priceHistory/PriceHistoryExplorerChart";
 import "@/components/quotes/QuoteAIR.css";
@@ -311,12 +316,18 @@ function RatesTablePanel({
 export default function ConsultaTarifas() {
   const { t } = useTranslation();
 
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [ratesLoading, setRatesLoading] = useState(true);
+  const [ratesError, setRatesError] = useState<string | null>(null);
   const [snapshot, setSnapshot] = useState<BrowsableRatesSnapshot | null>(null);
   const [history, setHistory] = useState<HistoricalExplorerSnapshot | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [airPopularRoutes, setAirPopularRoutes] = useState<PopularRouteStat[]>([]);
   const [oceanPopularRoutes, setOceanPopularRoutes] = useState<PopularRouteStat[]>([]);
+  const [popularLoading, setPopularLoading] = useState(false);
+
+  const historyLoadPromiseRef = useRef<Promise<void> | null>(null);
+  const historyReadyRef = useRef(false);
+  const popularLoadedRef = useRef(false);
 
   const [activeMode, setActiveMode] = useState<CountryRateService>("air");
   const [countryCode, setCountryCode] = useState("");
@@ -335,35 +346,99 @@ export default function ConsultaTarifas() {
 
   const showDualMaritime = selectedPopularRoute?.mode === "ocean";
 
-  const loadData = useCallback(
+  const skeletonColumns = useMemo(
+    () => [
+      ...COLUMNS_BY_MODE.air.map((col) => ({
+        label: col.label,
+        center: col.type === "price",
+      })),
+      { label: t("consultaTarifas.colActions"), center: true },
+    ],
+    [t],
+  );
+
+  const loadRates = useCallback(
     async (forceRefresh = false) => {
-      setLoading(true);
-      setError(null);
+      setRatesLoading(true);
+      setRatesError(null);
       try {
         if (forceRefresh) clearCachedBrowsableRates();
-        const [rates, hist, popular] = await Promise.all([
-          fetchBrowsableRatesCached(forceRefresh),
-          fetchHistoricalExplorerSnapshot().catch(() => null),
-          fetchPopularRouteStats(),
-        ]);
+        const rates = await fetchBrowsableRatesCached(forceRefresh);
         setSnapshot(rates);
-        setHistory(hist);
-        setAirPopularRoutes(popular.air);
-        setOceanPopularRoutes(popular.ocean);
       } catch (err) {
-        setError(
+        setRatesError(
           err instanceof Error ? err.message : t("consultaTarifas.error"),
         );
       } finally {
-        setLoading(false);
+        setRatesLoading(false);
       }
     },
     [t],
   );
 
+  const ensureHistoryLoaded = useCallback(async () => {
+    if (historyReadyRef.current) return;
+
+    const cached = getCachedHistoricalExplorer();
+    if (cached) {
+      setHistory(cached);
+      historyReadyRef.current = true;
+      return;
+    }
+
+    if (historyLoadPromiseRef.current) {
+      await historyLoadPromiseRef.current;
+      return;
+    }
+
+    const promise = (async () => {
+      setHistoryLoading(true);
+      try {
+        const hist = await fetchHistoricalExplorerSnapshot();
+        setHistory(hist);
+        setCachedHistoricalExplorer(hist);
+        historyReadyRef.current = true;
+      } catch {
+        setHistory(null);
+      } finally {
+        setHistoryLoading(false);
+        historyLoadPromiseRef.current = null;
+      }
+    })();
+
+    historyLoadPromiseRef.current = promise;
+    await promise;
+  }, []);
+
+  const handleViewHistory = useCallback(
+    (row: BrowsableRateRow) => {
+      setChartRow(row);
+      void ensureHistoryLoaded();
+    },
+    [ensureHistoryLoaded],
+  );
+
+  const loadPopularRoutes = useCallback(async () => {
+    if (popularLoadedRef.current) return;
+
+    setPopularLoading(true);
+    try {
+      const popular = await fetchPopularRouteStats();
+      setAirPopularRoutes(popular.air);
+      setOceanPopularRoutes(popular.ocean);
+      popularLoadedRef.current = true;
+    } finally {
+      setPopularLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
-    void loadData(false);
-  }, [loadData]);
+    void loadRates(false);
+  }, [loadRates]);
+
+  useEffect(() => {
+    if (popularPanelOpen) void loadPopularRoutes();
+  }, [popularPanelOpen, loadPopularRoutes]);
 
   const showTierFilter =
     activeMode !== "lcl" &&
@@ -648,6 +723,14 @@ export default function ConsultaTarifas() {
     emptyKey: string,
     onRouteClick: (route: PopularRouteStat) => void,
   ) => {
+    if (popularLoading) {
+      return (
+        <div className="ct-popular__loading" role="status" aria-live="polite">
+          <span className="spinner-border spinner-border-sm" aria-hidden />
+          <span>{t("consultaTarifas.popularRoutes.loading")}</span>
+        </div>
+      );
+    }
     if (routes.length === 0) {
       return <p className="ct-popular__empty">{t(emptyKey)}</p>;
     }
@@ -683,44 +766,6 @@ export default function ConsultaTarifas() {
     });
   };
 
-  if (loading) {
-    return (
-      <div className="ct-container">
-        <header className="ct-header">
-          <h1 className="ct-title">{t("consultaTarifas.title")}</h1>
-          <p className="ct-subtitle">{t("consultaTarifas.subtitle")}</p>
-        </header>
-        <div className="ct-state" role="status" aria-live="polite">
-          <span className="spinner-border" aria-hidden />
-          <p className="ct-state__text">{t("consultaTarifas.loading")}</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error || !snapshot) {
-    return (
-      <div className="ct-container">
-        <header className="ct-header">
-          <h1 className="ct-title">{t("consultaTarifas.title")}</h1>
-          <p className="ct-subtitle">{t("consultaTarifas.subtitle")}</p>
-        </header>
-        <div className="ct-state ct-state--error" role="alert">
-          <i className="bi bi-exclamation-triangle" aria-hidden />
-          <p className="ct-state__text">{error ?? t("consultaTarifas.error")}</p>
-          <button
-            type="button"
-            className="qa-btn qa-btn-primary"
-            onClick={() => void loadData(true)}
-          >
-            <i className="bi bi-arrow-clockwise me-1" aria-hidden />
-            {t("consultaTarifas.retry")}
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   const columns = COLUMNS_BY_MODE[activeMode];
 
   return (
@@ -731,22 +776,45 @@ export default function ConsultaTarifas() {
             <h1 className="ct-title">{t("consultaTarifas.title")}</h1>
             <p className="ct-subtitle">{t("consultaTarifas.subtitle")}</p>
           </div>
-          <button
-            type="button"
-            className="ct-popular-trigger"
-            aria-expanded={popularPanelOpen}
-            aria-controls="ct-popular-accordion"
-            onClick={(event) => {
-              event.stopPropagation();
-              setPopularPanelOpen(true);
-            }}
-          >
-            <i className="bi bi-signpost-split" aria-hidden />
-            {t("consultaTarifas.popularRoutes.openButton")}
-          </button>
+          {!ratesLoading && snapshot ? (
+            <button
+              type="button"
+              className="ct-popular-trigger"
+              aria-expanded={popularPanelOpen}
+              aria-controls="ct-popular-accordion"
+              onClick={(event) => {
+                event.stopPropagation();
+                setPopularPanelOpen(true);
+              }}
+            >
+              <i className="bi bi-signpost-split" aria-hidden />
+              {t("consultaTarifas.popularRoutes.openButton")}
+            </button>
+          ) : (
+            <span className="ct-skeleton-trigger" aria-hidden="true" />
+          )}
         </div>
       </header>
 
+      {ratesLoading ? (
+        <LoadingTips variant="ratesConsult" columns={skeletonColumns} />
+      ) : ratesError || !snapshot ? (
+        <div className="ct-state ct-state--error" role="alert">
+          <i className="bi bi-exclamation-triangle" aria-hidden />
+          <p className="ct-state__text">
+            {ratesError ?? t("consultaTarifas.error")}
+          </p>
+          <button
+            type="button"
+            className="qa-btn qa-btn-primary"
+            onClick={() => void loadRates(true)}
+          >
+            <i className="bi bi-arrow-clockwise me-1" aria-hidden />
+            {t("consultaTarifas.retry")}
+          </button>
+        </div>
+      ) : (
+        <>
       {popularPanelOpen ? (
         <>
           <div
@@ -931,7 +999,7 @@ export default function ConsultaTarifas() {
             onRowsPerPageChange={setRowsPerPage}
             onTablePageChange={setFclTablePage}
             downloadContext={fclDownloadContext}
-            onViewHistory={setChartRow}
+            onViewHistory={handleViewHistory}
             t={t}
           />
           <RatesTablePanel
@@ -943,7 +1011,7 @@ export default function ConsultaTarifas() {
             onRowsPerPageChange={setRowsPerPage}
             onTablePageChange={setLclTablePage}
             downloadContext={lclDownloadContext}
-            onViewHistory={setChartRow}
+            onViewHistory={handleViewHistory}
             t={t}
           />
         </div>
@@ -1043,7 +1111,7 @@ export default function ConsultaTarifas() {
                             <button
                               type="button"
                               className="ct-link-btn"
-                              onClick={() => setChartRow(row)}
+                              onClick={() => handleViewHistory(row)}
                             >
                               <i className="bi bi-graph-up-arrow me-1" aria-hidden />
                               {t("consultaTarifas.viewHistory")}
@@ -1104,6 +1172,8 @@ export default function ConsultaTarifas() {
           )}
         </>
       )}
+        </>
+      )}
 
       <Modal
         show={!!chartRow}
@@ -1120,7 +1190,12 @@ export default function ConsultaTarifas() {
           </Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          {chartBundle ? (
+          {historyLoading ? (
+            <div className="ct-state ct-state--modal" role="status" aria-live="polite">
+              <span className="spinner-border" aria-hidden />
+              <p className="ct-state__text">{t("consultaTarifas.historyLoading")}</p>
+            </div>
+          ) : chartBundle ? (
             <div className="ct-charts ct-charts--grid">
               {chartBundle.tiers.map((tier) => (
                 <div key={tier.tierKey} className="ct-chart-card">

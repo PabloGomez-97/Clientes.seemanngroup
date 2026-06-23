@@ -814,9 +814,11 @@
     "expiredBadge": "Expired",
     "expiringSoonBadge": "Expiring soon",
     "historyModalTitle": "Price trend",
+    "historyLoading": "Loading price trend…",
     "noHistory": "We don't have price history for this route yet. The current rate is still shown in the table.",
     "popularRoutes": {
       "openButton": "View busiest routes",
+      "loading": "Loading busiest routes…",
       "title": "Seemann's most used routes",
       "desc": "Based on real movements from our clients. Click a route to see its active rates above. Ocean routes show both FCL and LCL tables.",
       "air": "Most used air routes",

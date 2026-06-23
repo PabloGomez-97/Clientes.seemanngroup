@@ -53,6 +53,37 @@
   transform: translateY(1px);
 }
 
+.ct-skeleton-trigger {
+  flex: 0 0 auto;
+  display: inline-block;
+  width: 220px;
+  height: 40px;
+  border-radius: 8px;
+  background: #dde2e8;
+  position: relative;
+  overflow: hidden;
+}
+
+.ct-skeleton-trigger::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.75),
+    transparent
+  );
+  animation: ct-skeleton-shimmer 1.35s infinite;
+}
+
+@keyframes ct-skeleton-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
 .ct-title {
   font-size: 1.5rem;
   font-weight: 700;
@@ -629,6 +660,20 @@
 .ct-state--error i {
   font-size: 2rem;
   color: #b91c1c;
+}
+
+.ct-state--modal {
+  padding: 48px 20px;
+}
+
+.ct-popular__loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 24px 16px;
+  color: #6b7280;
+  font-size: 0.8125rem;
 }
 
 .ct-empty {

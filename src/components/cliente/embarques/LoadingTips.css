@@ -377,6 +377,97 @@
   width: 140px;
 }
 
+/* Consulta tarifas — mirrors ct-tabs / ct-filters / ct-toolbar */
+.lt-rates-consult .lt-tabs {
+  gap: 6px;
+  margin-bottom: 16px;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.lt-rates-consult .lt-bone--tab {
+  width: 100px;
+  height: 34px;
+  border-radius: 6px;
+}
+
+.lt-rates-consult .lt-bone--tab-active {
+  width: 100px;
+}
+
+.lt-rates-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  padding: 14px 16px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+.lt-rates-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex: 1 1 180px;
+  min-width: 0;
+}
+
+.lt-bone--filter-label {
+  width: 96px;
+  height: 10px;
+  border-radius: 4px;
+}
+
+.lt-bone--filter-select {
+  display: block;
+  width: 100%;
+  height: 36px;
+  border-radius: 6px;
+}
+
+.lt-rates-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  padding-bottom: 2px;
+}
+
+.lt-bone--toggle-box {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.lt-bone--toggle-text {
+  width: 200px;
+  height: 12px;
+}
+
+.lt-rates-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.lt-bone--results-text {
+  width: 120px;
+  height: 14px;
+}
+
+.lt-bone--download-btn {
+  width: 160px;
+  height: 32px;
+  border-radius: 8px;
+}
+
 /* Panels */
 .lt-panel-row {
   display: grid;

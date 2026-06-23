@@ -3,7 +3,11 @@ import "./LoadingTips.css";
 
 const LOADING_MESSAGE_DELAY_MS = 3000;
 
-export type LoadingTipsVariant = "table" | "financial" | "operational";
+export type LoadingTipsVariant =
+  | "table"
+  | "financial"
+  | "operational"
+  | "ratesConsult";
 
 export interface LoadingTipsColumn {
   label: string;
@@ -131,10 +135,53 @@ const ROW_PATTERNS_7: RowCell[][] = [
   ],
 ];
 
+const ROW_PATTERNS_11: RowCell[][] = [
+  [
+    { className: "lt-bone--city" },
+    { className: "lt-bone--city-lg" },
+    { className: "lt-bone--transport" },
+    { className: "lt-bone--transit", center: true },
+    { className: "lt-bone--transit", center: true },
+    { className: "lt-bone--transit", center: true },
+    { className: "lt-bone--transit", center: true },
+    { className: "lt-bone--transit", center: true },
+    { className: "lt-bone--date" },
+    { className: "lt-bone--date" },
+    { className: "lt-bone--button", center: true },
+  ],
+  [
+    { className: "lt-bone--city-lg" },
+    { className: "lt-bone--city" },
+    { className: "lt-bone--transport" },
+    { className: "lt-bone--transit", center: true },
+    { className: "lt-bone--transit", center: true },
+    { className: "lt-bone--transit", center: true },
+    { className: "lt-bone--transit", center: true },
+    { className: "lt-bone--transit", center: true },
+    { className: "lt-bone--date" },
+    { className: "lt-bone--date" },
+    { className: "lt-bone--button", center: true },
+  ],
+  [
+    { className: "lt-bone--city" },
+    { className: "lt-bone--city" },
+    { className: "lt-bone--transport" },
+    { className: "lt-bone--transit", center: true },
+    { className: "lt-bone--transit", center: true },
+    { className: "lt-bone--transit", center: true },
+    { className: "lt-bone--transit", center: true },
+    { className: "lt-bone--transit", center: true },
+    { className: "lt-bone--date" },
+    { className: "lt-bone--date" },
+    { className: "lt-bone--button", center: true },
+  ],
+];
+
 const ROW_PATTERNS_BY_COUNT: Record<number, RowCell[][]> = {
   6: ROW_PATTERNS_6,
   7: ROW_PATTERNS_7,
   10: ROW_PATTERNS,
+  11: ROW_PATTERNS_11,
 };
 
 function getRowCells(index: number, columns?: LoadingTipsColumn[]): RowCell[] {
@@ -376,6 +423,38 @@ function FinancialSkeleton() {
   );
 }
 
+function RatesConsultSkeleton({ columns }: { columns?: LoadingTipsColumn[] }) {
+  return (
+    <div className="lt-rates-consult">
+      <div className="lt-tabs" aria-hidden="true">
+        <span className="lt-bone lt-bone--tab lt-bone--tab-active" />
+        <span className="lt-bone lt-bone--tab" />
+        <span className="lt-bone lt-bone--tab" />
+      </div>
+
+      <div className="lt-rates-filters" aria-hidden="true">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="lt-rates-field">
+            <span className="lt-bone lt-bone--filter-label" />
+            <span className="lt-bone lt-bone--filter-select" />
+          </div>
+        ))}
+        <div className="lt-rates-toggle">
+          <span className="lt-bone lt-bone--toggle-box" />
+          <span className="lt-bone lt-bone--toggle-text" />
+        </div>
+      </div>
+
+      <div className="lt-rates-toolbar" aria-hidden="true">
+        <span className="lt-bone lt-bone--results-text" />
+        <span className="lt-bone lt-bone--download-btn" />
+      </div>
+
+      <TableSkeleton columns={columns} />
+    </div>
+  );
+}
+
 function OperationalSkeleton() {
   return (
     <div className="lt-dashboard-wrapper">
@@ -413,6 +492,7 @@ export default function LoadingTips({
     <div role="status" aria-live="polite" aria-busy="true">
       {variant === "financial" && <FinancialSkeleton />}
       {variant === "operational" && <OperationalSkeleton />}
+      {variant === "ratesConsult" && <RatesConsultSkeleton columns={columns} />}
       {variant === "table" && <TableSkeleton columns={columns} />}
     </div>
   );

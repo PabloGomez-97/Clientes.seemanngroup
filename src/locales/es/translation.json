@@ -815,9 +815,11 @@
     "expiredBadge": "Vencida",
     "expiringSoonBadge": "Por vencer",
     "historyModalTitle": "Evolución de precios",
+    "historyLoading": "Cargando evolución de precios…",
     "noHistory": "Aún no tenemos histórico de precios para esta ruta. La tarifa vigente sí aparece en la tabla.",
     "popularRoutes": {
       "openButton": "Ver rutas más concurridas",
+      "loading": "Cargando rutas más usadas…",
       "title": "Rutas más usadas en Seemann",
       "desc": "Basado en movimientos reales de nuestros clientes. Haz clic en una ruta para ver sus tarifas vigentes arriba. Las rutas marítimas muestran tablas FCL y LCL.",
       "air": "Rutas aéreas más usadas",
