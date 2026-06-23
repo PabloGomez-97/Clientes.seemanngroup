@@ -5,6 +5,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import logoSeemann from "./logoseemann.png";
 import { handleSidebarNavigation } from "./sidebarNavigation";
+import SidebarMenuBadge from "./SidebarMenuBadge";
 import { imgUrl } from "../config/images";
 
 interface SidebarProveedorProps {
@@ -396,30 +397,14 @@ function SidebarProveedor({
                               }}
                             >
                               {item.name}
+                              {item.badge && (
+                                <SidebarMenuBadge
+                                  text={item.badge.text}
+                                  type={item.badge.type}
+                                  accentColor={colors.accent}
+                                />
+                              )}
                             </span>
-                            {item.badge && (
-                              <span
-                                style={{
-                                  padding: "2px 7px",
-                                  borderRadius: "4px",
-                                  fontSize: "9px",
-                                  fontWeight: "700",
-                                  backgroundColor:
-                                    item.badge.type === "new"
-                                      ? colors.accent
-                                      : "rgba(255, 255, 255, 0.12)",
-                                  color:
-                                    item.badge.type === "new"
-                                      ? "#ffffff"
-                                      : "rgba(255,255,255,0.75)",
-                                  textTransform: "uppercase",
-                                  letterSpacing: "0.4px",
-                                  flexShrink: 0,
-                                }}
-                              >
-                                {item.badge.text}
-                              </span>
-                            )}
                             {hasSubItems && (
                               <i
                                 className="fa fa-chevron-right"

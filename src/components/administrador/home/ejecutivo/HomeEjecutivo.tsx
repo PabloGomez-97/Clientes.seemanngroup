@@ -63,6 +63,17 @@ interface Cliente {
   username: string;
   nombreuser?: string;
   createdAt: string;
+  usernames?: string[];
+}
+
+function getClientUsernames(client: Cliente): string[] {
+  return client.usernames?.length ? client.usernames : [client.username];
+}
+
+function buildUsernameSet(clients: Cliente[]): Set<string> {
+  const set = new Set<string>();
+  clients.forEach((c) => getClientUsernames(c).forEach((u) => set.add(u)));
+  return set;
 }
 
 // Linbis shipment (air)
@@ -719,7 +730,7 @@ export default function HomeEjecutivo() {
             ? raw
             : [];
         setClientes(arr);
-        const clientSet = new Set(arr.map((c) => c.username));
+        const clientSet = buildUsernameSet(arr);
 
         if (
           airRes.status === "fulfilled" &&
@@ -799,7 +810,7 @@ export default function HomeEjecutivo() {
 
         if (signal?.aborted) return;
 
-        const clientUsernames = new Set(clientes.map((c) => c.username));
+        const clientUsernames = buildUsernameSet(clientes);
 
         const oceanAll: LinbisOceanShipment[] =
           oceanAllRes.status === "fulfilled" && Array.isArray(oceanAllRes.value)

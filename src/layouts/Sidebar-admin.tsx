@@ -8,6 +8,7 @@ import { usePricingExpiryCount } from "../hooks/usePricingExpiryCount";
 import { imgUrl } from "../config/images";
 import logoSeemann from "./logoseemann.png";
 import { handleSidebarNavigation } from "./sidebarNavigation";
+import SidebarMenuBadge from "./SidebarMenuBadge";
 
 interface SidebarAdminProps {
   isCollapsed: boolean;
@@ -569,30 +570,14 @@ function SidebarAdmin({
                               }}
                             >
                               {item.name}
+                              {item.badge && (
+                                <SidebarMenuBadge
+                                  text={item.badge.text}
+                                  type={item.badge.type}
+                                  accentColor={colors.accent}
+                                />
+                              )}
                             </span>
-
-                            {item.badge && (
-                              <span
-                                style={{
-                                  padding: "2px 7px",
-                                  borderRadius: "4px",
-                                  fontSize: "9px",
-                                  fontWeight: "700",
-                                  backgroundColor:
-                                    item.badge.type === "new"
-                                      ? colors.accent
-                                      : "rgba(255, 255, 255, 0.12)",
-                                  color:
-                                    item.badge.type === "new"
-                                      ? "#ffffff"
-                                      : "rgba(255,255,255,0.75)",
-                                  textTransform: "uppercase",
-                                  letterSpacing: "0.4px",
-                                }}
-                              >
-                                {item.badge.text}
-                              </span>
-                            )}
 
                             {item.path === "/admin/pricing/alertas" &&
                               pricingExpiryCount > 0 && (
@@ -693,24 +678,14 @@ function SidebarAdmin({
                                     >
                                       <span style={{ flex: 1 }}>
                                         {subItem.name}
+                                        {subItem.badge && (
+                                          <SidebarMenuBadge
+                                            text={subItem.badge.text}
+                                            type={subItem.badge.type}
+                                            accentColor={colors.accent}
+                                          />
+                                        )}
                                       </span>
-                                      {subItem.badge && (
-                                        <span
-                                          style={{
-                                            padding: "2px 7px",
-                                            borderRadius: "4px",
-                                            fontSize: "9px",
-                                            fontWeight: "700",
-                                            backgroundColor:
-                                              "rgba(255, 255, 255, 0.12)",
-                                            color: "rgba(255,255,255,0.75)",
-                                            textTransform: "uppercase",
-                                            letterSpacing: "0.4px",
-                                          }}
-                                        >
-                                          {subItem.badge.text}
-                                        </span>
-                                      )}
                                     </a>
                                   </li>
                                 );
