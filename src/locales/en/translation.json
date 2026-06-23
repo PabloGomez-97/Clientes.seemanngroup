@@ -758,6 +758,7 @@
     "pickCountryHint": "Select an origin country to view Air, FCL, and LCL charts.",
     "noRoutesInTab": "No historical routes for this country in the selected mode.",
     "loadError": "Could not load price history.",
+    "retry": "Retry",
     "loading": "Loading price history…",
     "noSeriesData": "Not enough data for this chart.",
     "limitedHistory": "Limited history; the trend may change with new updates.",

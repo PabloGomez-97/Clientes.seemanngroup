@@ -759,6 +759,7 @@
     "pickCountryHint": "Selecciona un país de origen para ver los gráficos de Aéreo, FCL y LCL.",
     "noRoutesInTab": "No hay rutas históricas para este país en la modalidad seleccionada.",
     "loadError": "No se pudo cargar el histórico de precios.",
+    "retry": "Reintentar",
     "loading": "Cargando histórico de precios…",
     "noSeriesData": "Sin datos suficientes para este gráfico.",
     "limitedHistory": "Histórico con pocos registros; la tendencia puede variar con nuevas actualizaciones.",

@@ -14,6 +14,9 @@ import {
 import { GOOGLE_SHEET_HISTORICAL_CSV_URL as AIR_HISTORICAL_URL } from "../Air/HandlerQuoteAirHistorical";
 import { GOOGLE_SHEET_FCL_HISTORICAL_CSV_URL as FCL_HISTORICAL_URL } from "../FCL/HandlerQuoteFCLHistorical";
 import { GOOGLE_SHEET_LCL_HISTORICAL_CSV_URL as LCL_HISTORICAL_URL } from "../LCL/HandlerQuoteLCLHistorical";
+import { GOOGLE_SHEET_CSV_URL as AIR_CURRENT_CSV_URL } from "../Air/HandlerQuoteAir";
+import { GOOGLE_SHEET_CSV_URL as FCL_CURRENT_CSV_URL } from "../FCL/HandlerQuoteFCL";
+import { GOOGLE_SHEET_CSV_URL as LCL_CURRENT_CSV_URL } from "../LCL/HandlerQuoteLCL";
 import { AIR_PRICE_HISTORY_MARKUP } from "../Air/HandlerQuoteAirHistorical";
 import { FCL_PRICE_HISTORY_MARKUP } from "../FCL/HandlerQuoteFCLHistorical";
 import { LCL_PRICE_HISTORY_MARKUP } from "../LCL/HandlerQuoteLCLHistorical";
@@ -26,9 +29,6 @@ import { parseValidUntilToDate } from "../handlerFechas";
 import type { PriceHistoryCurrency } from "./priceHistoryTypes";
 import {
   COTIZADOR_DATA_START_ROW,
-  EXPLORER_AIR_CURRENT_URL,
-  EXPLORER_FCL_CURRENT_URL,
-  EXPLORER_LCL_CURRENT_URL,
 } from "./historicalExplorerCurrentUrls";
 
 export type ExplorerMode = "air" | "fcl" | "lcl";
@@ -436,9 +436,9 @@ export async function fetchHistoricalExplorerSnapshot(): Promise<HistoricalExplo
     fetch(AIR_HISTORICAL_URL),
     fetch(FCL_HISTORICAL_URL),
     fetch(LCL_HISTORICAL_URL),
-    fetchCsvRows(EXPLORER_AIR_CURRENT_URL),
-    fetchCsvRows(EXPLORER_FCL_CURRENT_URL),
-    fetchCsvRows(EXPLORER_LCL_CURRENT_URL),
+    fetchCsvRows(AIR_CURRENT_CSV_URL),
+    fetchCsvRows(FCL_CURRENT_CSV_URL),
+    fetchCsvRows(LCL_CURRENT_CSV_URL),
   ]);
 
   if (!airRes.ok || !fclRes.ok || !lclRes.ok) {

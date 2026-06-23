@@ -1,4 +1,5 @@
 import type { HistoricalExplorerSnapshot } from "./historicalExplorerParse";
+import { fetchHistoricalExplorerSnapshot } from "./historicalExplorerParse";
 
 const CACHE_KEY = "consulta_tarifas_history_v1";
 const CACHE_TTL_MS = 2 * 60 * 60 * 1000; // 2 horas
@@ -41,4 +42,23 @@ export function clearCachedHistoricalExplorer(): void {
   } catch {
     /* ignore */
   }
+}
+
+/**
+ * Devuelve el snapshot desde caché local (2 h) si está vigente.
+ * Con `forceRefresh` ignora la caché y vuelve a descargar los CSV.
+ */
+export async function fetchHistoricalExplorerSnapshotCached(
+  forceRefresh = false,
+): Promise<HistoricalExplorerSnapshot> {
+  if (!forceRefresh) {
+    const cached = getCachedHistoricalExplorer();
+    if (cached) return cached;
+  } else {
+    clearCachedHistoricalExplorer();
+  }
+
+  const fresh = await fetchHistoricalExplorerSnapshot();
+  setCachedHistoricalExplorer(fresh);
+  return fresh;
 }

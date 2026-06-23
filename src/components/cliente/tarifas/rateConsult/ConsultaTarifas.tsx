@@ -32,14 +32,8 @@ import {
   type CountryRateService,
 } from "@/components/quotes/Handlers/shared/countryRatesTypes";
 import { CountryRatesDownloadButton } from "@/components/quotes/Handlers/shared/CountryRatesDownloadButton";
-import {
-  fetchHistoricalExplorerSnapshot,
-  type HistoricalExplorerSnapshot,
-} from "@/components/quotes/Handlers/shared/historicalExplorerParse";
-import {
-  getCachedHistoricalExplorer,
-  setCachedHistoricalExplorer,
-} from "@/components/quotes/Handlers/shared/historicalExplorerCache";
+import { fetchHistoricalExplorerSnapshotCached } from "@/components/quotes/Handlers/shared/historicalExplorerCache";
+import type { HistoricalExplorerSnapshot } from "@/components/quotes/Handlers/shared/historicalExplorerParse";
 import type { AirResponse, OceanResponse } from "@/components/cliente/tracking/shipsgo/types";
 import { PriceHistoryExplorerChart } from "../priceHistory/PriceHistoryExplorerChart";
 import "@/components/quotes/QuoteAIR.css";
@@ -379,13 +373,6 @@ export default function ConsultaTarifas() {
   const ensureHistoryLoaded = useCallback(async () => {
     if (historyReadyRef.current) return;
 
-    const cached = getCachedHistoricalExplorer();
-    if (cached) {
-      setHistory(cached);
-      historyReadyRef.current = true;
-      return;
-    }
-
     if (historyLoadPromiseRef.current) {
       await historyLoadPromiseRef.current;
       return;
@@ -394,9 +381,8 @@ export default function ConsultaTarifas() {
     const promise = (async () => {
       setHistoryLoading(true);
       try {
-        const hist = await fetchHistoricalExplorerSnapshot();
+        const hist = await fetchHistoricalExplorerSnapshotCached();
         setHistory(hist);
-        setCachedHistoricalExplorer(hist);
         historyReadyRef.current = true;
       } catch {
         setHistory(null);

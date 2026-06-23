@@ -4,17 +4,28 @@ function Bone({ className = "" }: { className?: string }) {
   return <span className={`rhp-skeleton-bone ${className}`.trim()} aria-hidden />;
 }
 
-export function PriceHistoryExplorerSkeleton() {
+interface PriceHistoryExplorerSkeletonProps {
+  showHeader?: boolean;
+}
+
+export function PriceHistoryExplorerSkeleton({
+  showHeader = true,
+}: PriceHistoryExplorerSkeletonProps) {
   const { t } = useTranslation();
 
   return (
-    <div className="rhp-container rhp-container--loading" aria-busy="true">
-      <div className="rhp-header">
-        <h1 className="rhp-header__title">{t("priceHistoryExplorer.title")}</h1>
-        <p className="rhp-header__subtitle">
-          {t("priceHistoryExplorer.subtitle")}
-        </p>
-      </div>
+    <div
+      className={`rhp-container rhp-container--loading${showHeader ? "" : " rhp-container--loading-inline"}`}
+      aria-busy="true"
+    >
+      {showHeader ? (
+        <div className="rhp-header">
+          <h1 className="rhp-header__title">{t("priceHistoryExplorer.title")}</h1>
+          <p className="rhp-header__subtitle">
+            {t("priceHistoryExplorer.subtitle")}
+          </p>
+        </div>
+      ) : null}
 
       <div className="rhp-filters rhp-filters--skeleton">
         <Bone className="rhp-skeleton-bone--filter-label" />
