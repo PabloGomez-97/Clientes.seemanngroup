@@ -13,6 +13,11 @@ import { DocumentosSectionQuoteAir } from "@/components/cliente/documentos/Docum
 import { DocumentosSectionQuoteOcean } from "@/components/cliente/documentos/DocumentosSectionQuoteOcean";
 import TrackingEmailSuggestions from "@/components/shared/tracking/TrackingEmailSuggestions";
 import QuotePdfResendCell from "./QuotePdfResendCell";
+import {
+  extractQuotesFromResponse,
+  formatQuoteChargeDisplay,
+  getQuoteCurrency,
+} from "@/components/administrador/reporteria/financiera/quoteUtils";
 import { linbisFetch } from "@/services/linbisFetch";
 import { buildLinbisListParams } from "@/services/linbisListFetch";
 import {
@@ -435,11 +440,17 @@ function FieldGridCell({
   );
 }
 
+interface QuoteCurrencyCacheEntry {
+  currency: string | null;
+  loading: boolean;
+  fetched: boolean;
+}
+
 interface QuoteGeneralTabContentProps {
   quote: Quote;
   t: (key: string) => string;
   formatDateLong: (dateString?: string) => string;
-  formatCLP: (priceString?: string) => string | null;
+  formatQuoteAmount: (quote: Quote) => string;
   shouldShowQuoteTracking: (quote: Quote) => boolean;
   isQuoteAlreadyTracked: (quote: Quote) => boolean;
   getQuoteTrackingNumber: (quote: Quote) => string;
@@ -471,7 +482,7 @@ function QuoteGeneralTabContent({
   quote,
   t,
   formatDateLong,
-  formatCLP,
+  formatQuoteAmount,
   shouldShowQuoteTracking,
   isQuoteAlreadyTracked,
   getQuoteTrackingNumber,
@@ -649,7 +660,7 @@ function QuoteGeneralTabContent({
       <FieldGridSection title={t("quotesView.tabFinancial")}>
         <FieldGridCell label={t("quotesView.totalExpense")}>
           <span className="qv-field-cell__value qv-field-cell__value--finance">
-            {formatCLP(quote.totalCharge_IncomeDisplayValue) || "$0 CLP"}
+            {formatQuoteAmount(quote)}
           </span>
         </FieldGridCell>
         <FieldGridCell
@@ -813,7 +824,7 @@ interface QuoteDetailPanelProps {
   t: (key: string) => string;
   formatDateShort: (dateString?: string) => string;
   formatDateLong: (dateString?: string) => string;
-  formatCLP: (priceString?: string) => string | null;
+  formatQuoteAmount: (quote: Quote) => string;
   shouldShowQuoteTracking: (quote: Quote) => boolean;
   isQuoteAlreadyTracked: (quote: Quote) => boolean;
   getQuoteTrackingNumber: (quote: Quote) => string;
@@ -850,7 +861,7 @@ function QuoteDetailPanel({
   t,
   formatDateShort,
   formatDateLong,
-  formatCLP,
+  formatQuoteAmount,
   shouldShowQuoteTracking,
   isQuoteAlreadyTracked,
   getQuoteTrackingNumber,
@@ -963,7 +974,7 @@ function QuoteDetailPanel({
                         quote={quote}
                         t={t}
                         formatDateLong={formatDateLong}
-                        formatCLP={formatCLP}
+                        formatQuoteAmount={formatQuoteAmount}
                         shouldShowQuoteTracking={shouldShowQuoteTracking}
                         isQuoteAlreadyTracked={isQuoteAlreadyTracked}
                         getQuoteTrackingNumber={getQuoteTrackingNumber}
@@ -1134,6 +1145,9 @@ function QuotesView({
       }
     >
   >({});
+  const [quoteCurrencyCache, setQuoteCurrencyCache] = useState<
+    Record<string, QuoteCurrencyCacheEntry>
+  >({});
 
   // Sorting
   const [sortColumn, setSortColumn] = useState<string>("number");
@@ -1209,15 +1223,20 @@ function QuotesView({
     });
   }, []);
 
-  const formatCLP = useCallback((priceString?: string) => {
-    if (!priceString) return null;
-    const numberMatch = priceString.match(/[\d.,]+/);
-    if (!numberMatch) return priceString;
-    const cleanNumber = numberMatch[0].replace(/,/g, "");
-    const num = parseFloat(cleanNumber);
-    if (isNaN(num)) return priceString;
-    return `$${new Intl.NumberFormat("es-CL").format(num)} CLP`;
-  }, []);
+  const formatQuoteAmount = useCallback(
+    (quote: Quote) => {
+      const cacheKey = normalizeQuoteNumber(quote.number);
+      const cachedCurrency = cacheKey
+        ? quoteCurrencyCache[cacheKey]?.currency
+        : null;
+
+      return formatQuoteChargeDisplay(quote, {
+        displayValue: quote.totalCharge_IncomeDisplayValue,
+        currencyOverride: cachedCurrency,
+      });
+    },
+    [quoteCurrencyCache],
+  );
 
   /* -- Sorting ---------------------------------------------- */
   const handleSort = useCallback((column: string) => {
@@ -1380,6 +1399,98 @@ function QuotesView({
     if (!selectedQuote) return;
     fetchOperationNumberForQuote(selectedQuote);
   }, [selectedQuote, fetchOperationNumberForQuote]);
+
+  const fetchQuoteCurrencyForQuote = useCallback(
+    async (quote: Quote) => {
+      if (!accessToken || !activeUsername) return;
+
+      const cacheKey = normalizeQuoteNumber(quote.number);
+      if (!cacheKey) return;
+
+      const knownCurrency = getQuoteCurrency(quote);
+      if (knownCurrency) {
+        setQuoteCurrencyCache((prev) => {
+          const existing = prev[cacheKey];
+          if (existing?.currency === knownCurrency && existing.fetched) {
+            return prev;
+          }
+          return {
+            ...prev,
+            [cacheKey]: {
+              currency: knownCurrency,
+              loading: false,
+              fetched: true,
+            },
+          };
+        });
+        return;
+      }
+
+      const existing = quoteCurrencyCache[cacheKey];
+      if (existing?.loading || existing?.fetched) return;
+
+      setQuoteCurrencyCache((prev) => ({
+        ...prev,
+        [cacheKey]: { currency: null, loading: true, fetched: false },
+      }));
+
+      const finish = (currency: string | null) => {
+        setQuoteCurrencyCache((prev) => ({
+          ...prev,
+          [cacheKey]: { currency, loading: false, fetched: true },
+        }));
+      };
+
+      try {
+        const params = new URLSearchParams({
+          Number: String(quote.number ?? ""),
+          ConsigneeName: activeUsername,
+          IncludeFreightCharges: "true",
+        });
+
+        const response = await linbisFetch(
+          `https://api.linbis.com/Quotes/filter?${params}`,
+          {
+            method: "GET",
+            headers: {
+              Accept: "application/json",
+              "Content-Type": "application/json",
+            },
+          },
+          accessToken,
+          refreshAccessToken,
+        );
+
+        if (!response.ok) {
+          finish(null);
+          return;
+        }
+
+        const data = await response.json();
+        const quotes = extractQuotesFromResponse(data);
+        const match =
+          quotes.find(
+            (item) =>
+              normalizeQuoteNumber(String(item.number ?? "")) === cacheKey,
+          ) ?? quotes[0];
+        finish(match ? getQuoteCurrency(match) : null);
+      } catch (err) {
+        console.error("[QuotesView] Error fetching quote currency:", err);
+        finish(null);
+      }
+    },
+    [
+      accessToken,
+      activeUsername,
+      refreshAccessToken,
+      quoteCurrencyCache,
+    ],
+  );
+
+  useEffect(() => {
+    if (!selectedQuote) return;
+    fetchQuoteCurrencyForQuote(selectedQuote);
+  }, [selectedQuote, fetchQuoteCurrencyForQuote]);
 
   const selectedQuoteOperationEntry = useMemo(() => {
     if (!selectedQuote) return null;
@@ -2866,7 +2977,7 @@ function QuotesView({
                 t={t}
                 formatDateShort={formatDateShort}
                 formatDateLong={formatDateLong}
-                formatCLP={formatCLP}
+                formatQuoteAmount={formatQuoteAmount}
                 shouldShowQuoteTracking={shouldShowQuoteTracking}
                 isQuoteAlreadyTracked={isQuoteAlreadyTracked}
                 getQuoteTrackingNumber={getQuoteTrackingNumber}
