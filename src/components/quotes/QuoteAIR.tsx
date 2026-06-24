@@ -374,9 +374,9 @@ function QuoteAPITester({
     () =>
       isEjecutivoMode && clienteSeleccionado
         ? {
-            clientEmail: clienteSeleccionado.email,
-            clientUsername: clienteSeleccionado.username,
-          }
+          clientEmail: clienteSeleccionado.email,
+          clientUsername: clienteSeleccionado.username,
+        }
         : null,
     [isEjecutivoMode, clienteSeleccionado],
   );
@@ -6876,7 +6876,7 @@ function QuoteAPITester({
                     />
                   </div>
                   <div className="qa-addon-card__body">
-                    <h4>Agregar Última Milla</h4>
+                    <h4>Agregar Transporte Terrestre en Destino</h4>
                     <p>
                       Transporte terrestre desde el aeropuerto de Santiago hasta
                       su bodega. Tarifa según peso real total (kg) de las piezas.

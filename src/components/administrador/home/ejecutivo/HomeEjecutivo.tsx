@@ -1,5 +1,12 @@
 // src/components/administrador/HomeEjecutivo.tsx — Torre de Control del Ejecutivo
-import { useState, useEffect, useMemo, useCallback, Fragment } from "react";
+import {
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+  useRef,
+  Fragment,
+} from "react";
 import { useNavigate, useOutletContext, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/auth/AuthContext";
@@ -375,6 +382,36 @@ function writeLinbisCache(username: string, cache: Omit<LinbisCache, "ts">) {
   }
 }
 
+/** Dispara `onTrigger` una vez cuando el nodo entra (casi) en viewport. */
+function useLazySectionTrigger(
+  onTrigger: () => void,
+  enabled: boolean,
+) {
+  const ref = useRef<HTMLDivElement>(null);
+  const triggeredRef = useRef(false);
+
+  useEffect(() => {
+    if (!enabled || triggeredRef.current) return;
+    const el = ref.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !triggeredRef.current) {
+          triggeredRef.current = true;
+          onTrigger();
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "160px 0px" },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [enabled, onTrigger]);
+
+  return ref;
+}
+
 function clearLinbisCache(username: string) {
   try {
     localStorage.removeItem(`ej_linbis_v1_${username}`);
@@ -437,9 +474,15 @@ function AttentionPanelSkeleton() {
 function HomeEjecutivoLoadingSkeleton({
   loadingMessage,
   loadingPleaseWait,
+  showHeader = true,
+  showCommandDock = true,
+  embedded = false,
 }: {
   loadingMessage: string;
   loadingPleaseWait: string;
+  showHeader?: boolean;
+  showCommandDock?: boolean;
+  embedded?: boolean;
 }) {
   const [message, setMessage] = useState(loadingMessage);
 
@@ -450,18 +493,20 @@ function HomeEjecutivoLoadingSkeleton({
     return () => window.clearTimeout(id);
   }, [loadingPleaseWait]);
 
-  return (
-    <div className="ej-home ej-home--loading">
-      <div className="ej-header">
-        <div className="ej-header__left">
-          <div className="ej-skeleton ej-skeleton--title" />
-          <div className="ej-skeleton ej-skeleton--subtitle" />
+  const body = (
+    <>
+      {showHeader ? (
+        <div className="ej-header">
+          <div className="ej-header__left">
+            <div className="ej-skeleton ej-skeleton--title" />
+            <div className="ej-skeleton ej-skeleton--subtitle" />
+          </div>
+          <div className="ej-header__actions-skeleton">
+            <div className="ej-skeleton ej-skeleton--btn" />
+            <div className="ej-skeleton ej-skeleton--badge" />
+          </div>
         </div>
-        <div className="ej-header__actions-skeleton">
-          <div className="ej-skeleton ej-skeleton--btn" />
-          <div className="ej-skeleton ej-skeleton--badge" />
-        </div>
-      </div>
+      ) : null}
 
       <div className="ej-activity-bar ej-activity-bar--skeleton">
         <div className="ej-skeleton ej-skeleton--activity-label" />
@@ -472,7 +517,7 @@ function HomeEjecutivoLoadingSkeleton({
         </div>
       </div>
 
-      <EjCommandDockSkeleton />
+      {showCommandDock ? <EjCommandDockSkeleton /> : null}
 
       <div className="ej-section">
         <div className="ej-skeleton ej-skeleton--section-title" />
@@ -498,8 +543,12 @@ function HomeEjecutivoLoadingSkeleton({
           </span>
         </div>
       </div>
-    </div>
+    </>
   );
+
+  if (embedded) return body;
+
+  return <div className="ej-home ej-home--loading">{body}</div>;
 }
 
 function ProgressBar({ value, color }: { value: number; color: string }) {
@@ -634,8 +683,10 @@ export default function HomeEjecutivo() {
 
   // ── Core state ─────────────────────────────────────────
   const [clientes, setClientes] = useState<Cliente[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [clientsLoading, setClientsLoading] = useState(true);
+  const [trackingLoading, setTrackingLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const linbisNetworkStartedRef = useRef(false);
 
   // Linbis data
   const [linbisAir, setLinbisAir] = useState<LinbisAirShipment[]>([]);
@@ -703,18 +754,43 @@ export default function HomeEjecutivo() {
 
   const displayName = user?.nombreuser || user?.username || t("admin.homeEjecutivo.defaultName");
 
-  // ── Fetch clients & ShipsGo data ──────────────────────────
-  const fetchCoreData = useCallback(
-    async (silent = false) => {
-      if (!token) return;
-      if (!silent) setLoading(true);
+  // ── Fase 1: clientes (desbloquea el dashboard) ─────────────────────────
+  const fetchClients = useCallback(
+    async (silent = false): Promise<Cliente[]> => {
+      if (!token) return [];
+      if (!silent) setClientsLoading(true);
       else setRefreshing(true);
 
       try {
-        const [clientsRes, airRes, oceanRes] = await Promise.allSettled([
-          fetch("/api/ejecutivo/clientes", {
-            headers: { Authorization: `Bearer ${token}` },
-          }).then((r) => r.json()),
+        const res = await fetch("/api/ejecutivo/clientes", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const raw = await res.json();
+        const arr: Cliente[] = Array.isArray(raw?.clientes)
+          ? raw.clientes
+          : Array.isArray(raw)
+            ? raw
+            : [];
+        setClientes(arr);
+        return arr;
+      } catch {
+        return [];
+      } finally {
+        setClientsLoading(false);
+      }
+    },
+    [token],
+  );
+
+  // ── Fase 2: ShipsGo (en background, no bloquea la UI) ─────────────────
+  const fetchTrackingData = useCallback(
+    async (clientList: Cliente[]) => {
+      if (!token) return;
+      setTrackingLoading(true);
+
+      try {
+        const clientSet = buildUsernameSet(clientList);
+        const [airRes, oceanRes] = await Promise.allSettled([
           fetch("/api/shipsgo/shipments", {
             headers: { Authorization: `Bearer ${token}` },
           }).then((r) => r.json() as Promise<AirResponse>),
@@ -722,15 +798,6 @@ export default function HomeEjecutivo() {
             headers: { Authorization: `Bearer ${token}` },
           }).then((r) => r.json() as Promise<OceanResponse>),
         ]);
-
-        const raw = clientsRes.status === "fulfilled" ? clientsRes.value : null;
-        const arr: Cliente[] = Array.isArray(raw?.clientes)
-          ? raw.clientes
-          : Array.isArray(raw)
-            ? raw
-            : [];
-        setClientes(arr);
-        const clientSet = buildUsernameSet(arr);
 
         if (
           airRes.status === "fulfilled" &&
@@ -755,16 +822,34 @@ export default function HomeEjecutivo() {
       } catch {
         /* silent */
       } finally {
-        setLoading(false);
-        setRefreshing(false);
+        setTrackingLoading(false);
       }
     },
     [token],
   );
 
   useEffect(() => {
-    fetchCoreData();
-  }, [fetchCoreData]);
+    if (!token) return;
+    void fetchClients(false);
+  }, [token, fetchClients]);
+
+  useEffect(() => {
+    if (clientsLoading || !clientes.length) return;
+    void fetchTrackingData(clientes);
+  }, [clientsLoading, clientes, fetchTrackingData]);
+
+  // Hidratar Linbis desde caché local al montar (sin red)
+  useEffect(() => {
+    const cacheKey = user?.username;
+    if (!cacheKey) return;
+    const cached = readLinbisCache(cacheKey);
+    if (!cached) return;
+    setLinbisAir(cached.air);
+    setLinbisOcean(cached.ocean);
+    setLinbisGround(cached.ground);
+    setLinbisQuotes(cached.quotes);
+    setLinbisLoading(false);
+  }, [user?.username]);
 
   // ── fetchLinbisData: carga con cache localStorage (TTL 4 hrs) ─────────────
   const fetchLinbisData = useCallback(
@@ -888,20 +973,6 @@ export default function HomeEjecutivo() {
     [accessToken, clientes, user],
   );
 
-  // ── Disparar carga de Linbis al entrar al home (una vez que clientes esté listo) ─
-  useEffect(() => {
-    if (loading) return;
-    const controller = new AbortController();
-    fetchLinbisData(false, controller.signal);
-    return () => controller.abort();
-  }, [loading, fetchLinbisData]);
-
-  // Auto-refresh every 5 minutes
-  useEffect(() => {
-    const id = setInterval(() => fetchCoreData(true), 5 * 60 * 1000);
-    return () => clearInterval(id);
-  }, [fetchCoreData]);
-
   // ── fetchBehaviorData: carga datos de Comportamiento de Clientes ──────────
   const fetchBehaviorData = useCallback(async () => {
     if (!token) return;
@@ -966,16 +1037,7 @@ export default function HomeEjecutivo() {
     }
   }, [token]);
 
-  useEffect(() => {
-    fetchBehaviorData();
-  }, [fetchBehaviorData]);
-
   // ── Fetch temperature data (Atención Inmediata) ───────────
-  const BEHAVIOR_API =
-    import.meta.env.MODE === "development"
-      ? "http://localhost:4000"
-      : "https://portalclientes.seemanngroup.com";
-
   const fetchTemperatureData = useCallback(async () => {
     if (!token) return;
     setTemperatureLoading(true);
@@ -993,11 +1055,7 @@ export default function HomeEjecutivo() {
     } finally {
       setTemperatureLoading(false);
     }
-  }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    fetchTemperatureData();
-  }, [fetchTemperatureData]);
+  }, [token]);
 
   // ── Fetch activity feed ────────────────────────────────────
   const fetchActivityFeed = useCallback(async () => {
@@ -1021,9 +1079,70 @@ export default function HomeEjecutivo() {
     }
   }, [token]);
 
+  const requestLinbisNetwork = useCallback(() => {
+    if (linbisNetworkStartedRef.current || !clientes.length) return;
+    linbisNetworkStartedRef.current = true;
+    void fetchLinbisData(false);
+  }, [clientes.length, fetchLinbisData]);
+
+  const refreshAll = useCallback(() => {
+    setRefreshing(true);
+    linbisNetworkStartedRef.current = false;
+    void (async () => {
+      try {
+        const list = await fetchClients(true);
+        if (list.length > 0) await fetchTrackingData(list);
+        await Promise.allSettled([
+          fetchBehaviorData(),
+          fetchTemperatureData(),
+          fetchActivityFeed(),
+          fetchLinbisData(true),
+        ]);
+      } finally {
+        setRefreshing(false);
+      }
+    })();
+  }, [
+    fetchClients,
+    fetchTrackingData,
+    fetchBehaviorData,
+    fetchTemperatureData,
+    fetchActivityFeed,
+    fetchLinbisData,
+  ]);
+
+  const behaviorSectionRef = useLazySectionTrigger(
+    () => {
+      void fetchBehaviorData();
+    },
+    !clientsLoading && Boolean(token),
+  );
+
+  const temperatureSectionRef = useLazySectionTrigger(
+    () => {
+      void fetchTemperatureData();
+    },
+    !clientsLoading && Boolean(token),
+  );
+
+  const linbisSectionRef = useLazySectionTrigger(
+    requestLinbisNetwork,
+    !clientsLoading && clientes.length > 0,
+  );
+
   useEffect(() => {
-    fetchActivityFeed();
-  }, [fetchActivityFeed]);
+    if (clientsLoading || !token) return;
+    void fetchActivityFeed();
+  }, [clientsLoading, token, fetchActivityFeed]);
+
+  useEffect(() => {
+    if (listModal && clientes.length > 0) requestLinbisNetwork();
+  }, [listModal, clientes.length, requestLinbisNetwork]);
+
+  useEffect(() => {
+    const id = setInterval(() => refreshAll(), 5 * 60 * 1000);
+    return () => clearInterval(id);
+  }, [refreshAll]);
 
   // ═══════════════════════════════════════════════════════════════════════
   // Computed values
@@ -1255,12 +1374,26 @@ export default function HomeEjecutivo() {
   // ═══════════════════════════════════════════════════════════════════════
   // Render: Loading
   // ═══════════════════════════════════════════════════════════════════════
-  if (loading) {
+  if (clientsLoading) {
     return (
-      <HomeEjecutivoLoadingSkeleton
-        loadingMessage={t("admin.homeEjecutivo.loadingMessage")}
-        loadingPleaseWait={t("admin.homeEjecutivo.loadingPleaseWait")}
-      />
+      <div className="ej-home ej-home--loading">
+        <div className="ej-header">
+          <div className="ej-header__left">
+            <h1>
+              {greeting}, <span>{displayName}</span>
+            </h1>
+            <p>{today}</p>
+          </div>
+        </div>
+        <EjCommandDock t={t} navigate={navigate} />
+        <HomeEjecutivoLoadingSkeleton
+          embedded
+          showHeader={false}
+          showCommandDock={false}
+          loadingMessage={t("admin.homeEjecutivo.loadingMessage")}
+          loadingPleaseWait={t("admin.homeEjecutivo.loadingPleaseWait")}
+        />
+      </div>
     );
   }
 
@@ -1280,10 +1413,7 @@ export default function HomeEjecutivo() {
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <button
             className="ej-refresh-btn"
-            onClick={() => {
-              fetchCoreData(true);
-              fetchLinbisData(true);
-            }}
+            onClick={() => refreshAll()}
             disabled={refreshing || linbisRefreshing}
           >
             <svg
@@ -1371,10 +1501,10 @@ export default function HomeEjecutivo() {
                     >
                       <div
                         className={`ej-activity-item__dot ej-activity-item__dot--${item.event === "QUOTE_COMPLETED"
-                            ? "success"
-                            : item.event === "QUOTE_ABANDONED"
-                              ? "abandon"
-                              : "info"
+                          ? "success"
+                          : item.event === "QUOTE_ABANDONED"
+                            ? "abandon"
+                            : "info"
                           }`}
                       />
                       <span className="ej-activity-bar__chip-client">
@@ -1508,7 +1638,7 @@ export default function HomeEjecutivo() {
       )}
 
       {/* ── Comportamiento de Clientes ─────────────────────────────────── */}
-      <div className="ej-section">
+      <div className="ej-section" ref={behaviorSectionRef}>
         <div className="ej-section-header">
           <h3 className="ej-section-title" style={{ margin: 0 }}>
             <svg
@@ -1659,6 +1789,9 @@ export default function HomeEjecutivo() {
             {t("admin.homeEjecutivo.viewFullAnalysis")}
           </button>
         </div>
+        {trackingLoading ? (
+          <EjOperationsMetricsSkeleton />
+        ) : (
         <EjOperationsMetrics
           t={t}
           clientCount={clientes.length}
@@ -1684,10 +1817,11 @@ export default function HomeEjecutivo() {
             setListModalTab("all");
           }}
         />
+        )}
       </div>
 
       {/* ── Atención Inmediata ─────────────────────────────────────────── */}
-      <div className="ej-section">
+      <div className="ej-section" ref={temperatureSectionRef}>
         {temperatureLoading ? (
           <AttentionPanelSkeleton />
         ) : (
@@ -1901,10 +2035,10 @@ export default function HomeEjecutivo() {
                     >
                       <div
                         className={`ej-activity-item__dot ej-activity-item__dot--${item.event === "QUOTE_COMPLETED"
-                            ? "success"
-                            : item.event === "QUOTE_ABANDONED"
-                              ? "warn"
-                              : "info"
+                          ? "success"
+                          : item.event === "QUOTE_ABANDONED"
+                            ? "warn"
+                            : "info"
                           }`}
                       />
                       <div className="ej-activity-item__body">
@@ -2253,7 +2387,7 @@ export default function HomeEjecutivo() {
       </div>
 
       {/* ── Cartera de Clientes + Distribución ──────────────────────────── */}
-      <div className="ej-grid-client">
+      <div className="ej-grid-client" ref={linbisSectionRef}>
         {/* Client Portfolio */}
         <div className="ej-panel">
           <div className="ej-section-header" style={{ marginBottom: 14 }}>

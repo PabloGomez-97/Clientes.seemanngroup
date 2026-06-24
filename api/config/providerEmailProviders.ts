@@ -38,6 +38,14 @@ export const PROVIDER_EMAIL_PROVIDERS: ProviderEmailProviderConfig[] = [
     defaultDescripcion:
       'Dear E2E, Good Day. Can you please update us the rate for the upcoming month? Thanks!',
   },
+  {
+    id: 'procargo',
+    label: 'PROCARGO',
+    asunto: 'Revisión de tarifas PROCARGO',
+    workflowKey: 'provider-agent-email-procargo',
+    defaultDescripcion:
+      'Dear PROCARGO, Good Day. Can you please update us the rate for the upcoming month? Thanks!',
+  },
 ];
 
 export function getProviderEmailProvider(id: string): ProviderEmailProviderConfig | undefined {
