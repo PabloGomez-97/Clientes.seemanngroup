@@ -1,5 +1,7 @@
 import React from "react";
 import { imgUrl } from "../../../config/images";
+import type { PdfAduanaBreakdown } from "./pdfAduanaBreakdown";
+import { PdfAduanaSection } from "./PdfAduanaSection";
 
 interface PieceData {
   id: string;
@@ -71,6 +73,8 @@ interface PDFTemplateAIRProps {
   /** Aeropuerto asignado para recogida EXW (solo cuando hay soporte de aeropuertos cercanos) */
   assignedAirport?: string;
   isExpiringSoon?: boolean;
+  /** Desglose de cobros aduaneros (solo si agencia de aduana está activa) */
+  aduanaBreakdown?: PdfAduanaBreakdown;
 }
 
 const fmt = (num: number): string => {
@@ -119,7 +123,11 @@ export const PDFTemplateAIR: React.FC<PDFTemplateAIRProps> = ({
   airFreightMinWeight,
   assignedAirport,
   isExpiringSoon = false,
+  aduanaBreakdown,
 }) => {
+  const displayCharges = aduanaBreakdown
+    ? charges.filter((ch) => ch.code !== "ADA")
+    : charges;
   const C = {
     text: "#111",
     sub: "#666",
@@ -619,7 +627,7 @@ export const PDFTemplateAIR: React.FC<PDFTemplateAIRProps> = ({
               </tr>
             </thead>
             <tbody>
-              {charges.map((ch, i) => (
+              {displayCharges.map((ch, i) => (
                 <tr key={i}>
                   <td style={{ ...td, fontWeight: 600, fontSize: "8pt" }}>
                     {ch.code}
@@ -635,6 +643,9 @@ export const PDFTemplateAIR: React.FC<PDFTemplateAIRProps> = ({
               ))}
             </tbody>
           </table>
+
+          {aduanaBreakdown && <PdfAduanaSection breakdown={aduanaBreakdown} />}
+
           {/* Total row */}
           <div
             style={{

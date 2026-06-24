@@ -6,6 +6,7 @@ import * as XLSX from "xlsx";
 import Select from "react-select";
 import { Modal, Button, OverlayTrigger, Tooltip } from "react-bootstrap";
 import { PDFTemplateLCL } from "./pdf-template/PdfTemplateLcl";
+import { buildLclAduanaPdfBreakdown } from "./pdf-template/pdfAduanaBreakdown";
 import * as bootstrap from "bootstrap";
 import {
   generatePDF,
@@ -2490,6 +2491,20 @@ function QuoteLCL({
         0,
       );
 
+      const aduanaBreakdown =
+        !showPendingQuote && aduanaActivo
+          ? buildLclAduanaPdfBreakdown({
+              activo: aduanaActivo,
+              valorProducto: valorProductoAduana,
+              costoTransporte: calculateCostoTransporteBase(),
+              seguroActivo,
+              seguroMonto: calculateSeguro(),
+              currency: rutaSeleccionada.currency,
+              wmChargeable: chargeableVolume,
+              config: aduanaLclConfig,
+            })
+          : undefined;
+
       // -- 1. Obtener el quoteNumber real de Linbis ANTES de renderizar el PDF --
       let quoteNumber = "";
       try {
@@ -2683,6 +2698,7 @@ function QuoteLCL({
               !isSimulationMode &&
               getValidityClass(rutaSeleccionada.validUntil) === "expiring-soon"
             }
+            aduanaBreakdown={aduanaBreakdown}
           />,
         );
 

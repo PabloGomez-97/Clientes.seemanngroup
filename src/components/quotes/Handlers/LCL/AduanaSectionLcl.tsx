@@ -186,26 +186,6 @@ export const AduanaSectionLcl: React.FC<AduanaSectionLclProps> = ({
               </div>
             </div>
           </div>
-
-          {!seguroActivo && (
-            <div
-              className="mt-2 p-2 rounded"
-              style={{
-                backgroundColor: "#fff3cd",
-                border: "1px solid #ffc107",
-              }}
-            >
-              <small className="text-muted">
-                <i
-                  className="bi bi-info-circle me-1"
-                  style={{ color: "#856404" }}
-                />
-                <span style={{ color: "#856404" }}>
-                  {t("AgenciaAduana.notaSeguroTeorico")}
-                </span>
-              </small>
-            </div>
-          )}
         </div>
       )}
     </div>

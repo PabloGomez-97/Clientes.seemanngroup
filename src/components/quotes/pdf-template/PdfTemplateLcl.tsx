@@ -1,5 +1,7 @@
 import React from "react";
 import { imgUrl } from "../../../config/images";
+import type { PdfAduanaBreakdown } from "./pdfAduanaBreakdown";
+import { PdfAduanaSection } from "./PdfAduanaSection";
 
 interface OverallPieceDataLCL {
   id: string;
@@ -71,6 +73,8 @@ interface PDFTemplateLCLProps {
   /** Puerto más cercano asignado para el tramo terrestre (solo EXW + país con soporte) */
   assignedPort?: string;
   isExpiringSoon?: boolean;
+  /** Desglose de cobros aduaneros (solo si agencia de aduana está activa) */
+  aduanaBreakdown?: PdfAduanaBreakdown;
 }
 
 const fmt = (num: number): string => {
@@ -121,7 +125,11 @@ export const PDFTemplateLCL: React.FC<PDFTemplateLCLProps> = ({
   logoSrc,
   assignedPort,
   isExpiringSoon = false,
+  aduanaBreakdown,
 }) => {
+  const displayCharges = aduanaBreakdown
+    ? charges.filter((ch) => ch.code !== "ADA")
+    : charges;
   const C = {
     text: "#111",
     sub: "#666",
@@ -639,7 +647,7 @@ export const PDFTemplateLCL: React.FC<PDFTemplateLCLProps> = ({
               </tr>
             </thead>
             <tbody>
-              {charges.map((ch, i) => (
+              {displayCharges.map((ch, i) => (
                 <tr key={i}>
                   <td style={{ ...td, fontWeight: 600, fontSize: "8pt" }}>
                     {ch.code}
@@ -655,6 +663,9 @@ export const PDFTemplateLCL: React.FC<PDFTemplateLCLProps> = ({
               ))}
             </tbody>
           </table>
+
+          {aduanaBreakdown && <PdfAduanaSection breakdown={aduanaBreakdown} />}
+
           {/* Total */}
           <div
             style={{

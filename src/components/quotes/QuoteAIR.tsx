@@ -5,6 +5,7 @@ import { useAuditLog } from "../../hooks/useAuditLog";
 import Select from "react-select";
 import { Modal, Button, OverlayTrigger, Tooltip } from "react-bootstrap";
 import { PDFTemplateAIR } from "./pdf-template/PdfTemplateAir";
+import { buildAirAduanaPdfBreakdown } from "./pdf-template/pdfAduanaBreakdown";
 import {
   generatePDF,
   generatePDFBase64,
@@ -2837,6 +2838,20 @@ function QuoteAPITester({
     try {
       const pdfCharges = buildAirConnectPdfCharges(offer);
       const totalCharges = pdfCharges.reduce((sum, c) => sum + c.amount, 0);
+      const valorCargaAirConnect =
+        parseFloat(valorMercaderia.replace(",", ".")) || 0;
+      const airConnectSeguroMonto = seguroActivo
+        ? Math.max((valorCargaAirConnect + offer.apiWithLand) * 1.1 * 0.0025, 25)
+        : 0;
+      const aduanaBreakdown = buildAirAduanaPdfBreakdown({
+        activo: aduanaActivo,
+        valorProducto: valorProductoAduana,
+        costoTransporte: offer.apiWithLand,
+        seguroActivo,
+        seguroMonto: airConnectSeguroMonto,
+        currency: AIR_CONNECT_CURRENCY,
+        config: aduanaConfig,
+      });
       const chargeableWeight =
         airConnect.quote?.parcelsData?.airChargeableWeight ?? pesoChargeable;
       const airlineLabel = offer.via
@@ -2942,6 +2957,7 @@ function QuoteAPITester({
                 : undefined
             }
             routing={offer.via ?? undefined}
+            aduanaBreakdown={aduanaBreakdown}
           />,
         );
         setTimeout(resolve, 500);
@@ -3504,6 +3520,19 @@ function QuoteAPITester({
         0,
       );
 
+      const aduanaBreakdown =
+        !showPendingQuote && aduanaActivo
+          ? buildAirAduanaPdfBreakdown({
+              activo: aduanaActivo,
+              valorProducto: valorProductoAduana,
+              costoTransporte: calculateCostoTransporteBase(),
+              seguroActivo,
+              seguroMonto: calculateSeguro(),
+              currency: rutaSeleccionada.currency,
+              config: aduanaConfig,
+            })
+          : undefined;
+
       // ── 1. Obtener el quoteNumber real de Linbis ANTES de renderizar el PDF ──
       let quoteNumber = "";
       try {
@@ -3703,6 +3732,7 @@ function QuoteAPITester({
               !isSimulationMode &&
               getValidityClass(rutaSeleccionada.validUntil) === "expiring-soon"
             }
+            aduanaBreakdown={aduanaBreakdown}
           />,
         );
 
