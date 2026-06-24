@@ -101,6 +101,16 @@ export const adminRoutes = (
     <Route path="novedades" element={<Novedades />} />
     <Route path="promesas" element={<PromesasPage />} />
 
+    {/* Reportería financiera: fuera de ReporteriaLayout (no requiere CSV ni bloquea el Outlet) */}
+    <Route
+      path="reporteria/financiera/ejecutivo"
+      element={<ReportExecutive />}
+    />
+    <Route
+      path="reporteria/financiera/operacional"
+      element={<Invoicesxejecutivo />}
+    />
+
     <Route path="reporteria" element={<ReporteriaLayout />}>
       <Route
         index
@@ -110,8 +120,6 @@ export const adminRoutes = (
       <Route path="kpis" element={<ReporteriaKPIs />} />
       <Route path="ejecutivos" element={<ReporteriaExecutives />} />
       <Route path="tendencias" element={<ReporteriaTrends />} />
-      <Route path="financiera/ejecutivo" element={<ReportExecutive />} />
-      <Route path="financiera/operacional" element={<Invoicesxejecutivo />} />
     </Route>
 
     <Route path="auditoria" element={<Auditoria />} />

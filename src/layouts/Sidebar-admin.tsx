@@ -322,8 +322,21 @@ function SidebarAdmin({
     }))
     .filter((s) => s.items.length > 0);
 
-  const isActive = (path: string) =>
-    location.pathname === path || location.pathname.startsWith(path + "/");
+  const pathMatches = (path: string, pathname: string) =>
+    pathname === path || pathname.startsWith(path + "/");
+
+  const getMostSpecificMatchingPath = (
+    paths: string[],
+    pathname: string,
+  ): string | null => {
+    const matches = paths.filter((path) => pathMatches(path, pathname));
+    if (matches.length === 0) return null;
+    return matches.reduce((best, current) =>
+      current.length > best.length ? current : best,
+    );
+  };
+
+  const isActive = (path: string) => pathMatches(path, location.pathname);
 
   const sidebarWidth = isMobile ? "280px" : isCollapsed ? "84px" : "260px";
 
@@ -634,7 +647,12 @@ function SidebarAdmin({
                               }}
                             >
                               {visibleSubItems.map((subItem, subIdx) => {
-                                const isSubActive = isActive(subItem.path);
+                                const activeSubPath = getMostSpecificMatchingPath(
+                                  visibleSubItems.map((s) => s.path),
+                                  location.pathname,
+                                );
+                                const isSubActive =
+                                  subItem.path === activeSubPath;
                                 const isSubHovered =
                                   hoveredItem === `sub-${subItem.path}`;
 
