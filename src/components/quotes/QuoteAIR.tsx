@@ -6889,67 +6889,87 @@ function QuoteAPITester({
                 </div>
               </div>
 
-              {/* Card: Última Milla (solo destino Santiago de Chile) */}
-              {ultimaMillaDisponibleDestino && (
-                <div
-                  className={`qa-addon-card${ultimaMillaActivo ? " is-active" : ""}`}
-                >
-                  <div className="qa-addon-card__image">
-                    <img
-                      src={imgUrl("addcargos/ultima-milla.png")}
-                      alt="Última Milla"
-                      loading="lazy"
-                      onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).style.display =
-                          "none";
-                      }}
-                    />
-                  </div>
-                  <div className="qa-addon-card__body">
-                    <h4>Agregar Transporte Terrestre en Destino</h4>
-                    <p>
-                      Transporte terrestre desde el aeropuerto de Santiago hasta
-                      su bodega. Tarifa según peso real total (kg) de las piezas.
-                    </p>
-                    {!ultimaMillaCargaEnRango && (
-                      <p className="text-danger small mb-0 mt-2">
-                        Ingrese el peso real de las piezas (máx.{" "}
-                        {aereoTtConfig.maxKg} kg) para cotizar última milla.
-                      </p>
-                    )}
-                    {ultimaMillaActivo && ultimaMillaDireccion && (
-                      <span
-                        className="qa-badge qa-badge-primary mt-2"
-                        style={{ display: "inline-block" }}
-                      >
-                        Entrega: {ultimaMillaDireccion}
-                      </span>
-                    )}
-                  </div>
-                  <div className="qa-addon-card__action">
-                    {!ultimaMillaActivo ? (
-                      <button
-                        className="qa-addon-btn-add"
-                        disabled={!ultimaMillaCargaEnRango}
-                        onClick={() => {
-                          setTempUltimaMillaDireccion("");
-                          setTempUltimaMillaZone(null);
-                          setShowUltimaMillaModal(true);
-                        }}
-                      >
-                        <i className="bi bi-plus-lg"></i>Agregar
-                      </button>
-                    ) : (
-                      <button
-                        className="qa-addon-btn-remove"
-                        onClick={resetUltimaMilla}
-                      >
-                        <i className="bi bi-x-lg"></i>Remover
-                      </button>
-                    )}
-                  </div>
+              {/* Card: Transporte Terrestre en Destino */}
+              <div
+                className={`qa-addon-card${ultimaMillaActivo ? " is-active" : ""}`}
+              >
+                <div className="qa-addon-card__image">
+                  <img
+                    src={imgUrl("addcargos/ultima-milla.png")}
+                    alt="Transporte Terrestre en Destino"
+                    loading="lazy"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).style.display =
+                        "none";
+                    }}
+                  />
                 </div>
-              )}
+                <div className="qa-addon-card__body">
+                  <h4>Agregar Transporte Terrestre en Destino</h4>
+                  {!ultimaMillaDisponibleDestino && (
+                    <p className="text-warning small mb-2">
+                      <i className="bi bi-exclamation-triangle me-1"></i>
+                      Este servicio solo está disponible para rutas con
+                      aeropuerto de destino Santiago de Chile.
+                    </p>
+                  )}
+                  <p>
+                    Transporte terrestre desde el aeropuerto de Santiago hasta su
+                    bodega. Tarifa según peso real total (kg) de las piezas.
+                  </p>
+                  {ultimaMillaDisponibleDestino && !ultimaMillaCargaEnRango && (
+                    <p className="text-danger small mb-0 mt-2">
+                      Ingrese el peso real de las piezas (máx.{" "}
+                      {aereoTtConfig.maxKg} kg) para cotizar transporte terrestre.
+                    </p>
+                  )}
+                  {ultimaMillaActivo && ultimaMillaDireccion && (
+                    <span
+                      className="qa-badge qa-badge-primary mt-2"
+                      style={{ display: "inline-block" }}
+                    >
+                      Entrega: {ultimaMillaDireccion}
+                    </span>
+                  )}
+                </div>
+                <div className="qa-addon-card__action">
+                  {!ultimaMillaActivo ? (
+                    <button
+                      className="qa-addon-btn-add"
+                      disabled={
+                        !ultimaMillaDisponibleDestino ||
+                        !ultimaMillaCargaEnRango
+                      }
+                      onClick={() => {
+                        if (
+                          !ultimaMillaDisponibleDestino ||
+                          !ultimaMillaCargaEnRango
+                        ) {
+                          return;
+                        }
+                        setTempUltimaMillaDireccion("");
+                        setTempUltimaMillaZone(null);
+                        setShowUltimaMillaModal(true);
+                      }}
+                    >
+                      {!ultimaMillaDisponibleDestino ? (
+                        "No Disponible"
+                      ) : (
+                        <>
+                          <i className="bi bi-plus-lg"></i>Agregar
+                        </>
+                      )}
+                    </button>
+                  ) : (
+                    <button
+                      className="qa-addon-btn-remove"
+                      onClick={resetUltimaMilla}
+                    >
+                      <i className="bi bi-x-lg"></i>Remover
+                    </button>
+                  )}
+                </div>
+              </div>
 
               {/* Card: Agencia de Aduanas */}
               {!aduanaConfigLoading && (

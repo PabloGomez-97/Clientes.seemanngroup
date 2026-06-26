@@ -4443,61 +4443,74 @@ function QuoteFCL({
                     )}
                   </div>
                 </div>
-                {/* Card: Última Milla (solo POD San Antonio / Valparaiso) */}
-                {ultimaMillaDisponible && (
-                  <div
-                    className={`qf-addon-card${ultimaMillaActivo ? " is-active" : ""}`}
-                  >
-                    <div className="qf-addon-card__image">
-                      <img
-                        src={imgUrl("addcargos/ultima-milla.png")}
-                        alt="Última Milla"
-                        loading="lazy"
-                        onError={(e) => {
-                          (e.currentTarget as HTMLImageElement).style.display =
-                            "none";
-                        }}
-                      />
-                    </div>
-                    <div className="qf-addon-card__body">
-                      <h4>Agregar Transporte Terrestre en Destino</h4>
-                      <p>
-                        Transporte terrestre desde el puerto de destino hasta su
-                        bodega o dirección final. Tarifa por contenedor según
-                        tipo seleccionado.
-                      </p>
-                      {ultimaMillaActivo && ultimaMillaDireccion && (
-                        <span
-                          className="qf-badge qf-badge-primary mt-2"
-                          style={{ display: "inline-block" }}
-                        >
-                          Entrega: {ultimaMillaDireccion}
-                        </span>
-                      )}
-                    </div>
-                    <div className="qf-addon-card__action">
-                      {!ultimaMillaActivo ? (
-                        <button
-                          className="qf-addon-btn-add"
-                          onClick={() => {
-                            setTempUltimaMillaDireccion("");
-                            setTempUltimaMillaZone(null);
-                            setShowUltimaMillaModal(true);
-                          }}
-                        >
-                          <i className="bi bi-plus-lg"></i>Agregar
-                        </button>
-                      ) : (
-                        <button
-                          className="qf-addon-btn-remove"
-                          onClick={resetUltimaMilla}
-                        >
-                          <i className="bi bi-x-lg"></i>Remover
-                        </button>
-                      )}
-                    </div>
+                {/* Card: Transporte Terrestre en Destino */}
+                <div
+                  className={`qf-addon-card${ultimaMillaActivo ? " is-active" : ""}`}
+                >
+                  <div className="qf-addon-card__image">
+                    <img
+                      src={imgUrl("addcargos/ultima-milla.png")}
+                      alt="Transporte Terrestre en Destino"
+                      loading="lazy"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).style.display =
+                          "none";
+                      }}
+                    />
                   </div>
-                )}
+                  <div className="qf-addon-card__body">
+                    <h4>Agregar Transporte Terrestre en Destino</h4>
+                    {!ultimaMillaDisponible && (
+                      <p className="text-warning small mb-2">
+                        <i className="bi bi-exclamation-triangle me-1"></i>
+                        Este servicio solo está disponible para rutas con puerto
+                        de destino San Antonio o Valparaíso.
+                      </p>
+                    )}
+                    <p>
+                      Transporte terrestre desde el puerto de destino hasta su
+                      bodega o dirección final. Tarifa por contenedor según tipo
+                      seleccionado.
+                    </p>
+                    {ultimaMillaActivo && ultimaMillaDireccion && (
+                      <span
+                        className="qf-badge qf-badge-primary mt-2"
+                        style={{ display: "inline-block" }}
+                      >
+                        Entrega: {ultimaMillaDireccion}
+                      </span>
+                    )}
+                  </div>
+                  <div className="qf-addon-card__action">
+                    {!ultimaMillaActivo ? (
+                      <button
+                        className="qf-addon-btn-add"
+                        disabled={!ultimaMillaDisponible}
+                        onClick={() => {
+                          if (!ultimaMillaDisponible) return;
+                          setTempUltimaMillaDireccion("");
+                          setTempUltimaMillaZone(null);
+                          setShowUltimaMillaModal(true);
+                        }}
+                      >
+                        {ultimaMillaDisponible ? (
+                          <>
+                            <i className="bi bi-plus-lg"></i>Agregar
+                          </>
+                        ) : (
+                          "No Disponible"
+                        )}
+                      </button>
+                    ) : (
+                      <button
+                        className="qf-addon-btn-remove"
+                        onClick={resetUltimaMilla}
+                      >
+                        <i className="bi bi-x-lg"></i>Remover
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
 
               {aduanaActivo && !aduanaFclConfigLoading && aduanaFclConfig && (

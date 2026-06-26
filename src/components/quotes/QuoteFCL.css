@@ -691,6 +691,16 @@
   background-color: #e55a00;
 }
 
+.qf-addon-btn-add:disabled {
+  background-color: #adb5bd;
+  cursor: not-allowed;
+  opacity: 0.9;
+}
+
+.qf-addon-btn-add:disabled:hover {
+  background-color: #adb5bd;
+}
+
 .qf-addon-btn-remove {
   display: inline-flex;
   align-items: center;

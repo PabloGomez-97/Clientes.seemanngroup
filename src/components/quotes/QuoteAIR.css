@@ -1325,6 +1325,16 @@
   background-color: #e55a00;
 }
 
+.qa-addon-btn-add:disabled {
+  background-color: #adb5bd;
+  cursor: not-allowed;
+  opacity: 0.9;
+}
+
+.qa-addon-btn-add:disabled:hover {
+  background-color: #adb5bd;
+}
+
 .qa-addon-btn-remove {
   display: inline-flex;
   align-items: center;

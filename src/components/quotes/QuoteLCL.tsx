@@ -5040,70 +5040,89 @@ function QuoteLCL({
                   </div>
                 </div>
 
-                {/* Card: Última Milla (solo POD San Antonio / Valparaiso) */}
-                {ultimaMillaDisponiblePOD && (
-                  <div
-                    className={`qa-addon-card${ultimaMillaActivo ? " is-active" : ""}`}
-                  >
-                    <div className="qa-addon-card__image">
-                      <img
-                        src={imgUrl("addcargos/ultima-milla.png")}
-                        alt="Última Milla"
-                        loading="lazy"
-                        onError={(e) => {
-                          (e.currentTarget as HTMLImageElement).style.display =
-                            "none";
-                        }}
-                      />
-                    </div>
-                    <div className="qa-addon-card__body">
-                      <h4>Agregar Transporte Terrestre en Destino</h4>
-                      <p>
-                        Entrega terrestre desde el puerto de destino hasta su
-                        bodega. Tarifa por tramo según peso total (kg) o volumen
-                        (m³), aplicando siempre el rango más alto.
-                      </p>
-                      {!ultimaMillaCargaEnRango && (
-                        <p className="text-danger small mb-0 mt-2">
-                          El cargamento supera el máximo permitido (
-                          {lclTtConfig.maxKg} kg / {lclTtConfig.maxM3} m³).
-                          No es posible cotizar última milla para este volumen o
-                          peso.
-                        </p>
-                      )}
-                      {ultimaMillaActivo && ultimaMillaDireccion && (
-                        <span
-                          className="qa-badge qa-badge-primary mt-2"
-                          style={{ display: "inline-block" }}
-                        >
-                          Entrega: {ultimaMillaDireccion}
-                        </span>
-                      )}
-                    </div>
-                    <div className="qa-addon-card__action">
-                      {!ultimaMillaActivo ? (
-                        <button
-                          className="qa-addon-btn-add"
-                          disabled={!ultimaMillaCargaEnRango}
-                          onClick={() => {
-                            setTempUltimaMillaDireccion("");
-                            setTempUltimaMillaZone(null);
-                            setShowUltimaMillaModal(true);
-                          }}
-                        >
-                          <i className="bi bi-plus-lg"></i>Agregar
-                        </button>
-                      ) : (
-                        <button
-                          className="qa-addon-btn-remove"
-                          onClick={resetUltimaMilla}
-                        >
-                          <i className="bi bi-x-lg"></i>Remover
-                        </button>
-                      )}
-                    </div>
+                {/* Card: Transporte Terrestre en Destino */}
+                <div
+                  className={`qa-addon-card${ultimaMillaActivo ? " is-active" : ""}`}
+                >
+                  <div className="qa-addon-card__image">
+                    <img
+                      src={imgUrl("addcargos/ultima-milla.png")}
+                      alt="Transporte Terrestre en Destino"
+                      loading="lazy"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).style.display =
+                          "none";
+                      }}
+                    />
                   </div>
-                )}
+                  <div className="qa-addon-card__body">
+                    <h4>Agregar Transporte Terrestre en Destino</h4>
+                    {!ultimaMillaDisponiblePOD && (
+                      <p className="text-warning small mb-2">
+                        <i className="bi bi-exclamation-triangle me-1"></i>
+                        Este servicio solo está disponible para rutas con puerto
+                        de destino San Antonio o Valparaíso.
+                      </p>
+                    )}
+                    <p>
+                      Entrega terrestre desde el puerto de destino hasta su
+                      bodega. Tarifa por tramo según peso total (kg) o volumen
+                      (m³), aplicando siempre el rango más alto.
+                    </p>
+                    {ultimaMillaDisponiblePOD && !ultimaMillaCargaEnRango && (
+                      <p className="text-danger small mb-0 mt-2">
+                        El cargamento supera el máximo permitido (
+                        {lclTtConfig.maxKg} kg / {lclTtConfig.maxM3} m³). No es
+                        posible cotizar transporte terrestre para este volumen o
+                        peso.
+                      </p>
+                    )}
+                    {ultimaMillaActivo && ultimaMillaDireccion && (
+                      <span
+                        className="qa-badge qa-badge-primary mt-2"
+                        style={{ display: "inline-block" }}
+                      >
+                        Entrega: {ultimaMillaDireccion}
+                      </span>
+                    )}
+                  </div>
+                  <div className="qa-addon-card__action">
+                    {!ultimaMillaActivo ? (
+                      <button
+                        className="qa-addon-btn-add"
+                        disabled={
+                          !ultimaMillaDisponiblePOD || !ultimaMillaCargaEnRango
+                        }
+                        onClick={() => {
+                          if (
+                            !ultimaMillaDisponiblePOD ||
+                            !ultimaMillaCargaEnRango
+                          ) {
+                            return;
+                          }
+                          setTempUltimaMillaDireccion("");
+                          setTempUltimaMillaZone(null);
+                          setShowUltimaMillaModal(true);
+                        }}
+                      >
+                        {!ultimaMillaDisponiblePOD ? (
+                          "No Disponible"
+                        ) : (
+                          <>
+                            <i className="bi bi-plus-lg"></i>Agregar
+                          </>
+                        )}
+                      </button>
+                    ) : (
+                      <button
+                        className="qa-addon-btn-remove"
+                        onClick={resetUltimaMilla}
+                      >
+                        <i className="bi bi-x-lg"></i>Remover
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
 
               {aduanaActivo && !aduanaLclConfigLoading && aduanaLclConfig && (
