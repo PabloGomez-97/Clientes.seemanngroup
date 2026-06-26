@@ -3523,14 +3523,14 @@ function QuoteAPITester({
       const aduanaBreakdown =
         !showPendingQuote && aduanaActivo
           ? buildAirAduanaPdfBreakdown({
-              activo: aduanaActivo,
-              valorProducto: valorProductoAduana,
-              costoTransporte: calculateCostoTransporteBase(),
-              seguroActivo,
-              seguroMonto: calculateSeguro(),
-              currency: rutaSeleccionada.currency,
-              config: aduanaConfig,
-            })
+            activo: aduanaActivo,
+            valorProducto: valorProductoAduana,
+            costoTransporte: calculateCostoTransporteBase(),
+            seguroActivo,
+            seguroMonto: calculateSeguro(),
+            currency: rutaSeleccionada.currency,
+            config: aduanaConfig,
+          })
           : undefined;
 
       // ── 1. Obtener el quoteNumber real de Linbis ANTES de renderizar el PDF ──
