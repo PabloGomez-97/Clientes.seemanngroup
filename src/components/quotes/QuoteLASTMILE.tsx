@@ -18,7 +18,7 @@ import {
   type VespucioDeliveryZone,
 } from "../../config/vespucioRing";
 import {
-  GOOGLE_SHEET_LASTMILE_CSV_URL,
+  getLastMileCsvUrl,
   parseCSV,
   parseLastMile,
   type LastMileSelectOption,
@@ -299,8 +299,10 @@ function QuoteLASTMILE({
 
   // Rutas
   const [rutas, setRutas] = useState<RutaLastMile[]>([]);
-  const [loadingRutas, setLoadingRutas] = useState(true);
+  const [loadingRutas, setLoadingRutas] = useState(false);
   const [errorRutas, setErrorRutas] = useState<string | null>(null);
+  const [lastRutasUpdate, setLastRutasUpdate] = useState<Date | null>(null);
+  const [rutasRefreshToken, setRutasRefreshToken] = useState(0);
 
   const [origenSel, setOrigenSel] = useState<LastMileSelectOption | null>(null);
   const [destinoSel, setDestinoSel] = useState<LastMileSelectOption | null>(
@@ -448,23 +450,43 @@ function QuoteLASTMILE({
     cargarClientes();
   }, [user, getMisClientes, getTodosClientes, isEjecutivoMode, isPricingRole]);
 
-  // Cargar rutas desde el sheet
-  useEffect(() => {
-    const cargarRutas = async () => {
+  // Cargar rutas desde el sheet según servicio: FCL/LCL (marítimo) o AÉREO
+  const cargarRutasLastMile = useCallback(
+    async (signal?: AbortSignal) => {
+      if (!servicioSel) {
+        setRutas([]);
+        setOpcionesOrigen([]);
+        setOrigenSel(null);
+        setDestinoSel(null);
+        setLoadingRutas(false);
+        return;
+      }
+
       try {
         setLoadingRutas(true);
         setErrorRutas(null);
+        setOrigenSel(null);
+        setDestinoSel(null);
+        setOpcionesOrigen([]);
+        setRutas([]);
+
         const ts = Date.now();
-        const res = await fetch(`${GOOGLE_SHEET_LASTMILE_CSV_URL}&ts=${ts}`);
+        const csvUrl = getLastMileCsvUrl(servicioSel);
+        const res = await fetch(`${csvUrl}&ts=${ts}`, {
+          cache: "no-store",
+          signal,
+        });
         if (!res.ok) {
           throw new Error(`HTTP ${res.status}`);
         }
         const csvText = await res.text();
         const data = parseCSV(csvText);
         const parsed = parseLastMile(data);
+
+        if (signal?.aborted) return;
+
         setRutas(parsed);
 
-        // Origenes únicos
         const orgMap = new Map<string, string>();
         parsed.forEach((r) => {
           if (!orgMap.has(r.origenNormalized)) {
@@ -475,17 +497,29 @@ function QuoteLASTMILE({
           .map(([value, label]) => ({ value, label }))
           .sort((a, b) => a.label.localeCompare(b.label));
         setOpcionesOrigen(orgs);
-      } catch (err: any) {
+        setLastRutasUpdate(new Date());
+      } catch (err: unknown) {
+        if (err instanceof DOMException && err.name === "AbortError") return;
         console.error("[QuoteLASTMILE] Error cargando rutas:", err);
         setErrorRutas(
           "No se pudieron cargar las rutas de Última Milla. Intenta nuevamente.",
         );
       } finally {
-        setLoadingRutas(false);
+        if (!signal?.aborted) {
+          setLoadingRutas(false);
+        }
       }
-    };
-    cargarRutas();
-  }, []);
+    },
+    [servicioSel],
+  );
+
+  useEffect(() => {
+    const controller = new AbortController();
+    cargarRutasLastMile(controller.signal);
+    return () => controller.abort();
+  }, [servicioSel, rutasRefreshToken, cargarRutasLastMile]);
+
+  const refrescarRutas = () => setRutasRefreshToken((t) => t + 1);
 
   // Actualizar destinos cuando cambia origen
   useEffect(() => {
@@ -2179,6 +2213,8 @@ function QuoteLASTMILE({
                   onClick={() => {
                     setServicioSel(s);
                     setIncotermSel(null);
+                    setOrigenSel(null);
+                    setDestinoSel(null);
                     setValorMercaderiaDDP("");
                     setValorSeguroDDP("");
                     setContenedores20GP("");
@@ -2688,18 +2724,61 @@ function QuoteLASTMILE({
       {currentStep === 2 && step1Completed && (
         <div className="qa-card">
           <div className="qa-card-header open">
-            <div className="d-flex align-items-center">
-              <h3>
+            <div className="d-flex align-items-center justify-content-between w-100">
+              <h3 className="mb-0">
                 <i
                   className="bi bi-geo-alt me-2"
                   style={{ color: "var(--qf-primary)" }}
                 ></i>
                 Paso 2: Seleccionar Ruta
               </h3>
+              <button
+                type="button"
+                onClick={refrescarRutas}
+                disabled={loadingRutas}
+                className="qf-btn qf-btn-sm qf-btn-outline"
+                title="Actualizar rutas desde Google Sheets"
+              >
+                {loadingRutas ? (
+                  <>
+                    <span
+                      className="spinner-border spinner-border-sm me-1"
+                      role="status"
+                      aria-hidden="true"
+                    ></span>
+                    Actualizando...
+                  </>
+                ) : (
+                  <>
+                    <i className="bi bi-arrow-clockwise me-1"></i>
+                    Actualizar Rutas
+                  </>
+                )}
+              </button>
             </div>
           </div>
 
           <div>
+            {lastRutasUpdate && !loadingRutas && !errorRutas && (
+              <div
+                className="alert alert-light py-2 px-3 mb-3 d-flex align-items-center"
+                style={{ fontSize: "0.85rem" }}
+              >
+                <span className="text-muted">
+                  <i className="bi bi-clock-history me-1"></i>
+                  Última actualización:{" "}
+                  {lastRutasUpdate.toLocaleTimeString("es-CL", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                  {servicioSel && (
+                    <span className="ms-2 badge bg-secondary">
+                      {servicioSel === "AÉREO" ? "Aéreo" : "Marítimo"}
+                    </span>
+                  )}
+                </span>
+              </div>
+            )}
             {loadingRutas ? (
               <div className="text-center py-5">
                 <div className="spinner-border text-primary" role="status">

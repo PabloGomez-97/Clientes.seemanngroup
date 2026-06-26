@@ -1,7 +1,22 @@
 import { capitalize, normalize, parseCSV } from "../FCL/HandlerQuoteFCL";
 
 export const GOOGLE_SHEET_LASTMILE_CSV_URL =
-  "https://docs.google.com/spreadsheets/d/e/2PACX-1vQR3oDDQTX5G7AN0yEkV3dzDS_SHP3ERZNkud92VuugEO2tggHh4hi9Ssat8L_VrTsmRmVCrXkQGQ1r/pub?output=csv";
+  "https://docs.google.com/spreadsheets/d/e/2PACX-1vQR3oDDQTX5G7AN0yEkV3dzDS_SHP3ERZNkud92VuugEO2tggHh4hi9Ssat8L_VrTsmRmVCrXkQGQ1r/pub?gid=0&single=true&output=csv";
+
+/** Rutas marítimas (FCL / LCL): solo puertos. */
+export const GOOGLE_SHEET_LASTMILE_AIR_CSV_URL =
+  "https://docs.google.com/spreadsheets/d/e/2PACX-1vQR3oDDQTX5G7AN0yEkV3dzDS_SHP3ERZNkud92VuugEO2tggHh4hi9Ssat8L_VrTsmRmVCrXkQGQ1r/pub?gid=404575258&single=true&output=csv";
+
+export type LastMileServicio = "FCL" | "AÉREO" | "LCL";
+
+export const getLastMileCsvUrl = (servicio: LastMileServicio): string => {
+  const isAereo =
+    servicio === "AÉREO" ||
+    servicio.normalize("NFD").replace(/\p{M}/gu, "").toUpperCase() === "AEREO";
+  return isAereo
+    ? GOOGLE_SHEET_LASTMILE_AIR_CSV_URL
+    : GOOGLE_SHEET_LASTMILE_CSV_URL;
+};
 
 export interface LastMileSelectOption {
   value: string;
