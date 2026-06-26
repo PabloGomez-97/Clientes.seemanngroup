@@ -240,9 +240,9 @@ function QuoteLCL({
     () =>
       isEjecutivoMode && clienteSeleccionado
         ? {
-            clientEmail: clienteSeleccionado.email,
-            clientUsername: clienteSeleccionado.username,
-          }
+          clientEmail: clienteSeleccionado.email,
+          clientUsername: clienteSeleccionado.username,
+        }
         : null,
     [isEjecutivoMode, clienteSeleccionado],
   );
@@ -528,14 +528,14 @@ function QuoteLCL({
         label: p.label,
       })),
       {
-      getCountryCode: (normalized) =>
-        getPortByPOL(normalized)?.unlocode?.substring(0, 2).toUpperCase() ??
-        null,
-      getCoords: (normalized) => {
-        const port = getPortByPOL(normalized);
-        return port ? { lat: port.lat, lng: port.lng } : null;
+        getCountryCode: (normalized) =>
+          getPortByPOL(normalized)?.unlocode?.substring(0, 2).toUpperCase() ??
+          null,
+        getCoords: (normalized) => {
+          const port = getPortByPOL(normalized);
+          return port ? { lat: port.lat, lng: port.lng } : null;
+        },
       },
-    },
     );
   }, [expandedRoutes]);
 
@@ -2263,11 +2263,11 @@ function QuoteLCL({
             incoterm,
             ...(ultimaMillaAplicaCobro
               ? {
-                  ultimaMilla: true,
-                  ultimaMillaDireccion: ultimaMillaDireccion,
-                  ultimaMillaMonto: calculateUltimaMilla(),
-                  ultimaMillaZona: ultimaMillaVespucioZone,
-                }
+                ultimaMilla: true,
+                ultimaMillaDireccion: ultimaMillaDireccion,
+                ultimaMillaMonto: calculateUltimaMilla(),
+                ultimaMillaZona: ultimaMillaVespucioZone,
+              }
               : {}),
           },
           clienteAfectado: clienteSeleccionado?.username || "",
@@ -2494,15 +2494,15 @@ function QuoteLCL({
       const aduanaBreakdown =
         !showPendingQuote && aduanaActivo
           ? buildLclAduanaPdfBreakdown({
-              activo: aduanaActivo,
-              valorProducto: valorProductoAduana,
-              costoTransporte: calculateCostoTransporteBase(),
-              seguroActivo,
-              seguroMonto: calculateSeguro(),
-              currency: rutaSeleccionada.currency,
-              wmChargeable: chargeableVolume,
-              config: aduanaLclConfig,
-            })
+            activo: aduanaActivo,
+            valorProducto: valorProductoAduana,
+            costoTransporte: calculateCostoTransporteBase(),
+            seguroActivo,
+            seguroMonto: calculateSeguro(),
+            currency: rutaSeleccionada.currency,
+            wmChargeable: chargeableVolume,
+            config: aduanaLclConfig,
+          })
           : undefined;
 
       // -- 1. Obtener el quoteNumber real de Linbis ANTES de renderizar el PDF --
@@ -2823,12 +2823,12 @@ function QuoteLCL({
               incoterm === "EXW" ? deliveryToAddressDerived : undefined,
             ...(ultimaMillaAplicaCobro
               ? {
-                  ultimaMilla: true,
-                  ultimaMillaDireccion: ultimaMillaDireccion,
-                  ultimaMillaMonto: `${rutaSeleccionada.currency} ${calculateUltimaMilla().toFixed(2)}`,
-                  ultimaMillaZonaExtendida:
-                    ultimaMillaVespucioZone === "extended",
-                }
+                ultimaMilla: true,
+                ultimaMillaDireccion: ultimaMillaDireccion,
+                ultimaMillaMonto: `${rutaSeleccionada.currency} ${calculateUltimaMilla().toFixed(2)}`,
+                ultimaMillaZonaExtendida:
+                  ultimaMillaVespucioZone === "extended",
+              }
               : {}),
             precio: sinTarifa ? 0 : (tarifaOceanFreight?.income ?? 0),
             currency: rutaSeleccionada.currency,
@@ -2861,12 +2861,12 @@ function QuoteLCL({
               incoterm === "EXW" ? deliveryToAddressDerived : undefined,
             ...(ultimaMillaAplicaCobro
               ? {
-                  ultimaMilla: true,
-                  ultimaMillaDireccion: ultimaMillaDireccion,
-                  ultimaMillaMonto: `${rutaSeleccionada.currency} ${calculateUltimaMilla().toFixed(2)}`,
-                  ultimaMillaZonaExtendida:
-                    ultimaMillaVespucioZone === "extended",
-                }
+                ultimaMilla: true,
+                ultimaMillaDireccion: ultimaMillaDireccion,
+                ultimaMillaMonto: `${rutaSeleccionada.currency} ${calculateUltimaMilla().toFixed(2)}`,
+                ultimaMillaZonaExtendida:
+                  ultimaMillaVespucioZone === "extended",
+              }
               : {}),
             currency: rutaSeleccionada.currency,
             total: total,
@@ -5057,7 +5057,7 @@ function QuoteLCL({
                       />
                     </div>
                     <div className="qa-addon-card__body">
-                      <h4>Agregar Última Milla</h4>
+                      <h4>Agregar Transporte Terrestre en Destino</h4>
                       <p>
                         Entrega terrestre desde el puerto de destino hasta su
                         bodega. Tarifa por tramo según peso total (kg) o volumen
@@ -5169,7 +5169,7 @@ function QuoteLCL({
           {ultimaMillaPickupCoords ? (
             <CotizadorAddressMapDual
               pickupValue={rutaSeleccionada?.pod ?? ""}
-              onPickupChange={() => {}}
+              onPickupChange={() => { }}
               deliveryValue={tempUltimaMillaDireccion}
               onDeliveryChange={setTempUltimaMillaDireccion}
               pickupPlaceholder={`Puerto de ${rutaSeleccionada?.pod ?? "destino"}`}
@@ -5303,46 +5303,46 @@ function QuoteLCL({
                     gastolocal ||
                     liveTrackingActivo ||
                     ultimaMillaActivo) && (
-                    <div className="border-top pt-2 mt-3">
-                      <span className="qa-text-muted d-block mb-1">
-                        Servicios Adicionales:
-                      </span>
-                      <div className="d-flex flex-wrap gap-2">
-                        {seguroActivo && (
-                          <span className="qa-badge qa-badge-primary">
-                            <i className="bi bi-shield-check me-1"></i>Seguro
-                            {valorMercaderia &&
-                              ` — ${rutaSeleccionada.currency} ${valorMercaderia}`}
-                          </span>
-                        )}
-                        {aduanaActivo && (
-                          <span className="qa-badge qa-badge-primary">
-                            <i className="bi bi-building me-1"></i>
-                            {t("AgenciaAduana.toggle")}
-                            {valorProductoAduana &&
-                              ` — ${rutaSeleccionada.currency} ${valorProductoAduana}`}
-                          </span>
-                        )}
-                        {gastolocal && (
-                          <span className="qa-badge qa-badge-primary">
-                            <i className="bi bi-building me-1"></i>Gastos
-                            Locales
-                          </span>
-                        )}
-                        {liveTrackingActivo && (
-                          <span className="qa-badge qa-badge-primary">
-                            <i className="bi bi-geo-alt me-1"></i>Live Tracking
-                          </span>
-                        )}
-                        {ultimaMillaActivo && ultimaMillaDireccion && (
-                          <span className="qa-badge qa-badge-primary">
-                            <i className="bi bi-truck me-1"></i>Última Milla
-                            {` — ${ultimaMillaDireccion}`}
-                          </span>
-                        )}
+                      <div className="border-top pt-2 mt-3">
+                        <span className="qa-text-muted d-block mb-1">
+                          Servicios Adicionales:
+                        </span>
+                        <div className="d-flex flex-wrap gap-2">
+                          {seguroActivo && (
+                            <span className="qa-badge qa-badge-primary">
+                              <i className="bi bi-shield-check me-1"></i>Seguro
+                              {valorMercaderia &&
+                                ` — ${rutaSeleccionada.currency} ${valorMercaderia}`}
+                            </span>
+                          )}
+                          {aduanaActivo && (
+                            <span className="qa-badge qa-badge-primary">
+                              <i className="bi bi-building me-1"></i>
+                              {t("AgenciaAduana.toggle")}
+                              {valorProductoAduana &&
+                                ` — ${rutaSeleccionada.currency} ${valorProductoAduana}`}
+                            </span>
+                          )}
+                          {gastolocal && (
+                            <span className="qa-badge qa-badge-primary">
+                              <i className="bi bi-building me-1"></i>Gastos
+                              Locales
+                            </span>
+                          )}
+                          {liveTrackingActivo && (
+                            <span className="qa-badge qa-badge-primary">
+                              <i className="bi bi-geo-alt me-1"></i>Live Tracking
+                            </span>
+                          )}
+                          {ultimaMillaActivo && ultimaMillaDireccion && (
+                            <span className="qa-badge qa-badge-primary">
+                              <i className="bi bi-truck me-1"></i>Última Milla
+                              {` — ${ultimaMillaDireccion}`}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
                 </div>
               </div>
             </div>

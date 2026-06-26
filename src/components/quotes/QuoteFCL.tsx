@@ -196,9 +196,9 @@ function QuoteFCL({
     () =>
       isEjecutivoMode && clienteSeleccionado
         ? {
-            clientEmail: clienteSeleccionado.email,
-            clientUsername: clienteSeleccionado.username,
-          }
+          clientEmail: clienteSeleccionado.email,
+          clientUsername: clienteSeleccionado.username,
+        }
         : null,
     [isEjecutivoMode, clienteSeleccionado],
   );
@@ -2100,15 +2100,15 @@ function QuoteFCL({
       const aduanaBreakdown =
         !showPendingQuote && aduanaActivo
           ? buildFclAduanaPdfBreakdown({
-              activo: aduanaActivo,
-              valorProducto: valorProductoAduana,
-              costoTransporte: calculateCostoTransporteBase(),
-              seguroActivo,
-              seguroMonto: calculateSeguro(),
-              currency: rutaSeleccionada.currency,
-              cantidadContenedores,
-              config: aduanaFclConfig,
-            })
+            activo: aduanaActivo,
+            valorProducto: valorProductoAduana,
+            costoTransporte: calculateCostoTransporteBase(),
+            seguroActivo,
+            seguroMonto: calculateSeguro(),
+            currency: rutaSeleccionada.currency,
+            cantidadContenedores,
+            config: aduanaFclConfig,
+          })
           : undefined;
 
       // ── 1. Obtener el quoteNumber real de Linbis ANTES de renderizar el PDF ──
@@ -3508,30 +3508,30 @@ function QuoteFCL({
                           {rutasOrdenadas.length > 0 &&
                             polSeleccionado &&
                             podSeleccionado && (
-                            <div className="qa-routes-actions d-flex gap-2 flex-wrap">
-                              <FclPriceHistoryModal
-                                polLabel={polSeleccionado.label}
-                                podLabel={podSeleccionado.label}
-                                loading={loadingPriceHistory}
-                                error={errorPriceHistory}
-                                seriesResult={priceHistorySeriesWithCurrent}
-                              />
-                              {paisSeleccionado ? (
-                                <CountryRatesDownloadButton
-                                  service="fcl"
-                                  countryCode={paisSeleccionado.value}
-                                  countryLabel={paisSeleccionado.label}
-                                  destinationLabel={podSeleccionado.label}
-                                  destinationCode={podSeleccionado.value}
-                                  selectedOriginLabel={polSeleccionado.label}
-                                  columns={COUNTRY_RATE_COLUMNS_FCL}
-                                  rows={countryRatesRows}
-                                  translationNs="Quotefcl"
-                                  disabled={countryRatesRows.length === 0}
+                              <div className="qa-routes-actions d-flex gap-2 flex-wrap">
+                                <FclPriceHistoryModal
+                                  polLabel={polSeleccionado.label}
+                                  podLabel={podSeleccionado.label}
+                                  loading={loadingPriceHistory}
+                                  error={errorPriceHistory}
+                                  seriesResult={priceHistorySeriesWithCurrent}
                                 />
-                              ) : null}
-                            </div>
-                          )}
+                                {paisSeleccionado ? (
+                                  <CountryRatesDownloadButton
+                                    service="fcl"
+                                    countryCode={paisSeleccionado.value}
+                                    countryLabel={paisSeleccionado.label}
+                                    destinationLabel={podSeleccionado.label}
+                                    destinationCode={podSeleccionado.value}
+                                    selectedOriginLabel={polSeleccionado.label}
+                                    columns={COUNTRY_RATE_COLUMNS_FCL}
+                                    rows={countryRatesRows}
+                                    translationNs="Quotefcl"
+                                    disabled={countryRatesRows.length === 0}
+                                  />
+                                ) : null}
+                              </div>
+                            )}
                         </div>
 
                         {rutasOrdenadas.length > 0 &&
@@ -4161,44 +4161,44 @@ function QuoteFCL({
                 </div>
 
                 <div className="col-lg-5 d-flex align-items-center justify-content-center">
-                    <div
-                      role="button"
-                      title="Ver especificaciones completas"
-                      onClick={() => setShowContainerModal(true)}
-                      style={{ cursor: "zoom-in", position: "relative" }}
+                  <div
+                    role="button"
+                    title="Ver especificaciones completas"
+                    onClick={() => setShowContainerModal(true)}
+                    style={{ cursor: "zoom-in", position: "relative" }}
+                  >
+                    <img
+                      src={imgUrl(
+                        containerSeleccionado.type === "40HQ"
+                          ? "containers/40hq.png"
+                          : containerSeleccionado.type === "40NOR"
+                            ? "containers/40nor.png"
+                            : "containers/20gp.png",
+                      )}
+                      alt={`Contenedor ${containerSeleccionado.type}`}
+                      style={{
+                        maxWidth: "100%",
+                        maxHeight: 280,
+                        objectFit: "contain",
+                        borderRadius: 8,
+                      }}
+                    />
+                    <span
+                      style={{
+                        position: "absolute",
+                        bottom: 6,
+                        right: 6,
+                        background: "rgba(0,0,0,0.45)",
+                        color: "#fff",
+                        borderRadius: 6,
+                        padding: "2px 7px",
+                        fontSize: "0.72rem",
+                        pointerEvents: "none",
+                      }}
                     >
-                      <img
-                        src={imgUrl(
-                          containerSeleccionado.type === "40HQ"
-                            ? "containers/40hq.png"
-                            : containerSeleccionado.type === "40NOR"
-                              ? "containers/40nor.png"
-                              : "containers/20gp.png",
-                        )}
-                        alt={`Contenedor ${containerSeleccionado.type}`}
-                        style={{
-                          maxWidth: "100%",
-                          maxHeight: 280,
-                          objectFit: "contain",
-                          borderRadius: 8,
-                        }}
-                      />
-                      <span
-                        style={{
-                          position: "absolute",
-                          bottom: 6,
-                          right: 6,
-                          background: "rgba(0,0,0,0.45)",
-                          color: "#fff",
-                          borderRadius: 6,
-                          padding: "2px 7px",
-                          fontSize: "0.72rem",
-                          pointerEvents: "none",
-                        }}
-                      >
-                        <i className="bi bi-zoom-in me-1"></i>Ver en detalle
-                      </span>
-                    </div>
+                      <i className="bi bi-zoom-in me-1"></i>Ver en detalle
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -4460,7 +4460,7 @@ function QuoteFCL({
                       />
                     </div>
                     <div className="qf-addon-card__body">
-                      <h4>Agregar Última Milla</h4>
+                      <h4>Agregar Transporte Terrestre en Destino</h4>
                       <p>
                         Transporte terrestre desde el puerto de destino hasta su
                         bodega o dirección final. Tarifa por contenedor según
@@ -4629,41 +4629,41 @@ function QuoteFCL({
                     gastolocal ||
                     liveTrackingActivo ||
                     ultimaMillaActivo) && (
-                    <div className="border-top pt-2 mt-1">
-                      <span className="text-muted d-block mb-1">
-                        Servicios Adicionales:
-                      </span>
-                      <div className="d-flex flex-wrap gap-2">
-                        {seguroActivo && (
-                          <span className="qf-badge qf-badge-primary">
-                            <i className="bi bi-shield-check me-1"></i>Seguro
-                            {valorMercaderia &&
-                              ` — ${rutaSeleccionada.currency} ${valorMercaderia}`}
-                          </span>
-                        )}
-                        {aduanaActivo && (
-                          <span className="qf-badge qf-badge-primary">
-                            <i className="bi bi-building me-1"></i>
-                            {t("AgenciaAduana.toggle")}
-                            {valorProductoAduana &&
-                              ` — ${rutaSeleccionada.currency} ${valorProductoAduana}`}
-                          </span>
-                        )}
-                        {gastolocal && (
-                          <span className="qf-badge qf-badge-primary">
-                            <i className="bi bi-building me-1"></i>Gastos
-                            Locales (THC + Apertura)
-                          </span>
-                        )}
-                        {ultimaMillaActivo && ultimaMillaDireccion && (
-                          <span className="qf-badge qf-badge-primary">
-                            <i className="bi bi-truck me-1"></i>Última Milla
-                            {` — ${ultimaMillaDireccion}`}
-                          </span>
-                        )}
+                      <div className="border-top pt-2 mt-1">
+                        <span className="text-muted d-block mb-1">
+                          Servicios Adicionales:
+                        </span>
+                        <div className="d-flex flex-wrap gap-2">
+                          {seguroActivo && (
+                            <span className="qf-badge qf-badge-primary">
+                              <i className="bi bi-shield-check me-1"></i>Seguro
+                              {valorMercaderia &&
+                                ` — ${rutaSeleccionada.currency} ${valorMercaderia}`}
+                            </span>
+                          )}
+                          {aduanaActivo && (
+                            <span className="qf-badge qf-badge-primary">
+                              <i className="bi bi-building me-1"></i>
+                              {t("AgenciaAduana.toggle")}
+                              {valorProductoAduana &&
+                                ` — ${rutaSeleccionada.currency} ${valorProductoAduana}`}
+                            </span>
+                          )}
+                          {gastolocal && (
+                            <span className="qf-badge qf-badge-primary">
+                              <i className="bi bi-building me-1"></i>Gastos
+                              Locales (THC + Apertura)
+                            </span>
+                          )}
+                          {ultimaMillaActivo && ultimaMillaDireccion && (
+                            <span className="qf-badge qf-badge-primary">
+                              <i className="bi bi-truck me-1"></i>Última Milla
+                              {` — ${ultimaMillaDireccion}`}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
                 </div>
               </div>
 
