@@ -26,6 +26,9 @@ import {
   type ClienteAsignadoLM,
   type QuoteLastMileProps,
   type PieceDataLM,
+  buildAduanaBreakdownFromResult,
+  buildAduanaLinbisCharges,
+  buildAduanaPdfCharges,
 } from "./Handlers/LASTMILE/HandlerQuoteLASTMILE";
 import { PieceAccordionLASTMILE } from "./Handlers/LASTMILE/PieceAccordionLASTMILE";
 import { packageTypeOptions } from "./PackageTypes/PiecestypesAIR";
@@ -364,7 +367,7 @@ function QuoteLASTMILE({
   >(null);
   const [incotermSel, setIncotermSel] = useState<"DDP" | "DAP" | null>(null);
 
-  // Aduana / Extraport expenses (solo aplica para LCL + DDP)
+  // Aduana / Nacionalización DDP (LCL, FCL y AÉREO)
   const { config: aduanaConfig } = useAgenciaAduanas();
   const { config: gestionCotizadorConfig } = useGestionCotizador();
   const fclTtFromDb = gestionCotizadorConfig.fcl;
@@ -716,10 +719,17 @@ function QuoteLASTMILE({
   // Si el cliente no ingresa valor de seguro, se usa el seguro teórico:
   //   ((valorMercadería + costoTransporte) * 1.1) * 0.02
   const extraportData = useMemo(() => {
+    const empty = {
+      total: 0,
+      costoTransporte: 0,
+      seguroParaCIF: 0,
+      cif: 0,
+      breakdown: null as ReturnType<typeof buildAduanaBreakdownFromResult> | null,
+    };
     const valorProd =
       parseFloat((valorMercaderiaDDP || "").replace(",", ".")) || 0;
     if (valorProd <= 0) {
-      return { total: 0, costoTransporte: 0, seguroParaCIF: 0 };
+      return empty;
     }
 
     let costoTransporte = 0;
@@ -763,7 +773,7 @@ function QuoteLASTMILE({
         : 0;
       costoTransporte = 190 + 60 + 50 + 90 + ttAmount;
     } else {
-      return { total: 0, costoTransporte: 0, seguroParaCIF: 0 };
+      return empty;
     }
 
     const seguroIngresado =
@@ -784,6 +794,8 @@ function QuoteLASTMILE({
       total: Number(result.total.toFixed(2)),
       costoTransporte,
       seguroParaCIF,
+      cif: Number(result.cif.toFixed(2)),
+      breakdown: buildAduanaBreakdownFromResult(result),
     };
   }, [
     servicioSel,
@@ -1021,6 +1033,9 @@ function QuoteLASTMILE({
       expense: { currency: { abbr: "USD" as const } },
     });
 
+    const buildAduanaContextNote = (servicioLabel: string) =>
+      `Aduana/Nacionalización ${servicioLabel}. Valor mercadería: ${valorMercaderiaDDPNum.toFixed(2)} USD; Transporte: ${extraportData.costoTransporte.toFixed(2)} USD; Seguro${parseFloat((valorSeguroDDP || "").replace(",", ".")) > 0 ? "" : " (teórico)"}: ${extraportData.seguroParaCIF.toFixed(2)} USD`;
+
     const charges: any[] = [];
     const skipAutomatedPricing = deliveryVespucioZone === "outside";
 
@@ -1141,32 +1156,16 @@ function QuoteLASTMILE({
       }
 
       // -----------------------------------------------------------------
-      // COBRO ADICIONAL (solo LCL + DDP): EXTRAPORT EXPENSES
+      // COBROS ADUANA (solo LCL + DDP): desglose por concepto Linbis
       // -----------------------------------------------------------------
-      // Reutiliza calculateAduanaCharges (misma lógica que AduanaSection):
-      // CIF = valorMercadería + costoTransporte + seguro
-      // costoTransporte = suma de TODOS los charges anteriores LCL DDP
-      // seguro = ingresado por cliente o teórico ((CIF - seguro) * 1.1 * 0.02)
-      if (incotermSel === "DDP" && extraportData.total > 0) {
-        const eeAmount = Number(extraportData.total.toFixed(2));
-        charges.push({
-          service: { id: 134768, code: "Ee" },
-          income: {
-            quantity: 1,
-            unit: "Each",
-            rate: eeAmount,
-            amount: eeAmount,
-            showamount: eeAmount,
-            payment: "Collect",
-            billApplyTo: "Other",
-            billTo: { name: effectiveUsername },
-            currency: { abbr: "USD" as const },
-            reference: "Amount to Extraport expenses",
-            showOnDocument: true,
-            notes: `Extraport expenses - Aduana/Nacionalización LCL DDP. Valor mercadería: ${valorMercaderiaDDPNum.toFixed(2)} USD; Transporte: ${extraportData.costoTransporte.toFixed(2)} USD; Seguro${parseFloat((valorSeguroDDP || "").replace(",", ".")) > 0 ? "" : " (teórico)"}: ${extraportData.seguroParaCIF.toFixed(2)} USD`,
-          },
-          expense: { currency: { abbr: "USD" as const } },
-        });
+      if (incotermSel === "DDP" && extraportData.breakdown) {
+        charges.push(
+          ...buildAduanaLinbisCharges(
+            extraportData.breakdown,
+            effectiveUsername,
+            buildAduanaContextNote("LCL DDP"),
+          ),
+        );
       }
     } else if (
       !skipAutomatedPricing &&
@@ -1177,8 +1176,7 @@ function QuoteLASTMILE({
       // FCL + DAP / FCL + DDP — Cobros fijos
       // -----------------------------------------------------------------
       // FCL+DDP usa exactamente los mismos cobros que FCL+DAP y agrega
-      // al final un cobro "Extraport expenses" (Ee, id 134768) con la
-      // lógica obligatoria de Aduana / Nacionalización.
+      // al final el desglose de Aduana / Nacionalización por concepto Linbis.
       const fclLabel = `FCL ${incotermSel}`;
       charges.push(
         buildFixedCharge(
@@ -1283,31 +1281,16 @@ function QuoteLASTMILE({
       }
 
       // -----------------------------------------------------------------
-      // FCL + DDP — Cobro adicional Ee (Extraport expenses / Aduana)
+      // FCL + DDP — Cobros aduana desglosados por concepto Linbis
       // -----------------------------------------------------------------
-      // Reutiliza calculateAduanaCharges (misma lógica que AduanaSection).
-      // costoTransporte = suma de los cobros FCL DAP arriba (Handling +
-      // Banking + BL + TT por contenedor + DTHC por contenedor).
-      if (incotermSel === "DDP" && extraportData.total > 0) {
-        const eeAmount = extraportData.total;
-        charges.push({
-          service: { id: 134768, code: "Ee" },
-          income: {
-            quantity: 1,
-            unit: "Each",
-            rate: eeAmount,
-            amount: eeAmount,
-            showamount: eeAmount,
-            payment: "Collect",
-            billApplyTo: "Other",
-            billTo: { name: effectiveUsername },
-            currency: { abbr: "USD" as const },
-            reference: "Amount to Extraport expenses",
-            showOnDocument: true,
-            notes: `Extraport expenses - Aduana/Nacionalización FCL DDP. Valor mercadería: ${valorMercaderiaDDPNum.toFixed(2)} USD; Transporte: ${extraportData.costoTransporte.toFixed(2)} USD; Seguro${parseFloat((valorSeguroDDP || "").replace(",", ".")) > 0 ? "" : " (teórico)"}: ${extraportData.seguroParaCIF.toFixed(2)} USD`,
-          },
-          expense: { currency: { abbr: "USD" as const } },
-        });
+      if (incotermSel === "DDP" && extraportData.breakdown) {
+        charges.push(
+          ...buildAduanaLinbisCharges(
+            extraportData.breakdown,
+            effectiveUsername,
+            buildAduanaContextNote("FCL DDP"),
+          ),
+        );
       }
     } else if (
       !skipAutomatedPricing &&
@@ -1318,7 +1301,7 @@ function QuoteLASTMILE({
       // AÉREO + DAP / AÉREO + DDP — Cobros fijos
       // -----------------------------------------------------------------
       // AÉREO+DDP usa exactamente los mismos cobros que AÉREO+DAP y agrega
-      // dos cobros adicionales: LAC (90 USD) y Ee (Aduana / Nacionalización).
+      // LAC (90 USD) y el desglose de Aduana / Nacionalización por concepto.
       const aereoLabel = `AÉREO ${incotermSel}`;
       charges.push(
         buildFixedCharge(
@@ -1387,7 +1370,7 @@ function QuoteLASTMILE({
       }
 
       // -----------------------------------------------------------------
-      // AÉREO + DDP — Cobros adicionales: LAC + Ee
+      // AÉREO + DDP — Cobros adicionales: LAC + desglose aduana
       // -----------------------------------------------------------------
       if (incotermSel === "DDP") {
         // LOCAL AIRPORT CHARGES (LAC, id 134996) — fijo 90 USD
@@ -1401,29 +1384,14 @@ function QuoteLASTMILE({
             "Local Airport Charges - AÉREO DDP (Última Milla)",
           ),
         );
-        // Ee (Extraport expenses / Aduana / Nacionalización)
-        // Reutiliza calculateAduanaCharges. costoTransporte = suma de los
-        // cobros AÉREO arriba (D 190 + H 60 + BANK 50 + LAC 90 + TT bracket).
-        if (extraportData.total > 0) {
-          const eeAmount = extraportData.total;
-          charges.push({
-            service: { id: 134768, code: "Ee" },
-            income: {
-              quantity: 1,
-              unit: "Each",
-              rate: eeAmount,
-              amount: eeAmount,
-              showamount: eeAmount,
-              payment: "Collect",
-              billApplyTo: "Other",
-              billTo: { name: effectiveUsername },
-              currency: { abbr: "USD" as const },
-              reference: "Amount to Extraport expenses",
-              showOnDocument: true,
-              notes: `Extraport expenses - Aduana/Nacionalización AÉREO DDP. Valor mercadería: ${valorMercaderiaDDPNum.toFixed(2)} USD; Transporte: ${extraportData.costoTransporte.toFixed(2)} USD; Seguro${parseFloat((valorSeguroDDP || "").replace(",", ".")) > 0 ? "" : " (teórico)"}: ${extraportData.seguroParaCIF.toFixed(2)} USD`,
-            },
-            expense: { currency: { abbr: "USD" as const } },
-          });
+        if (extraportData.breakdown) {
+          charges.push(
+            ...buildAduanaLinbisCharges(
+              extraportData.breakdown,
+              effectiveUsername,
+              buildAduanaContextNote("AÉREO DDP"),
+            ),
+          );
         }
       }
     } else if (!skipAutomatedPricing) {
@@ -1761,17 +1729,9 @@ function QuoteLASTMILE({
 
         pdfCharges = [...fixedCharges, docCharge, ...deliveryCharges];
 
-        // Si es LCL + DDP añadimos el cobro Extraport expenses (Aduana)
-        if (incotermSel === "DDP" && extraportData.total > 0) {
-          const eeAmount = Number(extraportData.total.toFixed(2));
-          pdfCharges.push({
-            code: "Ee",
-            description: "Extraport expenses",
-            quantity: 1,
-            unit: "Each",
-            rate: eeAmount,
-            amount: eeAmount,
-          });
+        // Si es LCL + DDP añadimos el desglose de aduana
+        if (incotermSel === "DDP" && extraportData.breakdown) {
+          pdfCharges.push(...buildAduanaPdfCharges(extraportData.breakdown));
         }
 
         pdfTotalCharges = pdfCharges.reduce((sum, ch) => sum + ch.amount, 0);
@@ -1853,17 +1813,9 @@ function QuoteLASTMILE({
 
         pdfCharges = [...fixedCharges, ...ttCharges, ...dthcCharges];
 
-        // FCL + DDP: agregar cobro Ee (Extraport expenses / Aduana)
-        if (incotermSel === "DDP" && extraportData.total > 0) {
-          const eeAmount = extraportData.total;
-          pdfCharges.push({
-            code: "Ee",
-            description: "Extraport expenses",
-            quantity: 1,
-            unit: "Each",
-            rate: eeAmount,
-            amount: eeAmount,
-          });
+        // FCL + DDP: agregar desglose aduana al PDF
+        if (incotermSel === "DDP" && extraportData.breakdown) {
+          pdfCharges.push(...buildAduanaPdfCharges(extraportData.breakdown));
         }
 
         pdfTotalCharges = pdfCharges.reduce((sum, ch) => sum + ch.amount, 0);
@@ -1920,7 +1872,7 @@ function QuoteLASTMILE({
           });
         }
 
-        // AÉREO + DDP: agregar LAC + Ee al PDF
+        // AÉREO + DDP: agregar LAC + desglose aduana al PDF
         if (incotermSel === "DDP") {
           pdfCharges.push({
             code: "LAC",
@@ -1930,15 +1882,8 @@ function QuoteLASTMILE({
             rate: 90,
             amount: 90,
           });
-          if (extraportData.total > 0) {
-            pdfCharges.push({
-              code: "Ee",
-              description: "Extraport expenses",
-              quantity: 1,
-              unit: "Each",
-              rate: extraportData.total,
-              amount: extraportData.total,
-            });
+          if (extraportData.breakdown) {
+            pdfCharges.push(...buildAduanaPdfCharges(extraportData.breakdown));
           }
         }
 
@@ -3168,9 +3113,33 @@ function QuoteLASTMILE({
                     <div className="col-6 text-end fw-bold">
                       USD {extraportData.seguroParaCIF.toFixed(2)}
                     </div>
+                    <div className="col-6 text-muted">CIF:</div>
+                    <div className="col-6 text-end fw-bold">
+                      USD {extraportData.cif.toFixed(2)}
+                    </div>
+                    {extraportData.breakdown && (
+                      <>
+                        <div className="col-12 border-top my-2"></div>
+                        <div className="col-12 text-muted fw-bold mb-1">
+                          Desglose aduana / nacionalización:
+                        </div>
+                        {buildAduanaPdfCharges(extraportData.breakdown).map(
+                          (item) => (
+                            <React.Fragment key={item.code}>
+                              <div className="col-6 text-muted ps-2">
+                                {item.description} ({item.code}):
+                              </div>
+                              <div className="col-6 text-end">
+                                USD {item.amount.toFixed(2)}
+                              </div>
+                            </React.Fragment>
+                          ),
+                        )}
+                      </>
+                    )}
                     <div className="col-12 border-top my-2"></div>
                     <div className="col-6 text-muted">
-                      <strong>Extraport expenses (Ee):</strong>
+                      <strong>Total aduana:</strong>
                     </div>
                     <div className="col-6 text-end fw-bold">
                       USD {extraportData.total.toFixed(2)}

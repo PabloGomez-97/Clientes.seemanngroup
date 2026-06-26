@@ -120,3 +120,150 @@ export const parseLastMile = (data: any[]): RutaLastMile[] => {
 };
 
 export { parseCSV };
+
+// ============================================================================
+// ADUANA / NACIONALIZACIÓN DDP — Desglose Linbis (reemplaza cobro agrupado Ee)
+// ============================================================================
+
+export interface AduanaLinbisServiceDef {
+  id: number;
+  code: string;
+  description: string;
+  reference: string;
+}
+
+/** Servicios Linbis para cada componente de calculateAduanaCharges. */
+export const ADUANA_LINBIS_SERVICES = {
+  derechos: {
+    id: 146100,
+    code: "CUST",
+    description: "CUSTOMS CLEARANCE",
+    reference: "Amount to Customs Clearance",
+  },
+  ivaAduanero: {
+    id: 146101,
+    code: "CT1",
+    description: "CUSTOMS TAX 19%",
+    reference: "Amount to Customs Tax 19%",
+  },
+  honorarios: {
+    id: 146102,
+    code: "CB",
+    description: "CUSTOMS BROKER",
+    reference: "Amount to Customs Broker",
+  },
+  mensajeria: {
+    id: 146103,
+    code: "CM",
+    description: "CUSTOMS MESSAGING",
+    reference: "Amount to Customs Messaging",
+  },
+  tramitacion: {
+    id: 146104,
+    code: "CP",
+    description: "CUSTOMS PROCESSING",
+    reference: "Amount to Customs Processing",
+  },
+  gastosDespacho: {
+    id: 146105,
+    code: "CSC",
+    description: "CUSTOMS SHIPPING COST",
+    reference: "Amount to Customs Shipping Cost",
+  },
+} as const satisfies Record<string, AduanaLinbisServiceDef>;
+
+export interface AduanaBreakdownAmounts {
+  honorarios: number;
+  gastosDespacho: number;
+  tramitacion: number;
+  mensajeria: number;
+  ivaAduanero: number;
+  derechos: number;
+}
+
+export interface AduanaBreakdownPdfCharge {
+  code: string;
+  description: string;
+  quantity: number;
+  unit: string;
+  rate: number;
+  amount: number;
+}
+
+const ADUANA_BREAKDOWN_ORDER: Array<{
+  key: keyof AduanaBreakdownAmounts;
+  service: AduanaLinbisServiceDef;
+}> = [
+  { key: "derechos", service: ADUANA_LINBIS_SERVICES.derechos },
+  { key: "ivaAduanero", service: ADUANA_LINBIS_SERVICES.ivaAduanero },
+  { key: "honorarios", service: ADUANA_LINBIS_SERVICES.honorarios },
+  { key: "mensajeria", service: ADUANA_LINBIS_SERVICES.mensajeria },
+  { key: "tramitacion", service: ADUANA_LINBIS_SERVICES.tramitacion },
+  { key: "gastosDespacho", service: ADUANA_LINBIS_SERVICES.gastosDespacho },
+];
+
+export const buildAduanaBreakdownFromResult = (result: {
+  honorarios: number;
+  gastosDespacho: number;
+  tramitacion: number;
+  mensajeria: number;
+  ivaAduanero: number;
+  derechos: number;
+}): AduanaBreakdownAmounts => ({
+  honorarios: Number(result.honorarios.toFixed(2)),
+  gastosDespacho: Number(result.gastosDespacho.toFixed(2)),
+  tramitacion: Number(result.tramitacion.toFixed(2)),
+  mensajeria: Number(result.mensajeria.toFixed(2)),
+  ivaAduanero: Number(result.ivaAduanero.toFixed(2)),
+  derechos: Number(result.derechos.toFixed(2)),
+});
+
+export const buildAduanaLinbisCharges = (
+  breakdown: AduanaBreakdownAmounts,
+  billToName: string,
+  contextNote: string,
+) =>
+  ADUANA_BREAKDOWN_ORDER.flatMap(({ key, service }) => {
+    const amount = breakdown[key];
+    if (amount <= 0) return [];
+
+    return [
+      {
+        service: { id: service.id, code: service.code },
+        income: {
+          quantity: 1,
+          unit: "Each",
+          rate: amount,
+          amount,
+          showamount: amount,
+          payment: "Collect",
+          billApplyTo: "Other",
+          billTo: { name: billToName },
+          currency: { abbr: "USD" as const },
+          reference: service.reference,
+          showOnDocument: true,
+          notes: `${service.description} - ${contextNote}`,
+        },
+        expense: { currency: { abbr: "USD" as const } },
+      },
+    ];
+  });
+
+export const buildAduanaPdfCharges = (
+  breakdown: AduanaBreakdownAmounts,
+): AduanaBreakdownPdfCharge[] =>
+  ADUANA_BREAKDOWN_ORDER.flatMap(({ key, service }) => {
+    const amount = breakdown[key];
+    if (amount <= 0) return [];
+
+    return [
+      {
+        code: service.code,
+        description: service.description,
+        quantity: 1,
+        unit: "Each",
+        rate: amount,
+        amount,
+      },
+    ];
+  });
