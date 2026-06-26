@@ -142,7 +142,7 @@ function expandClientesPorEmpresa(
   return expanded;
 }
 
-function QuoteFCL({
+export default function QuoteFCL({
   preselectedPOL,
   preselectedPOD,
   isEjecutivoMode = false,
@@ -1724,6 +1724,10 @@ function QuoteFCL({
   const ultimaMillaDisponible = isUltimaMillaEligiblePOD(
     rutaSeleccionada?.podNormalized,
   );
+
+  const transportAddonExpandedLayout =
+    !ultimaMillaDisponible ||
+    (ultimaMillaActivo && ultimaMillaDireccion.trim().length > 0);
 
   const ultimaMillaPickupCoords = useMemo(() => {
     const podNorm = rutaSeleccionada?.podNormalized;
@@ -4247,7 +4251,9 @@ function QuoteFCL({
 
           {currentStep === 3 && (
             <div>
-              <div className="qf-addons-list">
+              <div
+                className={`qf-addons-list${transportAddonExpandedLayout ? " qf-addons-list--expanded" : ""}`}
+              >
                 {/* Card: Seguro */}
                 <div
                   className={`qf-addon-card${seguroActivo ? " is-active" : ""}`}
@@ -5115,5 +5121,3 @@ function QuoteFCL({
     </>
   );
 }
-
-export default QuoteFCL;

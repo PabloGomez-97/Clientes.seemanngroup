@@ -3,11 +3,11 @@ import type { QuoteFCLProps } from "@/components/quotes/Handlers/FCL/HandlerQuot
 
 /**
  * QuoteFCL-ejecutivo.tsx
- * Thin wrapper that reuses QuoteFCL in ejecutivo mode.
- * All logic lives in QuoteFCL.tsx  this component only sets isEjecutivoMode=true.
+ * Wrapper delgado que reutiliza QuoteFCL en modo ejecutivo.
+ * Toda la lógica vive en QuoteFCL.tsx (isEjecutivoMode = true).
  */
-function QuoteFCLEjecutivo(props: QuoteFCLProps) {
+export default function QuoteFCLEjecutivo(
+  props: Omit<QuoteFCLProps, "isEjecutivoMode">,
+) {
   return <QuoteFCL {...props} isEjecutivoMode />;
 }
-
-export default QuoteFCLEjecutivo;

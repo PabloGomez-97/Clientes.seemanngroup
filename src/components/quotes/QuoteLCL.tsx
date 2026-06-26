@@ -2079,6 +2079,11 @@ function QuoteLCL({
   const ultimaMillaCargaEnRango =
     findLclDeliveryBracket(totalWeightKg, totalVolume, lclTtConfig) !== null;
 
+  const transportAddonExpandedLayout =
+    !ultimaMillaDisponiblePOD ||
+    (ultimaMillaDisponiblePOD && !ultimaMillaCargaEnRango) ||
+    (ultimaMillaActivo && ultimaMillaDireccion.trim().length > 0);
+
   const ultimaMillaPickupCoords = useMemo(() => {
     const podNorm =
       rutaSeleccionada?.podNormalized ?? podSeleccionado?.value ?? null;
@@ -4832,7 +4837,9 @@ function QuoteLCL({
             </div>
 
             <div>
-              <div className="qa-addons-list">
+              <div
+                className={`qa-addons-list${transportAddonExpandedLayout ? " qa-addons-list--expanded" : ""}`}
+              >
                 {/* Card: Seguro de Carga */}
                 <div
                   className={`qa-addon-card${seguroActivo ? " is-active" : ""}`}

@@ -2332,6 +2332,11 @@ function QuoteAPITester({
     totalRealWeightKg > 0 &&
     findAereoTtBracket(totalRealWeightKg, aereoTtConfig) !== null;
 
+  const transportAddonExpandedLayout =
+    !ultimaMillaDisponibleDestino ||
+    (ultimaMillaDisponibleDestino && !ultimaMillaCargaEnRango) ||
+    (ultimaMillaActivo && ultimaMillaDireccion.trim().length > 0);
+
   const ultimaMillaPickupCoords = useMemo(() => {
     const scl = airportCoordinates.santiago_de_chile;
     return scl ? { lat: scl.lat, lng: scl.lng } : null;
@@ -6752,7 +6757,9 @@ function QuoteAPITester({
           </div>
 
           <div>
-            <div className="qa-addons-list">
+            <div
+              className={`qa-addons-list${transportAddonExpandedLayout ? " qa-addons-list--expanded" : ""}`}
+            >
               {/* Card: Seguro de Carga */}
               <div
                 className={`qa-addon-card${seguroActivo ? " is-active" : ""}`}

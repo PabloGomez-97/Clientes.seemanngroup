@@ -606,11 +606,24 @@
   display: flex;
   align-items: stretch;
   height: 140px;
+  min-height: 140px;
+  max-height: 140px;
   border: 1.5px solid var(--qf-border-color);
   border-radius: var(--qf-radius);
   overflow: hidden;
   background: #fff;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    height 0.2s ease,
+    min-height 0.2s ease,
+    max-height 0.2s ease;
+}
+
+.qf-addons-list--expanded .qf-addon-card {
+  height: 182px;
+  min-height: 182px;
+  max-height: 182px;
 }
 
 .qf-addon-card.is-active {
@@ -636,10 +649,12 @@
 
 .qf-addon-card__body {
   flex: 1;
+  min-height: 0;
   padding: 1.1rem 1.5rem;
   display: flex;
   flex-direction: column;
   justify-content: center;
+  overflow: hidden;
 }
 
 .qf-addon-card__body h4 {
