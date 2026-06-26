@@ -8,6 +8,7 @@ import Footer from "../components/footer/Footer";
 import { ChatbotProvider } from "../contexts/ChatbotContext";
 import { useAuth } from "../auth/AuthContext";
 import { canAccessRoute } from "../config/roleRoutes";
+import { useLinbisToken } from "../hooks/useLinbisToken";
 
 const MOBILE_BREAKPOINT = 768;
 
@@ -16,6 +17,7 @@ const isMobileViewport = () =>
 
 function ProveedorLayout() {
   const { user } = useAuth();
+  const { accessToken, refreshAccessToken } = useLinbisToken();
   const [isMobile, setIsMobile] = useState(isMobileViewport);
   const [hasUserPref, setHasUserPref] = useState<boolean>(() => {
     try {
@@ -53,6 +55,10 @@ function ProveedorLayout() {
     return () => window.removeEventListener("resize", handleResize);
   }, [hasUserPref]);
 
+  const handleLogout = () => {
+    // Token state is managed by useLinbisToken hook
+  };
+
   const toggleSidebar = () => {
     setHasUserPref(true);
     setSidebarCollapsed((previous) => {
@@ -86,8 +92,8 @@ function ProveedorLayout() {
           style={{ overflow: "hidden" }}
         >
           <NavbarAdmin
-            accessToken=""
-            onLogout={() => {}}
+            accessToken={accessToken}
+            onLogout={handleLogout}
             toggleSidebar={toggleSidebar}
             isSidebarCollapsed={sidebarCollapsed}
             isMobile={isMobile}
@@ -102,7 +108,13 @@ function ProveedorLayout() {
             }}
           >
             <div className="layout-main__content">
-              <Outlet />
+              <Outlet
+                context={{
+                  accessToken,
+                  refreshAccessToken,
+                  onLogout: handleLogout,
+                }}
+              />
             </div>
             <Footer />
           </div>

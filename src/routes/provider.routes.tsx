@@ -12,6 +12,7 @@ import PriceHistoryExplorer from "@/components/cliente/tarifas/priceHistory/Pric
 import ConsultaTarifas from "@/components/cliente/tarifas/rateConsult/ConsultaTarifas";
 import Novedades from "@/components/cliente/novedades/Novedades";
 import PromesasPage from "@/components/cliente/home/promesas/PromesasPage";
+import UltimaMillaCotizador from "@/components/proveedores/cotizaciones/UltimaMillaCotizador";
 
 export const providerRoutes = (
   <Route
@@ -27,6 +28,7 @@ export const providerRoutes = (
     <Route path="tarifario-aereo" element={<TarifarioAereo />} />
     <Route path="tarifario-fcl" element={<TarifarioFCL />} />
     <Route path="tarifario-lcl" element={<TarifarioLCL />} />
+    <Route path="ultima-milla" element={<UltimaMillaCotizador />} />
     <Route path="internacionalizacion" element={<QuoteInternacionalizacion />} />
     <Route path="archivos" element={<ArchivosProveedor />} />
     <Route path="ayuda" element={<NecesitasAyuda />} />

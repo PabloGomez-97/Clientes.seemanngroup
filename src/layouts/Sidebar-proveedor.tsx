@@ -90,6 +90,11 @@ function SidebarProveedor({
             },
           ],
         },
+        {
+          path: "/proveedor/ultima-milla",
+          name: t("proveedor.sidebar.ultimaMilla"),
+          icon: "fa fa-truck",
+        },
       ],
     },
     {

@@ -95,6 +95,7 @@ export const PROVEEDOR_ROUTES: string[] = [
   '/proveedor/tarifario-aereo',
   '/proveedor/tarifario-fcl',
   '/proveedor/tarifario-lcl',
+  '/proveedor/ultima-milla',
   '/proveedor/internacionalizacion',
   '/proveedor/archivos',
   '/proveedor/ayuda',
