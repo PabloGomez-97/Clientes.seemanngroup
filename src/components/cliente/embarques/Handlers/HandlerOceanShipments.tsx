@@ -1,55 +1,8 @@
 import { useState } from "react";
 
-export interface OceanShipment {
-  id?: number;
-  number?: string;
-  operationFlow?: string;
-  shipmentType?: string;
-  currentFlow?: string;
-  departure?: string;
-  arrival?: string;
-  portOfLoading?: string;
-  portOfUnloading?: string;
-  placeOfDelivery?: string;
-  finalDestination?: string;
-  vessel?: string;
-  voyage?: string;
-  carrier?: string;
-  bookingNumber?: string;
-  waybillNumber?: string;
-  containerNumber?: string;
-  consignee?: string;
-  consigneeId?: number;
-  consigneeAddress?: string;
-  shipper?: string;
-  shipperAddress?: string;
-  customer?: string;
-  customerReference?: string;
-  salesRep?: string;
-  accountingStatus?: string;
-  cargoDescription?: string;
-  cargoStatus?: string;
-  typeOfMove?: string;
-  totalCargo_Pieces?: number;
-  totalCargo_WeightDisplayValue?: string;
-  totalCargo_VolumeDisplayValue?: string;
-  totalCharge_IncomeDisplayValue?: string;
-  totalCharge_ExpenseDisplayValue?: string;
-  totalCharge_ProfitDisplayValue?: string;
-  createdOn?: string;
-  hazardous?: boolean;
-  containerized?: boolean;
-  quoteNumber?: string;
-  customsReleased?: boolean;
-  freightReleased?: boolean;
-  podDelivery?: string;
-  entryNumber?: string;
-  itNumber?: string;
-  amsNumber?: string;
-  broker?: string;
-  notes?: string;
-  [key: string]: any;
-}
+export type { OceanShipment } from "@/types/shipments";
+
+import type { OceanShipment } from "@/types/shipments";
 
 export interface OutletContext {
   accessToken: string;

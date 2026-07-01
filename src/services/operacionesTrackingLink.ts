@@ -1,13 +1,13 @@
-import type { AirShipment } from "@/components/cliente/embarques/Handlers/HandlerAirShipments";
+import type { AirShipment } from "../types/shipments.js";
 import type {
   AirShipment as ShipsgoAirShipment,
   OceanShipment as ShipsgoOceanShipment,
-} from "@/components/cliente/tracking/shipsgo/types";
+} from "../components/cliente/tracking/shipsgo/types.js";
 import {
   extractHbliFromCharges,
   extractHbliFromCommodities,
-} from "./linbisQuoteLookup";
-import type { OceanListItem } from "./linbisShipmentMappers";
+} from "./linbisQuoteLookup.js";
+import type { OceanListItem } from "./linbisShipmentMappers.js";
 import {
   buildAirOpenTrackingTarget,
   buildOceanOpenTrackingTarget,
@@ -16,7 +16,7 @@ import {
   normalizeShipsgoAwbKey,
   normalizeShipsgoOceanKey,
   type ShipsGoOpenTrackingTarget,
-} from "./shipsgoTrackingNavigation";
+} from "./shipsgoTrackingNavigation.js";
 
 export type OperacionTrackingStatus = {
   isTracked: boolean;
@@ -46,7 +46,11 @@ export function getAirOperacionShipsgoLookupKeys(
   trackingIndex: Record<string, string>,
 ): string[] {
   const raw = [resolveAirOperacionTrackingNumber(shipment, trackingIndex), shipment.number];
-  return [...new Set(raw.map(normalizeShipsgoAwbKey).filter(Boolean))];
+  return [
+    ...new Set(
+      raw.map(normalizeShipsgoAwbKey).filter((key) => key.length > 0),
+    ),
+  ];
 }
 
 export function resolveOceanOperacionTrackingNumber(
@@ -92,7 +96,11 @@ export function getOceanOperacionShipsgoLookupKeys(
     getOceanOperacionContainerNumber(shipment),
     shipment.waybillNumber,
   ];
-  return [...new Set(raw.map(normalizeShipsgoOceanKey).filter(Boolean))];
+  return [
+    ...new Set(
+      raw.map(normalizeShipsgoOceanKey).filter((key) => key.length > 0),
+    ),
+  ];
 }
 
 export function buildTrackedAwbSet(

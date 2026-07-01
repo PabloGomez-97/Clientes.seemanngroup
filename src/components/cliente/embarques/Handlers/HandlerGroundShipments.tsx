@@ -1,60 +1,8 @@
 import { useState } from "react";
 
-/* ============================================================
-   INTERFACES
-   ============================================================ */
+export type { GroundShipment } from "@/types/shipments";
 
-export interface GroundShipment {
-  id?: number;
-  number?: string;
-  operationFlow?: string;
-  shipmentType?: string;
-  shipmentClass?: string;
-  currentFlow?: string;
-  departure?: string;
-  arrival?: string;
-  from?: string;
-  to?: string;
-  finalDestination?: string;
-  carrier?: string;
-  truckNumber?: string;
-  trackingNumber?: string;
-  proNumber?: string;
-  driver?: string;
-  bookingNumber?: string;
-  waybillNumber?: string;
-  containerNumber?: string;
-  consignee?: string;
-  consigneeId?: number;
-  consigneeAddress?: string;
-  shipper?: string;
-  shipperAddress?: string;
-  customer?: string;
-  customerReference?: string;
-  salesRep?: string;
-  accountingStatus?: string;
-  cargoDescription?: string;
-  cargoStatus?: string;
-  rateCategory?: string;
-  totalCargo_Pieces?: number;
-  totalCargo_WeightDisplayValue?: string;
-  totalCargo_VolumeDisplayValue?: string;
-  totalCharge_IncomeDisplayValue?: string;
-  totalCharge_ExpenseDisplayValue?: string;
-  totalCharge_ProfitDisplayValue?: string;
-  createdOn?: string;
-  hazardous?: boolean;
-  customsReleased?: boolean;
-  freightReleased?: boolean;
-  paymentType?: string;
-  declaredValue?: number;
-  pallets?: number;
-  notes?: string;
-  entryNumber?: string;
-  itNumber?: string;
-  broker?: string;
-  [key: string]: string | number | boolean | undefined;
-}
+import type { GroundShipment } from "@/types/shipments";
 
 /* ============================================================
    ROUTE DISPLAY  —  Origen → Destino

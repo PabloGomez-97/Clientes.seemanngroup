@@ -1,4 +1,4 @@
-import type { AirShipment } from "@/types/shipments";
+import type { AirShipment } from "../types/shipments.js";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type RawRecord = Record<string, any>;
@@ -140,8 +140,8 @@ export function flattenAirShipmentRecords(records: unknown[]): RawRecord[] {
 }
 
 export interface OceanListItem {
-  id: number;
-  number: string;
+  id?: number;
+  number?: string;
   waybillNumber?: string | null;
   bookingNumber?: string | null;
   customerReference?: string | null;

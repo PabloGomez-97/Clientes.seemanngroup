@@ -6,6 +6,7 @@ import {
   isQuoteValid,
   normalizeClientQuote,
   sortQuotesByNumber,
+  type ClientQuote,
 } from "../src/services/cotizacionesLogic.ts";
 
 describe("normalizeClientQuote", () => {
@@ -14,7 +15,7 @@ describe("normalizeClientQuote", () => {
       number: 12345,
       customerReference: 9876,
       date: "2026-01-01",
-    });
+    } as unknown as ClientQuote);
     assert.equal(quote.number, "12345");
     assert.equal(quote.customerReference, "9876");
   });

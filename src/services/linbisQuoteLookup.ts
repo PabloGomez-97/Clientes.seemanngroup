@@ -1,4 +1,4 @@
-import { linbisFetch } from "./linbisFetch";
+import { linbisFetch } from "./linbisFetch.js";
 
 const LINBIS_JSON_HEADERS = {
   Accept: "application/json",

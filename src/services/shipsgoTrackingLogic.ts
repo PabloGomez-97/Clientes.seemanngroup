@@ -1,7 +1,7 @@
 import type {
   AirShipment,
   OceanShipment,
-} from "../components/cliente/tracking/shipsgo/types";
+} from "../components/cliente/tracking/shipsgo/types.js";
 
 export type TrackingTab = "air" | "ocean";
 export type AirFilterKey = "inTransit" | "delivered" | "delayed";

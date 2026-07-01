@@ -1,6 +1,6 @@
-import type { AirShipment } from "@/types/shipments";
-import { linbisFetch } from "./linbisFetch";
-import { mergeAirShipmentRouteFromDetail } from "./linbisShipmentMappers";
+import type { AirShipment } from "../types/shipments.js";
+import { linbisFetch } from "./linbisFetch.js";
+import { mergeAirShipmentRouteFromDetail } from "./linbisShipmentMappers.js";
 
 /** Tamaño de página aceptado por la API Linbis (ItemsPerPage=100 devuelve 400). */
 export const LINBIS_PAGE_SIZE = 50;

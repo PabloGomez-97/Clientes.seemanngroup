@@ -1,7 +1,6 @@
-import type { AirShipment } from "@/components/cliente/embarques/Handlers/HandlerAirShipments";
-import type { GroundShipment } from "@/components/cliente/embarques/Handlers/HandlerGroundShipments";
-import { extractHbliFromCharges } from "./linbisQuoteLookup";
-import type { OceanListItem } from "./linbisShipmentMappers";
+import type { AirShipment, Consignee, GroundShipment } from "../types/shipments.js";
+import { extractHbliFromCharges } from "./linbisQuoteLookup.js";
+import type { OceanListItem } from "./linbisShipmentMappers.js";
 
 export type AirOceanOperacionesFilters = {
   number?: string;
@@ -90,6 +89,13 @@ export function countActiveGroundFilters(
   ].filter((value) => Boolean(value?.trim())).length;
 }
 
+function resolveCarrierName(
+  carrier: Consignee | string | null | undefined,
+): string | undefined {
+  if (typeof carrier === "string") return carrier;
+  return carrier?.name;
+}
+
 export function applyAirOperacionesFilters(
   shipments: AirShipment[],
   filters: AirOceanOperacionesFilters,
@@ -128,7 +134,7 @@ export function applyAirOperacionesFilters(
   }
   if (filters.carrier?.trim()) {
     filtered = filtered.filter((shipment) =>
-      includesInsensitive(shipment.carrier?.name, filters.carrier!),
+      includesInsensitive(resolveCarrierName(shipment.carrier), filters.carrier!),
     );
   }
 
@@ -174,7 +180,7 @@ export function applyOceanOperacionesFilters(
   }
   if (filters.carrier?.trim()) {
     filtered = filtered.filter((shipment) =>
-      includesInsensitive(shipment.carrier?.name, filters.carrier!),
+      includesInsensitive(resolveCarrierName(shipment.carrier), filters.carrier!),
     );
   }
 

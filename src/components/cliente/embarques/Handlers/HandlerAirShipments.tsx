@@ -1,30 +1,12 @@
 import { useEffect, useState } from "react";
 
-export interface OutletContext {
-  accessToken: string;
-  refreshAccessToken: () => Promise<string>;
-  onLogout: () => void;
-}
+export type {
+  AirShipment,
+  Consignee,
+  OutletContext,
+} from "@/types/shipments";
 
-export interface Consignee {
-  id?: number;
-  name?: string;
-  accountNumber?: string;
-  code?: string;
-  email?: string;
-  [key: string]: any;
-}
-
-export interface AirShipment {
-  id?: string | number;
-  number?: string;
-  date?: string;
-  consignee?: Consignee;
-  origin?: { code?: string; name?: string } | null;
-  destination?: { code?: string; name?: string } | null;
-  executedAt?: { code?: string; name?: string } | null;
-  [key: string]: any;
-}
+import type { AirShipment } from "@/types/shipments";
 
 // Componente para el Timeline Visual
 export function ShipmentTimeline({ shipment }: { shipment: AirShipment }) {
