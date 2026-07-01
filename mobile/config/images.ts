@@ -1,6 +1,12 @@
-import { MOBILE_API_BASE } from "../../src/auth/authApi";
+import {
+  buildPublicImageUrl,
+  R2_PUBLIC_IMAGES_BASE,
+} from "../../src/config/r2PublicImagesBase";
+
+const R2_BASE = (
+  process.env.EXPO_PUBLIC_R2_PUBLIC_IMAGES ?? R2_PUBLIC_IMAGES_BASE
+).replace(/\/$/, "");
 
 export function imgUrl(path: string): string {
-  const cleanPath = path.startsWith("/") ? path : `/${path}`;
-  return `${MOBILE_API_BASE}${cleanPath}`;
+  return buildPublicImageUrl(R2_BASE, path);
 }

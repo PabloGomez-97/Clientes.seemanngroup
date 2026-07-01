@@ -1,7 +1,8 @@
 import { StyleSheet, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
-import { LOGIN_DARK, LOGIN_PRIMARY } from "../../../src/auth/loginTheme";
+import SectionHeader from "../ui/SectionHeader";
+import { brand, radii, spacing } from "../../theme/brand";
 
 type ServiceKey = "aereo" | "fcl" | "lcl" | "lastmile";
 
@@ -20,17 +21,29 @@ export default function HomeServicesGrid() {
 
   return (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>
-        {t("home.servicesSection.title")}
-      </Text>
+      <SectionHeader
+        title={t("home.servicesSection.title")}
+        subtitle="Selecciona la modalidad de transporte para tu carga"
+      />
       <View style={styles.grid}>
         {SERVICE_KEYS.map(({ key, icon }) => (
           <View key={key} style={styles.card}>
-            <View style={styles.iconWrap}>
-              <Ionicons name={icon} size={22} color={LOGIN_PRIMARY} />
+            <View style={styles.cardTop}>
+              <View style={styles.iconWrap}>
+                <Ionicons name={icon} size={22} color={brand.primary} />
+              </View>
+              <Ionicons
+                name="chevron-forward"
+                size={16}
+                color={brand.mutedLight}
+              />
             </View>
-            <Text style={styles.cardTitle}>{t(`home.services.${key}.title`)}</Text>
-            <Text style={styles.cardDesc}>{t(`home.services.${key}.desc`)}</Text>
+            <Text style={styles.cardTitle}>
+              {t(`home.services.${key}.title`)}
+            </Text>
+            <Text style={styles.cardDesc} numberOfLines={3}>
+              {t(`home.services.${key}.desc`)}
+            </Text>
             <Text style={styles.cardCta}>
               {t(`home.services.${key}.cta`)} →
             </Text>
@@ -43,48 +56,59 @@ export default function HomeServicesGrid() {
 
 const styles = StyleSheet.create({
   section: {
-    marginBottom: 8,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: LOGIN_DARK,
-    marginBottom: 12,
+    marginBottom: spacing.md,
   },
   grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 12,
   },
   card: {
-    backgroundColor: "#fff",
-    borderRadius: 8,
+    width: "48%",
+    flexGrow: 1,
+    minWidth: "46%",
+    backgroundColor: brand.surface,
+    borderRadius: radii.md,
+    padding: spacing.md,
     borderWidth: 1,
-    borderColor: "#ececec",
-    padding: 16,
+    borderColor: brand.border,
+    shadowColor: brand.shadow,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 1,
+    shadowRadius: 10,
+    elevation: 2,
   },
-  iconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    backgroundColor: "rgba(255, 98, 0, 0.1)",
+  cardTop: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "space-between",
     marginBottom: 12,
   },
+  iconWrap: {
+    width: 42,
+    height: 42,
+    borderRadius: 10,
+    backgroundColor: brand.primarySoft,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   cardTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: LOGIN_DARK,
+    fontSize: 14,
+    fontWeight: "700",
+    color: brand.ink,
     marginBottom: 6,
+    lineHeight: 18,
   },
   cardDesc: {
-    fontSize: 14,
-    color: "#666",
-    lineHeight: 20,
+    fontSize: 12,
+    color: brand.muted,
+    lineHeight: 17,
     marginBottom: 10,
+    minHeight: 51,
   },
   cardCta: {
-    fontSize: 13,
-    fontWeight: "500",
-    color: LOGIN_PRIMARY,
+    fontSize: 12,
+    fontWeight: "600",
+    color: brand.primary,
   },
 });

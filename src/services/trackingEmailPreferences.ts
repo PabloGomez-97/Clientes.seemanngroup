@@ -1,7 +1,6 @@
-const API_BASE_URL =
-  import.meta.env.MODE === "development"
-    ? "http://localhost:4000"
-    : "https://portalclientes.seemanngroup.com";
+import { resolveApiBase } from "../config/resolveApiBase";
+
+const API_BASE_URL = resolveApiBase();
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export const OPERATIONS_FOLLOWER_EMAIL = "operaciones@seemanngroup.com";
@@ -120,9 +119,10 @@ export function addUniqueEmail(
 export async function fetchTrackingEmailPreference(
   token: string,
   reference: string,
+  apiBase: string = API_BASE_URL,
 ): Promise<TrackingEmailPreference> {
   const response = await fetch(
-    `${API_BASE_URL}/api/tracking-email-preferences?reference=${encodeURIComponent(reference)}`,
+    `${apiBase}/api/tracking-email-preferences?reference=${encodeURIComponent(reference)}`,
     {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -149,8 +149,9 @@ export async function saveTrackingEmailPreference(
   token: string,
   reference: string,
   emails: string[],
+  apiBase: string = API_BASE_URL,
 ): Promise<TrackingEmailPreference> {
-  const response = await fetch(`${API_BASE_URL}/api/tracking-email-preferences`, {
+  const response = await fetch(`${apiBase}/api/tracking-email-preferences`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",

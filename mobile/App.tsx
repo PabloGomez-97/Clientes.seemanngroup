@@ -1,10 +1,21 @@
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import {
+  PlusJakartaSans_400Regular,
+  PlusJakartaSans_500Medium,
+  PlusJakartaSans_600SemiBold,
+  PlusJakartaSans_700Bold,
+  useFonts,
+} from "@expo-google-fonts/plus-jakarta-sans";
 import "./i18n";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 import Login from "./auth/Login";
 import ClientTabs from "./navigation/ClientTabs";
+import { brand } from "./theme/brand";
+import { applyGlobalFonts, fonts } from "./theme/typography";
+
+let globalFontsApplied = false;
 
 function RootApp() {
   const { user, loading } = useAuth();
@@ -12,7 +23,7 @@ function RootApp() {
   if (loading) {
     return (
       <View style={styles.loading}>
-        <ActivityIndicator size="large" color="#ff6200" />
+        <ActivityIndicator size="large" color={brand.primary} />
       </View>
     );
   }
@@ -25,10 +36,30 @@ function RootApp() {
 }
 
 export default function App() {
+  const [fontsLoaded] = useFonts({
+    PlusJakartaSans_400Regular,
+    PlusJakartaSans_500Medium,
+    PlusJakartaSans_600SemiBold,
+    PlusJakartaSans_700Bold,
+  });
+
+  if (!fontsLoaded) {
+    return (
+      <View style={styles.loading}>
+        <ActivityIndicator size="large" color={brand.primary} />
+      </View>
+    );
+  }
+
+  if (!globalFontsApplied) {
+    applyGlobalFonts();
+    globalFontsApplied = true;
+  }
+
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <StatusBar style="light" />
+        <StatusBar style="dark" />
         <RootApp />
       </AuthProvider>
     </SafeAreaProvider>
@@ -40,6 +71,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#fafafa",
+    backgroundColor: brand.canvas,
   },
 });

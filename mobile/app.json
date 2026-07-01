@@ -34,7 +34,8 @@
     "owner": "seemann-group",
     "plugins": [
       "expo-secure-store",
-      "expo-asset"
+      "expo-asset",
+      "expo-font"
     ]
   }
 }
