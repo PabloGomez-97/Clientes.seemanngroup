@@ -5,40 +5,18 @@ import {
   useState,
   useCallback,
 } from "react";
+import {
+  type AuthUser,
+  type Cliente,
+  type Ejecutivo,
+  ejecutivosRequest,
+  loginRequest,
+  meRequest,
+  misClientesRequest,
+  todosClientesRequest,
+} from "./authApi";
 
-type Ejecutivo = {
-  id: string;
-  nombre: string;
-  email: string;
-  telefono: string;
-} | null;
-
-type Roles = {
-  administrador: boolean;
-  pricing: boolean;
-  ejecutivo: boolean;
-  proveedor: boolean;
-  operaciones: boolean;
-} | null;
-
-export type User = {
-  email: string;
-  username: string;
-  usernames: string[]; // Múltiples empresas/cuentas asignadas
-  nombreuser: string;
-  ejecutivo?: Ejecutivo;
-  roles?: Roles;
-} | null;
-
-// ✅ NUEVO: Tipo para los clientes
-type Cliente = {
-  id: string;
-  email: string;
-  username: string;
-  usernames?: string[];
-  nombreuser: string;
-  createdAt: string;
-};
+export type User = AuthUser | null;
 
 type AuthCtx = {
   user: User;
@@ -50,14 +28,7 @@ type AuthCtx = {
     email: string,
     password: string,
     turnstileToken?: string,
-  ) => Promise<{
-    email: string;
-    username: string;
-    usernames: string[];
-    nombreuser: string;
-    ejecutivo?: Ejecutivo;
-    roles?: Roles;
-  }>;
+  ) => Promise<AuthUser>;
   logout: () => void;
   getEjecutivos: () => Promise<Ejecutivo[]>;
   getMisClientes: () => Promise<Cliente[]>;
@@ -90,27 +61,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     setLoading(true);
-    fetch("/api/me", { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((d) => {
-        const usernames =
-          d.user.usernames && d.user.usernames.length > 0
-            ? d.user.usernames
-            : [d.user.username];
+    meRequest("", token)
+      .then((userData) => {
+        setUser(userData);
 
-        setUser({
-          email: d.user.sub,
-          username: d.user.username,
-          usernames,
-          nombreuser: d.user.nombreuser,
-          ejecutivo: d.user.ejecutivo || null,
-          roles: d.user.roles || null,
-        });
-
-        // Establecer activeUsername si no hay uno válido guardado
         const stored = localStorage.getItem("active_username");
-        if (!stored || !usernames.includes(stored)) {
-          setActiveUsername(usernames[0]);
+        if (!stored || !userData.usernames.includes(stored)) {
+          setActiveUsername(userData.usernames[0]);
         }
       })
       .catch(() => {
@@ -128,42 +85,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     password: string,
     turnstileToken?: string,
   ) => {
-    const body: Record<string, unknown> = { email, password };
-    if (turnstileToken) body.turnstileToken = turnstileToken;
-    const r = await fetch("/api/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    if (!r.ok) {
-      const e = await r.json().catch(() => ({}));
-      const err = new Error(e.error || "No se pudo iniciar sesión") as Error & {
-        requiresCaptcha?: boolean;
-        failCount?: number;
-      };
-      err.requiresCaptcha = e.requiresCaptcha;
-      err.failCount = e.failCount;
-      throw err;
-    }
-    const data = await r.json();
+    const data = await loginRequest("", email, password, turnstileToken);
     setToken(data.token);
     localStorage.setItem("auth_token", data.token);
-
-    const usernames =
-      data.user.usernames && data.user.usernames.length > 0
-        ? data.user.usernames
-        : [data.user.username];
-
-    const userData = {
-      ...data.user,
-      usernames,
-    };
-    setUser(userData);
-
-    // Establecer la primera empresa como activa
-    setActiveUsername(usernames[0]);
-
-    return userData;
+    setUser(data.user);
+    setActiveUsername(data.user.usernames[0]);
+    return data.user;
   };
 
   const logout = () => {
@@ -178,19 +105,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw new Error("No hay sesión activa");
     }
 
-    const r = await fetch("/api/ejecutivos", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-    });
-
-    if (!r.ok) {
-      throw new Error("Error al obtener ejecutivos");
-    }
-
-    const data = await r.json();
-    return data.ejecutivos || [];
+    return ejecutivosRequest("", token);
   };
 
   // ✅ NUEVA FUNCIÓN: Obtener clientes asignados al ejecutivo autenticado
@@ -199,20 +114,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw new Error("No hay sesión activa");
     }
 
-    const r = await fetch("/api/ejecutivo/clientes", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-    });
-
-    if (!r.ok) {
-      const errorData = await r.json().catch(() => ({}));
-      throw new Error(errorData.error || "Error al obtener clientes");
-    }
-
-    const data = await r.json();
-    return data.clientes || [];
+    return misClientesRequest("", token);
   }, [token]);
 
   // Obtener TODOS los clientes del sistema (para rol pricing)
@@ -221,31 +123,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw new Error("No hay sesión activa");
     }
 
-    const r = await fetch("/api/admin/users", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-    });
-
-    if (!r.ok) {
-      const errorData = await r.json().catch(() => ({}));
-      throw new Error(errorData.error || "Error al obtener clientes");
-    }
-
-    const data = await r.json();
-    // Filtrar solo clientes (excluir ejecutivos)
-    const allUsers = data.users || [];
-    return allUsers
-      .filter((u: any) => u.username !== "Ejecutivo")
-      .map((u: any) => ({
-        id: u.id,
-        email: u.email,
-        username: u.username,
-        usernames: u.usernames,
-        nombreuser: u.nombreuser,
-        createdAt: u.createdAt,
-      }));
+    return todosClientesRequest("", token);
   }, [token]);
 
   return (
