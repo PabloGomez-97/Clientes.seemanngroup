@@ -36,13 +36,24 @@ import { useAuth } from "@/auth/AuthContext";
 
 import { useHomeShipments } from "@/hooks/useHomeShipments";
 
+const HERO_PRIMARY_SLIDE_IMAGE = "/insights11.png";
 
+function resolveHeroSlideImage(
+  imageUrl: string | null | undefined,
+  index: number,
+): string {
+  if (index === 0 && (!imageUrl || imageUrl.includes("insights1.png"))) {
+    return imgUrl(HERO_PRIMARY_SLIDE_IMAGE);
+  }
+
+  return imageUrl || imgUrl("/insights1.png");
+}
 
 const FALLBACK_SLIDES = (t: (k: string) => string): HeroSlide[] => [
 
   {
 
-    image: imgUrl("/insights1.png"),
+    image: imgUrl(HERO_PRIMARY_SLIDE_IMAGE),
 
     title: t("home.slide1.title"),
 
@@ -130,9 +141,9 @@ const Home: React.FC = () => {
 
       }
 
-      const mapped: HeroSlide[] = cmsSlides.map((s) => ({
+      const mapped: HeroSlide[] = cmsSlides.map((s, index) => ({
 
-        image: s.imageUrl || imgUrl("/insights1.png"),
+        image: resolveHeroSlideImage(s.imageUrl, index),
 
         title: s.title,
 
