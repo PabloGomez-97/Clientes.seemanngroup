@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 import { useTranslation } from "react-i18next";
 
@@ -206,7 +206,6 @@ const Home: React.FC = () => {
 
           <section className="hal-news-section" aria-label={t("home.news.subtitle")}>
             <header className="hal-section-header">
-              <p className="hal-section-eyebrow">{t("home.news.title")}</p>
               <h2 className="hal-section-heading">{t("home.news.subtitle")}</h2>
             </header>
 
@@ -280,14 +279,6 @@ const Home: React.FC = () => {
                   ))
                   : null}
             </div>
-
-            {!blogLoading && blogPosts.length > 0 && (
-              <div className="hal-news-footer">
-                <Link to="/novedades" className="hal-news-see-all">
-                  {t("home.news.viewAll")} →
-                </Link>
-              </div>
-            )}
           </section>
 
           <EjecutivoCard />

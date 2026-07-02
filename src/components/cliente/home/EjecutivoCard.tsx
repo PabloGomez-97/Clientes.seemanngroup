@@ -34,7 +34,6 @@ const EjecutivoCard: React.FC = () => {
   return (
     <section className="hm-ejecutivo-card" aria-label={t("home.ejecutivo.title")}>
       <header className="hal-section-header">
-        <p className="hal-section-eyebrow">{t("home.ejecutivo.eyebrow")}</p>
         <h2 className="hal-section-heading">{t("home.ejecutivo.title")}</h2>
       </header>
       <div className="hm-ejecutivo-card__inner">
