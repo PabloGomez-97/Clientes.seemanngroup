@@ -18,14 +18,24 @@ interface EjecutivoClienteSelectorProps<
   className?: string;
 }
 
-const selectStyles = {  control: (base: Record<string, unknown>, state: { isFocused: boolean }) => ({
+const buildSelectStyles = (requiereCliente: boolean) => ({
+  control: (base: Record<string, unknown>, state: { isFocused: boolean }) => ({
     ...base,
     minHeight: 48,
-    borderColor: state.isFocused ? "#0d6efd" : "#dee2e6",
+    borderColor: state.isFocused
+      ? "#0d6efd"
+      : requiereCliente
+        ? "#e35d6a"
+        : "#dee2e6",
+    borderWidth: requiereCliente && !state.isFocused ? 2 : 1,
     boxShadow: state.isFocused
       ? "0 0 0 0.25rem rgba(13, 110, 253, 0.25)"
-      : "none",
-    "&:hover": { borderColor: "#0d6efd" },
+      : requiereCliente
+        ? "0 0 0 0.15rem rgba(220, 53, 69, 0.12)"
+        : "none",
+    "&:hover": {
+      borderColor: state.isFocused ? "#0d6efd" : requiereCliente ? "#dc3545" : "#0d6efd",
+    },
   }),
   valueContainer: (base: Record<string, unknown>) => ({
     ...base,
@@ -43,7 +53,7 @@ const selectStyles = {  control: (base: Record<string, unknown>, state: { isFocu
         : "white",
     color: state.isSelected ? "white" : "#212529",
   }),
-};
+});
 
 export default function EjecutivoClienteSelector<
   T extends EjecutivoCliente = EjecutivoCliente,
@@ -55,9 +65,11 @@ export default function EjecutivoClienteSelector<
   error,
   className = "",
 }: EjecutivoClienteSelectorProps<T>) {
+  const requiereCliente = !clienteSeleccionado;
+
   return (
     <div
-      className={`card shadow-sm mb-4 quote-cliente-card ${className}`.trim()}
+      className={`card shadow-sm mb-4 quote-cliente-card${requiereCliente ? " quote-cliente-card--required" : ""} ${className}`.trim()}
     >
       <div className="card-body">
         {loading ? (
@@ -106,12 +118,25 @@ export default function EjecutivoClienteSelector<
               }))}
               placeholder="Selecciona un cliente..."
               isClearable={false}
-              styles={selectStyles}
+              styles={buildSelectStyles(requiereCliente)}
             />
-            {!clienteSeleccionado ? (
-              <p className="quote-cliente-selector__error mb-0">
-                Primero selecciona un cliente
-              </p>
+            {requiereCliente ? (
+              <div
+                className="quote-cliente-selector__required mb-0"
+                role="status"
+                aria-live="polite"
+              >
+                <i
+                  className="bi bi-person-exclamation"
+                  aria-hidden="true"
+                />
+                <div>
+                  <strong>Primero selecciona un cliente</strong>
+                  <span className="quote-cliente-selector__required-hint">
+                    Debes asignar un cliente antes de avanzar en la cotización.
+                  </span>
+                </div>
+              </div>
             ) : (
               <p className="quote-cliente-selector__warning mb-0">
                 <i className="bi bi-exclamation-triangle-fill" aria-hidden="true" />
