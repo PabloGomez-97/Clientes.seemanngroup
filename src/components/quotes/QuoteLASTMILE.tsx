@@ -3,6 +3,8 @@ import { useOutletContext } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { useAuditLog } from "../../hooks/useAuditLog";
 import Select from "react-select";
+import EjecutivoClienteSelector from "./EjecutivoClienteSelector";
+import { useClienteEjecutivoGuard } from "./useClienteEjecutivoGuard";
 import { routeSelectStyles } from "./Selectroute";
 import ReactDOM from "react-dom/client";
 import { PDFTemplateLastMile } from "./pdf-template/PdfTemplateLastMile";
@@ -272,6 +274,8 @@ function QuoteLASTMILE({
     useState<ClienteAsignadoLM | null>(null);
   const [loadingClientes, setLoadingClientes] = useState(true);
   const [errorClientes, setErrorClientes] = useState<string | null>(null);
+  const { requireCliente, clienteEjecutivoPendiente } =
+    useClienteEjecutivoGuard(isEjecutivoMode, clienteSeleccionado);
 
   const quoteTrackingSubject = useMemo(
     () =>
@@ -294,7 +298,7 @@ function QuoteLASTMILE({
   );
 
   const effectiveUsername = isEjecutivoMode
-    ? clienteSeleccionado?.username || "Ejecutivo"
+    ? clienteSeleccionado?.username || ""
     : activeUsername || "";
   const salesRepName = isEjecutivoMode
     ? user?.nombreuser || user?.username || ""
@@ -1477,6 +1481,10 @@ function QuoteLASTMILE({
       );
       return;
     }
+    if (isEjecutivoMode && !clienteSeleccionado) {
+      setError("Debes seleccionar un cliente antes de generar la cotización");
+      return;
+    }
     if (!canProceedFromStep2) {
       setError("Debes seleccionar origen y destino.");
       return;
@@ -2031,67 +2039,13 @@ function QuoteLASTMILE({
 
       {/* Selector de cliente (modo ejecutivo) */}
       {isEjecutivoMode && (
-        <div className="card shadow-sm mb-4 lm-client-card">
-          <div className="card-body">
-            {loadingClientes ? (
-              <div className="text-center py-3">
-                <div
-                  className="spinner-border spinner-border-sm text-primary"
-                  role="status"
-                >
-                  <span className="visually-hidden">Cargando...</span>
-                </div>
-                <span className="ms-2 text-muted">
-                  Cargando clientes asignados...
-                </span>
-              </div>
-            ) : errorClientes ? (
-              <div className="alert alert-danger mb-0">
-                <strong>Error:</strong> {errorClientes}
-              </div>
-            ) : clientesAsignados.length === 0 ? (
-              <div className="alert alert-warning mb-0">
-                <strong>Sin clientes asignados</strong>
-              </div>
-            ) : (
-              <div className="row g-3">
-                <div className="col-md-8">
-                  <label className="form-label fw-semibold">
-                    Cliente para esta cotización
-                  </label>
-                  <Select
-                    value={
-                      clienteSeleccionado
-                        ? {
-                          value: clienteSeleccionado.username,
-                          label: `${clienteSeleccionado.username} (${clienteSeleccionado.email})`,
-                        }
-                        : null
-                    }
-                    onChange={(option) => {
-                      const cliente = clientesAsignados.find(
-                        (c) => c.username === option?.value,
-                      );
-                      setClienteSeleccionado(cliente || null);
-                    }}
-                    options={clientesAsignados.map((c) => ({
-                      value: c.username,
-                      label: `${c.username} (${c.email})`,
-                    }))}
-                    placeholder="Selecciona un cliente..."
-                    isClearable={false}
-                  />
-                  {!clienteSeleccionado && (
-                    <small className="text-danger d-block mt-1">
-                      Debes seleccionar un cliente para continuar con la
-                      cotización.
-                    </small>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+        <EjecutivoClienteSelector
+          clientes={clientesAsignados}
+          clienteSeleccionado={clienteSeleccionado}
+          onClienteChange={setClienteSeleccionado}
+          loading={loadingClientes}
+          error={errorClientes}
+        />
       )}
 
       {/* ============================================================================ */}
@@ -2154,8 +2108,9 @@ function QuoteLASTMILE({
                 <button
                   key={s}
                   type="button"
-                  className={`lm-service-card${servicioSel === s ? " lm-service-card--selected" : ""}`}
+                  className={`lm-service-card${servicioSel === s ? " lm-service-card--selected" : ""}${clienteEjecutivoPendiente ? " lm-service-card--blocked" : ""}`}
                   onClick={() => {
+                    if (!requireCliente()) return;
                     setServicioSel(s);
                     setIncotermSel(null);
                     setOrigenSel(null);
@@ -3223,6 +3178,7 @@ function QuoteLASTMILE({
                   disabled={
                     btnPhase !== "idle" ||
                     loading ||
+                    (isEjecutivoMode && !clienteSeleccionado) ||
                     !canProceedFromStep2 ||
                     !canProceedFromStep3
                   }

@@ -3,6 +3,8 @@ import { useOutletContext } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { useAuditLog } from "../../hooks/useAuditLog";
 import Select from "react-select";
+import EjecutivoClienteSelector from "./EjecutivoClienteSelector";
+import { useClienteEjecutivoGuard } from "./useClienteEjecutivoGuard";
 import { Modal, Button, OverlayTrigger, Tooltip } from "react-bootstrap";
 import { PDFTemplateAIR } from "./pdf-template/PdfTemplateAir";
 import { buildAirAduanaPdfBreakdown } from "./pdf-template/pdfAduanaBreakdown";
@@ -370,6 +372,8 @@ function QuoteAPITester({
     useState<ClienteAsignado | null>(null);
   const [loadingClientes, setLoadingClientes] = useState(isEjecutivoMode);
   const [errorClientes, setErrorClientes] = useState<string | null>(null);
+  const { requireCliente, clienteEjecutivoPendiente } =
+    useClienteEjecutivoGuard(isEjecutivoMode, clienteSeleccionado);
 
   const quoteTrackingSubject = useMemo(
     () =>
@@ -393,7 +397,7 @@ function QuoteAPITester({
 
   // Username efectivo: en modo ejecutivo usa el cliente seleccionado, en modo normal usa activeUsername
   const effectiveUsername = isEjecutivoMode
-    ? clienteSeleccionado?.username || user?.username || ""
+    ? clienteSeleccionado?.username || ""
     : activeUsername || "";
   const salesRepName = isEjecutivoMode
     ? user?.nombreuser || user?.username || ""
@@ -463,7 +467,7 @@ function QuoteAPITester({
     useState<ExpandedRoutesAirData | null>(null);
   const [routeMode, setRouteMode] = useState<
     "recurrente" | "noRecurrente" | null
-  >(isSimulationMode ? "noRecurrente" : null);
+  >(isSimulationMode && !isEjecutivoMode ? "noRecurrente" : null);
   const [originNR, setOriginNR] = useState<SelectOption | null>(null);
   const [destNR, setDestNR] = useState<SelectOption | null>(null);
   const [opcionesOrigin_NR, setOpcionesOrigin_NR] = useState<SelectOption[]>(
@@ -952,10 +956,6 @@ function QuoteAPITester({
           : await getMisClientes();
         const expanded = expandClientesPorEmpresa(clientes);
         setClientesAsignados(expanded);
-
-        if (expanded.length === 1) {
-          setClienteSeleccionado(expanded[0]);
-        }
       } catch (err) {
         console.error("Error cargando clientes:", err);
         setErrorClientes(
@@ -971,11 +971,13 @@ function QuoteAPITester({
 
   useEffect(() => {
     if (!isSimulationMode) return;
+    if (isEjecutivoMode && !clienteSeleccionado) return;
     setRouteMode("noRecurrente");
-  }, [isSimulationMode]);
+  }, [isSimulationMode, isEjecutivoMode, clienteSeleccionado]);
 
   useEffect(() => {
     if (loadingRutas || !preselectedOrigin) return;
+    if (isEjecutivoMode && !clienteSeleccionado) return;
 
     if (isSimulationMode) {
       if (!originIndexNR) return;
@@ -1026,6 +1028,8 @@ function QuoteAPITester({
     originIndexNR,
     preselectedOrigin,
     isSimulationMode,
+    isEjecutivoMode,
+    clienteSeleccionado,
   ]);
 
   useEffect(() => {
@@ -2409,8 +2413,10 @@ function QuoteAPITester({
     },
   });
 
-  const resetAirConnectWizardToStep1 = () => {
-    airConnect.resetAirConnectState();
+  const resetWizardToStep1 = () => {
+    if (airConnect.isActive) {
+      airConnect.resetAirConnectState();
+    }
 
     setPaisSeleccionado(null);
     setDestinationSeleccionado(null);
@@ -2423,6 +2429,11 @@ function QuoteAPITester({
     setPickupCoords(null);
     setExwResolvedDistanceKm(null);
     setShowAllRoutes(false);
+
+    setPaisNR(null);
+    setOriginNR(null);
+    setDestNR(null);
+    setSimulatedAirFreightRate("");
 
     setOverallDimsAndWeight(false);
     setDescription(DEFAULT_OVERALL_AIR_DESCRIPTION);
@@ -2446,19 +2457,23 @@ function QuoteAPITester({
     setUltimaMillaDireccion("");
     setUltimaMillaVespucioZone(null);
     setUltimaMillaBracket(null);
+    setTempUltimaMillaDireccion("");
+    setTempUltimaMillaZone(null);
     setGastolocal(false);
     setLiveTrackingActivo(false);
 
     setBtnPhase("idle");
     setResponse(null);
     pdfFallbackRef.current = null;
+    setCurrentStep(1);
     setMaxStepReached(1);
   };
 
   const goToStep = (step: number) => {
     if (step >= 1 && step <= maxStepReached && step < currentStep) {
-      if (step === 1 && airConnect.isActive) {
-        resetAirConnectWizardToStep1();
+      if (step === 1) {
+        resetWizardToStep1();
+        return;
       }
       setCurrentStep(step);
     }
@@ -3047,6 +3062,11 @@ function QuoteAPITester({
       return;
     }
 
+    if (isEjecutivoMode && !clienteSeleccionado) {
+      setError("Debes seleccionar un cliente antes de generar la cotización");
+      return;
+    }
+
     if (authLoading) {
       setError(
         "Espera a que termine de cargarse la sesión antes de generar la cotización",
@@ -3155,6 +3175,11 @@ function QuoteAPITester({
       setError(
         "Espera a que termine de cargarse la sesión antes de generar la cotización",
       );
+      return;
+    }
+
+    if (isEjecutivoMode && !clienteSeleccionado) {
+      setError("Debes seleccionar un cliente antes de generar la cotización");
       return;
     }
 
@@ -5253,127 +5278,13 @@ function QuoteAPITester({
 
       {/* Selector de Cliente (Solo para modo ejecutivo) */}
       {isEjecutivoMode && (
-        <div
-          className="card shadow-sm mb-4"
-          style={{
-            background: "linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%)",
-          }}
-        >
-          <div className="card-body">
-            {loadingClientes ? (
-              <div className="text-center py-3">
-                <div
-                  className="spinner-border spinner-border-sm text-primary"
-                  role="status"
-                >
-                  <span className="visually-hidden">Cargando clientes...</span>
-                </div>
-                <span className="ms-2 text-muted">
-                  Cargando clientes asignados...
-                </span>
-              </div>
-            ) : errorClientes ? (
-              <div className="alert alert-danger mb-0">
-                <strong>Error:</strong> {errorClientes}
-              </div>
-            ) : clientesAsignados.length === 0 ? (
-              <div className="alert alert-warning mb-0">
-                <strong>Sin clientes asignados</strong>
-                <p className="mb-0 mt-2 small">
-                  No tienes clientes asignados. Contacta al administrador.
-                </p>
-              </div>
-            ) : (
-              <div className="row g-3">
-                <div className="col-md-8">
-                  <label className="form-label fw-semibold">
-                    Cliente para esta cotización{" "}
-                  </label>
-                  <Select
-                    value={
-                      clienteSeleccionado
-                        ? {
-                          value: clienteSeleccionado.username,
-                          label: `${clienteSeleccionado.username} (${clienteSeleccionado.email})`,
-                        }
-                        : null
-                    }
-                    onChange={(option) => {
-                      const cliente = clientesAsignados.find(
-                        (c) => c.username === option?.value,
-                      );
-                      setClienteSeleccionado(cliente || null);
-                    }}
-                    options={clientesAsignados.map((c) => ({
-                      value: c.username,
-                      label: `${c.username} (${c.email})`,
-                    }))}
-                    placeholder="Selecciona un cliente..."
-                    isClearable={false}
-                    styles={{
-                      control: (base, state) => ({
-                        ...base,
-                        borderColor: clienteSeleccionado
-                          ? "#198754"
-                          : state.isFocused
-                            ? "#0d6efd"
-                            : "#dee2e6",
-                        boxShadow: state.isFocused
-                          ? "0 0 0 0.25rem rgba(13, 110, 253, 0.25)"
-                          : "none",
-                        "&:hover": { borderColor: "#0d6efd" },
-                      }),
-                      option: (base, state) => ({
-                        ...base,
-                        backgroundColor: state.isSelected
-                          ? "#0d6efd"
-                          : state.isFocused
-                            ? "#e7f1ff"
-                            : "white",
-                        color: state.isSelected ? "white" : "#212529",
-                      }),
-                    }}
-                  />
-                  {!clienteSeleccionado && (
-                    <small className="text-danger d-block mt-1">
-                      Debes seleccionar un cliente antes de generar la
-                      cotización
-                    </small>
-                  )}
-                </div>
-
-                {clienteSeleccionado && (
-                  <div className="col-md-4">
-                    <label className="form-label fw-semibold">
-                      Cliente Seleccionado
-                    </label>
-                    <div className="p-3 bg-success bg-opacity-10 border border-success rounded">
-                      <div className="d-flex align-items-center">
-                        <svg
-                          width="24"
-                          height="24"
-                          fill="#198754"
-                          className="me-2"
-                          viewBox="0 0 16 16"
-                        >
-                          <path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z" />
-                        </svg>
-                        <div>
-                          <div className="fw-semibold text-success">
-                            {clienteSeleccionado.username}
-                          </div>
-                          <small className="text-muted">
-                            {clienteSeleccionado.email}
-                          </small>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
+        <EjecutivoClienteSelector
+          clientes={clientesAsignados}
+          clienteSeleccionado={clienteSeleccionado}
+          onClienteChange={setClienteSeleccionado}
+          loading={loadingClientes}
+          error={errorClientes}
+        />
       )}
 
       {/* ============================================================================ */}
@@ -5515,6 +5426,7 @@ function QuoteAPITester({
                     <div className="col-6">
                       <div
                         onClick={() => {
+                          if (!requireCliente()) return;
                           setRouteMode("recurrente");
                           setPaisNR(null);
                           setOriginNR(null);
@@ -5522,7 +5434,7 @@ function QuoteAPITester({
                           setRutaSeleccionada(null);
                           setSinTarifa(false);
                         }}
-                        className={`route-card-toggle${routeMode === "recurrente" ? " selected" : ""}`}
+                        className={`route-card-toggle${routeMode === "recurrente" ? " selected" : ""}${clienteEjecutivoPendiente ? " route-card-toggle--blocked" : ""}`}
                       >
                         <div className="d-flex justify-content-between align-items-start mb-1">
                           <div className="d-flex align-items-center gap-2">
@@ -5561,6 +5473,7 @@ function QuoteAPITester({
                   <div className={isSimulationMode ? "col-12" : "col-6"}>
                     <div
                       onClick={() => {
+                        if (!requireCliente()) return;
                         setRouteMode("noRecurrente");
                         setPaisSeleccionado(null);
                         setOriginSeleccionado(null);
@@ -5568,7 +5481,7 @@ function QuoteAPITester({
                         setRutaSeleccionada(null);
                         setSinTarifa(false);
                       }}
-                      className={`route-card-toggle${routeMode === "noRecurrente" ? " selected" : ""}`}
+                      className={`route-card-toggle${routeMode === "noRecurrente" ? " selected" : ""}${clienteEjecutivoPendiente ? " route-card-toggle--blocked" : ""}`}
                     >
                       <div className="d-flex justify-content-between align-items-start mb-1">
                         <div className="d-flex align-items-center gap-2">
@@ -7222,7 +7135,8 @@ function QuoteAPITester({
                   loading ||
                   authLoading ||
                   !accessToken ||
-                  airConnect.loading
+                  airConnect.loading ||
+                  (isEjecutivoMode && !clienteSeleccionado)
                 }
                 onDownloadPdf={() => {
                   if (pdfFallbackRef.current) {
@@ -7251,6 +7165,7 @@ function QuoteAPITester({
                       loading ||
                       authLoading ||
                       !accessToken ||
+                      (isEjecutivoMode && !clienteSeleccionado) ||
                       weightError !== null ||
                       dimensionError !== null ||
                       oversizeError !== null ||

@@ -5,6 +5,8 @@ import { useAuth } from "../../auth/AuthContext";
 import { useAuditLog } from "../../hooks/useAuditLog";
 import * as XLSX from "xlsx";
 import Select from "react-select";
+import EjecutivoClienteSelector from "./EjecutivoClienteSelector";
+import { useClienteEjecutivoGuard } from "./useClienteEjecutivoGuard";
 import { PDFTemplateFCL } from "./pdf-template/PdfTemplateFcl";
 import { buildFclAduanaPdfBreakdown } from "./pdf-template/pdfAduanaBreakdown";
 import {
@@ -191,6 +193,8 @@ export default function QuoteFCL({
     useState<ClienteAsignado | null>(null);
   const [loadingClientes, setLoadingClientes] = useState(true);
   const [errorClientes, setErrorClientes] = useState<string | null>(null);
+  const { requireCliente, clienteEjecutivoPendiente } =
+    useClienteEjecutivoGuard(isEjecutivoMode, clienteSeleccionado);
 
   const quoteTrackingSubject = useMemo(
     () =>
@@ -214,7 +218,7 @@ export default function QuoteFCL({
 
   // effectiveUsername: en modo ejecutivo usa el cliente seleccionado, en modo normal usa activeUsername
   const effectiveUsername = isEjecutivoMode
-    ? clienteSeleccionado?.username || user?.username || ""
+    ? clienteSeleccionado?.username || ""
     : activeUsername || "";
   const salesRepName = isEjecutivoMode
     ? user?.nombreuser || user?.username || ""
@@ -371,7 +375,7 @@ export default function QuoteFCL({
   // ============================================================================
   const [routeMode, setRouteMode] = useState<
     "recurrente" | "noRecurrente" | null
-  >(isSimulationMode ? "noRecurrente" : null);
+  >(isSimulationMode && !isEjecutivoMode ? "noRecurrente" : null);
   const [polNR, setPolNR] = useState<SelectOption | null>(null);
   const [podNR, setPodNR] = useState<SelectOption | null>(null);
   const [opcionesPOL_NR, setOpcionesPOL_NR] = useState<SelectOption[]>([]);
@@ -660,8 +664,9 @@ export default function QuoteFCL({
 
   useEffect(() => {
     if (!isSimulationMode) return;
+    if (isEjecutivoMode && !clienteSeleccionado) return;
     setRouteMode("noRecurrente");
-  }, [isSimulationMode]);
+  }, [isSimulationMode, isEjecutivoMode, clienteSeleccionado]);
 
   useEffect(() => {
     const cargarClientes = async () => {
@@ -681,10 +686,6 @@ export default function QuoteFCL({
           : await getMisClientes();
         const expanded = expandClientesPorEmpresa(clientes);
         setClientesAsignados(expanded);
-
-        if (expanded.length === 1) {
-          setClienteSeleccionado(expanded[0]);
-        }
       } catch (err) {
         console.error("Error cargando clientes:", err);
         setErrorClientes(
@@ -798,6 +799,7 @@ export default function QuoteFCL({
   // Aplicar preselección cuando se cargan las rutas y hay datos pre-seleccionados
   useEffect(() => {
     if (loadingRutas || !preselectedPOL) return;
+    if (isEjecutivoMode && !clienteSeleccionado) return;
 
     if (isSimulationMode) {
       if (!originIndexNR) return;
@@ -842,6 +844,8 @@ export default function QuoteFCL({
     originIndexNR,
     preselectedPOL,
     isSimulationMode,
+    isEjecutivoMode,
+    clienteSeleccionado,
   ]);
 
   // Aplicar POD pre-seleccionado cuando cambia el POL y hay opciones de POD
@@ -1784,6 +1788,11 @@ export default function QuoteFCL({
       setError(
         "Espera a que termine de cargarse la sesión antes de generar la cotización",
       );
+      return;
+    }
+
+    if (isEjecutivoMode && !clienteSeleccionado) {
+      setError("Debes seleccionar un cliente antes de generar la cotización");
       return;
     }
 
@@ -2986,127 +2995,13 @@ export default function QuoteFCL({
 
       {/* Selector de Cliente (Solo para modo ejecutivo) */}
       {isEjecutivoMode && (
-        <div
-          className="card shadow-sm mb-4"
-          style={{
-            background: "linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%)",
-          }}
-        >
-          <div className="card-body">
-            {loadingClientes ? (
-              <div className="text-center py-3">
-                <div
-                  className="spinner-border spinner-border-sm text-primary"
-                  role="status"
-                >
-                  <span className="visually-hidden">Cargando clientes...</span>
-                </div>
-                <span className="ms-2 text-muted">
-                  Cargando clientes asignados...
-                </span>
-              </div>
-            ) : errorClientes ? (
-              <div className="alert alert-danger mb-0">
-                <strong>Error:</strong> {errorClientes}
-              </div>
-            ) : clientesAsignados.length === 0 ? (
-              <div className="alert alert-warning mb-0">
-                <strong>Sin clientes asignados</strong>
-                <p className="mb-0 mt-2 small">
-                  No tienes clientes asignados. Contacta al administrador.
-                </p>
-              </div>
-            ) : (
-              <div className="row g-3">
-                <div className="col-md-8">
-                  <label className="form-label fw-semibold">
-                    Cliente para esta cotización
-                  </label>
-                  <Select
-                    value={
-                      clienteSeleccionado
-                        ? {
-                          value: clienteSeleccionado.username,
-                          label: `${clienteSeleccionado.username} (${clienteSeleccionado.email})`,
-                        }
-                        : null
-                    }
-                    onChange={(option) => {
-                      const cliente = clientesAsignados.find(
-                        (c) => c.username === option?.value,
-                      );
-                      setClienteSeleccionado(cliente || null);
-                    }}
-                    options={clientesAsignados.map((c) => ({
-                      value: c.username,
-                      label: `${c.username} (${c.email})`,
-                    }))}
-                    placeholder="Selecciona un cliente..."
-                    isClearable={false}
-                    styles={{
-                      control: (base, state) => ({
-                        ...base,
-                        borderColor: clienteSeleccionado
-                          ? "#198754"
-                          : state.isFocused
-                            ? "#0d6efd"
-                            : "#dee2e6",
-                        boxShadow: state.isFocused
-                          ? "0 0 0 0.25rem rgba(13, 110, 253, 0.25)"
-                          : "none",
-                        "&:hover": { borderColor: "#0d6efd" },
-                      }),
-                      option: (base, state) => ({
-                        ...base,
-                        backgroundColor: state.isSelected
-                          ? "#0d6efd"
-                          : state.isFocused
-                            ? "#e7f1ff"
-                            : "white",
-                        color: state.isSelected ? "white" : "#212529",
-                      }),
-                    }}
-                  />
-                  {!clienteSeleccionado && (
-                    <small className="text-danger d-block mt-1">
-                      Debes seleccionar un cliente antes de generar la
-                      cotización
-                    </small>
-                  )}
-                </div>
-
-                {clienteSeleccionado && (
-                  <div className="col-md-4">
-                    <label className="form-label fw-semibold">
-                      Cliente Seleccionado
-                    </label>
-                    <div className="p-3 bg-success bg-opacity-10 border border-success rounded">
-                      <div className="d-flex align-items-center">
-                        <svg
-                          width="24"
-                          height="24"
-                          fill="#198754"
-                          className="me-2"
-                          viewBox="0 0 16 16"
-                        >
-                          <path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z" />
-                        </svg>
-                        <div>
-                          <div className="fw-semibold text-success">
-                            {clienteSeleccionado.username}
-                          </div>
-                          <small className="text-muted">
-                            {clienteSeleccionado.email}
-                          </small>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
+        <EjecutivoClienteSelector
+          clientes={clientesAsignados}
+          clienteSeleccionado={clienteSeleccionado}
+          onClienteChange={setClienteSeleccionado}
+          loading={loadingClientes}
+          error={errorClientes}
+        />
       )}
 
       {/* ============================================================================ */}
@@ -3258,6 +3153,7 @@ export default function QuoteFCL({
                     <div className="col-6">
                       <div
                         onClick={() => {
+                          if (!requireCliente()) return;
                           setRouteMode("recurrente");
                           setPaisNR(null);
                           setPolNR(null);
@@ -3270,7 +3166,7 @@ export default function QuoteFCL({
                           setContainerSeleccionado(null);
                           setSinTarifa(false);
                         }}
-                        className={`route-card-toggle${routeMode === "recurrente" ? " selected" : ""}`}
+                        className={`route-card-toggle${routeMode === "recurrente" ? " selected" : ""}${clienteEjecutivoPendiente ? " route-card-toggle--blocked" : ""}`}
                       >
                         <div className="d-flex justify-content-between align-items-start mb-1">
                           <div className="d-flex align-items-center gap-2">
@@ -3309,6 +3205,7 @@ export default function QuoteFCL({
                   <div className={isSimulationMode ? "col-12" : "col-6"}>
                     <div
                       onClick={() => {
+                        if (!requireCliente()) return;
                         setRouteMode("noRecurrente");
                         setPaisSeleccionado(null);
                         setPolSeleccionado(null);
@@ -3321,7 +3218,7 @@ export default function QuoteFCL({
                         setContainerSeleccionado(null);
                         setSinTarifa(false);
                       }}
-                      className={`route-card-toggle${routeMode === "noRecurrente" ? " selected" : ""}`}
+                      className={`route-card-toggle${routeMode === "noRecurrente" ? " selected" : ""}${clienteEjecutivoPendiente ? " route-card-toggle--blocked" : ""}`}
                     >
                       <div className="d-flex justify-content-between align-items-start mb-1">
                         <div className="d-flex align-items-center gap-2">
@@ -4701,6 +4598,7 @@ export default function QuoteFCL({
                       loading ||
                       authLoading ||
                       !accessToken ||
+                      (isEjecutivoMode && !clienteSeleccionado) ||
                       !rutaSeleccionada ||
                       !containerSeleccionado ||
                       !incoterm ||

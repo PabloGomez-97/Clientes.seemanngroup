@@ -1028,6 +1028,16 @@
   box-shadow: 0 0 0 3px rgba(255, 98, 0, 0.12);
 }
 
+.lm-service-card--blocked {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.lm-service-card--blocked:hover {
+  border-color: #e8eaed;
+  box-shadow: none;
+}
+
 .lm-service-card__label {
   font-size: 10.5px;
   text-transform: uppercase;
