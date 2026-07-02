@@ -963,9 +963,49 @@ function QuoteLASTMILE({
     }
   }, [canProceedFromStep3, currentStep]);
 
+  const resetWizardToStep1 = () => {
+    setServicioSel(null);
+    setIncotermSel(null);
+    setOrigenSel(null);
+    setDestinoSel(null);
+    setOpcionesDestino([]);
+    setValorMercaderiaDDP("");
+    setValorSeguroDDP("");
+    setContenedores20GP("");
+    setContenedores40HQ("");
+    setContenedores40NOR("");
+    setPiecesData([createEmptyPieceLM("1")]);
+    setOpenAccordions(["1"]);
+    setPickupAddress("");
+    setDeliveryAddress("");
+    setPickupCoordsOverride(null);
+    setDeliveryVespucioZone(null);
+    setSeguroActivo(false);
+    setBtnPhase("idle");
+    setResponse(null);
+    pdfFallbackRef.current = null;
+    setError(null);
+    setCurrentStep(1);
+    setMaxStepReached(1);
+  };
+
+  const handleClienteEjecutivoChange = (cliente: ClienteAsignadoLM) => {
+    if (
+      clienteSeleccionado &&
+      clienteSeleccionado.username !== cliente.username
+    ) {
+      resetWizardToStep1();
+    }
+    setClienteSeleccionado(cliente);
+  };
+
   // Navegación del wizard: solo permitir retroceder a pasos ya alcanzados.
   const goToStep = (step: number) => {
     if (step >= 1 && step <= maxStepReached && step < currentStep) {
+      if (step === 1) {
+        resetWizardToStep1();
+        return;
+      }
       // Al volver al paso de Ruta, limpiar selecciones para permitir
       // elegir una ruta diferente y evitar el auto-avance inmediato
       if (step === 2) {
@@ -2038,11 +2078,11 @@ function QuoteLASTMILE({
       </div>
 
       {/* Selector de cliente (modo ejecutivo) */}
-      {isEjecutivoMode && (
+      {isEjecutivoMode && (user?.username === "Ejecutivo" || isPricingRole) && (
         <EjecutivoClienteSelector
           clientes={clientesAsignados}
           clienteSeleccionado={clienteSeleccionado}
-          onClienteChange={setClienteSeleccionado}
+          onClienteChange={handleClienteEjecutivoChange}
           loading={loadingClientes}
           error={errorClientes}
         />

@@ -2469,6 +2469,16 @@ function QuoteAPITester({
     setMaxStepReached(1);
   };
 
+  const handleClienteEjecutivoChange = (cliente: ClienteAsignado) => {
+    if (
+      clienteSeleccionado &&
+      clienteSeleccionado.username !== cliente.username
+    ) {
+      resetWizardToStep1();
+    }
+    setClienteSeleccionado(cliente);
+  };
+
   const goToStep = (step: number) => {
     if (step >= 1 && step <= maxStepReached && step < currentStep) {
       if (step === 1) {
@@ -3004,7 +3014,11 @@ function QuoteAPITester({
               origen: rutaSeleccionada.origin,
               destino: rutaSeleccionada.destination,
             };
-            if (isEjecutivoMode && clienteSeleccionado) {
+            if (
+              isEjecutivoMode &&
+              (user?.username === "Ejecutivo" || isPricingRole) &&
+              clienteSeleccionado
+            ) {
               bodyPayload.usuarioId = clienteSeleccionado.username;
               bodyPayload.subidoPor = clienteSeleccionado.email;
             }
@@ -3799,7 +3813,11 @@ function QuoteAPITester({
               destino: rutaSeleccionada.destination,
             };
 
-            if (isEjecutivoMode && clienteSeleccionado) {
+            if (
+              isEjecutivoMode &&
+              (user?.username === "Ejecutivo" || isPricingRole) &&
+              clienteSeleccionado
+            ) {
               bodyPayload.usuarioId = clienteSeleccionado.username;
               bodyPayload.subidoPor = clienteSeleccionado.email;
             }
@@ -5277,11 +5295,11 @@ function QuoteAPITester({
       </div>
 
       {/* Selector de Cliente (Solo para modo ejecutivo) */}
-      {isEjecutivoMode && (
+      {isEjecutivoMode && (user?.username === "Ejecutivo" || isPricingRole) && (
         <EjecutivoClienteSelector
           clientes={clientesAsignados}
           clienteSeleccionado={clienteSeleccionado}
-          onClienteChange={setClienteSeleccionado}
+          onClienteChange={handleClienteEjecutivoChange}
           loading={loadingClientes}
           error={errorClientes}
         />

@@ -1404,8 +1404,83 @@ export default function QuoteLCL({
   }, [canProceedToStep4, currentStep]);
 
   // Navegación del wizard: solo permitir retroceder a pasos ya alcanzados.
+  const resetWizardToStep1 = () => {
+    setPaisSeleccionado(null);
+    setPolSeleccionado(null);
+    setPodSeleccionado(null);
+    setPaisNR(null);
+    setPolNR(null);
+    setPodNR(null);
+    setIncoterm("");
+    setRutaSeleccionada(null);
+    setSinTarifa(false);
+    setNearbyPortSelected(null);
+    setPickupFromAddress("");
+    setPickupCoords(null);
+    setExwResolvedDistanceKm(null);
+    setShowAllRoutes(false);
+    setSimulatedOceanFreightRate("");
+
+    setOverallDimsAndWeight(false);
+    setDescription(DEFAULT_OVERALL_LCL_DESCRIPTION);
+    setOverallPiecesData([createOverallPieceLCL("1", 1000, 1.0)]);
+    setPiecesData([
+      {
+        id: "1",
+        packageType: DEFAULT_OVERALL_LCL_PACKAGE_TYPE,
+        description: DEFAULT_OVERALL_LCL_DESCRIPTION,
+        length: 0,
+        width: 0,
+        height: 0,
+        weight: 0,
+        isNotApilable: false,
+        volume: 0,
+        totalVolume: 0,
+        weightTons: 0,
+        totalWeightTons: 0,
+        wmChargeable: 0,
+      },
+    ]);
+    setOpenAccordions(["1"]);
+    setOpenOverallAccordions(["1"]);
+
+    setSeguroActivo(false);
+    setValorMercaderia("");
+    setAduanaActivo(false);
+    setValorProductoAduana("");
+    setAduanaMaster(null);
+    setGastolocal(false);
+    setLiveTrackingActivo(false);
+    setUltimaMillaActivo(false);
+    setUltimaMillaDireccion("");
+    setUltimaMillaVespucioZone(null);
+    setTempUltimaMillaDireccion("");
+    setTempUltimaMillaZone(null);
+
+    setBtnPhase("idle");
+    setResponse(null);
+    pdfFallbackRef.current = null;
+    setError(null);
+    setCurrentStep(1);
+    setMaxStepReached(1);
+  };
+
+  const handleClienteEjecutivoChange = (cliente: ClienteAsignado) => {
+    if (
+      clienteSeleccionado &&
+      clienteSeleccionado.username !== cliente.username
+    ) {
+      resetWizardToStep1();
+    }
+    setClienteSeleccionado(cliente);
+  };
+
   const goToStep = (step: number) => {
     if (step >= 1 && step <= maxStepReached && step < currentStep) {
+      if (step === 1) {
+        resetWizardToStep1();
+        return;
+      }
       setCurrentStep(step);
     }
   };
@@ -1519,8 +1594,8 @@ export default function QuoteLCL({
 
   // Cerrar Paso 1 y abrir Paso 2 cuando se selecciona una ruta
   useEffect(() => {
-    if (rutaSeleccionada) {
-      advanceToStep(2); // Avanzar automáticamente al Paso 2
+    if (rutaSeleccionada && currentStep === 1) {
+      advanceToStep(2);
       trackStep({ step: "commodity", stepNumber: 2, totalSteps: 3 });
       trackRouteSelected(
         polSeleccionado?.label || polNR?.label || "",
@@ -1528,7 +1603,7 @@ export default function QuoteLCL({
         { operador: rutaSeleccionada.operador },
       );
     }
-  }, [rutaSeleccionada]);
+  }, [rutaSeleccionada, currentStep]);
 
   // Auto-activar sinTarifa cuando el POD elegido no tiene rutas disponibles
   useEffect(() => {
@@ -3504,7 +3579,7 @@ export default function QuoteLCL({
         <EjecutivoClienteSelector
           clientes={clientesAsignados}
           clienteSeleccionado={clienteSeleccionado}
-          onClienteChange={setClienteSeleccionado}
+          onClienteChange={handleClienteEjecutivoChange}
           loading={loadingClientes}
           error={errorClientes}
         />
@@ -5285,6 +5360,7 @@ export default function QuoteLCL({
                     authLoading ||
                     !accessToken ||
                     (isEjecutivoMode && !clienteSeleccionado) ||
+                    !rutaSeleccionada ||
                     !incoterm ||
                     (isSimulationMode && !hasSimulationOceanRate) ||
                     oversizeErrorLCL ||

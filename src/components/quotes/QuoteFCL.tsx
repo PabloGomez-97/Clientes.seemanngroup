@@ -191,7 +191,7 @@ export default function QuoteFCL({
   );
   const [clienteSeleccionado, setClienteSeleccionado] =
     useState<ClienteAsignado | null>(null);
-  const [loadingClientes, setLoadingClientes] = useState(true);
+  const [loadingClientes, setLoadingClientes] = useState(isEjecutivoMode);
   const [errorClientes, setErrorClientes] = useState<string | null>(null);
   const { requireCliente, clienteEjecutivoPendiente } =
     useClienteEjecutivoGuard(isEjecutivoMode, clienteSeleccionado);
@@ -1137,8 +1137,62 @@ export default function QuoteFCL({
   ]);
 
   // Navegación del wizard: solo permitir retroceder a pasos ya alcanzados.
+  const resetWizardToStep1 = () => {
+    setPaisSeleccionado(null);
+    setPolSeleccionado(null);
+    setPodSeleccionado(null);
+    setPaisNR(null);
+    setPolNR(null);
+    setPodNR(null);
+    setIncoterm("");
+    setRutaSeleccionada(null);
+    setContainerSeleccionado(null);
+    setCantidadContenedores(1);
+    setSinTarifa(false);
+    setNearbyPortSelected(null);
+    setPickupFromAddress("");
+    setPickupCoords(null);
+    setExwResolvedDistanceKm(null);
+    setShowAllRoutes(false);
+    setSimulatedContainerRate("");
+
+    setSeguroActivo(false);
+    setValorMercaderia("");
+    setAduanaActivo(false);
+    setValorProductoAduana("");
+    setAduanaMaster(null);
+    setGastolocal(false);
+    setLiveTrackingActivo(false);
+    setUltimaMillaActivo(false);
+    setUltimaMillaDireccion("");
+    setUltimaMillaVespucioZone(null);
+    setTempUltimaMillaDireccion("");
+    setTempUltimaMillaZone(null);
+
+    setBtnPhase("idle");
+    setResponse(null);
+    pdfFallbackRef.current = null;
+    setError(null);
+    setCurrentStep(1);
+    setMaxStepReached(1);
+  };
+
+  const handleClienteEjecutivoChange = (cliente: ClienteAsignado) => {
+    if (
+      clienteSeleccionado &&
+      clienteSeleccionado.username !== cliente.username
+    ) {
+      resetWizardToStep1();
+    }
+    setClienteSeleccionado(cliente);
+  };
+
   const goToStep = (step: number) => {
     if (step >= 1 && step <= maxStepReached && step < currentStep) {
+      if (step === 1) {
+        resetWizardToStep1();
+        return;
+      }
       setCurrentStep(step);
     }
   };
@@ -2994,11 +3048,11 @@ export default function QuoteFCL({
       </div>
 
       {/* Selector de Cliente (Solo para modo ejecutivo) */}
-      {isEjecutivoMode && (
+      {isEjecutivoMode && (user?.username === "Ejecutivo" || isPricingRole) && (
         <EjecutivoClienteSelector
           clientes={clientesAsignados}
           clienteSeleccionado={clienteSeleccionado}
-          onClienteChange={setClienteSeleccionado}
+          onClienteChange={handleClienteEjecutivoChange}
           loading={loadingClientes}
           error={errorClientes}
         />
