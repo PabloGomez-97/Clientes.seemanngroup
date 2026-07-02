@@ -53,7 +53,7 @@ const HomeHeroCarousel: React.FC<HomeHeroCarouselProps> = ({
     if (resolvedSlides.length <= 1) return;
     const interval = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % resolvedSlides.length);
-    }, 5000);
+    }, 20000);
     return () => clearInterval(interval);
   }, [resolvedSlides.length]);
 
@@ -76,7 +76,7 @@ const HomeHeroCarousel: React.FC<HomeHeroCarouselProps> = ({
   return (
     <div className="hal-page-container-content">
       <div className="carousel parbase">
-        <div className="hal-stage-teaser-carousel">
+        <div className="hal-stage-teaser-carousel hal-hero-carousel">
           <div className="hal-stage-teaser-carousel-container">
             <div className="hal-stage-teaser-carousel-content">
               {resolvedSlides.map((slide, index) => (

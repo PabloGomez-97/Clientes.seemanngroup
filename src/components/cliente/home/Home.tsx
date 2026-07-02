@@ -16,8 +16,6 @@ import type { BlogPost } from "@/services/contentful";
 
 import "../styles/Home.css";
 
-import TestimonialsCarousel from "./TestimonialsCarousel";
-
 import ActivityBar from "../cotizaciones/ActivityBar";
 
 import WelcomeHeader from "./WelcomeHeader";
@@ -31,10 +29,6 @@ import HomeHeroCarousel, {
 import HomeServicesGrid from "./HomeServicesGrid";
 
 import HomeCarriersCarousel from "./HomeCarriersCarousel";
-
-import HomeItinerarySection from "./HomeItinerarySection";
-
-import HomeActivityPanel from "./HomeActivityPanel";
 
 import HomeTrustSection from "./HomeTrustSection";
 
@@ -112,10 +106,6 @@ const Home: React.FC = () => {
 
 
 
-  const dateLocale = i18n.language === "es" ? es : enUS;
-
-
-
   useEffect(() => {
 
     getRecentPosts(4).then((posts) => {
@@ -172,25 +162,17 @@ const Home: React.FC = () => {
 
     });
 
-  }, [i18n.language, t]);
+  }, [t]);
 
-
+  const dateLocale = i18n.language === "es" ? es : enUS;
 
   const formatBlogDate = (dateStr: string) => {
-
     try {
-
       return format(new Date(dateStr), "d MMM yyyy", { locale: dateLocale });
-
     } catch {
-
       return dateStr;
-
     }
-
   };
-
-
 
   return (
 
@@ -224,155 +206,91 @@ const Home: React.FC = () => {
 
           <HomeCarriersCarousel />
 
-          <HomeItinerarySection />
+          <section className="hal-news-section" aria-label={t("home.news.subtitle")}>
+            <header className="hal-news-header">
+              <p className="hal-news-eyebrow">{t("home.news.title")}</p>
+              <h2 className="hal-news-heading">{t("home.news.subtitle")}</h2>
+            </header>
 
-          <HomeActivityPanel />
-
-          <TestimonialsCarousel />
-
-
-
-          <div className="sectionheadline">
-
-            <div className="hal-section-headline hal-module--border hm-news-header">
-
-              <div>
-
-                <h2 className="hal-h4">{t("home.news.title")}</h2>
-
-                <h3 className="hal-h1">{t("home.news.subtitle")}</h3>
-
-              </div>
-
-            </div>
-
-          </div>
-
-
-
-          <div className="hal-teasers hal-teasers--home">
-
-            <div className="hal-carousel--news">
-
+            <div className="hal-services-grid">
               {blogLoading
-
                 ? [1, 2, 3, 4].map((i) => (
-
-                  <div key={i} className="hal-teaser hal-teaser--secondary">
-
-                    <div className="hal-teaser-content hal-module--grey">
-
-                      <div className="hm-skeleton hm-skeleton--card" />
-
+                  <div key={i} className="hal-service-card hal-news-card" aria-hidden="true">
+                    <div className="hal-service-image hal-news-image hm-skeleton" />
+                    <div className="hal-service-content hal-news-content">
+                      <div className="hm-skeleton hm-skeleton--row" style={{ height: 12, width: "40%" }} />
+                      <div className="hm-skeleton hm-skeleton--row" style={{ height: 14 }} />
+                      <div className="hm-skeleton hm-skeleton--row" style={{ height: 36 }} />
                     </div>
-
                   </div>
-
                 ))
-
                 : blogPosts.length > 0
-
                   ? blogPosts.map((post) => (
-
-                    <div
-
+                    <article
                       key={post.id}
-
-                      className="hal-teaser hal-teaser--secondary"
-
+                      className="hal-service-card hal-news-card hal-service-card--clickable"
                       onClick={() =>
-
                         navigate("/novedades", {
-
                           state: { slug: post.slug },
-
                         })
-
                       }
-
-                      style={{ cursor: "pointer" }}
-
                       role="link"
-
                       tabIndex={0}
-
                       onKeyDown={(e) => {
-
                         if (e.key === "Enter" || e.key === " ") {
-
                           navigate("/novedades", {
-
                             state: { slug: post.slug },
-
                           });
-
                         }
-
                       }}
-
                     >
-
-                      <div className="hal-teaser-content hal-module--grey">
-
-                        <div className="hal-teaser-top">
-
-                          <div
-
-                            className="hal-teaser-img"
-
-                            style={{
-
-                              backgroundImage: post.featuredImageUrl
-
-                                ? `url(${post.featuredImageUrl})`
-
-                                : "linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%)",
-
-                            }}
-
-                          />
-
-                          <div className="hal-meta">
-
-                            {post.category && (
-
-                              <span className="hm-news-category">
-
-                                {post.category}
-
-                              </span>
-
-                            )}
-
-                            <time>{formatBlogDate(post.publishDate)}</time>
-
-                          </div>
-
-                        </div>
-
-                        <div className="hal-teaser-bottom">
-
-                          <p className="hal-teaser-text">{post.title}</p>
-
-                          {post.excerpt && (
-
-                            <p className="hm-news-excerpt">{post.excerpt}</p>
-
+                      <img
+                        className="hal-service-image hal-news-image"
+                        src={post.featuredImageUrl || imgUrl("/insights1.png")}
+                        alt={post.featuredImageAlt || post.title}
+                        width={298}
+                        height={166}
+                        loading="lazy"
+                      />
+                      <div className="hal-service-content hal-news-content">
+                        <div className="hal-news-meta">
+                          {post.category && (
+                            <span className="hal-news-category">{post.category}</span>
                           )}
-
+                          {post.publishDate && (
+                            <time dateTime={post.publishDate}>
+                              {formatBlogDate(post.publishDate)}
+                            </time>
+                          )}
                         </div>
-
+                        <h3 className="hal-service-title hal-news-title">{post.title}</h3>
+                        {post.excerpt ? (
+                          <p className="hal-service-desc hal-news-excerpt">{post.excerpt}</p>
+                        ) : (
+                          <p
+                            className="hal-service-desc hal-news-excerpt hal-news-excerpt--placeholder"
+                            aria-hidden="true"
+                          >
+                            &nbsp;
+                          </p>
+                        )}
+                        <span className="hal-service-cta">
+                          {t("home.news.readMore")} →
+                        </span>
                       </div>
-
-                    </div>
-
+                    </article>
                   ))
-
                   : null}
-
             </div>
 
-          </div>
+            {!blogLoading && blogPosts.length > 0 && (
+              <div className="hal-news-footer">
+                <Link to="/novedades" className="hal-news-see-all">
+                  {t("home.news.viewAll")} →
+                </Link>
+              </div>
+            )}
+          </section>
 
 
 
