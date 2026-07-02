@@ -41,6 +41,7 @@ import {
   type OverallPieceDataAir,
 } from "./Handlers/Air/OverallPieceAccordionAir";
 import { WeightRangeAlert } from "./Handlers/Air/WeightRangeAlert";
+import { AirFreightMinWeightAlert } from "./Handlers/Air/AirFreightMinWeightAlert";
 import {
   OversizeNotifyExecutive,
   type OversizeReason,
@@ -6645,6 +6646,18 @@ function QuoteAPITester({
               !airConnect.isActive && (
                 <WeightRangeAlert
                   validation={weightRangeValidation}
+                  pesoChargeable={pesoChargeable}
+                  pesoAirFreight={pesoAirFreight}
+                />
+              )}
+
+            {/* Aviso de peso mínimo facturable (mismo mensaje que el PDF) */}
+            {rutaSeleccionada &&
+              !sinTarifa &&
+              !airConnect.isActive &&
+              pesoAirFreight !== pesoChargeable &&
+              weightRangeValidation?.tienePrecio && (
+                <AirFreightMinWeightAlert
                   pesoChargeable={pesoChargeable}
                   pesoAirFreight={pesoAirFreight}
                 />

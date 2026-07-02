@@ -586,7 +586,9 @@
     "ajustarPeso": "Ajusta el peso de tu carga o selecciona otra ruta que tenga tarifa para tu rango actual.",
     "sinRangoDisponible": "No hay rangos de peso disponibles superiores al tuyo en esta ruta. Contacta a tu ejecutivo comercial.",
     "rangosDisponibles": "Rangos de esta ruta",
-    "segundoaviso": "Todos los demás cargos (Handling, AWB, Airport Transfer, etc.) se mantienen en función del peso declarado de su mercancía de {{peso}} kg."
+    "segundoaviso": "Todos los demás cargos (Handling, AWB, Airport Transfer, etc.) se mantienen en función del peso declarado de su mercancía de {{peso}} kg.",
+    "avisoPesoMinimoFacturableTitulo": "Flete Aéreo — Aviso de peso mínimo facturable",
+    "avisoPesoMinimoFacturable": "El peso cobrable declarado ({{peso}} kg) no se encuentra dentro de un tramo de peso tarifado para esta ruta. De acuerdo con las condiciones tarifarias de la aerolínea, el Flete Aéreo ha sido calculado considerando el peso mínimo entregado ({{pesoMinimo}} kg)."
   },
   "Quotefcl": {
     "priceHistoryTitle": "Histórico de precios",

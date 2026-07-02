@@ -586,7 +586,9 @@
     "ajustarPeso": "Adjust your cargo weight or select another route that has a rate for your current range.",
     "sinRangoDisponible": "No higher weight ranges are available for this route. Please contact your account executive.",
     "rangosDisponibles": "Route ranges",
-    "segundoaviso": "All other charges (Handling, AWB, Airport Transfer, etc.) remain based on your declared weight of {{peso}} kg."
+    "segundoaviso": "All other charges (Handling, AWB, Airport Transfer, etc.) remain based on your declared weight of {{peso}} kg.",
+    "avisoPesoMinimoFacturableTitulo": "Air Freight — Minimum billable weight notice",
+    "avisoPesoMinimoFacturable": "The declared chargeable weight ({{peso}} kg) does not fall within a priced weight bracket for this route. In accordance with the airline's tariff conditions, Air Freight has been calculated using the minimum delivered weight ({{pesoMinimo}} kg)."
   },
   "Quotefcl": {
     "priceHistoryTitle": "Price history",
