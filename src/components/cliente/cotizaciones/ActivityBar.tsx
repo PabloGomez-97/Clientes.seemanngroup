@@ -22,6 +22,10 @@ const ActivityBar: React.FC = () => {
   const { activeUsername } = useAuth();
   const { items, loading } = useHomeShipments(activeUsername);
 
+  if (!loading && items.length === 0) {
+    return null;
+  }
+
   return (
     <div className="hm-activity-bar">
       <div className="ej-activity-bar__label">

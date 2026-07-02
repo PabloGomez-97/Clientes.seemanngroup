@@ -33,9 +33,11 @@ const EjecutivoCard: React.FC = () => {
 
   return (
     <section className="hm-ejecutivo-card" aria-label={t("home.ejecutivo.title")}>
-      <div className="hal-page-container-content">
-        <h2 className="hm-section-title">{t("home.ejecutivo.title")}</h2>
-        <div className="hm-ejecutivo-card__inner">
+      <header className="hal-section-header">
+        <p className="hal-section-eyebrow">{t("home.ejecutivo.eyebrow")}</p>
+        <h2 className="hal-section-heading">{t("home.ejecutivo.title")}</h2>
+      </header>
+      <div className="hm-ejecutivo-card__inner">
           <div className="hm-ejecutivo-card__avatar">
             {photo ? (
               <img src={photo} alt={ejecutivo.nombre} />
@@ -73,7 +75,6 @@ const EjecutivoCard: React.FC = () => {
             )}
           </div>
         </div>
-      </div>
     </section>
   );
 };

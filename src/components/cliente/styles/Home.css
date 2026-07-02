@@ -1033,19 +1033,17 @@ svg {
    ───────────────────────────────────────────────────────────────────────────── */
 
 .hal-carriers-strip {
-  padding: 20px 0 28px;
-  border-top: 1px solid #ebebeb;
-  border-bottom: 1px solid #ebebeb;
+  padding: 8px 0 28px;
   margin-bottom: 32px;
 }
 
 .hal-carriers-label {
-  font-size: 0.78rem;
+  font-size: 0.7rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 1.2px;
-  color: #999;
-  margin: 0 0 14px;
+  letter-spacing: 0.12em;
+  color: #9ca3af;
+  margin: 0 0 20px;
   text-align: center;
   font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto,
     Helvetica, Arial, sans-serif;
@@ -1403,17 +1401,17 @@ svg {
   min-width: 88px;
   padding: 10px 16px;
   border-radius: 10px;
-  border: 1px solid #e5e7eb;
-  background: #fafafa;
+  border: 1px solid #e8e8e8;
+  background: #fff;
   cursor: pointer;
-  transition: border-color 0.15s, background 0.15s, transform 0.15s;
+  transition: border-color 0.15s, box-shadow 0.15s;
   font-family: inherit;
 }
 
 .hm-welcome-kpi:hover {
-  border-color: var(--primary-hover);
-  background: #fff4ed;
-  transform: translateY(-2px);
+  border-color: #d1d5db;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  transform: none;
 }
 
 .hm-welcome-kpi__value {
@@ -1599,6 +1597,8 @@ svg {
   margin: 40px 0 32px;
 }
 
+/* Shared section headers (services, news, trust, carriers) */
+.hal-section-header,
 .hal-news-header {
   display: flex;
   flex-direction: column;
@@ -1610,6 +1610,7 @@ svg {
   border: none;
 }
 
+.hal-section-eyebrow,
 .hal-news-eyebrow {
   margin: 0;
   font-size: 0.7rem;
@@ -1621,6 +1622,7 @@ svg {
   letter-spacing: 0.12em;
 }
 
+.hal-section-heading,
 .hal-news-heading {
   margin: 0;
   font-size: 1.1rem;
@@ -1701,7 +1703,11 @@ svg {
 
 /* Trust section */
 .hm-trust-section {
-  margin-top: 20px;
+  margin: 48px 0 40px;
+}
+
+.hm-trust-section__body {
+  margin-bottom: 8px;
 }
 
 .hm-trust-section__about {
@@ -1731,10 +1737,10 @@ svg {
   gap: 24px;
   flex-wrap: wrap;
   padding: 28px;
-  background: linear-gradient(135deg, #fff 0%, #fff8f3 100%);
-  border-radius: 12px;
-  border: 1px solid #fde8d8;
-  box-shadow: 0 2px 12px rgba(255, 98, 0, 0.08);
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid #e8e8e8;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
 }
 
 .hm-ejecutivo-card__avatar {

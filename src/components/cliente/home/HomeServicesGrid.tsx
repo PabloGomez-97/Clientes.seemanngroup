@@ -21,7 +21,10 @@ const HomeServicesGrid: React.FC = () => {
 
   return (
     <section className="hal-services-section" aria-label={t("home.servicesSection.title")}>
-      <h2 className="hm-section-title">{t("home.servicesSection.title")}</h2>
+      <header className="hal-section-header">
+        <p className="hal-section-eyebrow">{t("home.servicesSection.eyebrow")}</p>
+        <h2 className="hal-section-heading">{t("home.servicesSection.title")}</h2>
+      </header>
       <div className="hal-services-grid">
         {SERVICE_KEYS.map(({ key, tipo, image }) => (
           <Link

@@ -158,6 +158,7 @@
       "goToSlide": "Ir al slide {{n}}"
     },
     "servicesSection": {
+      "eyebrow": "Cotizaciones",
       "title": "Cotiza por modalidad"
     },
     "quickActions": {
@@ -201,6 +202,7 @@
       "learnMore": "Conoce más sobre Seemann Group"
     },
     "ejecutivo": {
+      "eyebrow": "Tu equipo",
       "title": "Tu ejecutivo comercial",
       "role": "Ejecutivo comercial",
       "sendMessage": "Enviar mensaje",

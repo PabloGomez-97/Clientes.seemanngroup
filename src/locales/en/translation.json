@@ -158,6 +158,7 @@
       "goToSlide": "Go to slide {{n}}"
     },
     "servicesSection": {
+      "eyebrow": "Quoting",
       "title": "Quote by modality"
     },
     "quickActions": {
@@ -201,6 +202,7 @@
       "learnMore": "Learn more about Seemann Group"
     },
     "ejecutivo": {
+      "eyebrow": "Your team",
       "title": "Your commercial executive",
       "role": "Commercial executive",
       "sendMessage": "Send message",

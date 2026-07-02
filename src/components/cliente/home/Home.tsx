@@ -30,8 +30,6 @@ import HomeServicesGrid from "./HomeServicesGrid";
 
 import HomeCarriersCarousel from "./HomeCarriersCarousel";
 
-import HomeTrustSection from "./HomeTrustSection";
-
 import EjecutivoCard from "./EjecutivoCard";
 
 import { useAuth } from "@/auth/AuthContext";
@@ -207,9 +205,9 @@ const Home: React.FC = () => {
           <HomeCarriersCarousel />
 
           <section className="hal-news-section" aria-label={t("home.news.subtitle")}>
-            <header className="hal-news-header">
-              <p className="hal-news-eyebrow">{t("home.news.title")}</p>
-              <h2 className="hal-news-heading">{t("home.news.subtitle")}</h2>
+            <header className="hal-section-header">
+              <p className="hal-section-eyebrow">{t("home.news.title")}</p>
+              <h2 className="hal-section-heading">{t("home.news.subtitle")}</h2>
             </header>
 
             <div className="hal-services-grid">
@@ -291,10 +289,6 @@ const Home: React.FC = () => {
               </div>
             )}
           </section>
-
-
-
-          <HomeTrustSection />
 
           <EjecutivoCard />
 
