@@ -1,0 +1,214 @@
+{
+  "name": "RAFAELLA - LINEALOGISTICS - FCL - EXCEL",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "filters": {
+          "q": "from:dcaceres@seemanngroup.com"
+        }
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        0
+      ],
+      "id": "332ff892-c2c0-49a8-854e-5d5141be1e62",
+      "name": "Gmail Trigger",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "KWTJItPhvQWZSIWQ",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "messageId": "={{ $json.id }}",
+        "simple": false,
+        "options": {
+          "dataPropertyAttachmentsPrefixName": "attachment_",
+          "downloadAttachments": true
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "cd589401-a7d6-4d33-959e-ce4491b88b44",
+      "name": "Get a message",
+      "webhookId": "8d873edd-05b9-4d43-afec-481a6f43a102",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "KWTJItPhvQWZSIWQ",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.item;\nconst binary = item.binary || {};\n\nconst excelEntries = Object.entries(binary).filter(([, file]) => {\n  const fileName = String(file.fileName || \"\").toLowerCase();\n  const mime = String(file.mimeType || \"\").toLowerCase();\n  const ext = String(file.fileExtension || \"\").toLowerCase();\n\n  return (\n    mime.includes(\"spreadsheet\") ||\n    mime.includes(\"excel\") ||\n    mime.includes(\"officedocument.spreadsheetml\") ||\n    ext === \"xlsx\" ||\n    ext === \"xls\" ||\n    fileName.endsWith(\".xlsx\") ||\n    fileName.endsWith(\".xls\")\n  );\n});\n\nif (excelEntries.length === 0) {\n  throw new Error(\n    \"No se encontró ningún archivo Excel en los adjuntos del correo.\",\n  );\n}\n\nif (excelEntries.length > 1) {\n  const names = excelEntries.map(([, file]) => file.fileName).join(\", \");\n  throw new Error(\n    `Se encontraron ${excelEntries.length} archivos Excel (${names}). Se esperaba solo uno.`,\n  );\n}\n\nconst [excelKey, excelFile] = excelEntries[0];\n\nitem.json = {\n  ...item.json,\n  excelAttachmentKey: excelKey,\n  excelFileName: excelFile.fileName,\n};\n\nitem.binary = {\n  [excelKey]: excelFile,\n};\n\nreturn item;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        320,
+        0
+      ],
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "name": "Select Excel Attachment"
+    },
+    {
+      "parameters": {
+        "operation": "xlsx",
+        "binaryPropertyName": "={{ $json.excelAttachmentKey }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        480,
+        0
+      ],
+      "id": "1708a29b-d632-4377-be62-32cf5d38655d",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $input.all().map((item) => item.json);\nconst result = [];\n\nconst CONFIG = {\n  COMPANIA: \"LINEALOGISTICS\",\n  CURRENCY: \"USD\",\n  FORTY_NOR: \"\",\n  TRANSIT_TIME: \"\",\n  COLUMNS: {\n    carrier: \"__EMPTY\",\n    pol: \"__EMPTY_2\",\n    pod: \"__EMPTY_3\",\n    type: \"__EMPTY_4\",\n    totalFreight: \"__EMPTY_10\",\n    ftPod: \"__EMPTY_11\",\n    validTo: \"__EMPTY_12\",\n    obs: \"__EMPTY_13\",\n  },\n};\n\nconst POL_CODE_MAP = {\n  \"RIO GRANDE\": \"Rio Grande\",\n  RIO: \"Rio de Janeiro\",\n  IOA: \"Itaguaí\",\n  SSZ: \"Santos\",\n  PNG: \"Paranaguá\",\n  ITJ: \"Itajaí\",\n  ITAJAI: \"Itajaí\",\n  ITAPOA: \"Itapoá\",\n  PARANAGUA: \"Paranaguá\",\n};\n\nconst MONTHS_ES = {\n  1: \"enero\",\n  2: \"febrero\",\n  3: \"marzo\",\n  4: \"abril\",\n  5: \"mayo\",\n  6: \"junio\",\n  7: \"julio\",\n  8: \"agosto\",\n  9: \"septiembre\",\n  10: \"octubre\",\n  11: \"noviembre\",\n  12: \"diciembre\",\n};\n\nfunction cleanValue(value) {\n  return String(value ?? \"\")\n    .replace(/\\r/g, \"\")\n    .replace(/\\s+/g, \" \")\n    .trim();\n}\n\nfunction normalizeKey(value) {\n  return cleanValue(value)\n    .toUpperCase()\n    .normalize(\"NFD\")\n    .replace(/[\\u0300-\\u036f]/g, \"\");\n}\n\nfunction toNumber(value) {\n  if (typeof value === \"number\" && Number.isFinite(value)) return value;\n  const parsed = Number(\n    cleanValue(value)\n      .replace(/USD/gi, \"\")\n      .replace(/\\$/g, \"\")\n      .replace(/\\./g, \"\")\n      .replace(\",\", \".\")\n      .replace(/[^\\d.-]/g, \"\"),\n  );\n  return Number.isFinite(parsed) ? parsed : 0;\n}\n\nfunction formatNumber(value) {\n  if (!Number.isFinite(value) || value <= 0) return \"\";\n  if (Number.isInteger(value)) return value.toString();\n  return value.toFixed(2).replace(\".\", \",\");\n}\n\nfunction mapPolToken(token) {\n  const normalized = normalizeKey(token);\n  if (!normalized) return \"\";\n\n  const sortedKeys = Object.keys(POL_CODE_MAP).sort(\n    (a, b) => b.length - a.length,\n  );\n\n  for (const key of sortedKeys) {\n    if (normalized === normalizeKey(key)) {\n      return POL_CODE_MAP[key];\n    }\n  }\n\n  return cleanValue(token);\n}\n\nfunction expandPol(polRaw) {\n  const pol = cleanValue(polRaw);\n  if (!pol) return [];\n\n  return pol\n    .split(\"/\")\n    .map((token) => mapPolToken(token))\n    .filter(Boolean);\n}\n\nfunction cleanPod(value) {\n  const pod = cleanValue(value)\n    .replace(/,\\s*CL$/i, \"\")\n    .replace(/,\\s*CO$/i, \"\")\n    .replace(/,\\s*PE$/i, \"\")\n    .trim();\n\n  return pod\n    .toLowerCase()\n    .split(/\\s+/)\n    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))\n    .join(\" \");\n}\n\nfunction parseExcelDate(value) {\n  if (value instanceof Date && !Number.isNaN(value.getTime())) {\n    return value;\n  }\n\n  if (typeof value === \"number\" && value > 30000) {\n    return new Date(Date.UTC(1899, 11, 30 + Math.floor(value)));\n  }\n\n  const text = cleanValue(value);\n  if (!text) return null;\n\n  const parsed = new Date(text);\n  return Number.isNaN(parsed.getTime()) ? null : parsed;\n}\n\nfunction formatValidez(value) {\n  const date = parseExcelDate(value);\n  if (!date) return \"\";\n\n  const monthName = MONTHS_ES[date.getUTCMonth() + 1];\n  if (!monthName) return \"\";\n\n  return `${date.getUTCDate()} ${monthName}`;\n}\n\nfunction formatFreeTime(value) {\n  const days = toNumber(value);\n  return days > 0 ? `${days} days` : \"\";\n}\n\n/** TYPE del Excel → columna de tarifa en Google Sheets (20GP o 40HQ). */\nfunction resolveContainerType(value) {\n  const normalized = cleanValue(value)\n    .toUpperCase()\n    .replace(/['`´]/g, \"\")\n    .replace(/\\s+/g, \"\");\n\n  if (\n    normalized.startsWith(\"20\") ||\n    normalized.includes(\"20GP\") ||\n    normalized === \"20GP\"\n  ) {\n    return \"20GP\";\n  }\n\n  if (\n    normalized.startsWith(\"40\") ||\n    normalized.includes(\"40HQ\") ||\n    normalized.includes(\"40HC\") ||\n    normalized === \"40HQ\"\n  ) {\n    return \"40HQ\";\n  }\n\n  return \"\";\n}\n\nfunction buildRates(containerType, total) {\n  const formatted = formatNumber(total);\n  return {\n    rate20gp: containerType === \"20GP\" ? formatted : \"\",\n    rate40hq: containerType === \"40HQ\" ? formatted : \"\",\n  };\n}\n\nfunction isHeaderRow(row) {\n  const carrier = cleanValue(row[CONFIG.COLUMNS.carrier]);\n  return normalizeKey(carrier) === \"CARRIER\";\n}\n\nfunction isValidRateRow(row) {\n  if (isHeaderRow(row)) return false;\n\n  const carrier = cleanValue(row[CONFIG.COLUMNS.carrier]);\n  const pol = cleanValue(row[CONFIG.COLUMNS.pol]);\n  const pod = cleanValue(row[CONFIG.COLUMNS.pod]);\n  const containerType = resolveContainerType(row[CONFIG.COLUMNS.type]);\n  const total = toNumber(row[CONFIG.COLUMNS.totalFreight]);\n\n  return !!(carrier && pol && pod && containerType && total > 0);\n}\n\nfor (const row of rows) {\n  if (!isValidRateRow(row)) continue;\n\n  const cols = CONFIG.COLUMNS;\n  const carrier = cleanValue(row[cols.carrier]);\n  const pod = cleanPod(row[cols.pod]);\n  const containerType = resolveContainerType(row[cols.type]);\n  const total = toNumber(row[cols.totalFreight]);\n  const freeTime = formatFreeTime(row[cols.ftPod]);\n  const validez = formatValidez(row[cols.validTo]);\n  const obs = cleanValue(row[cols.obs]);\n  const { rate20gp, rate40hq } = buildRates(containerType, total);\n\n  for (const pol of expandPol(row[cols.pol])) {\n    result.push({\n      json: {\n        values: [\n          \"\",\n          pol,\n          pod,\n          rate20gp,\n          rate40hq,\n          CONFIG.FORTY_NOR,\n          carrier,\n          CONFIG.TRANSIT_TIME,\n          obs,\n          freeTime,\n          CONFIG.COMPANIA,\n          CONFIG.CURRENCY,\n          validez,\n        ],\n      },\n    });\n  }\n}\n\nif (result.length === 0) {\n  throw new Error(\n    \"No se generaron filas LINEALOGISTICS FCL desde el Excel adjunto.\",\n  );\n}\n\nreturn result;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        640,
+        0
+      ],
+      "id": "a3c464f3-41c5-41dc-bff6-595349963452",
+      "name": "Parse LINEA Rates"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nconst rows = items\n  .map((item) => item.json.values)\n  .filter((values) => Array.isArray(values) && values.length > 0);\n\nreturn [\n  {\n    json: {\n      rowsJson: JSON.stringify(rows),\n      rowsCount: rows.length,\n    },\n  },\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        848,
+        0
+      ],
+      "id": "3d5a0d3b-5e9a-4351-bec3-dd96c4358ce9",
+      "name": "Aggregate Rows"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://script.google.com/macros/s/AKfycbyOfoEKwyJK6kzkVMuMtB-N1QZB65R-S5tuTG38QQjY2SY01B3EupTwhAZ4J_OWycU/exec",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1104,
+        0
+      ],
+      "id": "2e4faa6f-d56b-41fb-8255-5a6d2aaae1d9",
+      "name": "HTTP Request"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a message": {
+      "main": [
+        [
+          {
+            "node": "Select Excel Attachment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Select Excel Attachment": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Parse LINEA Rates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse LINEA Rates": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Rows": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "988f381a-d8f0-4473-87cf-1bc89db95a2c",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0b1d591e8c4dc30c655bcc6543ffe6a8bf4ba4b87a12fec3e451519e6275efbd"
+  },
+  "nodeGroups": [],
+  "id": "CyOODhXhdIqcTqiC",
+  "tags": []
+}

@@ -10,11 +10,11 @@ const SERVICE_KEYS: {
   key: ServiceKey;
   icon: keyof typeof Ionicons.glyphMap;
 }[] = [
-  { key: "aereo", icon: "airplane-outline" },
-  { key: "fcl", icon: "cube-outline" },
-  { key: "lcl", icon: "layers-outline" },
-  { key: "lastmile", icon: "car-outline" },
-];
+    { key: "aereo", icon: "airplane-outline" },
+    { key: "fcl", icon: "cube-outline" },
+    { key: "lcl", icon: "layers-outline" },
+    { key: "lastmile", icon: "car-outline" },
+  ];
 
 export default function HomeServicesGrid() {
   const { t } = useTranslation();
