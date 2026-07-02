@@ -3047,6 +3047,63 @@ function QuoteAPITester({
       root.unmount();
       document.body.removeChild(tempDiv);
 
+      // Enviar notificación por email al ejecutivo (fire-and-forget)
+      const totalEmail = `${AIR_CONNECT_CURRENCY} ${totalCharges.toFixed(2)}`;
+      fetch("/api/send-operation-email", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ejecutivoEmail: isEjecutivoMode
+            ? (user?.ejecutivo?.email ?? user?.email)
+            : ejecutivo?.email,
+          ejecutivoNombre: isEjecutivoMode
+            ? (user?.ejecutivo?.nombre ?? user?.nombreuser ?? user?.username)
+            : ejecutivo?.nombre,
+          clienteUsername: isEjecutivoMode
+            ? clienteSeleccionado?.username
+            : user?.username,
+          clienteNombre: isEjecutivoMode
+            ? clienteSeleccionado?.username
+            : user?.nombreuser,
+          tipoServicio: "Aéreo",
+          origen: rutaSeleccionada.origin,
+          destino: rutaSeleccionada.destination,
+          carrier: airlineLabel,
+          description: description || "Cargamento Aéreo",
+          chargeableWeight,
+          incoterm: incoterm || undefined,
+          pickupFromAddress:
+            incoterm === "EXW" ? pickupFromAddress : undefined,
+          deliveryToAddress:
+            incoterm === "EXW" ? deliveryToAddressDerived : undefined,
+          ...(ultimaMillaAplicaCobro
+            ? {
+              ultimaMilla: true,
+              ultimaMillaDireccion: ultimaMillaDireccion,
+              ultimaMillaMonto: `${AIR_CONNECT_CURRENCY} ${calculateUltimaMilla().toFixed(2)}`,
+              ultimaMillaZonaExtendida:
+                ultimaMillaVespucioZone === "extended",
+            }
+            : {}),
+          precio: offer.incomeFreight,
+          currency: AIR_CONNECT_CURRENCY,
+          total: totalEmail,
+          tipoAccion: "cotizacion",
+          quoteId: (apiResponse as { quote?: { id?: string } })?.quote?.id,
+          agente: rutaSeleccionada.company || undefined,
+          quoteNumber: quoteNumber || undefined,
+        }),
+        keepalive: true,
+      }).catch((emailErr) => {
+        console.error(
+          "Error enviando notificación AirConnect por correo:",
+          emailErr,
+        );
+      });
+
       if (quoteNumber) {
         trackComplete({ quoteNumber, isRecurring: false });
         scheduleOperationModal({
