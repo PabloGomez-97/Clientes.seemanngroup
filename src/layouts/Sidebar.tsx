@@ -163,13 +163,11 @@ function Sidebar({
           path: "/consultar-tarifas",
           name: t("home.sidebar.rateConsult"),
           icon: "fa fa-tags",
-          badge: { text: t("home.sidebar.badgeNew"), type: "new" },
         },
         {
           path: "/historico-precios",
           name: t("home.sidebar.priceHistory"),
           icon: "fa fa-chart-line",
-          badge: { text: t("home.sidebar.badgeNew"), type: "new" },
         },
         {
           path: "/novedades",
@@ -180,7 +178,6 @@ function Sidebar({
           path: "/promesas",
           name: t("home.sidebar.promesas"),
           icon: "fa fa-handshake",
-          badge: { text: t("home.sidebar.badgeNew"), type: "new" },
         },
       ],
     },

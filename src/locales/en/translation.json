@@ -1870,5 +1870,14 @@
     "success": {
       "sent": "Email sent successfully"
     }
+  },
+  "feedbackWidget": {
+    "tab": "Feedback",
+    "title": "Portal feedback",
+    "description": "Tell us what you think about the website. Your feedback helps us improve the experience.",
+    "placeholder": "Write your comment here...",
+    "submit": "Send",
+    "thanks": "Thank you very much for your feedback.",
+    "close": "Close"
   }
 }

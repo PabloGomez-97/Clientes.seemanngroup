@@ -245,13 +245,11 @@ function SidebarAdmin({
           path: "/admin/consultar-tarifas",
           name: t("home.sidebar.rateConsult"),
           icon: "fa fa-tags",
-          badge: { text: t("home.sidebar.badgeNew"), type: "new" as const },
         },
         {
           path: "/admin/historico-precios",
           name: t("home.sidebar.priceHistory"),
           icon: "fa fa-chart-line",
-          badge: { text: t("home.sidebar.badgeNew"), type: "new" as const },
         },
         {
           path: "/admin/novedades",
@@ -262,7 +260,6 @@ function SidebarAdmin({
           path: "/admin/promesas",
           name: t("home.sidebar.promesas"),
           icon: "fa fa-handshake",
-          badge: { text: t("home.sidebar.badgeNew"), type: "new" as const },
         },
       ],
     },

@@ -1871,5 +1871,14 @@
     "success": {
       "sent": "Correo enviado correctamente"
     }
+  },
+  "feedbackWidget": {
+    "tab": "Comentarios",
+    "title": "Comentarios sobre el portal",
+    "description": "Cuéntanos qué te parece la página web. Tu opinión nos ayuda a mejorar la experiencia.",
+    "placeholder": "Escribe tu comentario aquí...",
+    "submit": "Enviar",
+    "thanks": "Muchas gracias por los comentarios.",
+    "close": "Cerrar"
   }
 }

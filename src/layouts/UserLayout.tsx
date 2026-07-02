@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
 import ChatWidget from "../components/Chatbot/ChatWidget";
+import FeedbackWidget from "../components/cliente/FeedbackWidget";
 import Footer from "../components/footer/Footer";
 import { ChatbotProvider } from "../contexts/ChatbotContext";
 import { useLinbisToken } from "../hooks/useLinbisToken";
@@ -226,7 +227,7 @@ function UserLayout() {
 
         <div
           className="flex-fill d-flex flex-column user-layout-frame"
-          style={{ overflow: "hidden" }}
+          style={{ overflow: "hidden", position: "relative" }}
         >
           <Navbar
             onLogout={handleLogout}
@@ -255,6 +256,7 @@ function UserLayout() {
             </div>
             <Footer />
           </div>
+          <FeedbackWidget />
         </div>
         <ChatWidget />
       </div>
