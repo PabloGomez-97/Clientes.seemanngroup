@@ -128,12 +128,22 @@ import {
   useAgenciaAduanasLcl,
   calculateAduanaChargesLcl,
 } from "../../hooks/useAgenciaAduanasLcl";
+import { packageTypeOptions } from "./PackageTypes/PiecestypesLCL";
+import { ReviewAddonCard } from "./ReviewAddonCard";
 
 const DEFAULT_OVERALL_LCL_DESCRIPTION = "Cargamento LCL";
 /** ID del tipo de paquete BOX en el API de cotización LCL */
 const DEFAULT_OVERALL_LCL_PACKAGE_TYPE = "97";
 const FIXED_LCL_PACKAGE_TYPE_NAME = "BOX";
 const INITIAL_VISIBLE_ROUTES = 5;
+
+function resolveLclPackageTypeLabel(packageType: string): string {
+  if (!packageType) return "—";
+  const match = packageTypeOptions.find(
+    (opt) => String(opt.id) === String(packageType),
+  );
+  return match?.name ?? packageType;
+}
 
 const normalizeRouteCarrierKey = (carrier: string | null | undefined): string => {
   const trimmed = carrier?.trim();
@@ -3559,6 +3569,394 @@ export default function QuoteLCL({
     };
   };
 
+  const activeAddonsCount = useMemo(() => {
+    let count = 0;
+    if (seguroActivo) count += 1;
+    if (gastolocal) count += 1;
+    if (liveTrackingActivo) count += 1;
+    if (ultimaMillaActivo) count += 1;
+    if (aduanaActivo) count += 1;
+    return count;
+  }, [
+    seguroActivo,
+    gastolocal,
+    liveTrackingActivo,
+    ultimaMillaActivo,
+    aduanaActivo,
+  ]);
+
+  const lclAddonsList = rutaSeleccionada ? (
+    <div
+      className={`qa-addons-list${transportAddonExpandedLayout ? " qa-addons-list--expanded" : ""}`}
+    >
+      <div className={`qa-addon-card${seguroActivo ? " is-active" : ""}`}>
+        <div className="qa-addon-card__image">
+          <img
+            src={imgUrl("addcargos/seguro.png")}
+            alt="Seguro de carga"
+            loading="lazy"
+          />
+        </div>
+        <div className="qa-addon-card__body">
+          <h4>Agregar Seguro de Carga</h4>
+          <p>
+            Protege tu cargamento contra daños, pérdidas y robos durante el
+            transporte. Se calcula en base al valor declarado de la mercadería.
+          </p>
+          {seguroActivo && valorMercaderia && (
+            <span
+              className="qa-badge qa-badge-primary mt-2"
+              style={{ display: "inline-block" }}
+            >
+              Valor declarado: {rutaSeleccionada.currency} {valorMercaderia}
+              {aduanaMaster === true && (
+                <span className="ms-1">
+                  <i className="bi bi-lock-fill"></i>
+                </span>
+              )}
+            </span>
+          )}
+        </div>
+        <div className="qa-addon-card__action">
+          {!seguroActivo ? (
+            <button
+              className="qa-addon-btn-add"
+              onClick={() => {
+                setTempValorSeguro("");
+                setShowSeguroModal(true);
+              }}
+            >
+              <i className="bi bi-plus-lg"></i>Agregar
+            </button>
+          ) : (
+            <button
+              className="qa-addon-btn-remove"
+              onClick={() => handleToggleSeguro(false)}
+            >
+              <i className="bi bi-x-lg"></i>Remover
+            </button>
+          )}
+        </div>
+      </div>
+
+      {!aduanaLclConfigLoading && (
+        <div className={`qa-addon-card${aduanaActivo ? " is-active" : ""}`}>
+          <div className="qa-addon-card__image">
+            <img
+              src={imgUrl("addcargos/agencia-aduanas.png")}
+              alt="Agencia de Aduanas"
+              loading="lazy"
+            />
+          </div>
+          <div className="qa-addon-card__body">
+            <h4>{t("AgenciaAduana.toggle")}</h4>
+            <p>
+              Servicio integral de despacho aduanero y nacionalización en
+              destino. Incluye honorarios, customs clearance y extraport
+              charges según W/M cargable.
+            </p>
+            {!aduanaPuedeActivarse && (
+              <small className="text-warning d-block mt-1">
+                {t("AgenciaAduanaLcl.sinCargable")}
+              </small>
+            )}
+            {aduanaActivo && valorProductoAduana && (
+              <span
+                className="qa-badge qa-badge-primary mt-2"
+                style={{ display: "inline-block" }}
+              >
+                Valor producto: {rutaSeleccionada.currency}{" "}
+                {valorProductoAduana}
+                {aduanaMaster === false && (
+                  <span className="ms-1">
+                    <i className="bi bi-lock-fill"></i>
+                  </span>
+                )}
+              </span>
+            )}
+          </div>
+          <div className="qa-addon-card__action">
+            {!aduanaActivo ? (
+              <button
+                className="qa-addon-btn-add"
+                disabled={!aduanaPuedeActivarse}
+                title={
+                  !aduanaPuedeActivarse
+                    ? t("AgenciaAduanaLcl.sinCargable")
+                    : undefined
+                }
+                onClick={() => {
+                  setTempValorAduana("");
+                  setShowAduanaModal(true);
+                }}
+              >
+                <i className="bi bi-plus-lg"></i>Agregar
+              </button>
+            ) : (
+              <button
+                className="qa-addon-btn-remove"
+                onClick={() => handleToggleAduana(false)}
+              >
+                <i className="bi bi-x-lg"></i>Remover
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      <div className={`qa-addon-card${gastolocal ? " is-active" : ""}`}>
+        <div className="qa-addon-card__image">
+          <img
+            src={imgUrl("addcargos/gastos-locales.png")}
+            alt="Gastos Locales"
+            loading="lazy"
+          />
+        </div>
+        <div className="qa-addon-card__body">
+          <h4>Agregar Gastos Locales</h4>
+          <p>
+            Incluye los cargos de desconsolidación y gastos de apertura en
+            destino al momento de retirar la carga.
+          </p>
+        </div>
+        <div className="qa-addon-card__action">
+          {!gastolocal ? (
+            <button
+              className="qa-addon-btn-add"
+              onClick={() => setGastolocal(true)}
+            >
+              <i className="bi bi-plus-lg"></i>Agregar
+            </button>
+          ) : (
+            <button
+              className="qa-addon-btn-remove"
+              onClick={() => setGastolocal(false)}
+            >
+              <i className="bi bi-x-lg"></i>Remover
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className={`qa-addon-card${liveTrackingActivo ? " is-active" : ""}`}>
+        <div className="qa-addon-card__image">
+          <img
+            src={imgUrl("addcargos/live-tracking.png")}
+            alt="Live Tracking"
+            loading="lazy"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).style.display = "none";
+            }}
+          />
+        </div>
+        <div className="qa-addon-card__body">
+          <h4>
+            Live Tracking{" "}
+            <span className="qa-badge qa-badge-primary ms-1">Free</span>
+          </h4>
+          <p>
+            Monitorea tu cargamento LCL en tiempo real durante todo el tránsito
+            marítimo. Recibe notificaciones automáticas en cada hito del envío.
+            Servicio sin costo adicional.
+          </p>
+        </div>
+        <div className="qa-addon-card__action">
+          {!liveTrackingActivo ? (
+            <button
+              className="qa-addon-btn-add"
+              onClick={() => setLiveTrackingActivo(true)}
+            >
+              <i className="bi bi-plus-lg"></i>Agregar
+            </button>
+          ) : (
+            <button
+              className="qa-addon-btn-remove"
+              onClick={() => setLiveTrackingActivo(false)}
+            >
+              <i className="bi bi-x-lg"></i>Remover
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className={`qa-addon-card${ultimaMillaActivo ? " is-active" : ""}`}>
+        <div className="qa-addon-card__image">
+          <img
+            src={imgUrl("addcargos/ultima-milla.png")}
+            alt="Transporte Terrestre en Destino"
+            loading="lazy"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).style.display = "none";
+            }}
+          />
+        </div>
+        <div className="qa-addon-card__body">
+          <h4>Agregar Transporte Terrestre en Destino</h4>
+          {!ultimaMillaDisponiblePOD && (
+            <p className="text-warning small mb-2">
+              <i className="bi bi-exclamation-triangle me-1"></i>
+              Este servicio solo está disponible para rutas con puerto de
+              destino San Antonio o Valparaíso.
+            </p>
+          )}
+          <p>
+            Entrega terrestre desde el puerto de destino hasta su bodega.
+            Tarifa por tramo según peso total (kg) o volumen (m³), aplicando
+            siempre el rango más alto.
+          </p>
+          {ultimaMillaDisponiblePOD && !ultimaMillaCargaEnRango && (
+            <p className="text-danger small mb-0 mt-2">
+              El cargamento supera el máximo permitido ({lclTtConfig.maxKg} kg /{" "}
+              {lclTtConfig.maxM3} m³). No es posible cotizar transporte
+              terrestre para este volumen o peso.
+            </p>
+          )}
+          {ultimaMillaActivo && ultimaMillaDireccion && (
+            <span
+              className="qa-badge qa-badge-primary mt-2"
+              style={{ display: "inline-block" }}
+            >
+              Entrega: {ultimaMillaDireccion}
+            </span>
+          )}
+        </div>
+        <div className="qa-addon-card__action">
+          {!ultimaMillaActivo ? (
+            <button
+              className="qa-addon-btn-add"
+              disabled={
+                !ultimaMillaDisponiblePOD || !ultimaMillaCargaEnRango
+              }
+              onClick={() => {
+                if (
+                  !ultimaMillaDisponiblePOD ||
+                  !ultimaMillaCargaEnRango
+                ) {
+                  return;
+                }
+                setTempUltimaMillaDireccion("");
+                setTempUltimaMillaZone(null);
+                setShowUltimaMillaModal(true);
+              }}
+            >
+              {!ultimaMillaDisponiblePOD ? (
+                "No Disponible"
+              ) : (
+                <>
+                  <i className="bi bi-plus-lg"></i>Agregar
+                </>
+              )}
+            </button>
+          ) : (
+            <button
+              className="qa-addon-btn-remove"
+              onClick={resetUltimaMilla}
+            >
+              <i className="bi bi-x-lg"></i>Remover
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  ) : null;
+
+  const lclReviewAddonsGrid = rutaSeleccionada ? (
+    <div className="row g-3">
+      <ReviewAddonCard
+        title="Seguro de Carga"
+        description="Protección contra daños, pérdidas y robos durante el transporte marítimo."
+        imageSrc={imgUrl("addcargos/seguro.png")}
+        active={seguroActivo}
+        detail={
+          seguroActivo && valorMercaderia
+            ? `Valor declarado: ${rutaSeleccionada.currency} ${valorMercaderia}`
+            : undefined
+        }
+        onToggle={() => {
+          if (seguroActivo) {
+            handleToggleSeguro(false);
+            return;
+          }
+          setTempValorSeguro("");
+          setShowSeguroModal(true);
+        }}
+      />
+      {!aduanaLclConfigLoading && (
+        <ReviewAddonCard
+          title={t("AgenciaAduana.toggle")}
+          description="Despacho aduanero y nacionalización según W/M cargable."
+          imageSrc={imgUrl("addcargos/agencia-aduanas.png")}
+          active={aduanaActivo}
+          disabled={!aduanaPuedeActivarse && !aduanaActivo}
+          warning={
+            !aduanaPuedeActivarse && !aduanaActivo
+              ? t("AgenciaAduanaLcl.sinCargable")
+              : undefined
+          }
+          detail={
+            aduanaActivo && valorProductoAduana
+              ? `Valor producto: ${rutaSeleccionada.currency} ${valorProductoAduana}`
+              : undefined
+          }
+          onToggle={() => {
+            if (aduanaActivo) {
+              handleToggleAduana(false);
+              return;
+            }
+            setTempValorAduana("");
+            setShowAduanaModal(true);
+          }}
+        />
+      )}
+      <ReviewAddonCard
+        title="Gastos Locales"
+        description="Desconsolidación y gastos de apertura en destino."
+        imageSrc={imgUrl("addcargos/gastos-locales.png")}
+        active={gastolocal}
+        onToggle={() => setGastolocal(!gastolocal)}
+      />
+      <ReviewAddonCard
+        title="Live Tracking"
+        description="Monitoreo en tiempo real con notificaciones en cada hito del envío."
+        imageSrc={imgUrl("addcargos/live-tracking.png")}
+        active={liveTrackingActivo}
+        badge="Gratuito"
+        onToggle={() => setLiveTrackingActivo(!liveTrackingActivo)}
+      />
+      <ReviewAddonCard
+        title="Transporte Terrestre en Destino"
+        description="Entrega desde el puerto de destino hasta su bodega."
+        imageSrc={imgUrl("addcargos/ultima-milla.png")}
+        active={ultimaMillaActivo}
+        disabled={
+          !ultimaMillaDisponiblePOD ||
+          (!ultimaMillaActivo && !ultimaMillaCargaEnRango)
+        }
+        warning={
+          !ultimaMillaDisponiblePOD
+            ? "Solo disponible para destino San Antonio o Valparaíso."
+            : ultimaMillaDisponiblePOD && !ultimaMillaCargaEnRango
+              ? `Cargamento supera el máximo (${lclTtConfig.maxKg} kg / ${lclTtConfig.maxM3} m³).`
+              : undefined
+        }
+        detail={
+          ultimaMillaActivo && ultimaMillaDireccion
+            ? `Entrega: ${ultimaMillaDireccion}`
+            : undefined
+        }
+        onToggle={() => {
+          if (ultimaMillaActivo) {
+            resetUltimaMilla();
+            return;
+          }
+          setTempUltimaMillaDireccion("");
+          setTempUltimaMillaZone(null);
+          setShowUltimaMillaModal(true);
+        }}
+      />
+    </div>
+  ) : null;
+
   // ============================================================================
   // RENDER
   // ============================================================================
@@ -4809,300 +5207,7 @@ export default function QuoteLCL({
             </div>
 
             <div>
-              <div
-                className={`qa-addons-list${transportAddonExpandedLayout ? " qa-addons-list--expanded" : ""}`}
-              >
-                {/* Card: Seguro de Carga */}
-                <div
-                  className={`qa-addon-card${seguroActivo ? " is-active" : ""}`}
-                >
-                  <div className="qa-addon-card__image">
-                    <img
-                      src={imgUrl("addcargos/seguro.png")}
-                      alt="Seguro de carga"
-                      loading="lazy"
-                    />
-                  </div>
-                  <div className="qa-addon-card__body">
-                    <h4>Agregar Seguro de Carga</h4>
-                    <p>
-                      Protege tu cargamento contra daños, pérdidas y robos
-                      durante el transporte. Se calcula en base al valor
-                      declarado de la mercadería.
-                    </p>
-                    {seguroActivo && valorMercaderia && (
-                      <span
-                        className="qa-badge qa-badge-primary mt-2"
-                        style={{ display: "inline-block" }}
-                      >
-                        Valor declarado: {rutaSeleccionada.currency}{" "}
-                        {valorMercaderia}
-                        {aduanaMaster === true && (
-                          <span className="ms-1">
-                            <i className="bi bi-lock-fill"></i>
-                          </span>
-                        )}
-                      </span>
-                    )}
-                  </div>
-                  <div className="qa-addon-card__action">
-                    {!seguroActivo ? (
-                      <button
-                        className="qa-addon-btn-add"
-                        onClick={() => {
-                          setTempValorSeguro("");
-                          setShowSeguroModal(true);
-                        }}
-                      >
-                        <i className="bi bi-plus-lg"></i>Agregar
-                      </button>
-                    ) : (
-                      <button
-                        className="qa-addon-btn-remove"
-                        onClick={() => handleToggleSeguro(false)}
-                      >
-                        <i className="bi bi-x-lg"></i>Remover
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Card: Agencia de Aduanas */}
-                {!aduanaLclConfigLoading && (
-                  <div
-                    className={`qa-addon-card${aduanaActivo ? " is-active" : ""}`}
-                  >
-                    <div className="qa-addon-card__image">
-                      <img
-                        src={imgUrl("addcargos/agencia-aduanas.png")}
-                        alt="Agencia de Aduanas"
-                        loading="lazy"
-                      />
-                    </div>
-                    <div className="qa-addon-card__body">
-                      <h4>{t("AgenciaAduana.toggle")}</h4>
-                      <p>
-                        Servicio integral de despacho aduanero y nacionalización
-                        en destino. Incluye honorarios, customs clearance y
-                        extraport charges según W/M cargable.
-                      </p>
-                      {!aduanaPuedeActivarse && (
-                        <small className="text-warning d-block mt-1">
-                          {t("AgenciaAduanaLcl.sinCargable")}
-                        </small>
-                      )}
-                      {aduanaActivo && valorProductoAduana && (
-                        <span
-                          className="qa-badge qa-badge-primary mt-2"
-                          style={{ display: "inline-block" }}
-                        >
-                          Valor producto: {rutaSeleccionada.currency}{" "}
-                          {valorProductoAduana}
-                          {aduanaMaster === false && (
-                            <span className="ms-1">
-                              <i className="bi bi-lock-fill"></i>
-                            </span>
-                          )}
-                        </span>
-                      )}
-                    </div>
-                    <div className="qa-addon-card__action">
-                      {!aduanaActivo ? (
-                        <button
-                          className="qa-addon-btn-add"
-                          disabled={!aduanaPuedeActivarse}
-                          title={
-                            !aduanaPuedeActivarse
-                              ? t("AgenciaAduanaLcl.sinCargable")
-                              : undefined
-                          }
-                          onClick={() => {
-                            setTempValorAduana("");
-                            setShowAduanaModal(true);
-                          }}
-                        >
-                          <i className="bi bi-plus-lg"></i>Agregar
-                        </button>
-                      ) : (
-                        <button
-                          className="qa-addon-btn-remove"
-                          onClick={() => handleToggleAduana(false)}
-                        >
-                          <i className="bi bi-x-lg"></i>Remover
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Card: Gastos Locales (Desconsolidación + Apertura) */}
-                <div
-                  className={`qa-addon-card${gastolocal ? " is-active" : ""}`}
-                >
-                  <div className="qa-addon-card__image">
-                    <img
-                      src={imgUrl("addcargos/gastos-locales.png")}
-                      alt="Gastos Locales"
-                      loading="lazy"
-                    />
-                  </div>
-                  <div className="qa-addon-card__body">
-                    <h4>Agregar Gastos Locales</h4>
-                    <p>
-                      Incluye los cargos de desconsolidación y gastos de
-                      apertura en destino al momento de retirar la carga.
-                    </p>
-                  </div>
-                  <div className="qa-addon-card__action">
-                    {!gastolocal ? (
-                      <button
-                        className="qa-addon-btn-add"
-                        onClick={() => setGastolocal(true)}
-                      >
-                        <i className="bi bi-plus-lg"></i>Agregar
-                      </button>
-                    ) : (
-                      <button
-                        className="qa-addon-btn-remove"
-                        onClick={() => setGastolocal(false)}
-                      >
-                        <i className="bi bi-x-lg"></i>Remover
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Card: Live Tracking (Free) */}
-                <div
-                  className={`qa-addon-card${liveTrackingActivo ? " is-active" : ""}`}
-                >
-                  <div className="qa-addon-card__image">
-                    <img
-                      src={imgUrl("addcargos/live-tracking.png")}
-                      alt="Live Tracking"
-                      loading="lazy"
-                      onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).style.display =
-                          "none";
-                      }}
-                    />
-                  </div>
-                  <div className="qa-addon-card__body">
-                    <h4>
-                      Live Tracking{" "}
-                      <span className="qa-badge qa-badge-primary ms-1">
-                        Free
-                      </span>
-                    </h4>
-                    <p>
-                      Monitorea tu cargamento LCL en tiempo real durante todo el
-                      tránsito marítimo. Recibe notificaciones automáticas en
-                      cada hito del envío. Servicio sin costo adicional.
-                    </p>
-                  </div>
-                  <div className="qa-addon-card__action">
-                    {!liveTrackingActivo ? (
-                      <button
-                        className="qa-addon-btn-add"
-                        onClick={() => setLiveTrackingActivo(true)}
-                      >
-                        <i className="bi bi-plus-lg"></i>Agregar
-                      </button>
-                    ) : (
-                      <button
-                        className="qa-addon-btn-remove"
-                        onClick={() => setLiveTrackingActivo(false)}
-                      >
-                        <i className="bi bi-x-lg"></i>Remover
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Card: Transporte Terrestre en Destino */}
-                <div
-                  className={`qa-addon-card${ultimaMillaActivo ? " is-active" : ""}`}
-                >
-                  <div className="qa-addon-card__image">
-                    <img
-                      src={imgUrl("addcargos/ultima-milla.png")}
-                      alt="Transporte Terrestre en Destino"
-                      loading="lazy"
-                      onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).style.display =
-                          "none";
-                      }}
-                    />
-                  </div>
-                  <div className="qa-addon-card__body">
-                    <h4>Agregar Transporte Terrestre en Destino</h4>
-                    {!ultimaMillaDisponiblePOD && (
-                      <p className="text-warning small mb-2">
-                        <i className="bi bi-exclamation-triangle me-1"></i>
-                        Este servicio solo está disponible para rutas con puerto
-                        de destino San Antonio o Valparaíso.
-                      </p>
-                    )}
-                    <p>
-                      Entrega terrestre desde el puerto de destino hasta su
-                      bodega. Tarifa por tramo según peso total (kg) o volumen
-                      (m³), aplicando siempre el rango más alto.
-                    </p>
-                    {ultimaMillaDisponiblePOD && !ultimaMillaCargaEnRango && (
-                      <p className="text-danger small mb-0 mt-2">
-                        El cargamento supera el máximo permitido (
-                        {lclTtConfig.maxKg} kg / {lclTtConfig.maxM3} m³). No es
-                        posible cotizar transporte terrestre para este volumen o
-                        peso.
-                      </p>
-                    )}
-                    {ultimaMillaActivo && ultimaMillaDireccion && (
-                      <span
-                        className="qa-badge qa-badge-primary mt-2"
-                        style={{ display: "inline-block" }}
-                      >
-                        Entrega: {ultimaMillaDireccion}
-                      </span>
-                    )}
-                  </div>
-                  <div className="qa-addon-card__action">
-                    {!ultimaMillaActivo ? (
-                      <button
-                        className="qa-addon-btn-add"
-                        disabled={
-                          !ultimaMillaDisponiblePOD || !ultimaMillaCargaEnRango
-                        }
-                        onClick={() => {
-                          if (
-                            !ultimaMillaDisponiblePOD ||
-                            !ultimaMillaCargaEnRango
-                          ) {
-                            return;
-                          }
-                          setTempUltimaMillaDireccion("");
-                          setTempUltimaMillaZone(null);
-                          setShowUltimaMillaModal(true);
-                        }}
-                      >
-                        {!ultimaMillaDisponiblePOD ? (
-                          "No Disponible"
-                        ) : (
-                          <>
-                            <i className="bi bi-plus-lg"></i>Agregar
-                          </>
-                        )}
-                      </button>
-                    ) : (
-                      <button
-                        className="qa-addon-btn-remove"
-                        onClick={resetUltimaMilla}
-                      >
-                        <i className="bi bi-x-lg"></i>Remover
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
+              {lclAddonsList}
 
               {aduanaActivo && !aduanaLclConfigLoading && aduanaLclConfig && (
                 <div className="mt-3 px-1">
@@ -5256,94 +5361,304 @@ export default function QuoteLCL({
           </div>
 
           <>
-            {/* Cálculos */}
-            <div className="row g-3">
-              <div className="col-md-12">
-                <div
-                  className="p-3 rounded border d-flex flex-column h-100"
-                  style={{ backgroundColor: "var(--qa-bg-light)" }}
-                >
-                  <h4 className="fs-6 fw-bold mb-3">Resumen del Cargamento</h4>
-                  <div className="qa-grid-4" style={{ fontSize: "0.9rem" }}>
-                    <div>
-                      <span className="qa-text-muted d-block">
-                        {t("Quotelcl.pesototal1")}
-                      </span>
-                      <strong>
-                        {totalWeightKg.toFixed(2)} kg (
-                        {totalWeightTons.toFixed(4)} t)
-                      </strong>
+            {(() => {
+              const originUnlocode =
+                getPortByPOL(rutaSeleccionada.polNormalized)?.unlocode ?? "";
+              const destinationUnlocode =
+                getPortByPOL(rutaSeleccionada.podNormalized)?.unlocode ?? "";
+
+              return (
+                <>
+                  <div className="mb-4">
+                    {incoterm && (
+                      <div className="d-flex justify-content-end mb-3">
+                        <span className="qa-badge qa-badge-primary">
+                          Incoterm: {incoterm}
+                        </span>
+                      </div>
+                    )}
+
+                    <div className="mb-4">
+                      <h5 className="fs-6 fw-bold mb-3">Ruta</h5>
+                      <div className="qa-route-summary-cards mb-3">
+                        <div className="qa-route-summary-card">
+                          <small>Origen (POL)</small>
+                          {originUnlocode && (
+                            <div className="qa-route-summary-iata">
+                              {originUnlocode}
+                            </div>
+                          )}
+                          <div className="qa-route-summary-city">
+                            {rutaSeleccionada.pol}
+                          </div>
+                        </div>
+                        <div className="qa-route-summary-arrow">→</div>
+                        <div className="qa-route-summary-card">
+                          <small>Destino (POD)</small>
+                          {destinationUnlocode && (
+                            <div className="qa-route-summary-iata">
+                              {destinationUnlocode}
+                            </div>
+                          )}
+                          <div className="qa-route-summary-city">
+                            {rutaSeleccionada.pod}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="qa-route-summary-meta mb-3">
+                        {!sinTarifa && rutaSeleccionada.operador && (
+                          <span className="qa-route-carrier-badge">
+                            {rutaSeleccionada.operador}
+                          </span>
+                        )}
+                        {!sinTarifa && rutaSeleccionada.ttAprox && (
+                          <span className="qa-route-meta-pill">
+                            Tránsito: {rutaSeleccionada.ttAprox} días
+                          </span>
+                        )}
+                        <span className="qa-route-meta-pill">
+                          {overallDimsAndWeight
+                            ? `${overallPiecesCount} pieza${overallPiecesCount === 1 ? "" : "s"}`
+                            : `${piecesData.length} pieza${piecesData.length === 1 ? "" : "s"}`}
+                        </span>
+                      </div>
+
+                      {incoterm === "EXW" && pickupFromAddress.trim() && (
+                        <div className="qa-exw-review">
+                          <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                            <span className="fw-semibold small">
+                              Recogida EXW
+                            </span>
+                            {(polSeleccionado?.label ??
+                              polNR?.label ??
+                              rutaSeleccionada.pol) &&
+                              exwResolvedDistanceKm != null && (
+                                <span className="qa-route-meta-pill">
+                                  {polSeleccionado?.label ??
+                                    polNR?.label ??
+                                    rutaSeleccionada.pol}
+                                  {" · "}
+                                  {exwResolvedDistanceKm.toFixed(0)} km
+                                </span>
+                              )}
+                          </div>
+                          <CotizadorAddressMap
+                            readOnly
+                            compact
+                            value={pickupFromAddress}
+                            onChange={() => undefined}
+                            pickupLabel={t("QuoteAIR.pickup")}
+                            deliveryValue={deliveryToAddressDerived}
+                            deliveryLabel={t("QuoteAIR.delivery")}
+                            destinationCoords={exwMapDestination}
+                            initialPickupCoords={pickupCoords}
+                          />
+                        </div>
+                      )}
                     </div>
-                    <div>
-                      <span className="qa-text-muted d-block">
-                        {t("Quotelcl.volumentotal1")}
-                      </span>
-                      <strong>{totalVolume.toFixed(4)} m³</strong>
+
+                    <div className="mb-4">
+                      <h5 className="fs-6 fw-bold mb-3">Detalle de Piezas</h5>
+                      {!overallDimsAndWeight ? (
+                        <div className="qa-table-container mb-3">
+                          <table className="qa-table">
+                            <thead>
+                              <tr>
+                                <th>Pieza</th>
+                                <th>Tipo / Descripción</th>
+                                <th>Dimensiones (cm)</th>
+                                <th>Peso real</th>
+                                <th>Volumen</th>
+                                <th>W/M</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {piecesData.map((piece, index) => (
+                                <tr key={piece.id}>
+                                  <td className="fw-semibold">#{index + 1}</td>
+                                  <td>
+                                    <div>
+                                      {resolveLclPackageTypeLabel(
+                                        piece.packageType,
+                                      )}
+                                    </div>
+                                    {piece.description && (
+                                      <small className="qa-text-muted d-block">
+                                        {piece.description}
+                                      </small>
+                                    )}
+                                    {piece.isNotApilable && (
+                                      <span
+                                        className="qa-badge mt-1"
+                                        style={{ display: "inline-block" }}
+                                      >
+                                        No apilable
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td>
+                                    {piece.length} × {piece.width} ×{" "}
+                                    {piece.height}
+                                  </td>
+                                  <td>{piece.weight.toFixed(2)} kg</td>
+                                  <td>{(piece.volume || 0).toFixed(4)} m³</td>
+                                  <td>
+                                    {(piece.wmChargeable || 0).toFixed(4)}{" "}
+                                    {piece.weightTons > piece.volume ? "t" : "m³"}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <div className="qa-table-container mb-3">
+                          <table className="qa-table">
+                            <thead>
+                              <tr>
+                                <th>Pieza</th>
+                                <th>Tipo</th>
+                                <th>Volumen</th>
+                                <th>Peso real</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {overallPiecesData.map((piece, index) => (
+                                <tr key={piece.id}>
+                                  <td className="fw-semibold">#{index + 1}</td>
+                                  <td>{FIXED_LCL_PACKAGE_TYPE_NAME}</td>
+                                  <td>{piece.volume.toFixed(4)} m³</td>
+                                  <td>{piece.weight.toFixed(2)} kg</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
                     </div>
+
                     <div>
-                      <span className="qa-text-muted d-block">
-                        {t("Quotelcl.chargeable")}
-                      </span>
-                      <strong>
-                        {chargeableVolume.toFixed(4)} {lclChargeableUnit}
-                      </strong>
-                    </div>
-                    <div>
-                      <span className="qa-text-muted d-block">
-                        {t("Quotelcl.cobropor")}
-                      </span>
-                      <strong>{lclChargeableBillingBasis}</strong>
+                      <h5 className="fs-6 fw-bold mb-3">
+                        Totales del Cargamento
+                      </h5>
+                      <div className="qa-totals-bar" style={{ marginTop: 0 }}>
+                        {!overallDimsAndWeight ? (
+                          <>
+                            <div className="qa-totals-bar-item">
+                              <span className="qa-totals-bar-value">
+                                {totalVolumeFromPieces.toFixed(4)} m³
+                              </span>
+                              <span className="qa-totals-bar-label">
+                                {t("Quotelcl.volumentotal1")}
+                              </span>
+                            </div>
+                            <div className="qa-totals-bar-item">
+                              <span className="qa-totals-bar-value">
+                                {totalWeightKgFromPieces.toFixed(2)} kg
+                              </span>
+                              <span className="qa-totals-bar-label">
+                                {t("Quotelcl.pesototal1")}
+                              </span>
+                            </div>
+                            <div className="qa-totals-bar-item">
+                              <span className="qa-totals-bar-value">
+                                {totalWeightTonsFromPieces.toFixed(4)} t
+                              </span>
+                              <span className="qa-totals-bar-label">
+                                Peso (toneladas)
+                              </span>
+                            </div>
+                            <div
+                              className="qa-totals-bar-item"
+                              style={{ background: "rgba(255, 98, 0, 0.06)" }}
+                            >
+                              <span className="qa-totals-bar-value">
+                                {chargeableVolumeFromPieces.toFixed(4)}{" "}
+                                {lclChargeableUnit}
+                              </span>
+                              <span className="qa-totals-bar-label">
+                                {t("Quotelcl.chargeable")}
+                              </span>
+                            </div>
+                            <div className="qa-totals-bar-item">
+                              <span className="qa-totals-bar-value">
+                                {lclChargeableBillingBasis}
+                              </span>
+                              <span className="qa-totals-bar-label">
+                                {t("Quotelcl.cobropor")}
+                              </span>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="qa-totals-bar-item">
+                              <span className="qa-totals-bar-value">
+                                {overallPiecesCount}
+                              </span>
+                              <span className="qa-totals-bar-label">
+                                Piezas
+                              </span>
+                            </div>
+                            <div className="qa-totals-bar-item">
+                              <span className="qa-totals-bar-value">
+                                {manualVolume.toFixed(4)} m³
+                              </span>
+                              <span className="qa-totals-bar-label">
+                                {t("Quotelcl.volumentotal1")}
+                              </span>
+                            </div>
+                            <div className="qa-totals-bar-item">
+                              <span className="qa-totals-bar-value">
+                                {(manualWeight / 1000).toFixed(4)} t
+                              </span>
+                              <span className="qa-totals-bar-label">
+                                Peso total
+                              </span>
+                            </div>
+                            <div
+                              className="qa-totals-bar-item"
+                              style={{ background: "rgba(255, 98, 0, 0.06)" }}
+                            >
+                              <span className="qa-totals-bar-value">
+                                {chargeableVolume.toFixed(4)}{" "}
+                                {lclChargeableUnit}
+                              </span>
+                              <span className="qa-totals-bar-label">
+                                {t("Quotelcl.chargeable")}
+                              </span>
+                            </div>
+                            <div className="qa-totals-bar-item">
+                              <span className="qa-totals-bar-value">
+                                {lclChargeableBillingBasis}
+                              </span>
+                              <span className="qa-totals-bar-label">
+                                {t("Quotelcl.cobropor")}
+                              </span>
+                            </div>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
 
-                  {(seguroActivo ||
-                    aduanaActivo ||
-                    gastolocal ||
-                    liveTrackingActivo ||
-                    ultimaMillaActivo) && (
-                      <div className="border-top pt-2 mt-3">
-                        <span className="qa-text-muted d-block mb-1">
-                          Servicios Adicionales:
+                  <div className="mb-4">
+                    <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+                      <h4 className="fs-6 fw-bold mb-0">
+                        Servicios Adicionales
+                      </h4>
+                      {activeAddonsCount > 0 && (
+                        <span className="qa-badge qa-badge-primary">
+                          {activeAddonsCount} seleccionado
+                          {activeAddonsCount === 1 ? "" : "s"}
                         </span>
-                        <div className="d-flex flex-wrap gap-2">
-                          {seguroActivo && (
-                            <span className="qa-badge qa-badge-primary">
-                              <i className="bi bi-shield-check me-1"></i>Seguro
-                              {valorMercaderia &&
-                                ` — ${rutaSeleccionada.currency} ${valorMercaderia}`}
-                            </span>
-                          )}
-                          {aduanaActivo && (
-                            <span className="qa-badge qa-badge-primary">
-                              <i className="bi bi-building me-1"></i>
-                              {t("AgenciaAduana.toggle")}
-                              {valorProductoAduana &&
-                                ` — ${rutaSeleccionada.currency} ${valorProductoAduana}`}
-                            </span>
-                          )}
-                          {gastolocal && (
-                            <span className="qa-badge qa-badge-primary">
-                              <i className="bi bi-building me-1"></i>Gastos
-                              Locales
-                            </span>
-                          )}
-                          {liveTrackingActivo && (
-                            <span className="qa-badge qa-badge-primary">
-                              <i className="bi bi-geo-alt me-1"></i>Live Tracking
-                            </span>
-                          )}
-                          {ultimaMillaActivo && ultimaMillaDireccion && (
-                            <span className="qa-badge qa-badge-primary">
-                              <i className="bi bi-truck me-1"></i>Última Milla
-                              {` — ${ultimaMillaDireccion}`}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                </div>
-              </div>
-            </div>
+                      )}
+                    </div>
+                    {lclReviewAddonsGrid}
+                  </div>
+                </>
+              );
+            })()}
 
             {/* Botón Generar Cotización */}
             <div className="quote-submit-row mt-4">

@@ -75,6 +75,7 @@ import {
 } from "./Handlers/FCL/HandlerQuoteFCLHistorical";
 import { mergeCurrentRatesIntoPriceHistory } from "./Handlers/shared/mergeCurrentPriceHistory";
 import { useOperationModalAfterPdf } from "./Operations/useOperationModalAfterPdf";
+import { ReviewAddonCard } from "./ReviewAddonCard";
 import { linbisFetch } from "../../services/linbisFetch";
 import {
   fetchExpandedRoutes,
@@ -3035,6 +3036,366 @@ export default function QuoteFCL({
     };
   };
 
+  const activeAddonsCount = useMemo(() => {
+    let count = 0;
+    if (seguroActivo) count += 1;
+    if (gastolocal) count += 1;
+    if (liveTrackingActivo) count += 1;
+    if (ultimaMillaActivo) count += 1;
+    if (aduanaActivo) count += 1;
+    return count;
+  }, [
+    seguroActivo,
+    gastolocal,
+    liveTrackingActivo,
+    ultimaMillaActivo,
+    aduanaActivo,
+  ]);
+
+  const fclAddonsList =
+    rutaSeleccionada && containerSeleccionado ? (
+      <div
+        className={`qf-addons-list${transportAddonExpandedLayout ? " qf-addons-list--expanded" : ""}`}
+      >
+        <div className={`qf-addon-card${seguroActivo ? " is-active" : ""}`}>
+          <div className="qf-addon-card__image">
+            <img
+              src={imgUrl("addcargos/seguro.png")}
+              alt="Seguro de carga"
+              loading="lazy"
+            />
+          </div>
+          <div className="qf-addon-card__body">
+            <h4>Agregar Seguro de Carga</h4>
+            <p>
+              Protege tu cargamento contra daños, pérdidas y robos durante el
+              transporte. Se calcula en base al valor declarado de la
+              mercadería.
+            </p>
+            {seguroActivo && valorMercaderia && (
+              <span
+                className="qf-badge qf-badge-primary mt-2"
+                style={{ display: "inline-block" }}
+              >
+                Valor declarado: {rutaSeleccionada.currency} {valorMercaderia}
+                {aduanaMaster === true && (
+                  <span className="ms-1">
+                    <i className="bi bi-lock-fill"></i>
+                  </span>
+                )}
+              </span>
+            )}
+          </div>
+          <div className="qf-addon-card__action">
+            {!seguroActivo ? (
+              <button
+                className="qf-addon-btn-add"
+                onClick={() => {
+                  setTempValorSeguro("");
+                  setShowSeguroModal(true);
+                }}
+              >
+                <i className="bi bi-plus-lg"></i>Agregar
+              </button>
+            ) : (
+              <button
+                className="qf-addon-btn-remove"
+                onClick={() => handleToggleSeguro(false)}
+              >
+                <i className="bi bi-x-lg"></i>Remover
+              </button>
+            )}
+          </div>
+        </div>
+
+        {!aduanaFclConfigLoading && (
+          <div className={`qf-addon-card${aduanaActivo ? " is-active" : ""}`}>
+            <div className="qf-addon-card__image">
+              <img
+                src={imgUrl("addcargos/agencia-aduanas.png")}
+                alt="Agencia de Aduanas"
+                loading="lazy"
+              />
+            </div>
+            <div className="qf-addon-card__body">
+              <h4>{t("AgenciaAduana.toggle")}</h4>
+              <p>
+                Servicio integral de despacho aduanero y nacionalización de tu
+                cargamento en destino. Incluye honorarios, customs clearance,
+                gate in y tramitación documental.
+              </p>
+              {aduanaActivo && valorProductoAduana && (
+                <span
+                  className="qf-badge qf-badge-primary mt-2"
+                  style={{ display: "inline-block" }}
+                >
+                  Valor producto: {rutaSeleccionada.currency}{" "}
+                  {valorProductoAduana}
+                  {aduanaMaster === false && (
+                    <span className="ms-1">
+                      <i className="bi bi-lock-fill"></i>
+                    </span>
+                  )}
+                </span>
+              )}
+            </div>
+            <div className="qf-addon-card__action">
+              {!aduanaActivo ? (
+                <button
+                  className="qf-addon-btn-add"
+                  onClick={() => {
+                    setTempValorAduana("");
+                    setShowAduanaModal(true);
+                  }}
+                >
+                  <i className="bi bi-plus-lg"></i>Agregar
+                </button>
+              ) : (
+                <button
+                  className="qf-addon-btn-remove"
+                  onClick={() => handleToggleAduana(false)}
+                >
+                  <i className="bi bi-x-lg"></i>Remover
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        <div className={`qf-addon-card${gastolocal ? " is-active" : ""}`}>
+          <div className="qf-addon-card__image">
+            <img
+              src={imgUrl("addcargos/gastos-locales.png")}
+              alt="Gastos Locales"
+              loading="lazy"
+            />
+          </div>
+          <div className="qf-addon-card__body">
+            <h4>Agregar Gastos Locales</h4>
+            <p>
+              Incluye THC (Terminal Handling Charge) y gastos de apertura en
+              destino. Cargos aplicables al momento de retirar el contenedor en
+              puerto de llegada.
+            </p>
+          </div>
+          <div className="qf-addon-card__action">
+            {!gastolocal ? (
+              <button
+                className="qf-addon-btn-add"
+                onClick={() => setGastolocal(true)}
+              >
+                <i className="bi bi-plus-lg"></i>Agregar
+              </button>
+            ) : (
+              <button
+                className="qf-addon-btn-remove"
+                onClick={() => setGastolocal(false)}
+              >
+                <i className="bi bi-x-lg"></i>Remover
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div
+          className={`qf-addon-card${liveTrackingActivo ? " is-active" : ""}`}
+        >
+          <div className="qf-addon-card__image">
+            <img
+              src={imgUrl("addcargos/live-tracking.png")}
+              alt="Live Tracking"
+              loading="lazy"
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).style.display = "none";
+              }}
+            />
+          </div>
+          <div className="qf-addon-card__body">
+            <h4>
+              Live Tracking{" "}
+              <span className="qf-badge qf-badge-primary ms-1">Free</span>
+            </h4>
+            <p>
+              Monitorea tu contenedor en tiempo real durante todo el tránsito
+              marítimo. Recibe notificaciones automáticas en cada hito del
+              envío. Servicio sin costo adicional.
+            </p>
+          </div>
+          <div className="qf-addon-card__action">
+            {!liveTrackingActivo ? (
+              <button
+                className="qf-addon-btn-add"
+                onClick={() => setLiveTrackingActivo(true)}
+              >
+                <i className="bi bi-plus-lg"></i>Agregar
+              </button>
+            ) : (
+              <button
+                className="qf-addon-btn-remove"
+                onClick={() => setLiveTrackingActivo(false)}
+              >
+                <i className="bi bi-x-lg"></i>Remover
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div
+          className={`qf-addon-card${ultimaMillaActivo ? " is-active" : ""}`}
+        >
+          <div className="qf-addon-card__image">
+            <img
+              src={imgUrl("addcargos/ultima-milla.png")}
+              alt="Transporte Terrestre en Destino"
+              loading="lazy"
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).style.display = "none";
+              }}
+            />
+          </div>
+          <div className="qf-addon-card__body">
+            <h4>Agregar Transporte Terrestre en Destino</h4>
+            {!ultimaMillaDisponible && (
+              <p className="text-warning small mb-2">
+                <i className="bi bi-exclamation-triangle me-1"></i>
+                Este servicio solo está disponible para rutas con puerto de
+                destino San Antonio o Valparaíso.
+              </p>
+            )}
+            <p>
+              Transporte terrestre desde el puerto de destino hasta su bodega o
+              dirección final. Tarifa por contenedor según tipo seleccionado.
+            </p>
+            {ultimaMillaActivo && ultimaMillaDireccion && (
+              <span
+                className="qf-badge qf-badge-primary mt-2"
+                style={{ display: "inline-block" }}
+              >
+                Entrega: {ultimaMillaDireccion}
+              </span>
+            )}
+          </div>
+          <div className="qf-addon-card__action">
+            {!ultimaMillaActivo ? (
+              <button
+                className="qf-addon-btn-add"
+                disabled={!ultimaMillaDisponible}
+                onClick={() => {
+                  if (!ultimaMillaDisponible) return;
+                  setTempUltimaMillaDireccion("");
+                  setTempUltimaMillaZone(null);
+                  setShowUltimaMillaModal(true);
+                }}
+              >
+                {ultimaMillaDisponible ? (
+                  <>
+                    <i className="bi bi-plus-lg"></i>Agregar
+                  </>
+                ) : (
+                  "No Disponible"
+                )}
+              </button>
+            ) : (
+              <button
+                className="qf-addon-btn-remove"
+                onClick={resetUltimaMilla}
+              >
+                <i className="bi bi-x-lg"></i>Remover
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    ) : null;
+
+  const fclReviewAddonsGrid =
+    rutaSeleccionada && containerSeleccionado ? (
+      <div className="row g-3">
+        <ReviewAddonCard
+          title="Seguro de Carga"
+          description="Protección contra daños, pérdidas y robos durante el transporte marítimo."
+          imageSrc={imgUrl("addcargos/seguro.png")}
+          active={seguroActivo}
+          detail={
+            seguroActivo && valorMercaderia
+              ? `Valor declarado: ${rutaSeleccionada.currency} ${valorMercaderia}`
+              : undefined
+          }
+          onToggle={() => {
+            if (seguroActivo) {
+              handleToggleSeguro(false);
+              return;
+            }
+            setTempValorSeguro("");
+            setShowSeguroModal(true);
+          }}
+        />
+        {!aduanaFclConfigLoading && (
+          <ReviewAddonCard
+            title={t("AgenciaAduana.toggle")}
+            description="Despacho aduanero y nacionalización del contenedor en destino."
+            imageSrc={imgUrl("addcargos/agencia-aduanas.png")}
+            active={aduanaActivo}
+            detail={
+              aduanaActivo && valorProductoAduana
+                ? `Valor producto: ${rutaSeleccionada.currency} ${valorProductoAduana}`
+                : undefined
+            }
+            onToggle={() => {
+              if (aduanaActivo) {
+                handleToggleAduana(false);
+                return;
+              }
+              setTempValorAduana("");
+              setShowAduanaModal(true);
+            }}
+          />
+        )}
+        <ReviewAddonCard
+          title="Gastos Locales"
+          description="THC y gastos de apertura al retirar el contenedor en puerto."
+          imageSrc={imgUrl("addcargos/gastos-locales.png")}
+          active={gastolocal}
+          onToggle={() => setGastolocal(!gastolocal)}
+        />
+        <ReviewAddonCard
+          title="Live Tracking"
+          description="Monitoreo en tiempo real con notificaciones en cada hito del envío."
+          imageSrc={imgUrl("addcargos/live-tracking.png")}
+          active={liveTrackingActivo}
+          badge="Gratuito"
+          onToggle={() => setLiveTrackingActivo(!liveTrackingActivo)}
+        />
+        <ReviewAddonCard
+          title="Transporte Terrestre en Destino"
+          description="Entrega desde el puerto de destino hasta su bodega o dirección final."
+          imageSrc={imgUrl("addcargos/ultima-milla.png")}
+          active={ultimaMillaActivo}
+          disabled={!ultimaMillaDisponible && !ultimaMillaActivo}
+          warning={
+            !ultimaMillaDisponible
+              ? "Solo disponible para destino San Antonio o Valparaíso."
+              : undefined
+          }
+          detail={
+            ultimaMillaActivo && ultimaMillaDireccion
+              ? `Entrega: ${ultimaMillaDireccion}`
+              : undefined
+          }
+          onToggle={() => {
+            if (ultimaMillaActivo) {
+              resetUltimaMilla();
+              return;
+            }
+            if (!ultimaMillaDisponible) return;
+            setTempUltimaMillaDireccion("");
+            setTempUltimaMillaZone(null);
+            setShowUltimaMillaModal(true);
+          }}
+        />
+      </div>
+    ) : null;
+
   // ============================================================================
   // RENDER
   // ============================================================================
@@ -4202,273 +4563,7 @@ export default function QuoteFCL({
 
           {currentStep === 3 && (
             <div>
-              <div
-                className={`qf-addons-list${transportAddonExpandedLayout ? " qf-addons-list--expanded" : ""}`}
-              >
-                {/* Card: Seguro */}
-                <div
-                  className={`qf-addon-card${seguroActivo ? " is-active" : ""}`}
-                >
-                  <div className="qf-addon-card__image">
-                    <img
-                      src={imgUrl("addcargos/seguro.png")}
-                      alt="Seguro de carga"
-                      loading="lazy"
-                    />
-                  </div>
-                  <div className="qf-addon-card__body">
-                    <h4>Agregar Seguro de Carga</h4>
-                    <p>
-                      Protege tu cargamento contra daños, pérdidas y robos
-                      durante el transporte. Se calcula en base al valor
-                      declarado de la mercadería.
-                    </p>
-                    {seguroActivo && valorMercaderia && (
-                      <span
-                        className="qf-badge qf-badge-primary mt-2"
-                        style={{ display: "inline-block" }}
-                      >
-                        Valor declarado: {rutaSeleccionada.currency}{" "}
-                        {valorMercaderia}
-                        {aduanaMaster === true && (
-                          <span className="ms-1">
-                            <i className="bi bi-lock-fill"></i>
-                          </span>
-                        )}
-                      </span>
-                    )}
-                  </div>
-                  <div className="qf-addon-card__action">
-                    {!seguroActivo ? (
-                      <button
-                        className="qf-addon-btn-add"
-                        onClick={() => {
-                          setTempValorSeguro("");
-                          setShowSeguroModal(true);
-                        }}
-                      >
-                        <i className="bi bi-plus-lg"></i>Agregar
-                      </button>
-                    ) : (
-                      <button
-                        className="qf-addon-btn-remove"
-                        onClick={() => handleToggleSeguro(false)}
-                      >
-                        <i className="bi bi-x-lg"></i>Remover
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Card: Agencia de Aduanas */}
-                {!aduanaFclConfigLoading && (
-                  <div
-                    className={`qf-addon-card${aduanaActivo ? " is-active" : ""}`}
-                  >
-                    <div className="qf-addon-card__image">
-                      <img
-                        src={imgUrl("addcargos/agencia-aduanas.png")}
-                        alt="Agencia de Aduanas"
-                        loading="lazy"
-                      />
-                    </div>
-                    <div className="qf-addon-card__body">
-                      <h4>{t("AgenciaAduana.toggle")}</h4>
-                      <p>
-                        Servicio integral de despacho aduanero y nacionalización
-                        de tu cargamento en destino. Incluye honorarios, customs
-                        clearance, gate in y tramitación documental.
-                      </p>
-                      {aduanaActivo && valorProductoAduana && (
-                        <span
-                          className="qf-badge qf-badge-primary mt-2"
-                          style={{ display: "inline-block" }}
-                        >
-                          Valor producto: {rutaSeleccionada.currency}{" "}
-                          {valorProductoAduana}
-                          {aduanaMaster === false && (
-                            <span className="ms-1">
-                              <i className="bi bi-lock-fill"></i>
-                            </span>
-                          )}
-                        </span>
-                      )}
-                    </div>
-                    <div className="qf-addon-card__action">
-                      {!aduanaActivo ? (
-                        <button
-                          className="qf-addon-btn-add"
-                          onClick={() => {
-                            setTempValorAduana("");
-                            setShowAduanaModal(true);
-                          }}
-                        >
-                          <i className="bi bi-plus-lg"></i>Agregar
-                        </button>
-                      ) : (
-                        <button
-                          className="qf-addon-btn-remove"
-                          onClick={() => handleToggleAduana(false)}
-                        >
-                          <i className="bi bi-x-lg"></i>Remover
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Card: Gastos Locales */}
-                <div
-                  className={`qf-addon-card${gastolocal ? " is-active" : ""}`}
-                >
-                  <div className="qf-addon-card__image">
-                    <img
-                      src={imgUrl("addcargos/gastos-locales.png")}
-                      alt="Gastos Locales"
-                      loading="lazy"
-                    />
-                  </div>
-                  <div className="qf-addon-card__body">
-                    <h4>Agregar Gastos Locales</h4>
-                    <p>
-                      Incluye THC (Terminal Handling Charge) y gastos de
-                      apertura en destino. Cargos aplicables al momento de
-                      retirar el contenedor en puerto de llegada.
-                    </p>
-                  </div>
-                  <div className="qf-addon-card__action">
-                    {!gastolocal ? (
-                      <button
-                        className="qf-addon-btn-add"
-                        onClick={() => setGastolocal(true)}
-                      >
-                        <i className="bi bi-plus-lg"></i>Agregar
-                      </button>
-                    ) : (
-                      <button
-                        className="qf-addon-btn-remove"
-                        onClick={() => setGastolocal(false)}
-                      >
-                        <i className="bi bi-x-lg"></i>Remover
-                      </button>
-                    )}
-                  </div>
-                </div>
-                {/* Card: Live Tracking (Free) */}
-                <div
-                  className={`qf-addon-card${liveTrackingActivo ? " is-active" : ""}`}
-                >
-                  <div className="qf-addon-card__image">
-                    <img
-                      src={imgUrl("addcargos/live-tracking.png")}
-                      alt="Live Tracking"
-                      loading="lazy"
-                      onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).style.display =
-                          "none";
-                      }}
-                    />
-                  </div>
-                  <div className="qf-addon-card__body">
-                    <h4>
-                      Live Tracking{" "}
-                      <span className="qf-badge qf-badge-primary ms-1">
-                        Free
-                      </span>
-                    </h4>
-                    <p>
-                      Monitorea tu contenedor en tiempo real durante todo el
-                      tránsito marítimo. Recibe notificaciones automáticas en
-                      cada hito del envío. Servicio sin costo adicional.
-                    </p>
-                  </div>
-                  <div className="qf-addon-card__action">
-                    {!liveTrackingActivo ? (
-                      <button
-                        className="qf-addon-btn-add"
-                        onClick={() => setLiveTrackingActivo(true)}
-                      >
-                        <i className="bi bi-plus-lg"></i>Agregar
-                      </button>
-                    ) : (
-                      <button
-                        className="qf-addon-btn-remove"
-                        onClick={() => setLiveTrackingActivo(false)}
-                      >
-                        <i className="bi bi-x-lg"></i>Remover
-                      </button>
-                    )}
-                  </div>
-                </div>
-                {/* Card: Transporte Terrestre en Destino */}
-                <div
-                  className={`qf-addon-card${ultimaMillaActivo ? " is-active" : ""}`}
-                >
-                  <div className="qf-addon-card__image">
-                    <img
-                      src={imgUrl("addcargos/ultima-milla.png")}
-                      alt="Transporte Terrestre en Destino"
-                      loading="lazy"
-                      onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).style.display =
-                          "none";
-                      }}
-                    />
-                  </div>
-                  <div className="qf-addon-card__body">
-                    <h4>Agregar Transporte Terrestre en Destino</h4>
-                    {!ultimaMillaDisponible && (
-                      <p className="text-warning small mb-2">
-                        <i className="bi bi-exclamation-triangle me-1"></i>
-                        Este servicio solo está disponible para rutas con puerto
-                        de destino San Antonio o Valparaíso.
-                      </p>
-                    )}
-                    <p>
-                      Transporte terrestre desde el puerto de destino hasta su
-                      bodega o dirección final. Tarifa por contenedor según tipo
-                      seleccionado.
-                    </p>
-                    {ultimaMillaActivo && ultimaMillaDireccion && (
-                      <span
-                        className="qf-badge qf-badge-primary mt-2"
-                        style={{ display: "inline-block" }}
-                      >
-                        Entrega: {ultimaMillaDireccion}
-                      </span>
-                    )}
-                  </div>
-                  <div className="qf-addon-card__action">
-                    {!ultimaMillaActivo ? (
-                      <button
-                        className="qf-addon-btn-add"
-                        disabled={!ultimaMillaDisponible}
-                        onClick={() => {
-                          if (!ultimaMillaDisponible) return;
-                          setTempUltimaMillaDireccion("");
-                          setTempUltimaMillaZone(null);
-                          setShowUltimaMillaModal(true);
-                        }}
-                      >
-                        {ultimaMillaDisponible ? (
-                          <>
-                            <i className="bi bi-plus-lg"></i>Agregar
-                          </>
-                        ) : (
-                          "No Disponible"
-                        )}
-                      </button>
-                    ) : (
-                      <button
-                        className="qf-addon-btn-remove"
-                        onClick={resetUltimaMilla}
-                      >
-                        <i className="bi bi-x-lg"></i>Remover
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
+              {fclAddonsList}
 
               {aduanaActivo && !aduanaFclConfigLoading && aduanaFclConfig && (
                 <div className="mt-3 px-1">
@@ -4521,123 +4616,186 @@ export default function QuoteFCL({
             </div>
           </div>
 
-          {currentStep === 4 && (
-            <div>
-              {/* Resumen del Cargamento */}
-              <div
-                className="p-3 rounded border mb-4"
-                style={{ backgroundColor: "var(--qf-bg-light)" }}
-              >
-                <h6 className="fw-bold mb-3">
-                  <i className="bi bi-box-seam me-2"></i>Resumen del Cargamento
-                </h6>
+          <div>
+            {(() => {
+              const originUnlocode =
+                getPortByPOL(rutaSeleccionada.polNormalized)?.unlocode ?? "";
+              const destinationUnlocode =
+                getPortByPOL(rutaSeleccionada.podNormalized)?.unlocode ?? "";
+              const freeTimeDisplay = sinTarifa
+                ? routeInfoPlaceholder
+                : rutaSeleccionada.freeTime
+                  ? `${rutaSeleccionada.freeTime} días`
+                  : routeInfoPlaceholder;
 
-                <div className="d-flex flex-column gap-3 small">
-                  <div>
-                    <span className="text-muted d-block">Ruta:</span>
-                    <div className="fw-bold d-flex align-items-center gap-2">
-                      <span>{rutaSeleccionada.pol}</span>
-                      <i className="bi bi-arrow-right text-primary"></i>
-                      <span>{rutaSeleccionada.pod}</span>
-                    </div>
-                  </div>
-
-                  <div className="row g-2">
-                    <div className="col-4">
-                      <span className="text-muted d-block">Carrier:</span>
-                      <strong>
-                        {sinTarifa
-                          ? routeInfoPlaceholder
-                          : rutaSeleccionada.carrier || routeInfoPlaceholder}
-                      </strong>
-                    </div>
-                    <div className="col-4">
-                      <span className="text-muted d-block">
-                        Tiempo Tránsito:
-                      </span>
-                      <strong>
-                        {sinTarifa
-                          ? routeInfoPlaceholder
-                          : rutaSeleccionada.tt || routeInfoPlaceholder}{" "}
-                        Días
-                      </strong>
-                    </div>
-                    <div className="col-4">
-                      <span className="text-muted d-block">Free Time:</span>
-                      <strong>
-                        {sinTarifa
-                          ? routeInfoPlaceholder
-                          : rutaSeleccionada.freeTime ||
-                          routeInfoPlaceholder}{" "}
-                        Días
-                      </strong>
-                    </div>
-                  </div>
-
-                  <div className="border-top my-1"></div>
-
-                  <div className="row g-2">
-                    <div className="col-6">
-                      <span className="text-muted d-block">Contenedor:</span>
-                      <strong>{containerSeleccionado.type}</strong>
-                    </div>
-                    <div className="col-6">
-                      <span className="text-muted d-block">Cantidad:</span>
-                      <strong>{cantidadContenedores} u.</strong>
-                    </div>
-                  </div>
-
-                  {incoterm && (
-                    <div className="mt-2 text-primary fw-bold text-center p-1 border border-primary rounded bg-white">
-                      Incoterm: {incoterm}
-                    </div>
-                  )}
-
-                  {/* Resumen de servicios adicionales activos */}
-                  {(seguroActivo ||
-                    aduanaActivo ||
-                    gastolocal ||
-                    liveTrackingActivo ||
-                    ultimaMillaActivo) && (
-                      <div className="border-top pt-2 mt-1">
-                        <span className="text-muted d-block mb-1">
-                          Servicios Adicionales:
+              return (
+                <>
+                  <div className="mb-4">
+                    {incoterm && (
+                      <div className="d-flex justify-content-end mb-3">
+                        <span className="qa-badge qa-badge-primary">
+                          Incoterm: {incoterm}
                         </span>
-                        <div className="d-flex flex-wrap gap-2">
-                          {seguroActivo && (
-                            <span className="qf-badge qf-badge-primary">
-                              <i className="bi bi-shield-check me-1"></i>Seguro
-                              {valorMercaderia &&
-                                ` — ${rutaSeleccionada.currency} ${valorMercaderia}`}
-                            </span>
-                          )}
-                          {aduanaActivo && (
-                            <span className="qf-badge qf-badge-primary">
-                              <i className="bi bi-building me-1"></i>
-                              {t("AgenciaAduana.toggle")}
-                              {valorProductoAduana &&
-                                ` — ${rutaSeleccionada.currency} ${valorProductoAduana}`}
-                            </span>
-                          )}
-                          {gastolocal && (
-                            <span className="qf-badge qf-badge-primary">
-                              <i className="bi bi-building me-1"></i>Gastos
-                              Locales (THC + Apertura)
-                            </span>
-                          )}
-                          {ultimaMillaActivo && ultimaMillaDireccion && (
-                            <span className="qf-badge qf-badge-primary">
-                              <i className="bi bi-truck me-1"></i>Última Milla
-                              {` — ${ultimaMillaDireccion}`}
-                            </span>
-                          )}
-                        </div>
                       </div>
                     )}
-                </div>
-              </div>
 
-              {/* Botón Generar Cotización */}
+                    <div className="mb-4">
+                      <h5 className="fs-6 fw-bold mb-3">Ruta</h5>
+                      <div className="qa-route-summary-cards mb-3">
+                        <div className="qa-route-summary-card">
+                          <small>Origen (POL)</small>
+                          {originUnlocode && (
+                            <div className="qa-route-summary-iata">
+                              {originUnlocode}
+                            </div>
+                          )}
+                          <div className="qa-route-summary-city">
+                            {rutaSeleccionada.pol}
+                          </div>
+                        </div>
+                        <div className="qa-route-summary-arrow">→</div>
+                        <div className="qa-route-summary-card">
+                          <small>Destino (POD)</small>
+                          {destinationUnlocode && (
+                            <div className="qa-route-summary-iata">
+                              {destinationUnlocode}
+                            </div>
+                          )}
+                          <div className="qa-route-summary-city">
+                            {rutaSeleccionada.pod}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="qa-route-summary-meta mb-3">
+                        {!sinTarifa && rutaSeleccionada.carrier && (
+                          <span className="qa-route-carrier-badge">
+                            {rutaSeleccionada.carrier}
+                          </span>
+                        )}
+                        {!sinTarifa && rutaSeleccionada.tt && (
+                          <span className="qa-route-meta-pill">
+                            Tránsito: {rutaSeleccionada.tt} días
+                          </span>
+                        )}
+                        <span className="qa-route-meta-pill">
+                          {cantidadContenedores} contenedor
+                          {cantidadContenedores === 1 ? "" : "es"} ·{" "}
+                          {containerSeleccionado.type}
+                        </span>
+                      </div>
+
+                      {incoterm === "EXW" && pickupFromAddress.trim() && (
+                        <div className="qa-exw-review">
+                          <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                            <span className="fw-semibold small">
+                              Recogida EXW
+                            </span>
+                            {(polSeleccionado?.label ??
+                              polNR?.label ??
+                              rutaSeleccionada.pol) &&
+                              exwResolvedDistanceKm != null && (
+                                <span className="qa-route-meta-pill">
+                                  {polSeleccionado?.label ??
+                                    polNR?.label ??
+                                    rutaSeleccionada.pol}
+                                  {" · "}
+                                  {exwResolvedDistanceKm.toFixed(0)} km
+                                </span>
+                              )}
+                          </div>
+                          <CotizadorAddressMap
+                            readOnly
+                            compact
+                            value={pickupFromAddress}
+                            onChange={() => undefined}
+                            pickupLabel={t("QuoteAIR.pickup")}
+                            deliveryValue={deliveryToAddressDerived}
+                            deliveryLabel={t("QuoteAIR.delivery")}
+                            destinationCoords={exwMapDestination}
+                            initialPickupCoords={pickupCoords}
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="mb-4">
+                      <h5 className="fs-6 fw-bold mb-3">
+                        Detalle del Contenedor
+                      </h5>
+                      <div className="qa-table-container mb-3">
+                        <table className="qa-table">
+                          <thead>
+                            <tr>
+                              <th>Tipo</th>
+                              <th>Cantidad</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td className="fw-semibold">
+                                {containerSeleccionado.type}
+                              </td>
+                              <td>{cantidadContenedores} u.</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h5 className="fs-6 fw-bold mb-3">
+                        Totales del Cargamento
+                      </h5>
+                      <div className="qa-totals-bar" style={{ marginTop: 0 }}>
+                        <div className="qa-totals-bar-item">
+                          <span className="qa-totals-bar-value">
+                            {containerSeleccionado.type}
+                          </span>
+                          <span className="qa-totals-bar-label">
+                            Tipo de contenedor
+                          </span>
+                        </div>
+                        <div className="qa-totals-bar-item">
+                          <span className="qa-totals-bar-value">
+                            {cantidadContenedores}
+                          </span>
+                          <span className="qa-totals-bar-label">Cantidad</span>
+                        </div>
+                        <div
+                          className="qa-totals-bar-item"
+                          style={{ background: "rgba(255, 98, 0, 0.06)" }}
+                        >
+                          <span className="qa-totals-bar-value">
+                            {freeTimeDisplay}
+                          </span>
+                          <span className="qa-totals-bar-label">
+                            Free Time
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mb-4">
+                    <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+                      <h4 className="fs-6 fw-bold mb-0">
+                        Servicios Adicionales
+                      </h4>
+                      {activeAddonsCount > 0 && (
+                        <span className="qa-badge qa-badge-primary">
+                          {activeAddonsCount} seleccionado
+                          {activeAddonsCount === 1 ? "" : "s"}
+                        </span>
+                      )}
+                    </div>
+                    {fclReviewAddonsGrid}
+                  </div>
+                </>
+              );
+            })()}
+
+            {/* Botón Generar Cotización */}
               <div className="quote-submit-row mt-4 pt-3 border-top">
                 <QuoteGeneratingMessage btnPhase={btnPhase} />
                 {btnPhase !== "done" ? (
@@ -4720,8 +4878,7 @@ export default function QuoteFCL({
                   </div>
                 )}
               </div>
-            </div>
-          )}
+          </div>
         </div>
       )}
 
