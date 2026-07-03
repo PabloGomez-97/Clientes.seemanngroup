@@ -11,6 +11,7 @@ import {
   lookupClientQuoteNumber,
 } from "@/services/linbisClientBulkFetch";
 import { linbisFetch } from "@/services/linbisFetch";
+import { type LinbisFetchOptions } from "@/services/linbisQuoteLookup";
 import {
   buildShipmentNumberSet,
   normalizeShipmentKey,
@@ -62,12 +63,6 @@ export type InvoiceComplementData = {
   shipmentAccounting: ShipmentAccountingInfo | null;
   quote: QuoteComplementSummary | null;
   quoteNumber: string | null;
-};
-
-type LinbisFetchOptions = {
-  accessToken: string;
-  refreshAccessToken?: () => Promise<string>;
-  signal?: AbortSignal;
 };
 
 const complementCache = new Map<string, InvoiceComplementData>();
