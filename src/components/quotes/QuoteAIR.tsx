@@ -18,6 +18,7 @@ import { useTranslation } from "react-i18next";
 import ReactDOM from "react-dom/client";
 import * as bootstrap from "bootstrap";
 import { imgUrl } from "../../config/images";
+import { packageTypeOptions } from "./PackageTypes/PiecestypesAIR";
 import {
   GOOGLE_SHEET_CSV_URL,
   type RutaAerea,
@@ -152,6 +153,14 @@ const DEFAULT_OVERALL_AIR_DESCRIPTION = "Cargamento Aéreo";
 /** ID del tipo de paquete BOX en el API de cotización aérea */
 const DEFAULT_OVERALL_AIR_PACKAGE_TYPE = "97";
 const FIXED_AIR_PACKAGE_TYPE_NAME = "BOX";
+
+function resolveAirPackageTypeLabel(packageType: string): string {
+  if (!packageType) return "—";
+  const match = packageTypeOptions.find(
+    (opt) => String(opt.id) === String(packageType),
+  );
+  return match?.name ?? packageType;
+}
 const INITIAL_VISIBLE_ROUTES = 5;
 
 const normalizeAirCarrierKey = (carrier: string | null | undefined): string => {
@@ -254,6 +263,107 @@ function buildOverallPiecesSummaryAir(pieces: OverallPieceDataAir[]): string {
       return `Pieza ${index + 1}: ${FIXED_AIR_PACKAGE_TYPE_NAME} / ${DEFAULT_OVERALL_AIR_DESCRIPTION} / ${piece.volume.toFixed(4)} m3 / ${piece.weight.toFixed(2)} kg`;
     })
     .join("; ");
+}
+
+type AirReviewAddonCardProps = {
+  title: string;
+  description: string;
+  imageSrc: string;
+  active: boolean;
+  disabled?: boolean;
+  badge?: string;
+  detail?: string;
+  warning?: string;
+  onToggle: () => void;
+};
+
+function AirReviewAddonCard({
+  title,
+  description,
+  imageSrc,
+  active,
+  disabled = false,
+  badge,
+  detail,
+  warning,
+  onToggle,
+}: AirReviewAddonCardProps) {
+  return (
+    <div className="col-md-6">
+      <button
+        type="button"
+        className="w-100 h-100 border-0 bg-transparent p-0 text-start"
+        disabled={disabled}
+        onClick={() => {
+          if (!disabled) onToggle();
+        }}
+        aria-pressed={active}
+      >
+        <div
+          className="d-flex align-items-start gap-3 p-3 rounded border h-100 position-relative"
+          style={{
+            backgroundColor: "#fff",
+            borderColor: active
+              ? "rgba(255, 98, 0, 0.35)"
+              : "var(--qa-border-color)",
+            boxShadow: active
+              ? "0 0 0 3px rgba(255, 98, 0, 0.08)"
+              : "0 1px 4px rgba(0, 0, 0, 0.04)",
+            opacity: disabled ? 0.65 : 1,
+            cursor: disabled ? "not-allowed" : "pointer",
+          }}
+        >
+          <div
+            className="flex-shrink-0 rounded overflow-hidden d-flex align-items-center justify-content-center"
+            style={{
+              width: 56,
+              height: 56,
+              backgroundColor: "rgba(255, 98, 0, 0.06)",
+            }}
+          >
+            <img
+              src={imageSrc}
+              alt={title}
+              loading="lazy"
+              style={{ width: 44, height: 44, objectFit: "contain" }}
+            />
+          </div>
+          <div className="flex-grow-1 min-w-0 pe-4">
+            <div className="d-flex align-items-center flex-wrap gap-2 mb-1">
+              <span className="fw-semibold">{title}</span>
+              {badge && (
+                <span className="qa-badge qa-badge-primary">{badge}</span>
+              )}
+            </div>
+            {warning && (
+              <p className="text-warning small mb-1">{warning}</p>
+            )}
+            <p className="small text-muted mb-1" style={{ lineHeight: 1.45 }}>
+              {description}
+            </p>
+            {detail && (
+              <span
+                className="qa-badge qa-badge-primary"
+                style={{ display: "inline-block" }}
+              >
+                {detail}
+              </span>
+            )}
+          </div>
+          <i
+            className={`bi ${active ? "bi-check-circle-fill" : "bi-circle"} position-absolute`}
+            style={{
+              top: "0.85rem",
+              right: "0.85rem",
+              color: active ? "var(--qa-primary)" : "var(--qa-text-secondary)",
+              fontSize: "1.1rem",
+            }}
+            aria-hidden
+          />
+        </div>
+      </button>
+    </div>
+  );
 }
 
 function QuoteAPITester({
@@ -5340,6 +5450,406 @@ function QuoteAPITester({
   }, [rutasOrdenadas]);
 
   // getValidityClass moved earlier to be usable during filtering
+
+  const activeAddonsCount = useMemo(() => {
+    let count = 0;
+    if (seguroActivo) count += 1;
+    if (gastolocal) count += 1;
+    if (liveTrackingActivo) count += 1;
+    if (ultimaMillaActivo) count += 1;
+    if (aduanaActivo) count += 1;
+    return count;
+  }, [
+    seguroActivo,
+    gastolocal,
+    liveTrackingActivo,
+    ultimaMillaActivo,
+    aduanaActivo,
+  ]);
+
+  const airAddonsList = rutaSeleccionada ? (
+    <div
+      className={`qa-addons-list${transportAddonExpandedLayout ? " qa-addons-list--expanded" : ""}`}
+    >
+      {/* Card: Seguro de Carga */}
+      <div className={`qa-addon-card${seguroActivo ? " is-active" : ""}`}>
+        <div className="qa-addon-card__image">
+          <img
+            src={imgUrl("addcargos/seguro1.png")}
+            alt="Seguro de carga"
+            loading="lazy"
+          />
+        </div>
+        <div className="qa-addon-card__body">
+          <h4>Agregar Seguro de Carga</h4>
+          <p>
+            Protege tu cargamento contra daños, pérdidas y robos durante el
+            transporte aéreo. Se calcula en base al valor declarado de la
+            mercadería.
+          </p>
+          {seguroActivo && valorMercaderia && (
+            <span
+              className="qa-badge qa-badge-primary mt-2"
+              style={{ display: "inline-block" }}
+            >
+              Valor declarado: {rutaSeleccionada.currency} {valorMercaderia}
+              {aduanaMaster === true && (
+                <span className="ms-1">
+                  <i className="bi bi-lock-fill"></i>
+                </span>
+              )}
+            </span>
+          )}
+        </div>
+        <div className="qa-addon-card__action">
+          {!seguroActivo ? (
+            <button
+              className="qa-addon-btn-add"
+              onClick={() => {
+                setTempValorSeguro("");
+                setShowSeguroModal(true);
+              }}
+            >
+              <i className="bi bi-plus-lg"></i>Agregar
+            </button>
+          ) : (
+            <button
+              className="qa-addon-btn-remove"
+              onClick={() => handleToggleSeguro(false)}
+            >
+              <i className="bi bi-x-lg"></i>Remover
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Card: Desconsolidación */}
+      <div className={`qa-addon-card${gastolocal ? " is-active" : ""}`}>
+        <div className="qa-addon-card__image">
+          <img
+            src={imgUrl("addcargos/gastos-locales.png")}
+            alt="Desconsolidación"
+            loading="lazy"
+          />
+        </div>
+        <div className="qa-addon-card__body">
+          <h4>{t("QuoteAIR.desconsolidacion")}</h4>
+          <p>
+            Incluye los gastos de desconsolidación en destino para retirar tu
+            cargamento del almacén aéreo. Cargo fijo aplicable al momento de la
+            entrega.
+          </p>
+        </div>
+        <div className="qa-addon-card__action">
+          {!gastolocal ? (
+            <button
+              className="qa-addon-btn-add"
+              onClick={() => setGastolocal(true)}
+            >
+              <i className="bi bi-plus-lg"></i>Agregar
+            </button>
+          ) : (
+            <button
+              className="qa-addon-btn-remove"
+              onClick={() => setGastolocal(false)}
+            >
+              <i className="bi bi-x-lg"></i>Remover
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Card: Live Tracking (Free) */}
+      <div
+        className={`qa-addon-card${liveTrackingActivo ? " is-active" : ""}`}
+      >
+        <div className="qa-addon-card__image">
+          <img
+            src={imgUrl("addcargos/live-tracking.png")}
+            alt="Live Tracking"
+            loading="lazy"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).style.display = "none";
+            }}
+          />
+        </div>
+        <div className="qa-addon-card__body">
+          <h4>
+            Live Tracking{" "}
+            <span className="qa-badge qa-badge-primary ms-1">Free</span>
+          </h4>
+          <p>
+            Monitorea tu cargamento en tiempo real durante todo el tránsito.
+            Recibe notificaciones automáticas en cada hito del envío. Servicio
+            sin costo adicional.
+          </p>
+        </div>
+        <div className="qa-addon-card__action">
+          {!liveTrackingActivo ? (
+            <button
+              className="qa-addon-btn-add"
+              onClick={() => setLiveTrackingActivo(true)}
+            >
+              <i className="bi bi-plus-lg"></i>Agregar
+            </button>
+          ) : (
+            <button
+              className="qa-addon-btn-remove"
+              onClick={() => setLiveTrackingActivo(false)}
+            >
+              <i className="bi bi-x-lg"></i>Remover
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Card: Transporte Terrestre en Destino */}
+      <div
+        className={`qa-addon-card${ultimaMillaActivo ? " is-active" : ""}`}
+      >
+        <div className="qa-addon-card__image">
+          <img
+            src={imgUrl("addcargos/ultima-milla.png")}
+            alt="Transporte Terrestre en Destino"
+            loading="lazy"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).style.display = "none";
+            }}
+          />
+        </div>
+        <div className="qa-addon-card__body">
+          <h4>Agregar Transporte Terrestre en Destino</h4>
+          {!ultimaMillaDisponibleDestino && (
+            <p className="text-warning small mb-2">
+              <i className="bi bi-exclamation-triangle me-1"></i>
+              Este servicio solo está disponible para rutas con aeropuerto de
+              destino Santiago de Chile.
+            </p>
+          )}
+          <p>
+            Transporte terrestre desde el aeropuerto de Santiago hasta su
+            bodega. Tarifa según peso real total (kg) de las piezas.
+          </p>
+          {ultimaMillaDisponibleDestino && !ultimaMillaCargaEnRango && (
+            <p className="text-danger small mb-0 mt-2">
+              Ingrese el peso real de las piezas (máx. {aereoTtConfig.maxKg} kg)
+              para cotizar transporte terrestre.
+            </p>
+          )}
+          {ultimaMillaActivo && ultimaMillaDireccion && (
+            <span
+              className="qa-badge qa-badge-primary mt-2"
+              style={{ display: "inline-block" }}
+            >
+              Entrega: {ultimaMillaDireccion}
+            </span>
+          )}
+        </div>
+        <div className="qa-addon-card__action">
+          {!ultimaMillaActivo ? (
+            <button
+              className="qa-addon-btn-add"
+              disabled={
+                !ultimaMillaDisponibleDestino || !ultimaMillaCargaEnRango
+              }
+              onClick={() => {
+                if (
+                  !ultimaMillaDisponibleDestino ||
+                  !ultimaMillaCargaEnRango
+                ) {
+                  return;
+                }
+                setTempUltimaMillaDireccion("");
+                setTempUltimaMillaZone(null);
+                setShowUltimaMillaModal(true);
+              }}
+            >
+              {!ultimaMillaDisponibleDestino ? (
+                "No Disponible"
+              ) : (
+                <>
+                  <i className="bi bi-plus-lg"></i>Agregar
+                </>
+              )}
+            </button>
+          ) : (
+            <button
+              className="qa-addon-btn-remove"
+              onClick={resetUltimaMilla}
+            >
+              <i className="bi bi-x-lg"></i>Remover
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Card: Agencia de Aduanas */}
+      {!aduanaConfigLoading && (
+        <div className={`qa-addon-card${aduanaActivo ? " is-active" : ""}`}>
+          <div className="qa-addon-card__image">
+            <img
+              src={imgUrl("addcargos/agencia-aduanas.png")}
+              alt="Agencia de Aduanas"
+              loading="lazy"
+            />
+          </div>
+          <div className="qa-addon-card__body">
+            <h4>{t("AgenciaAduana.toggle")}</h4>
+            <p>
+              Servicio integral de despacho aduanero y nacionalización de tu
+              cargamento en destino. Incluye honorarios, gastos de despacho y
+              tramitación oficial.
+            </p>
+            {aduanaActivo && valorProductoAduana && (
+              <span
+                className="qa-badge qa-badge-primary mt-2"
+                style={{ display: "inline-block" }}
+              >
+                Valor producto: {rutaSeleccionada.currency}{" "}
+                {valorProductoAduana}
+                {aduanaMaster === false && (
+                  <span className="ms-1">
+                    <i className="bi bi-lock-fill"></i>
+                  </span>
+                )}
+              </span>
+            )}
+          </div>
+          <div className="qa-addon-card__action">
+            {!aduanaActivo ? (
+              <button
+                className="qa-addon-btn-add"
+                onClick={() => {
+                  setTempValorAduana("");
+                  setShowAduanaModal(true);
+                }}
+              >
+                <i className="bi bi-plus-lg"></i>Agregar
+              </button>
+            ) : (
+              <button
+                className="qa-addon-btn-remove"
+                onClick={() => handleToggleAduana(false)}
+              >
+                <i className="bi bi-x-lg"></i>Remover
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  ) : null;
+
+  const airAduanaBreakdown =
+    aduanaActivo && !aduanaConfigLoading && aduanaConfig && rutaSeleccionada ? (
+      <div className="mt-3 px-1">
+        <AduanaSection
+          activo={aduanaActivo}
+          onToggle={handleToggleAduana}
+          valorProducto={valorProductoAduana}
+          onValorProductoChange={handleValorProductoAduanaChange}
+          costoTransporte={calculateCostoTransporteBase()}
+          seguroActivo={seguroActivo}
+          seguroMonto={seguroActivo ? calculateSeguro() : 0}
+          currency={rutaSeleccionada.currency as SupportedCurrency}
+          config={aduanaConfig}
+          configLoading={aduanaConfigLoading}
+          valorProductoDisabled={aduanaMaster === false}
+        />
+      </div>
+    ) : null;
+
+  const airReviewAddonsGrid = rutaSeleccionada ? (
+    <div className="row g-3">
+      <AirReviewAddonCard
+        title="Seguro de Carga"
+        description="Protección contra daños, pérdidas y robos durante el transporte aéreo."
+        imageSrc={imgUrl("addcargos/seguro1.png")}
+        active={seguroActivo}
+        detail={
+          seguroActivo && valorMercaderia
+            ? `Valor declarado: ${rutaSeleccionada.currency} ${valorMercaderia}`
+            : undefined
+        }
+        onToggle={() => {
+          if (seguroActivo) {
+            handleToggleSeguro(false);
+            return;
+          }
+          setTempValorSeguro("");
+          setShowSeguroModal(true);
+        }}
+      />
+      <AirReviewAddonCard
+        title={t("QuoteAIR.desconsolidacion")}
+        description="Gastos de desconsolidación en destino para retirar el cargamento del almacén aéreo."
+        imageSrc={imgUrl("addcargos/gastos-locales.png")}
+        active={gastolocal}
+        onToggle={() => setGastolocal(!gastolocal)}
+      />
+      <AirReviewAddonCard
+        title="Live Tracking"
+        description="Monitoreo en tiempo real con notificaciones automáticas en cada hito del envío."
+        imageSrc={imgUrl("addcargos/live-tracking.png")}
+        active={liveTrackingActivo}
+        badge="Gratuito"
+        onToggle={() => setLiveTrackingActivo(!liveTrackingActivo)}
+      />
+      <AirReviewAddonCard
+        title="Transporte Terrestre en Destino"
+        description="Entrega desde el aeropuerto de Santiago hasta su bodega."
+        imageSrc={imgUrl("addcargos/ultima-milla.png")}
+        active={ultimaMillaActivo}
+        disabled={
+          !ultimaMillaDisponibleDestino ||
+          (!ultimaMillaActivo && !ultimaMillaCargaEnRango)
+        }
+        warning={
+          !ultimaMillaDisponibleDestino
+            ? "Solo disponible para rutas con destino Santiago de Chile."
+            : ultimaMillaDisponibleDestino && !ultimaMillaCargaEnRango
+              ? `Ingrese el peso real de las piezas (máx. ${aereoTtConfig.maxKg} kg).`
+              : undefined
+        }
+        detail={
+          ultimaMillaActivo && ultimaMillaDireccion
+            ? `Entrega: ${ultimaMillaDireccion}`
+            : undefined
+        }
+        onToggle={() => {
+          if (ultimaMillaActivo) {
+            resetUltimaMilla();
+            return;
+          }
+          setTempUltimaMillaDireccion("");
+          setTempUltimaMillaZone(null);
+          setShowUltimaMillaModal(true);
+        }}
+      />
+      {!aduanaConfigLoading && (
+        <AirReviewAddonCard
+          title={t("AgenciaAduana.toggle")}
+          description="Despacho aduanero y nacionalización del cargamento en destino."
+          imageSrc={imgUrl("addcargos/agencia-aduanas.png")}
+          active={aduanaActivo}
+          detail={
+            aduanaActivo && valorProductoAduana
+              ? `Valor producto: ${rutaSeleccionada.currency} ${valorProductoAduana}`
+              : undefined
+          }
+          onToggle={() => {
+            if (aduanaActivo) {
+              handleToggleAduana(false);
+              return;
+            }
+            setTempValorAduana("");
+            setShowAduanaModal(true);
+          }}
+        />
+      )}
+    </div>
+  ) : null;
+
   // ============================================================================
   // RENDER
   // ============================================================================
@@ -6758,306 +7268,8 @@ function QuoteAPITester({
           </div>
 
           <div>
-            <div
-              className={`qa-addons-list${transportAddonExpandedLayout ? " qa-addons-list--expanded" : ""}`}
-            >
-              {/* Card: Seguro de Carga */}
-              <div
-                className={`qa-addon-card${seguroActivo ? " is-active" : ""}`}
-              >
-                <div className="qa-addon-card__image">
-                  <img
-                    src={imgUrl("addcargos/seguro1.png")}
-                    alt="Seguro de carga"
-                    loading="lazy"
-                  />
-                </div>
-                <div className="qa-addon-card__body">
-                  <h4>Agregar Seguro de Carga</h4>
-                  <p>
-                    Protege tu cargamento contra daños, pérdidas y robos durante
-                    el transporte aéreo. Se calcula en base al valor declarado
-                    de la mercadería.
-                  </p>
-                  {seguroActivo && valorMercaderia && (
-                    <span
-                      className="qa-badge qa-badge-primary mt-2"
-                      style={{ display: "inline-block" }}
-                    >
-                      Valor declarado: {rutaSeleccionada.currency}{" "}
-                      {valorMercaderia}
-                      {aduanaMaster === true && (
-                        <span className="ms-1">
-                          <i className="bi bi-lock-fill"></i>
-                        </span>
-                      )}
-                    </span>
-                  )}
-                </div>
-                <div className="qa-addon-card__action">
-                  {!seguroActivo ? (
-                    <button
-                      className="qa-addon-btn-add"
-                      onClick={() => {
-                        setTempValorSeguro("");
-                        setShowSeguroModal(true);
-                      }}
-                    >
-                      <i className="bi bi-plus-lg"></i>Agregar
-                    </button>
-                  ) : (
-                    <button
-                      className="qa-addon-btn-remove"
-                      onClick={() => handleToggleSeguro(false)}
-                    >
-                      <i className="bi bi-x-lg"></i>Remover
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Card: Desconsolidación */}
-              <div className={`qa-addon-card${gastolocal ? " is-active" : ""}`}>
-                <div className="qa-addon-card__image">
-                  <img
-                    src={imgUrl("addcargos/gastos-locales.png")}
-                    alt="Desconsolidación"
-                    loading="lazy"
-                  />
-                </div>
-                <div className="qa-addon-card__body">
-                  <h4>{t("QuoteAIR.desconsolidacion")}</h4>
-                  <p>
-                    Incluye los gastos de desconsolidación en destino para
-                    retirar tu cargamento del almacén aéreo. Cargo fijo
-                    aplicable al momento de la entrega.
-                  </p>
-                </div>
-                <div className="qa-addon-card__action">
-                  {!gastolocal ? (
-                    <button
-                      className="qa-addon-btn-add"
-                      onClick={() => setGastolocal(true)}
-                    >
-                      <i className="bi bi-plus-lg"></i>Agregar
-                    </button>
-                  ) : (
-                    <button
-                      className="qa-addon-btn-remove"
-                      onClick={() => setGastolocal(false)}
-                    >
-                      <i className="bi bi-x-lg"></i>Remover
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Card: Live Tracking (Free) */}
-              <div
-                className={`qa-addon-card${liveTrackingActivo ? " is-active" : ""}`}
-              >
-                <div className="qa-addon-card__image">
-                  <img
-                    src={imgUrl("addcargos/live-tracking.png")}
-                    alt="Live Tracking"
-                    loading="lazy"
-                    onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).style.display =
-                        "none";
-                    }}
-                  />
-                </div>
-                <div className="qa-addon-card__body">
-                  <h4>
-                    Live Tracking{" "}
-                    <span className="qa-badge qa-badge-primary ms-1">Free</span>
-                  </h4>
-                  <p>
-                    Monitorea tu cargamento en tiempo real durante todo el
-                    tránsito. Recibe notificaciones automáticas en cada hito del
-                    envío. Servicio sin costo adicional.
-                  </p>
-                </div>
-                <div className="qa-addon-card__action">
-                  {!liveTrackingActivo ? (
-                    <button
-                      className="qa-addon-btn-add"
-                      onClick={() => setLiveTrackingActivo(true)}
-                    >
-                      <i className="bi bi-plus-lg"></i>Agregar
-                    </button>
-                  ) : (
-                    <button
-                      className="qa-addon-btn-remove"
-                      onClick={() => setLiveTrackingActivo(false)}
-                    >
-                      <i className="bi bi-x-lg"></i>Remover
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Card: Transporte Terrestre en Destino */}
-              <div
-                className={`qa-addon-card${ultimaMillaActivo ? " is-active" : ""}`}
-              >
-                <div className="qa-addon-card__image">
-                  <img
-                    src={imgUrl("addcargos/ultima-milla.png")}
-                    alt="Transporte Terrestre en Destino"
-                    loading="lazy"
-                    onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).style.display =
-                        "none";
-                    }}
-                  />
-                </div>
-                <div className="qa-addon-card__body">
-                  <h4>Agregar Transporte Terrestre en Destino</h4>
-                  {!ultimaMillaDisponibleDestino && (
-                    <p className="text-warning small mb-2">
-                      <i className="bi bi-exclamation-triangle me-1"></i>
-                      Este servicio solo está disponible para rutas con
-                      aeropuerto de destino Santiago de Chile.
-                    </p>
-                  )}
-                  <p>
-                    Transporte terrestre desde el aeropuerto de Santiago hasta su
-                    bodega. Tarifa según peso real total (kg) de las piezas.
-                  </p>
-                  {ultimaMillaDisponibleDestino && !ultimaMillaCargaEnRango && (
-                    <p className="text-danger small mb-0 mt-2">
-                      Ingrese el peso real de las piezas (máx.{" "}
-                      {aereoTtConfig.maxKg} kg) para cotizar transporte terrestre.
-                    </p>
-                  )}
-                  {ultimaMillaActivo && ultimaMillaDireccion && (
-                    <span
-                      className="qa-badge qa-badge-primary mt-2"
-                      style={{ display: "inline-block" }}
-                    >
-                      Entrega: {ultimaMillaDireccion}
-                    </span>
-                  )}
-                </div>
-                <div className="qa-addon-card__action">
-                  {!ultimaMillaActivo ? (
-                    <button
-                      className="qa-addon-btn-add"
-                      disabled={
-                        !ultimaMillaDisponibleDestino ||
-                        !ultimaMillaCargaEnRango
-                      }
-                      onClick={() => {
-                        if (
-                          !ultimaMillaDisponibleDestino ||
-                          !ultimaMillaCargaEnRango
-                        ) {
-                          return;
-                        }
-                        setTempUltimaMillaDireccion("");
-                        setTempUltimaMillaZone(null);
-                        setShowUltimaMillaModal(true);
-                      }}
-                    >
-                      {!ultimaMillaDisponibleDestino ? (
-                        "No Disponible"
-                      ) : (
-                        <>
-                          <i className="bi bi-plus-lg"></i>Agregar
-                        </>
-                      )}
-                    </button>
-                  ) : (
-                    <button
-                      className="qa-addon-btn-remove"
-                      onClick={resetUltimaMilla}
-                    >
-                      <i className="bi bi-x-lg"></i>Remover
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Card: Agencia de Aduanas */}
-              {!aduanaConfigLoading && (
-                <div
-                  className={`qa-addon-card${aduanaActivo ? " is-active" : ""}`}
-                >
-                  <div className="qa-addon-card__image">
-                    <img
-                      src={imgUrl("addcargos/agencia-aduanas.png")}
-                      alt="Agencia de Aduanas"
-                      loading="lazy"
-                    />
-                  </div>
-                  <div className="qa-addon-card__body">
-                    <h4>{t("AgenciaAduana.toggle")}</h4>
-                    <p>
-                      Servicio integral de despacho aduanero y nacionalización
-                      de tu cargamento en destino. Incluye honorarios, gastos de
-                      despacho y tramitación oficial.
-                    </p>
-                    {aduanaActivo && valorProductoAduana && (
-                      <span
-                        className="qa-badge qa-badge-primary mt-2"
-                        style={{ display: "inline-block" }}
-                      >
-                        Valor producto: {rutaSeleccionada.currency}{" "}
-                        {valorProductoAduana}
-                        {aduanaMaster === false && (
-                          <span className="ms-1">
-                            <i className="bi bi-lock-fill"></i>
-                          </span>
-                        )}
-                      </span>
-                    )}
-                  </div>
-                  <div className="qa-addon-card__action">
-                    {!aduanaActivo ? (
-                      <button
-                        className="qa-addon-btn-add"
-                        onClick={() => {
-                          setTempValorAduana("");
-                          setShowAduanaModal(true);
-                        }}
-                      >
-                        <i className="bi bi-plus-lg"></i>Agregar
-                      </button>
-                    ) : (
-                      <button
-                        className="qa-addon-btn-remove"
-                        onClick={() => handleToggleAduana(false)}
-                      >
-                        <i className="bi bi-x-lg"></i>Remover
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Desglose Agencia de Aduanas */}
-            {aduanaActivo &&
-              !aduanaConfigLoading &&
-              aduanaConfig &&
-              rutaSeleccionada && (
-                <div className="mt-3 px-1">
-                  <AduanaSection
-                    activo={aduanaActivo}
-                    onToggle={handleToggleAduana}
-                    valorProducto={valorProductoAduana}
-                    onValorProductoChange={handleValorProductoAduanaChange}
-                    costoTransporte={calculateCostoTransporteBase()}
-                    seguroActivo={seguroActivo}
-                    seguroMonto={seguroActivo ? calculateSeguro() : 0}
-                    currency={rutaSeleccionada.currency as SupportedCurrency}
-                    config={aduanaConfig}
-                    configLoading={aduanaConfigLoading}
-                    valorProductoDisabled={aduanaMaster === false}
-                  />
-                </div>
-              )}
+            {airAddonsList}
+            {airAduanaBreakdown}
 
             {/* Botón Continuar */}
             <div className="d-flex justify-content-end mt-4 pt-3 border-top">
@@ -7094,103 +7306,265 @@ function QuoteAPITester({
           </div>
 
           <>
-            <div className="qa-grid-1 mb-4">
-              {/* Resumen de Pesos/Volumen */}
-              <div className="p-3 bg-light rounded border">
-                <h6 className="fw-bold mb-3">
-                  <i className="bi bi-box-seam me-2"></i>
-                  {t("QuoteAIR.resumen")}
-                </h6>
-                {!overallDimsAndWeight ? (
-                  (() => {
-                    const {
-                      totalRealWeight: totalWeight,
-                      totalVolumetricWeight: totalVolumeWeight,
-                    } = calculateTotals();
-                    const totalVolume = piecesData.reduce(
-                      (sum, piece) => sum + piece.totalVolume,
-                      0,
-                    );
-                    return (
-                      <div className="row g-2 small">
-                        <div className="col-6 text-muted">
-                          {t("QuoteAIR.volumenpieza")}:
-                        </div>
-                        <div className="col-6 text-end fw-bold">
-                          {(piecesData[0]?.volume ?? 0).toFixed(4)} m³
-                        </div>
+            {(() => {
+              const {
+                totalRealWeight,
+                totalVolumetricWeight,
+              } = calculateTotals();
+              const totalVolumeDetailed = piecesData.reduce(
+                (sum, piece) => sum + (piece.volume || 0),
+                0,
+              );
+              const originIata =
+                getAirportByOrigin(rutaSeleccionada.originNormalized)?.iata ??
+                "";
+              const destinationIata =
+                getAirportByOrigin(rutaSeleccionada.destinationNormalized)
+                  ?.iata ?? "";
 
-                        <div className="col-6 text-muted">
-                          {t("QuoteAIR.volumenvolpieza")}:
-                        </div>
-                        <div className="col-6 text-end fw-bold">
-                          {(piecesData[0]?.volumeWeight ?? 0).toFixed(2)} kg
-                        </div>
+              return (
+                <>
+                  <div className="mb-4">
+                    {incoterm && (
+                      <div className="d-flex justify-content-end mb-3">
+                        <span className="qa-badge qa-badge-primary">
+                          Incoterm: {incoterm}
+                        </span>
+                      </div>
+                    )}
 
-                        <div className="col-12 border-top my-2"></div>
-
-                        <div className="col-6 text-muted">
-                          {t("QuoteAIR.volumentotal1")}:
+                    <div className="mb-4">
+                      <h5 className="fs-6 fw-bold mb-3">Ruta</h5>
+                      <div className="qa-route-summary-cards mb-3">
+                        <div className="qa-route-summary-card">
+                          <small>Origen</small>
+                          {originIata && (
+                            <div className="qa-route-summary-iata">{originIata}</div>
+                          )}
+                          <div className="qa-route-summary-city">
+                            {rutaSeleccionada.origin}
+                          </div>
                         </div>
-                        <div className="col-6 text-end fw-bold">
-                          {totalVolume.toFixed(4)} m³
-                        </div>
-
-                        <div className="col-6 text-muted">
-                          {t("QuoteAIR.pesototal1")}:
-                        </div>
-                        <div className="col-6 text-end fw-bold">
-                          {totalWeight.toFixed(2)} kg
-                        </div>
-
-                        <div className="col-6 text-muted">
-                          {t("QuoteAIR.pesovoltotal")}:
-                        </div>
-                        <div className="col-6 text-end fw-bold">
-                          {totalVolumeWeight.toFixed(2)} kg
-                        </div>
-
-                        <div className="col-6 text-dark fw-bold">
-                          {t("QuoteAIR.pesochargeable")}:
-                        </div>
-                        <div className="col-6 text-end fw-bolder text-primary fs-6">
-                          {pesoChargeable.toFixed(2)} kg
+                        <div className="qa-route-summary-arrow">→</div>
+                        <div className="qa-route-summary-card">
+                          <small>Destino</small>
+                          {destinationIata && (
+                            <div className="qa-route-summary-iata">
+                              {destinationIata}
+                            </div>
+                          )}
+                          <div className="qa-route-summary-city">
+                            {rutaSeleccionada.destination}
+                          </div>
                         </div>
                       </div>
-                    );
-                  })()
-                ) : (
-                  <div className="row g-2 small">
-                    <div className="col-6 text-muted">
-                      {t("QuoteAIR.volumentotal1")}:
-                    </div>
-                    <div className="col-6 text-end fw-bold">
-                      {manualVolume.toFixed(4)} m³
+
+                      {(rutaSeleccionada.carrier || rutaSeleccionada.transitTime) && (
+                        <div className="qa-route-summary-meta mb-3">
+                          {rutaSeleccionada.carrier && !sinTarifa && (
+                            <span className="qa-route-carrier-badge">
+                              {rutaSeleccionada.carrier}
+                            </span>
+                          )}
+                          {rutaSeleccionada.transitTime && !sinTarifa && (
+                            <span className="qa-route-meta-pill">
+                              Tránsito: {rutaSeleccionada.transitTime} días
+                            </span>
+                          )}
+                          <span className="qa-route-meta-pill">
+                            {overallDimsAndWeight
+                              ? `${overallPiecesCount} pieza${overallPiecesCount === 1 ? "" : "s"}`
+                              : `${piecesData.length} pieza${piecesData.length === 1 ? "" : "s"}`}
+                          </span>
+                        </div>
+                      )}
                     </div>
 
-                    <div className="col-6 text-muted">
-                      {t("QuoteAIR.pesototal1")}:
-                    </div>
-                    <div className="col-6 text-end fw-bold">
-                      {manualWeight.toFixed(2)} kg
+                    <div className="mb-4">
+                      <h5 className="fs-6 fw-bold mb-3">Detalle de Piezas</h5>
+                      {!overallDimsAndWeight ? (
+                        <div className="qa-table-container mb-3">
+                          <table className="qa-table">
+                            <thead>
+                              <tr>
+                                <th>Pieza</th>
+                                <th>Tipo / Descripción</th>
+                                <th>Dimensiones (cm)</th>
+                                <th>Peso real</th>
+                                <th>Volumen</th>
+                                <th>Peso vol.</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {piecesData.map((piece, index) => (
+                                <tr key={piece.id}>
+                                  <td className="fw-semibold">#{index + 1}</td>
+                                  <td>
+                                    <div>
+                                      {resolveAirPackageTypeLabel(piece.packageType)}
+                                    </div>
+                                    {piece.description && (
+                                      <small className="qa-text-muted d-block">
+                                        {piece.description}
+                                      </small>
+                                    )}
+                                    {piece.noApilable && (
+                                      <span
+                                        className="qa-badge mt-1"
+                                        style={{ display: "inline-block" }}
+                                      >
+                                        No apilable
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td>
+                                    {piece.length} × {piece.width} × {piece.height}
+                                  </td>
+                                  <td>{piece.weight.toFixed(2)} kg</td>
+                                  <td>{(piece.volume || 0).toFixed(4)} m³</td>
+                                  <td>{(piece.volumeWeight || 0).toFixed(2)} kg</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <div className="qa-table-container mb-3">
+                          <table className="qa-table">
+                            <thead>
+                              <tr>
+                                <th>Pieza</th>
+                                <th>Tipo</th>
+                                <th>Volumen</th>
+                                <th>Peso real</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {overallPiecesData.map((piece, index) => (
+                                <tr key={piece.id}>
+                                  <td className="fw-semibold">#{index + 1}</td>
+                                  <td>{FIXED_AIR_PACKAGE_TYPE_NAME}</td>
+                                  <td>{piece.volume.toFixed(4)} m³</td>
+                                  <td>{piece.weight.toFixed(2)} kg</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
                     </div>
 
-                    <div className="col-12 border-top my-2"></div>
-
-                    <div className="col-6 text-dark fw-bold">
-                      {t("QuoteAIR.chargeable")}:
-                    </div>
-                    <div className="col-6 text-end fw-bolder text-primary fs-6">
-                      {pesoChargeable.toFixed(2)} kg
+                    <div>
+                      <h5 className="fs-6 fw-bold mb-3">Totales del Cargamento</h5>
+                      <div className="qa-totals-bar" style={{ marginTop: 0 }}>
+                        {!overallDimsAndWeight ? (
+                          <>
+                            <div className="qa-totals-bar-item">
+                              <span className="qa-totals-bar-value">
+                                {totalVolumeDetailed.toFixed(4)} m³
+                              </span>
+                              <span className="qa-totals-bar-label">
+                                {t("QuoteAIR.volumentotal1")}
+                              </span>
+                            </div>
+                            <div className="qa-totals-bar-item">
+                              <span className="qa-totals-bar-value">
+                                {totalRealWeight.toFixed(2)} kg
+                              </span>
+                              <span className="qa-totals-bar-label">
+                                {t("QuoteAIR.pesototal1")}
+                              </span>
+                            </div>
+                            <div className="qa-totals-bar-item">
+                              <span className="qa-totals-bar-value">
+                                {totalVolumetricWeight.toFixed(2)} kg
+                              </span>
+                              <span className="qa-totals-bar-label">
+                                {t("QuoteAIR.pesovoltotal")}
+                              </span>
+                            </div>
+                            <div
+                              className="qa-totals-bar-item"
+                              style={{ background: "rgba(255, 98, 0, 0.06)" }}
+                            >
+                              <span className="qa-totals-bar-value">
+                                {pesoChargeable.toFixed(2)} kg
+                              </span>
+                              <span className="qa-totals-bar-label">
+                                {t("QuoteAIR.pesochargeable")}
+                              </span>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="qa-totals-bar-item">
+                              <span className="qa-totals-bar-value">
+                                {overallPiecesCount}
+                              </span>
+                              <span className="qa-totals-bar-label">
+                                Piezas
+                              </span>
+                            </div>
+                            <div className="qa-totals-bar-item">
+                              <span className="qa-totals-bar-value">
+                                {manualVolume.toFixed(4)} m³
+                              </span>
+                              <span className="qa-totals-bar-label">
+                                {t("QuoteAIR.volumentotal1")}
+                              </span>
+                            </div>
+                            <div className="qa-totals-bar-item">
+                              <span className="qa-totals-bar-value">
+                                {manualWeight.toFixed(2)} kg
+                              </span>
+                              <span className="qa-totals-bar-label">
+                                {t("QuoteAIR.pesototal1")}
+                              </span>
+                            </div>
+                            <div className="qa-totals-bar-item">
+                              <span className="qa-totals-bar-value">
+                                {pesoVolumetricoOverall.toFixed(2)} kg
+                              </span>
+                              <span className="qa-totals-bar-label">
+                                {t("QuoteAIR.pesovoltotal")}
+                              </span>
+                            </div>
+                            <div
+                              className="qa-totals-bar-item"
+                              style={{ background: "rgba(255, 98, 0, 0.06)" }}
+                            >
+                              <span className="qa-totals-bar-value">
+                                {pesoChargeable.toFixed(2)} kg
+                              </span>
+                              <span className="qa-totals-bar-label">
+                                {t("QuoteAIR.chargeable")}
+                              </span>
+                            </div>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
-                )}
-              </div>
-            </div>
+
+                  <div className="mb-4">
+                    <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+                      <h4 className="fs-6 fw-bold mb-0">Servicios Adicionales</h4>
+                      {activeAddonsCount > 0 && (
+                        <span className="qa-badge qa-badge-primary">
+                          {activeAddonsCount} seleccionado
+                          {activeAddonsCount === 1 ? "" : "s"}
+                        </span>
+                      )}
+                    </div>
+
+                    {airReviewAddonsGrid}
+                  </div>
+                </>
+              );
+            })()}
 
             {(weightError || dimensionError) && (
               <div className="qa-alert qa-alert-warning mt-3">
-                <i className="bi bi-exclamation-triangle-fill"></i>
                 <div>
                   <strong>{t("QuoteAIR.correccion")}</strong>{" "}
                   {weightError || dimensionError}
@@ -7267,7 +7641,6 @@ function QuoteAPITester({
                   >
                     <span className="quote-btn-content">
                       {t("QuoteAIR.generarcotizacion")}
-                      <i className="ti ti-arrow-right"></i>
                     </span>
                     {btnPhase === "loading" && (
                       <div className="quote-spinner-ring" />
@@ -7301,9 +7674,6 @@ function QuoteAPITester({
                   </button>
                 ) : (
                   <div className="quote-confirm-row">
-                    <span className="quote-confirm-dot">
-                      <i className="ti ti-check" />
-                    </span>
                     <span className="quote-confirm-text">
                       Cotización generada
                     </span>
@@ -7319,7 +7689,6 @@ function QuoteAPITester({
                         }
                       }}
                     >
-                      <i className="ti ti-download" />
                       Descargar PDF
                     </button>
                   </div>
