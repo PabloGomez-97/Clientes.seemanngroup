@@ -6,11 +6,20 @@ import {
   toIsoDate,
 } from "@/components/administrador/reporteria/financiera/quoteUtils";
 import {
-  fetchQuoteProfitIndex,
-  lookupQuoteFromProfitIndex,
-  type LinbisFetchOptions,
-} from "@/services/linbisQuoteLookup";
+  fetchClientQuoteProfitIndex,
+  fetchClientShipmentIndex,
+  lookupClientQuoteNumber,
+} from "@/services/linbisClientBulkFetch";
 import { linbisFetch } from "@/services/linbisFetch";
+import {
+  buildShipmentNumberSet,
+  normalizeShipmentKey,
+} from "@/utils/linbisClientFilter";
+import {
+  extractQuoteNumberFromInvoice,
+  parseQuoteCurrency,
+  type InvoiceLike,
+} from "@/utils/invoiceFinancial";
 
 const LINBIS_JSON_HEADERS = {
   Accept: "application/json",
@@ -26,8 +35,15 @@ export type ClientFinancialPeriod =
 
 export type ShipmentAccountingInfo = {
   accountingStatus: string | null;
-  accountingParcial: string | null;
+  masterNumber: string | null;
+  waybillNumber: string | null;
+  customerReference: string | null;
   currentFlow: string | null;
+};
+
+export type QuoteChargeDetail = {
+  description: string;
+  amount: number;
 };
 
 export type QuoteComplementSummary = {
@@ -36,9 +52,10 @@ export type QuoteComplementSummary = {
   status: string;
   origin: string;
   destination: string;
+  modeOfTransportation: string;
+  currency: string | null;
   totalIncome: number;
-  totalExpense: number;
-  profit: number;
+  chargeDetails: QuoteChargeDetail[];
 };
 
 export type InvoiceComplementData = {
@@ -47,13 +64,11 @@ export type InvoiceComplementData = {
   quoteNumber: string | null;
 };
 
-type ProfitCacheEntry = {
-  fetchedAt: number;
-  promise: Promise<Awaited<ReturnType<typeof fetchQuoteProfitIndex>>>;
+type LinbisFetchOptions = {
+  accessToken: string;
+  refreshAccessToken?: () => Promise<string>;
+  signal?: AbortSignal;
 };
-
-let profitIndexCache: ProfitCacheEntry | null = null;
-const PROFIT_CACHE_TTL_MS = 60 * 60 * 1000;
 
 const complementCache = new Map<string, InvoiceComplementData>();
 
@@ -86,27 +101,49 @@ export function getClientPeriodRange(period: ClientFinancialPeriod): {
   return { startDate: toIsoDate(start), endDate: toIsoDate(end) };
 }
 
+function normalizeShipmentRecord(
+  raw: Record<string, unknown>,
+): ShipmentAccountingInfo {
+  return {
+    accountingStatus:
+      typeof raw.accountingStatus === "string" ? raw.accountingStatus : null,
+    masterNumber:
+      typeof raw.masterNumber === "string" ? raw.masterNumber : null,
+    waybillNumber:
+      typeof raw.waybillNumber === "string" ? raw.waybillNumber : null,
+    customerReference:
+      typeof raw.customerReference === "string" ? raw.customerReference : null,
+    currentFlow:
+      typeof raw.currentFlow === "string" ? raw.currentFlow : null,
+  };
+}
+
 function normalizeQuoteSummary(
   raw: Record<string, unknown>,
 ): QuoteComplementSummary {
-  const income = parseLinbisAmount(
-    raw.totalIncome ??
-      raw.totalCharge_IncomeValue ??
-      raw.totalCharge_IncomeDisplayValue,
-  );
-  const expense = parseLinbisAmount(
-    raw.totalExpense ??
-      raw.totalCharge_ExpenseValue ??
-      raw.totalCharge_ExpenseDisplayValue,
-  );
-  let profit = parseLinbisAmount(
-    raw.profit ??
-      raw.totalCharge_ProfitValue ??
-      raw.totalCharge_ProfitDisplayValue,
-  );
-  if (!profit && (income || expense)) {
-    profit = income - expense;
-  }
+  const chargeDetails = Array.isArray(raw.chargeDetails)
+    ? raw.chargeDetails
+        .map((item) => {
+          if (!item || typeof item !== "object") return null;
+          const charge = item as Record<string, unknown>;
+          const description = String(charge.description ?? "").trim();
+          const amount = parseLinbisAmount(charge.amount);
+          if (!description) return null;
+          return { description, amount };
+        })
+        .filter((item): item is QuoteChargeDetail => item !== null)
+    : [];
+
+  const mode =
+    typeof raw.modeOfTransportation === "string"
+      ? raw.modeOfTransportation
+      : raw.modeOfTransportation &&
+          typeof raw.modeOfTransportation === "object" &&
+          "name" in raw.modeOfTransportation
+        ? String(
+            (raw.modeOfTransportation as { name?: unknown }).name ?? "",
+          )
+        : "";
 
   return {
     number: String(raw.number ?? ""),
@@ -114,64 +151,14 @@ function normalizeQuoteSummary(
     status: getQuoteStatus(raw),
     origin: String(raw.origin ?? ""),
     destination: String(raw.destination ?? ""),
-    totalIncome: income,
-    totalExpense: expense,
-    profit,
-  };
-}
-
-function resolveShipmentDetailUrl(shipmentNumber: string): string | null {
-  const normalized = shipmentNumber.trim().toUpperCase();
-  if (normalized.startsWith("SOG")) {
-    return "https://api.linbis.com/air-shipments/number";
-  }
-  if (normalized.startsWith("HBLI")) {
-    return "https://api.linbis.com/ocean-shipments/number";
-  }
-  return null;
-}
-
-async function getProfitIndex(options: LinbisFetchOptions) {
-  const now = Date.now();
-  if (
-    profitIndexCache &&
-    now - profitIndexCache.fetchedAt < PROFIT_CACHE_TTL_MS
-  ) {
-    return profitIndexCache.promise;
-  }
-
-  const promise = fetchQuoteProfitIndex(options);
-  profitIndexCache = { fetchedAt: now, promise };
-  return promise;
-}
-
-async function fetchShipmentAccounting(
-  shipmentNumber: string,
-  options: LinbisFetchOptions,
-): Promise<ShipmentAccountingInfo | null> {
-  const baseUrl = resolveShipmentDetailUrl(shipmentNumber);
-  if (!baseUrl) return null;
-
-  const url = `${baseUrl}?number=${encodeURIComponent(shipmentNumber.trim())}`;
-  const response = await linbisFetch(
-    url,
-    { method: "GET", headers: LINBIS_JSON_HEADERS, signal: options.signal },
-    options.accessToken,
-    options.refreshAccessToken,
-  );
-
-  if (!response.ok) return null;
-
-  const data = (await response.json()) as Record<string, unknown>;
-  return {
-    accountingStatus:
-      typeof data.accountingStatus === "string" ? data.accountingStatus : null,
-    accountingParcial:
-      typeof data.accountingParcial === "string"
-        ? data.accountingParcial
-        : null,
-    currentFlow:
-      typeof data.currentFlow === "string" ? data.currentFlow : null,
+    modeOfTransportation: mode,
+    currency: parseQuoteCurrency(raw),
+    totalIncome: parseLinbisAmount(
+      raw.totalIncome ??
+        raw.totalCharge_IncomeValue ??
+        raw.totalCharge_IncomeDisplayValue,
+    ),
+    chargeDetails,
   };
 }
 
@@ -211,34 +198,45 @@ function buildComplementCacheKey(
 
 export async function fetchInvoiceComplement(
   invoiceKey: string,
-  shipmentNumber: string | null | undefined,
+  invoice: InvoiceLike,
   consigneeName: string,
+  clientShipmentNumbers: Set<string>,
   options: LinbisFetchOptions,
 ): Promise<InvoiceComplementData> {
   const cacheKey = buildComplementCacheKey(consigneeName, invoiceKey);
   const cached = complementCache.get(cacheKey);
   if (cached) return cached;
 
-  const trimmedShipment = shipmentNumber?.trim() || null;
-  let quoteNumber: string | null = null;
+  const shipmentNumber = invoice.shipment?.number?.trim() || null;
+  let quoteNumber = extractQuoteNumberFromInvoice(invoice);
 
-  const shipmentAccounting = trimmedShipment
-    ? await fetchShipmentAccounting(trimmedShipment, options)
-    : null;
+  let shipmentAccounting: ShipmentAccountingInfo | null = null;
+  if (shipmentNumber) {
+    const normalizedShipment = normalizeShipmentKey(shipmentNumber);
+    const shipmentIndex = await fetchClientShipmentIndex(
+      consigneeName,
+      options,
+    );
+    const record = shipmentIndex.get(normalizedShipment);
+    shipmentAccounting = record ? normalizeShipmentRecord(record) : null;
 
-  let quote: QuoteComplementSummary | null = null;
-  if (trimmedShipment) {
-    const profitIndex = await getProfitIndex(options);
-    const isAir = trimmedShipment.toUpperCase().startsWith("SOG");
-    quoteNumber = lookupQuoteFromProfitIndex(profitIndex, {
-      hbli: isAir ? null : trimmedShipment,
-      sogNumber: isAir ? trimmedShipment : null,
-    });
-
-    if (quoteNumber) {
-      quote = await fetchQuoteByNumber(consigneeName, quoteNumber, options);
+    if (
+      !quoteNumber &&
+      normalizedShipment &&
+      clientShipmentNumbers.has(normalizedShipment)
+    ) {
+      const profitIndex = await fetchClientQuoteProfitIndex(
+        consigneeName,
+        clientShipmentNumbers,
+        options,
+      );
+      quoteNumber = lookupClientQuoteNumber(profitIndex, normalizedShipment);
     }
   }
+
+  const quote = quoteNumber
+    ? await fetchQuoteByNumber(consigneeName, quoteNumber, options)
+    : null;
 
   const result: InvoiceComplementData = {
     shipmentAccounting,
@@ -261,12 +259,8 @@ export async function fetchQuotesComplementForPeriod(
     IncludeFreightCharges: "true",
   });
 
-  if (startDate) {
-    params.set("StartDate", `${startDate}T00:00:00`);
-  }
-  if (endDate) {
-    params.set("EndDate", `${endDate}T23:59:59`);
-  }
+  if (startDate) params.set("StartDate", `${startDate}T00:00:00`);
+  if (endDate) params.set("EndDate", `${endDate}T23:59:59`);
 
   const response = await linbisFetch(
     `https://api.linbis.com/Quotes/filter?${params}`,
@@ -292,7 +286,6 @@ export async function fetchQuotesComplementForPeriod(
 export function clearFinancialComplementCache(consigneeName?: string) {
   if (!consigneeName) {
     complementCache.clear();
-    profitIndexCache = null;
     return;
   }
 
@@ -302,3 +295,5 @@ export function clearFinancialComplementCache(consigneeName?: string) {
     }
   }
 }
+
+export { buildShipmentNumberSet };

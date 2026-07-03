@@ -7,31 +7,38 @@ import {
   type InvoiceComplementData,
   type QuoteComplementSummary,
 } from "@/services/linbisFinancialComplement";
+import {
+  getInvoiceCurrencyCode,
+  type InvoiceLike,
+} from "@/utils/invoiceFinancial";
 
 type FetchOptions = {
   accessToken: string;
   refreshAccessToken: () => Promise<string>;
 };
 
-type InvoiceLike = {
-  id?: number;
-  number?: string;
-  shipment?: { number?: string };
-  totalAmount?: { value?: number };
-};
-
 type InvoiceComplementPanelProps = {
   invoiceKey: string;
   invoice: InvoiceLike;
   consigneeName: string;
+  clientShipmentNumbers: Set<string>;
   fetchOptions: FetchOptions;
   formatCurrency: (value: number, currency?: string, decimals?: number) => string;
 };
+
+function formatQuoteAmount(
+  quote: QuoteComplementSummary,
+  formatCurrency: InvoiceComplementPanelProps["formatCurrency"],
+): string {
+  const currency = quote.currency ?? "USD";
+  return formatCurrency(quote.totalIncome, currency);
+}
 
 export function InvoiceComplementPanel({
   invoiceKey,
   invoice,
   consigneeName,
+  clientShipmentNumbers,
   fetchOptions,
   formatCurrency,
 }: InvoiceComplementPanelProps) {
@@ -49,9 +56,13 @@ export function InvoiceComplementPanel({
 
     fetchInvoiceComplement(
       invoiceKey,
-      invoice.shipment?.number,
+      invoice,
       consigneeName,
-      { ...fetchOptions, signal: controller.signal },
+      clientShipmentNumbers,
+      {
+        ...fetchOptions,
+        signal: controller.signal,
+      },
     )
       .then((result) => {
         if (!cancelled) {
@@ -72,9 +83,10 @@ export function InvoiceComplementPanel({
     };
   }, [
     invoiceKey,
-    invoice.shipment?.number,
+    invoice,
     consigneeName,
     fetchOptions.accessToken,
+    clientShipmentNumbers,
   ]);
 
   if (loading) {
@@ -94,11 +106,7 @@ export function InvoiceComplementPanel({
     );
   }
 
-  if (
-    !data?.shipmentAccounting &&
-    !data?.quote &&
-    !invoice.shipment?.number
-  ) {
+  if (!data?.shipmentAccounting && !data?.quote) {
     return (
       <div className="rf-complement rf-complement--empty">
         {t("reportFinancial.complementNoData")}
@@ -106,15 +114,23 @@ export function InvoiceComplementPanel({
     );
   }
 
-  const invoiceTotal = invoice.totalAmount?.value || 0;
-  const quotedTotal = data?.quote?.totalIncome || 0;
+  const invoiceCurrency = getInvoiceCurrencyCode(invoice);
+  const invoiceTotal = invoice.totalAmount?.value ?? 0;
+  const quoteCurrency = data.quote?.currency;
+  const canCompare =
+    Boolean(data.quote) &&
+    invoiceTotal > 0 &&
+    quoteCurrency &&
+    quoteCurrency === invoiceCurrency;
   const delta =
-    quotedTotal > 0 ? invoiceTotal - quotedTotal : null;
+    canCompare && data.quote
+      ? invoiceTotal - data.quote.totalIncome
+      : null;
 
   return (
     <div className="rf-complement">
       <div className="rf-cards-grid">
-        {data?.shipmentAccounting && (
+        {data.shipmentAccounting ? (
           <div className="rf-card">
             <h4>{t("reportFinancial.complementShipmentTitle")}</h4>
             <div className="rf-info-grid">
@@ -127,16 +143,6 @@ export function InvoiceComplementPanel({
                     t("reportFinancial.noData")}
                 </div>
               </div>
-              {data.shipmentAccounting.accountingParcial ? (
-                <div className="rf-info-field">
-                  <div className="rf-info-field__label">
-                    {t("reportFinancial.complementAccountingPartial")}
-                  </div>
-                  <div className="rf-info-field__value">
-                    {data.shipmentAccounting.accountingParcial}
-                  </div>
-                </div>
-              ) : null}
               {data.shipmentAccounting.currentFlow ? (
                 <div className="rf-info-field">
                   <div className="rf-info-field__label">
@@ -147,11 +153,31 @@ export function InvoiceComplementPanel({
                   </div>
                 </div>
               ) : null}
+              {data.shipmentAccounting.waybillNumber ? (
+                <div className="rf-info-field">
+                  <div className="rf-info-field__label">
+                    {t("reportFinancial.fieldWaybill")}
+                  </div>
+                  <div className="rf-info-field__value">
+                    {data.shipmentAccounting.waybillNumber}
+                  </div>
+                </div>
+              ) : null}
+              {data.shipmentAccounting.customerReference ? (
+                <div className="rf-info-field">
+                  <div className="rf-info-field__label">
+                    {t("reportFinancial.fieldCustomerRef")}
+                  </div>
+                  <div className="rf-info-field__value">
+                    {data.shipmentAccounting.customerReference}
+                  </div>
+                </div>
+              ) : null}
             </div>
           </div>
-        )}
+        ) : null}
 
-        {data?.quote ? (
+        {data.quote ? (
           <div className="rf-card">
             <h4>{t("reportFinancial.complementQuoteTitle")}</h4>
             <div className="rf-info-grid">
@@ -176,20 +202,22 @@ export function InvoiceComplementPanel({
                   {t("reportFinancial.complementQuoteIncome")}
                 </div>
                 <div className="rf-info-field__value">
-                  {formatCurrency(data.quote.totalIncome, "CLP")}
+                  {formatQuoteAmount(data.quote, formatCurrency)}
                 </div>
               </div>
-              <div className="rf-info-field">
-                <div className="rf-info-field__label">
-                  {t("reportFinancial.complementQuoteExpense")}
+              {data.quote.modeOfTransportation ? (
+                <div className="rf-info-field">
+                  <div className="rf-info-field__label">
+                    {t("reportFinancial.fieldServiceType")}
+                  </div>
+                  <div className="rf-info-field__value">
+                    {data.quote.modeOfTransportation}
+                  </div>
                 </div>
-                <div className="rf-info-field__value">
-                  {formatCurrency(data.quote.totalExpense, "CLP")}
-                </div>
-              </div>
+              ) : null}
             </div>
           </div>
-        ) : data?.quoteNumber === null && invoice.shipment?.number ? (
+        ) : data.quoteNumber ? (
           <div className="rf-card">
             <h4>{t("reportFinancial.complementQuoteTitle")}</h4>
             <p className="rf-complement__hint">
@@ -198,17 +226,19 @@ export function InvoiceComplementPanel({
           </div>
         ) : null}
 
-        {data?.quote && invoiceTotal > 0 ? (
+        {canCompare && data.quote ? (
           <div className="rf-card rf-card--full">
             <h4>{t("reportFinancial.complementComparison")}</h4>
             <div className="rf-complement-compare">
               <div className="rf-complement-compare__item">
                 <span>{t("reportFinancial.complementQuoteIncome")}</span>
-                <strong>{formatCurrency(quotedTotal, "CLP")}</strong>
+                <strong>{formatQuoteAmount(data.quote, formatCurrency)}</strong>
               </div>
               <div className="rf-complement-compare__item">
                 <span>{t("reportFinancial.complementInvoiceTotal")}</span>
-                <strong>{formatCurrency(invoiceTotal, "CLP")}</strong>
+                <strong>
+                  {formatCurrency(invoiceTotal, invoiceCurrency)}
+                </strong>
               </div>
               {delta !== null ? (
                 <div className="rf-complement-compare__item">
@@ -223,10 +253,47 @@ export function InvoiceComplementPanel({
                     }
                   >
                     {delta > 0 ? "+" : ""}
-                    {formatCurrency(delta, "CLP")}
+                    {formatCurrency(delta, invoiceCurrency)}
                   </strong>
                 </div>
               ) : null}
+            </div>
+          </div>
+        ) : data.quote && !canCompare ? (
+          <div className="rf-card rf-card--full">
+            <p className="rf-complement__hint">
+              {t("reportFinancial.complementCurrencyMismatch")}
+            </p>
+          </div>
+        ) : null}
+
+        {data.quote?.chargeDetails.length ? (
+          <div className="rf-card rf-card--full">
+            <h4>{t("reportFinancial.complementQuoteCharges")}</h4>
+            <div style={{ overflowX: "auto" }}>
+              <table className="rf-charges-table">
+                <thead>
+                  <tr>
+                    <th>{t("reportFinancial.chargesDescription")}</th>
+                    <th className="rf-charges-table--right">
+                      {t("reportFinancial.chargesAmount")}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.quote.chargeDetails.map((charge, index) => (
+                    <tr key={`${charge.description}-${index}`}>
+                      <td>{charge.description}</td>
+                      <td className="rf-charges-table--right rf-charges-table--bold">
+                        {formatCurrency(
+                          charge.amount,
+                          data.quote?.currency ?? "USD",
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         ) : null}
@@ -317,10 +384,14 @@ export function PendingQuotesPanel({
         )}
       </div>
 
-      {error ? <div className="rf-complement rf-complement--error">{error}</div> : null}
+      {error ? (
+        <div className="rf-complement rf-complement--error">{error}</div>
+      ) : null}
 
       {loaded && !loading && quotes.length === 0 ? (
-        <p className="rf-complement__hint">{t("reportFinancial.pendingQuotesEmpty")}</p>
+        <p className="rf-complement__hint">
+          {t("reportFinancial.pendingQuotesEmpty")}
+        </p>
       ) : null}
 
       {quotes.length > 0 ? (
@@ -348,7 +419,7 @@ export function PendingQuotesPanel({
                       .join(" → ") || "---"}
                   </td>
                   <td className="rf-td rf-td--right rf-td--bold">
-                    {formatCurrency(quote.totalIncome, "CLP")}
+                    {formatQuoteAmount(quote, formatCurrency)}
                   </td>
                   <td className="rf-td">{quote.status || "---"}</td>
                 </tr>
@@ -357,7 +428,9 @@ export function PendingQuotesPanel({
           </table>
           {quotes.length > 10 ? (
             <p className="rf-complement__hint">
-              {t("reportFinancial.pendingQuotesMore", { count: quotes.length - 10 })}
+              {t("reportFinancial.pendingQuotesMore", {
+                count: quotes.length - 10,
+              })}
             </p>
           ) : null}
         </div>

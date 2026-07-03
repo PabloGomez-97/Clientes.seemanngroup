@@ -20,11 +20,30 @@ import {
 } from "recharts";
 import "@/components/cliente/styles/ReporteriaFinanciera.css";
 import { linbisFetch } from "@/services/linbisFetch";
-import { clearFinancialComplementCache } from "@/services/linbisFinancialComplement";
+import { clearFinancialComplementCache, buildShipmentNumberSet } from "@/services/linbisFinancialComplement";
+import {
+  clearClientBulkFetchCache,
+  fetchClientInvoiceEnrichmentMap,
+  type ClientInvoiceEnrichment,
+} from "@/services/linbisClientBulkFetch";
 import {
   InvoiceComplementPanel,
   PendingQuotesPanel,
 } from "@/components/cliente/reporteria/FinancialComplementPanels";
+import {
+  dedupeInvoiceCharges,
+  extractQuoteNumberFromInvoice,
+  formatMoneyAmount,
+  getClientInvoiceStatus,
+  getInvoiceBalanceDisplay,
+  getInvoiceCurrencyCode,
+  getInvoiceExchangeRateText,
+  getInvoiceTypeKey,
+  getLinbisAccountingStatusKey,
+  getPrimaryCurrencyFromInvoices,
+  sumInvoicesInCurrency,
+  type InvoiceLike,
+} from "@/utils/invoiceFinancial";
 
 interface OutletContext {
   accessToken: string;
@@ -32,59 +51,7 @@ interface OutletContext {
   onLogout: () => void;
 }
 
-interface Invoice {
-  id?: number;
-  number?: string;
-  type?: number;
-  date?: string;
-  dueDate?: string;
-  status?: number;
-  billTo?: {
-    name?: string;
-    identificationNumber?: string;
-  };
-  billToAddress?: string;
-  currency?: {
-    abbr?: string;
-    name?: string;
-  };
-  amount?: {
-    value?: number;
-    userString?: string;
-  };
-  taxAmount?: {
-    value?: number;
-    userString?: string;
-  };
-  totalAmount?: {
-    value?: number;
-    userString?: string;
-  };
-  balanceDue?: {
-    value?: number;
-    userString?: string;
-  };
-  charges?: Array<{
-    description?: string;
-    quantity?: number;
-    unit?: string;
-    rate?: number;
-    amount?: number;
-  }>;
-  shipment?: {
-    number?: string;
-    waybillNumber?: string;
-    consignee?: {
-      name?: string;
-    };
-    departure?: string;
-    arrival?: string;
-    customerReference?: string;
-  };
-  paymentTerm?: {
-    name?: string;
-  };
-  notes?: string;
+interface Invoice extends InvoiceLike {
   [key: string]: any;
 }
 
@@ -196,7 +163,7 @@ function ReporteriaFinanciera() {
 
   // Dashboard tab
   const [dashTab, setDashTab] = useState<"summary" | "expenses" | "invoices">(
-    "summary",
+    "invoices",
   );
 
   // Filters
@@ -213,6 +180,9 @@ function ReporteriaFinanciera() {
 
   // Accordion (max 2 open)
   const [expandedIds, setExpandedIds] = useState<(string | number)[]>([]);
+  const [invoiceEnrichment, setInvoiceEnrichment] = useState<
+    Map<string, ClientInvoiceEnrichment>
+  >(new Map());
 
   /* -- Format helpers --------------------------------------- */
 
@@ -256,34 +226,24 @@ function ReporteriaFinanciera() {
     return value.toFixed(0);
   };
 
-  const processCharges = (charges: any[]) => {
-    if (!charges || charges.length === 0) return [];
-    const uniqueCharges: any[] = [];
-    const seenCharges = new Set<string>();
-    charges.forEach((charge) => {
-      const key = `${charge.description}-${charge.quantity}-${charge.rate}-${charge.amount}`;
-      if (!seenCharges.has(key)) {
-        seenCharges.add(key);
-        uniqueCharges.push(charge);
-      }
-    });
-    return uniqueCharges;
-  };
+  const processCharges = (charges: Invoice["charges"]) =>
+    dedupeInvoiceCharges(charges ?? []);
 
   /* -- Status helpers --------------------------------------- */
 
-  const getInvoiceStatus = (
-    invoice: Invoice,
-  ): "paid" | "pending" | "overdue" => {
-    const balanceDue = invoice.balanceDue?.value || 0;
-    if (balanceDue === 0) return "paid";
-    if (invoice.dueDate) {
-      const dueDate = new Date(invoice.dueDate);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      if (dueDate < today) return "overdue";
-    }
-    return "pending";
+  const getInvoiceStatus = getClientInvoiceStatus;
+
+  const getInvoiceAccountingStatusLabel = (invoice: Invoice): string | null => {
+    const key = getLinbisAccountingStatusKey(invoice);
+    if (!key) return null;
+    const translationKey = `reportFinancial.accountingStatus.${key}`;
+    const translated = t(translationKey);
+    return translated === translationKey ? String(invoice.status ?? key) : translated;
+  };
+
+  const getInvoiceTypeLabel = (invoice: Invoice): string => {
+    const key = getInvoiceTypeKey(invoice);
+    return t(`reportFinancial.invoiceType.${key}`);
   };
 
   const getServiceType = (
@@ -295,43 +255,23 @@ function ReporteriaFinanciera() {
     return "Unknown";
   };
 
-  /* -- Balance with exchange rate --------------------------- */
+  /* -- Balance display (Linbis source of truth) -------------- */
 
-  const getConvertedBalance = (invoice: Invoice): string => {
-    if (
-      invoice.charges &&
-      invoice.charges.length > 0 &&
-      invoice.totalAmount?.value
-    ) {
-      const totalCharges = invoice.charges.reduce(
-        (sum, charge) => sum + (charge.amount || 0),
-        0,
-      );
-      if (totalCharges > 0) {
-        const exchangeRate = (invoice.totalAmount.value / totalCharges) * 2;
-        const convertedBalance =
-          (invoice.balanceDue?.value || 0) * exchangeRate;
-        return formatCurrency(convertedBalance, "CLP");
-      }
-    }
-    return formatCurrency(invoice.balanceDue?.value || 0, "CLP");
-  };
+  const getConvertedBalance = (invoice: Invoice): string =>
+    getInvoiceBalanceDisplay(invoice, formatCurrency);
 
-  const getExchangeRateText = (invoice: Invoice): string | null => {
-    if (
-      !invoice.charges ||
-      invoice.charges.length === 0 ||
-      !invoice.totalAmount?.value
-    )
-      return null;
-    const totalCharges = processCharges(invoice.charges).reduce(
-      (sum, charge) => sum + (charge.amount || 0),
-      0,
+  const getExchangeRateText = (invoice: Invoice): string | null =>
+    getInvoiceExchangeRateText(invoice);
+
+  const getInvoiceAmountDisplay = (
+    invoice: Invoice,
+    field: "amount" | "taxAmount" | "totalAmount" | "balanceDue",
+  ): string =>
+    formatMoneyAmount(
+      invoice[field],
+      getInvoiceCurrencyCode(invoice),
+      formatCurrency,
     );
-    if (totalCharges <= 0) return null;
-    const exchangeRate = (invoice.totalAmount.value / totalCharges).toFixed(2);
-    return `${exchangeRate} CLP / ${invoice.currency?.abbr || "USD"}`;
-  };
 
   /* -- Fetch ------------------------------------------------ */
 
@@ -510,6 +450,65 @@ function ReporteriaFinanciera() {
     setDisplayedInvoices(filteredByStatus);
   }, [filteredByStatus]);
 
+  const primaryCurrency = useMemo(
+    () => getPrimaryCurrencyFromInvoices(filteredByPeriod),
+    [filteredByPeriod],
+  );
+
+  const isMultiCurrency =
+    primaryCurrency === null && filteredByPeriod.length > 0;
+
+  const singleCurrencyInvoices = useMemo(() => {
+    if (!primaryCurrency) return [];
+    return filteredByPeriod.filter(
+      (inv) => getInvoiceCurrencyCode(inv) === primaryCurrency,
+    );
+  }, [filteredByPeriod, primaryCurrency]);
+
+  const clientShipmentNumbers = useMemo(
+    () =>
+      buildShipmentNumberSet(
+        invoices.map((invoice) => invoice.shipment?.number),
+      ),
+    [invoices],
+  );
+
+  useEffect(() => {
+    if (!accessToken || !activeUsername || activeUsername === "MundoGaming") {
+      return;
+    }
+
+    let cancelled = false;
+    const controller = new AbortController();
+
+    fetchClientInvoiceEnrichmentMap(activeUsername, {
+      accessToken,
+      refreshAccessToken,
+      signal: controller.signal,
+    })
+      .then((map) => {
+        if (!cancelled) setInvoiceEnrichment(map);
+      })
+      .catch(() => {
+        if (!cancelled) setInvoiceEnrichment(new Map());
+      });
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [accessToken, activeUsername, refreshAccessToken, invoices.length]);
+
+  const getInvoiceEnrichment = (
+    invoice: Invoice,
+  ): ClientInvoiceEnrichment | undefined => {
+    const internalNumber = String(invoice.number ?? "").trim();
+    if (internalNumber && invoiceEnrichment.has(internalNumber)) {
+      return invoiceEnrichment.get(internalNumber);
+    }
+    return undefined;
+  };
+
   /* -- Metrics by currency ---------------------------------- */
 
   const metricsByCurrency = useMemo(() => {
@@ -556,7 +555,7 @@ function ReporteriaFinanciera() {
       [key: string]: { billed: number; paid: number; pending: number };
     } = {};
 
-    filteredByPeriod.forEach((inv) => {
+    singleCurrencyInvoices.forEach((inv) => {
       if (!inv.date) return;
       const d = new Date(inv.date);
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
@@ -579,7 +578,7 @@ function ReporteriaFinanciera() {
         });
         return { name: label, ...val };
       });
-  }, [filteredByPeriod]);
+  }, [singleCurrencyInvoices]);
 
   /* -- Chart data: status distribution ---------------------- */
 
@@ -616,7 +615,7 @@ function ReporteriaFinanciera() {
 
   const expenseConcentration = useMemo(() => {
     const categories: { [key: string]: number } = {};
-    filteredByPeriod.forEach((inv) => {
+    singleCurrencyInvoices.forEach((inv) => {
       if (!inv.charges) return;
       processCharges(inv.charges).forEach((c) => {
         const desc = c.description || "Otros";
@@ -627,13 +626,13 @@ function ReporteriaFinanciera() {
       .sort(([, a], [, b]) => b - a)
       .slice(0, 8)
       .map(([name, value]) => ({ name, value }));
-  }, [filteredByPeriod]);
+  }, [singleCurrencyInvoices]);
 
   /* -- Chart data: service type breakdown ------------------- */
 
   const serviceTypeBreakdown = useMemo(() => {
     const types: { [key: string]: { count: number; total: number } } = {};
-    filteredByPeriod.forEach((inv) => {
+    singleCurrencyInvoices.forEach((inv) => {
       const stype = getServiceType(inv.shipment?.number);
       if (!types[stype]) types[stype] = { count: 0, total: 0 };
       types[stype].count++;
@@ -644,22 +643,31 @@ function ReporteriaFinanciera() {
       count: val.count,
       total: val.total,
     }));
-  }, [filteredByPeriod]);
+  }, [singleCurrencyInvoices]);
 
   /* -- Chart data: payment term breakdown ------------------- */
 
   const paymentTermBreakdown = useMemo(() => {
-    const terms: { [key: string]: { count: number; total: number } } = {};
+    const terms: {
+      [key: string]: { count: number; total: number; currency: string };
+    } = {};
     filteredByPeriod.forEach((inv) => {
       const term = inv.paymentTerm?.name || t("reportFinancial.noPaymentTerm");
-      if (!terms[term]) terms[term] = { count: 0, total: 0 };
-      terms[term].count++;
-      terms[term].total += inv.totalAmount?.value || 0;
+      const currency = getInvoiceCurrencyCode(inv);
+      const key = `${term}::${currency}`;
+      if (!terms[key]) terms[key] = { count: 0, total: 0, currency };
+      terms[key].count += 1;
+      terms[key].total += inv.totalAmount?.value || 0;
     });
     return Object.entries(terms)
       .sort(([, a], [, b]) => b.total - a.total)
-      .map(([name, val]) => ({ name, count: val.count, total: val.total }));
-  }, [filteredByPeriod]);
+      .map(([key, val]) => ({
+        name: key.split("::")[0],
+        count: val.count,
+        total: val.total,
+        currency: val.currency,
+      }));
+  }, [filteredByPeriod, t]);
 
   /* -- Alerts / risks --------------------------------------- */
 
@@ -859,6 +867,8 @@ function ReporteriaFinanciera() {
     localStorage.removeItem(`${cacheKey}_timestamp`);
     localStorage.removeItem(`${cacheKey}_page`);
     clearFinancialComplementCache(activeUsername);
+    clearClientBulkFetchCache(activeUsername);
+    setInvoiceEnrichment(new Map());
     setCurrentPage(1);
     setInvoices([]);
     setDisplayedInvoices([]);
@@ -978,7 +988,7 @@ function ReporteriaFinanciera() {
               <td style="text-align:center;" class="status-${status}">${statusLabel}</td>
               <td>${invoice.shipment?.number || "-"}</td>
               <td>${invoice.paymentTerm?.name || "-"}</td>
-              <td style="text-align:right;">${formatCurrency(invoice.totalAmount?.value || 0, "CLP")}</td>
+              <td style="text-align:right;">${getInvoiceAmountDisplay(invoice, "totalAmount")}</td>
               <td>${invoice.date ? new Date(invoice.date).toLocaleDateString("es-CL") : "-"}</td>
               <td>${invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString("es-CL") : "-"}</td>
               <td style="text-align:right;" class="status-${status}">${getConvertedBalance(invoice)}</td>
@@ -1052,14 +1062,12 @@ function ReporteriaFinanciera() {
      ========================================================= */
 
   const totalInvoices = filteredByPeriod.length;
-  const totalBilledAll = filteredByPeriod.reduce(
-    (s, inv) => s + (inv.totalAmount?.value || 0),
-    0,
-  );
-  const totalPendingAll = filteredByPeriod.reduce(
-    (s, inv) => s + (inv.balanceDue?.value || 0),
-    0,
-  );
+  const totalBilledAll = primaryCurrency
+    ? sumInvoicesInCurrency(filteredByPeriod, primaryCurrency, "totalAmount")
+    : 0;
+  const totalPendingAll = primaryCurrency
+    ? sumInvoicesInCurrency(filteredByPeriod, primaryCurrency, "balanceDue")
+    : 0;
   const totalPaidAll = totalBilledAll - totalPendingAll;
   const overdueCount = filteredByPeriod.filter(
     (inv) => getInvoiceStatus(inv) === "overdue",
@@ -1184,10 +1192,17 @@ function ReporteriaFinanciera() {
                 {t("reportFinancial.kpiTotalBilled")}
               </div>
               <div className="rf-kpi__value">
-                CLP ${formatCompact(totalBilledAll)}
+                {isMultiCurrency
+                  ? t("reportFinancial.multiCurrencyKpi")
+                  : formatCurrency(
+                      totalBilledAll,
+                      primaryCurrency ?? "USD",
+                    )}
               </div>
               <div className="rf-kpi__sub">
-                {totalInvoices} {t("reportFinancial.invoices")}
+                {isMultiCurrency
+                  ? t("reportFinancial.multiCurrencyHint")
+                  : `${totalInvoices} ${t("reportFinancial.invoices")}`}
               </div>
             </div>
             <div className="rf-kpi">
@@ -1195,13 +1210,16 @@ function ReporteriaFinanciera() {
                 {t("reportFinancial.kpiTotalPaid")}
               </div>
               <div className="rf-kpi__value rf-kpi__value--success">
-                CLP ${formatCompact(totalPaidAll)}
+                {isMultiCurrency
+                  ? t("reportFinancial.multiCurrencyKpi")
+                  : formatCurrency(totalPaidAll, primaryCurrency ?? "USD")}
               </div>
               <div className="rf-kpi__sub">
-                {totalBilledAll > 0
-                  ? ((totalPaidAll / totalBilledAll) * 100).toFixed(0)
-                  : 0}
-                % {t("reportFinancial.collected")}
+                {!isMultiCurrency && totalBilledAll > 0
+                  ? `${((totalPaidAll / totalBilledAll) * 100).toFixed(0)}% ${t("reportFinancial.collected")}`
+                  : isMultiCurrency
+                    ? t("reportFinancial.multiCurrencyHint")
+                    : `0% ${t("reportFinancial.collected")}`}
               </div>
             </div>
             <div className="rf-kpi">
@@ -1209,7 +1227,12 @@ function ReporteriaFinanciera() {
                 {t("reportFinancial.kpiPendingCollection")}
               </div>
               <div className="rf-kpi__value rf-kpi__value--warning">
-                CLP ${formatCompact(totalPendingAll)}
+                {isMultiCurrency
+                  ? t("reportFinancial.multiCurrencyKpi")
+                  : formatCurrency(
+                      totalPendingAll,
+                      primaryCurrency ?? "USD",
+                    )}
               </div>
               <div className="rf-kpi__sub">
                 {
@@ -1229,13 +1252,16 @@ function ReporteriaFinanciera() {
               >
                 {overdueCount}
               </div>
-              {forecast && (
+              {forecast && primaryCurrency && !isMultiCurrency && (
                 <div
                   className={`rf-kpi__change ${forecast.trend === "up" ? "rf-kpi__change--up" : "rf-kpi__change--down"}`}
                 >
                   {forecast.trend === "up" ? "+" : "-"}{" "}
-                  {t("reportFinancial.projMonth")} CLP $
-                  {formatCompact(forecast.projectedBilling)}
+                  {t("reportFinancial.projMonth")}{" "}
+                  {formatCurrency(
+                    forecast.projectedBilling,
+                    primaryCurrency,
+                  )}
                 </div>
               )}
             </div>
@@ -1302,9 +1328,9 @@ function ReporteriaFinanciera() {
             <div className="rf-tabs__nav">
               {(
                 [
+                  { key: "invoices", label: t("reportFinancial.tabInvoices") },
                   { key: "summary", label: t("reportFinancial.tabSummary") },
                   { key: "expenses", label: t("reportFinancial.tabExpenses") },
-                  { key: "invoices", label: t("reportFinancial.tabInvoices") },
                 ] as const
               ).map((tab) => (
                 <button
@@ -1318,7 +1344,7 @@ function ReporteriaFinanciera() {
             </div>
 
             {/* ============================
-                TAB: Resumen Ejecutivo
+                TAB: Resumen Cliente
                 ============================ */}
             {dashTab === "summary" && (
               <div
@@ -1690,7 +1716,10 @@ function ReporteriaFinanciera() {
                             </Pie>
                             <Tooltip
                               formatter={(value: number) => [
-                                formatCurrency(value, "CLP"),
+                                formatCurrency(
+                                  value,
+                                  primaryCurrency ?? "USD",
+                                ),
                                 t("reportFinancial.thTotal"),
                               ]}
                               contentStyle={{
@@ -1741,7 +1770,8 @@ function ReporteriaFinanciera() {
                               </span>
                             </div>
                             <span className="rf-rank-item__value">
-                              {formatCurrency(item.total, "CLP")} ({item.count})
+                              {formatCurrency(item.total, item.currency)} (
+                              {item.count})
                             </span>
                           </li>
                         ))}
@@ -1870,9 +1900,9 @@ function ReporteriaFinanciera() {
                                   {invoice.paymentTerm?.name || "---"}
                                 </td>
                                 <td className="rf-td rf-td--right rf-td--bold">
-                                  {formatCurrency(
-                                    invoice.totalAmount?.value || 0,
-                                    "CLP",
+                                  {getInvoiceAmountDisplay(
+                                    invoice,
+                                    "totalAmount",
                                   )}
                                 </td>
                                 <td className="rf-td">
@@ -1954,7 +1984,46 @@ function ReporteriaFinanciera() {
                                                     />
                                                     <InfoField
                                                       label={t(
-                                                        "reportFinancial.fieldStatus",
+                                                        "reportFinancial.fieldInvoiceType",
+                                                      )}
+                                                      value={getInvoiceTypeLabel(
+                                                        invoice,
+                                                      )}
+                                                    />
+                                                    <InfoField
+                                                      label={t(
+                                                        "reportFinancial.fieldAccountingStatus",
+                                                      )}
+                                                      value={
+                                                        getInvoiceAccountingStatusLabel(
+                                                          invoice,
+                                                        )
+                                                      }
+                                                    />
+                                                    <InfoField
+                                                      label={t(
+                                                        "reportFinancial.fieldStatementMemo",
+                                                      )}
+                                                      value={
+                                                        invoice.statementMemo
+                                                      }
+                                                      fullWidth
+                                                    />
+                                                    <InfoField
+                                                      label={t(
+                                                        "reportFinancial.fieldUpdatedOn",
+                                                      )}
+                                                      value={
+                                                        invoice.updatedOn
+                                                          ? formatDate(
+                                                              invoice.updatedOn,
+                                                            )
+                                                          : null
+                                                      }
+                                                    />
+                                                    <InfoField
+                                                      label={t(
+                                                        "reportFinancial.fieldPaymentStatus",
                                                       )}
                                                       value={
                                                         {
@@ -1970,6 +2039,61 @@ function ReporteriaFinanciera() {
                                                         }[status]
                                                       }
                                                     />
+                                                    {(() => {
+                                                      const enrichment =
+                                                        getInvoiceEnrichment(
+                                                          invoice,
+                                                        );
+                                                      if (!enrichment) return null;
+                                                      return (
+                                                        <>
+                                                          <InfoField
+                                                            label={t(
+                                                              "reportFinancial.fieldAmountPaid",
+                                                            )}
+                                                            value={formatCurrency(
+                                                              enrichment.amountPaid,
+                                                              getInvoiceCurrencyCode(
+                                                                invoice,
+                                                              ),
+                                                            )}
+                                                          />
+                                                          <InfoField
+                                                            label={t(
+                                                              "reportFinancial.fieldPaymentDate",
+                                                            )}
+                                                            value={
+                                                              enrichment.paymentDate
+                                                                ? formatDate(
+                                                                    enrichment.paymentDate,
+                                                                  )
+                                                                : null
+                                                            }
+                                                          />
+                                                          <InfoField
+                                                            label={t(
+                                                              "reportFinancial.fieldModuleNumber",
+                                                            )}
+                                                            value={
+                                                              enrichment.moduleNumber ||
+                                                              null
+                                                            }
+                                                          />
+                                                          {enrichment.homeTotalAmount >
+                                                          0 ? (
+                                                            <InfoField
+                                                              label={t(
+                                                                "reportFinancial.fieldHomeTotal",
+                                                              )}
+                                                              value={formatCurrency(
+                                                                enrichment.homeTotalAmount,
+                                                                "CLP",
+                                                              )}
+                                                            />
+                                                          ) : null}
+                                                        </>
+                                                      );
+                                                    })()}
                                                   </div>
                                                 </div>
                                                 <div className="rf-card">
@@ -2071,7 +2195,23 @@ function ReporteriaFinanciera() {
                                             hidden:
                                               !invoice.charges ||
                                               invoice.charges.length === 0,
-                                            content: (
+                                            content: (() => {
+                                              const charges = processCharges(
+                                                invoice.charges || [],
+                                              );
+                                              const documentCurrency =
+                                                getInvoiceCurrencyCode(invoice);
+                                              const showExchangeRate =
+                                                charges.some(
+                                                  (charge) =>
+                                                    (charge.exchangeRate ?? 0) >
+                                                    0,
+                                                );
+                                              const showNotes = charges.some(
+                                                (charge) => charge.notes,
+                                              );
+
+                                              return (
                                               <div
                                                 style={{ overflowX: "auto" }}
                                               >
@@ -2083,6 +2223,13 @@ function ReporteriaFinanciera() {
                                                           "reportFinancial.chargesDescription",
                                                         )}
                                                       </th>
+                                                      {showNotes ? (
+                                                        <th>
+                                                          {t(
+                                                            "reportFinancial.chargesNotes",
+                                                          )}
+                                                        </th>
+                                                      ) : null}
                                                       <th className="rf-charges-table--right">
                                                         {t(
                                                           "reportFinancial.chargesQuantity",
@@ -2092,30 +2239,32 @@ function ReporteriaFinanciera() {
                                                         {t(
                                                           "reportFinancial.chargesRate",
                                                         )}{" "}
-                                                        (
-                                                        {invoice.currency
-                                                          ?.abbr || "USD"}
-                                                        )
+                                                        ({documentCurrency})
                                                       </th>
                                                       <th className="rf-charges-table--right">
                                                         {t(
                                                           "reportFinancial.chargesAmount",
                                                         )}{" "}
-                                                        (
-                                                        {invoice.currency
-                                                          ?.abbr || "USD"}
-                                                        )
+                                                        ({documentCurrency})
                                                       </th>
+                                                      {showExchangeRate ? (
+                                                        <th className="rf-charges-table--right">
+                                                          {t(
+                                                            "reportFinancial.chargesExchangeRate",
+                                                          )}
+                                                        </th>
+                                                      ) : null}
                                                     </tr>
                                                   </thead>
                                                   <tbody>
-                                                    {processCharges(
-                                                      invoice.charges || [],
-                                                    ).map((charge, idx) => (
+                                                    {charges.map((charge, idx) => (
                                                       <tr key={idx}>
                                                         <td>
                                                           {charge.description}
                                                         </td>
+                                                        {showNotes ? (
+                                                          <td>{charge.notes || "---"}</td>
+                                                        ) : null}
                                                         <td className="rf-charges-table--right">
                                                           {charge.quantity}{" "}
                                                           {charge.unit}
@@ -2123,23 +2272,34 @@ function ReporteriaFinanciera() {
                                                         <td className="rf-charges-table--right">
                                                           {formatCurrency(
                                                             charge.rate || 0,
-                                                            invoice.currency
-                                                              ?.abbr || "USD",
+                                                            documentCurrency,
                                                             3,
                                                           )}
                                                         </td>
                                                         <td className="rf-charges-table--right rf-charges-table--bold">
                                                           {formatCurrency(
                                                             charge.amount || 0,
-                                                            invoice.currency
-                                                              ?.abbr || "USD",
+                                                            documentCurrency,
                                                           )}
                                                         </td>
+                                                        {showExchangeRate ? (
+                                                          <td className="rf-charges-table--right">
+                                                            {charge.exchangeRate
+                                                              ? charge.exchangeRate.toLocaleString(
+                                                                  "es-CL",
+                                                                  {
+                                                                    minimumFractionDigits: 2,
+                                                                    maximumFractionDigits: 4,
+                                                                  },
+                                                                )
+                                                              : "---"}
+                                                          </td>
+                                                        ) : null}
                                                       </tr>
                                                     ))}
                                                     <tr className="rf-charges-total-row">
                                                       <td
-                                                        colSpan={3}
+                                                        colSpan={showNotes ? 4 : 3}
                                                         style={{
                                                           textAlign: "right",
                                                         }}
@@ -2154,32 +2314,29 @@ function ReporteriaFinanciera() {
                                                         }}
                                                       >
                                                         {formatCurrency(
-                                                          processCharges(
-                                                            invoice.charges ||
-                                                              [],
-                                                          ).reduce(
+                                                          charges.reduce(
                                                             (sum, c) =>
                                                               sum +
                                                               (c.amount || 0),
                                                             0,
                                                           ),
-                                                          invoice.currency
-                                                            ?.abbr || "USD",
+                                                          documentCurrency,
                                                         )}
                                                       </td>
+                                                      {showExchangeRate ? <td /> : null}
                                                     </tr>
                                                     {getExchangeRateText(
                                                       invoice,
-                                                    ) && (
+                                                    ) ? (
                                                       <tr className="rf-charges-exchange-row">
                                                         <td
-                                                          colSpan={3}
+                                                          colSpan={showNotes ? 4 : 3}
                                                           style={{
                                                             textAlign: "right",
                                                           }}
                                                         >
                                                           {t(
-                                                            "reportFinancial.chargesExchangeRate",
+                                                            "reportFinancial.chargesExchangeRateSummary",
                                                           )}
                                                         </td>
                                                         <td
@@ -2191,12 +2348,14 @@ function ReporteriaFinanciera() {
                                                             invoice,
                                                           )}
                                                         </td>
+                                                        {showExchangeRate ? <td /> : null}
                                                       </tr>
-                                                    )}
+                                                    ) : null}
                                                   </tbody>
                                                 </table>
                                               </div>
-                                            ),
+                                              );
+                                            })(),
                                           },
                                           {
                                             key: "totals",
@@ -2212,10 +2371,9 @@ function ReporteriaFinanciera() {
                                                     )}
                                                   </span>
                                                   <span className="rf-totals-row__value">
-                                                    {formatCurrency(
-                                                      invoice.amount?.value ||
-                                                        0,
-                                                      "CLP",
+                                                    {getInvoiceAmountDisplay(
+                                                      invoice,
+                                                      "amount",
                                                     )}
                                                   </span>
                                                 </div>
@@ -2226,10 +2384,9 @@ function ReporteriaFinanciera() {
                                                     )}
                                                   </span>
                                                   <span className="rf-totals-row__value">
-                                                    {formatCurrency(
-                                                      invoice.taxAmount
-                                                        ?.value || 0,
-                                                      "CLP",
+                                                    {getInvoiceAmountDisplay(
+                                                      invoice,
+                                                      "taxAmount",
                                                     )}
                                                   </span>
                                                 </div>
@@ -2240,10 +2397,9 @@ function ReporteriaFinanciera() {
                                                     )}
                                                   </span>
                                                   <span className="rf-totals-row__value">
-                                                    {formatCurrency(
-                                                      invoice.totalAmount
-                                                        ?.value || 0,
-                                                      "CLP",
+                                                    {getInvoiceAmountDisplay(
+                                                      invoice,
+                                                      "totalAmount",
                                                     )}
                                                   </span>
                                                 </div>
@@ -2269,7 +2425,11 @@ function ReporteriaFinanciera() {
                                             label: t(
                                               "reportFinancial.tabContext",
                                             ),
-                                            hidden: !invoice.shipment?.number,
+                                            hidden:
+                                              !invoice.shipment?.number &&
+                                              !extractQuoteNumberFromInvoice(
+                                                invoice,
+                                              ),
                                             content:
                                               activeUsername &&
                                               activeUsername !== "MundoGaming" ? (
@@ -2277,6 +2437,9 @@ function ReporteriaFinanciera() {
                                                   invoiceKey={String(invoiceKey)}
                                                   invoice={invoice}
                                                   consigneeName={activeUsername}
+                                                  clientShipmentNumbers={
+                                                    clientShipmentNumbers
+                                                  }
                                                   fetchOptions={
                                                     financialFetchOptions
                                                   }
