@@ -687,6 +687,21 @@
   flex-shrink: 0;
 }
 
+.qa-exw-review {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--qa-border-color);
+}
+
+.qa-exw-review .qa-label {
+  font-size: 0.78rem;
+  margin-bottom: 0.35rem;
+}
+
+.qa-exw-review .qa-grid-2 {
+  gap: 1rem;
+}
+
 @media (max-width: 768px) {
   .qa-address-map__overlay {
     width: 92vw;

@@ -91,6 +91,12 @@ interface CotizadorAddressMapProps {
   onPickupCoordsChange?: (coords: { lat: number; lng: number } | null) => void;
   /** Contenido a inyectar entre los inputs y el mapa */
   middleContent?: ReactNode;
+  /** Vista de solo lectura (p. ej. resumen del paso 4) */
+  readOnly?: boolean;
+  /** Mapa más bajo para resúmenes compactos */
+  compact?: boolean;
+  /** Coordenadas ya resueltas en pasos anteriores */
+  initialPickupCoords?: Coordinates | null;
 }
 
 const CotizadorAddressMap = ({
@@ -105,6 +111,9 @@ const CotizadorAddressMap = ({
   disabled = false,
   onPickupCoordsChange,
   middleContent,
+  readOnly = false,
+  compact = false,
+  initialPickupCoords = null,
 }: CotizadorAddressMapProps) => {
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? "",
@@ -144,6 +153,14 @@ const CotizadorAddressMap = ({
 
   // Debounced autocomplete search using the new Places API (AutocompleteSuggestion)
   useEffect(() => {
+    if (readOnly) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      setIsLoading(false);
+      setError(null);
+      return;
+    }
+
     if (debounceRef.current) {
       window.clearTimeout(debounceRef.current);
     }
@@ -221,7 +238,35 @@ const CotizadorAddressMap = ({
         window.clearTimeout(debounceRef.current);
       }
     };
-  }, [value, isLoaded]);
+  }, [value, isLoaded, readOnly]);
+
+  // Restaurar posición en modo lectura (resumen EXW)
+  useEffect(() => {
+    if (!readOnly || !isLoaded || hasSelection) return;
+
+    if (initialPickupCoords) {
+      setSelectedPosition(initialPickupCoords);
+      setSelectedAddress(value);
+      setHasSelection(true);
+      return;
+    }
+
+    if (value.trim().length < 3) return;
+
+    const geocoder = new google.maps.Geocoder();
+    geocoder.geocode({ address: value.trim() }, (results, status) => {
+      if (
+        status !== google.maps.GeocoderStatus.OK ||
+        !results?.[0]?.geometry?.location
+      ) {
+        return;
+      }
+      const location = results[0].geometry.location;
+      setSelectedPosition({ lat: location.lat(), lng: location.lng() });
+      setSelectedAddress(value);
+      setHasSelection(true);
+    });
+  }, [readOnly, isLoaded, hasSelection, initialPickupCoords, value]);
 
   // Calculate route when we have both a selected position and airport coords
   useEffect(() => {
@@ -313,6 +358,7 @@ const CotizadorAddressMap = ({
   );
 
   const handleTextareaChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
+    if (readOnly) return;
     onChange(event.target.value);
   };
 
@@ -346,6 +392,16 @@ const CotizadorAddressMap = ({
   }, []);
 
   const showRoute = directions !== null;
+  const mapHeight = compact ? "200px" : "280px";
+  const fieldRows = compact ? 2 : rows;
+  const readOnlyFieldStyle = readOnly
+    ? {
+        backgroundColor: "#f8f9fa",
+        color: "#374151",
+        cursor: "default" as const,
+        resize: "none" as const,
+      }
+    : undefined;
 
   const hasDualLayout = deliveryValue !== undefined;
 
@@ -367,7 +423,7 @@ const CotizadorAddressMap = ({
                 value={value}
                 onChange={handleTextareaChange}
                 onFocus={() =>
-                  !disabled && setShowSuggestions(suggestions.length > 0)
+                  !disabled && !readOnly && setShowSuggestions(suggestions.length > 0)
                 }
                 onKeyDown={handleTextareaKeyDown}
                 placeholder={
@@ -375,8 +431,9 @@ const CotizadorAddressMap = ({
                     ? "Seleccione primero un puerto de salida"
                     : placeholder
                 }
-                rows={rows}
+                rows={fieldRows}
                 disabled={disabled}
+                readOnly={readOnly}
                 style={
                   disabled
                     ? {
@@ -384,10 +441,10 @@ const CotizadorAddressMap = ({
                         color: "#6c757d",
                         cursor: "not-allowed",
                       }
-                    : undefined
+                    : readOnlyFieldStyle
                 }
               />
-              {showSuggestions && (
+              {!readOnly && showSuggestions && (
                 <ul
                   className="qa-address-map__suggestions"
                   style={{
@@ -418,7 +475,7 @@ const CotizadorAddressMap = ({
                   ))}
                 </ul>
               )}
-              {isLoading && value.trim().length >= 3 && (
+              {!readOnly && isLoading && value.trim().length >= 3 && (
                 <p
                   className="qa-address-map__hint"
                   style={{
@@ -430,7 +487,7 @@ const CotizadorAddressMap = ({
                   Validando direccion...
                 </p>
               )}
-              {error && (
+              {error && !readOnly && (
                 <p
                   className="qa-address-map__error"
                   style={{
@@ -442,7 +499,8 @@ const CotizadorAddressMap = ({
                   {error}
                 </p>
               )}
-              {!isLoading &&
+              {!readOnly &&
+                !isLoading &&
                 value.trim().length >= 3 &&
                 suggestions.length === 0 &&
                 !error && (
@@ -473,7 +531,7 @@ const CotizadorAddressMap = ({
               value={deliveryValue}
               readOnly
               disabled
-              rows={rows}
+              rows={fieldRows}
               style={{
                 backgroundColor: "#f1f3f4",
                 color: "#6c757d",
@@ -490,14 +548,15 @@ const CotizadorAddressMap = ({
             value={value}
             onChange={handleTextareaChange}
             onFocus={() =>
-              !disabled && setShowSuggestions(suggestions.length > 0)
+              !disabled && !readOnly && setShowSuggestions(suggestions.length > 0)
             }
             onKeyDown={handleTextareaKeyDown}
             placeholder={
               disabled ? "Seleccione primero un puerto de salida" : placeholder
             }
-            rows={rows}
+            rows={fieldRows}
             disabled={disabled}
+            readOnly={readOnly}
             style={
               disabled
                 ? {
@@ -505,10 +564,10 @@ const CotizadorAddressMap = ({
                     color: "#6c757d",
                     cursor: "not-allowed",
                   }
-                : undefined
+                : readOnlyFieldStyle
             }
           />
-          {showSuggestions && (
+          {!readOnly && showSuggestions && (
             <ul
               className="qa-address-map__suggestions"
               style={{
@@ -539,7 +598,7 @@ const CotizadorAddressMap = ({
               ))}
             </ul>
           )}
-          {isLoading && value.trim().length >= 3 && (
+          {!readOnly && isLoading && value.trim().length >= 3 && (
             <p
               className="qa-address-map__hint"
               style={{
@@ -551,7 +610,7 @@ const CotizadorAddressMap = ({
               Validando direccion...
             </p>
           )}
-          {error && (
+          {error && !readOnly && (
             <p
               className="qa-address-map__error"
               style={{
@@ -563,7 +622,8 @@ const CotizadorAddressMap = ({
               {error}
             </p>
           )}
-          {!isLoading &&
+          {!readOnly &&
+            !isLoading &&
             value.trim().length >= 3 &&
             suggestions.length === 0 &&
             !error && (
@@ -585,7 +645,7 @@ const CotizadorAddressMap = ({
       {middleContent}
       <div
         style={{
-          height: "280px",
+          height: mapHeight,
           width: "100%",
           border: "1px solid #e0e0e0",
           borderRadius: "6px",
@@ -604,6 +664,14 @@ const CotizadorAddressMap = ({
               streetViewControl: false,
               mapTypeControl: false,
               fullscreenControl: false,
+              ...(readOnly
+                ? {
+                    draggable: false,
+                    scrollwheel: false,
+                    disableDoubleClickZoom: true,
+                    gestureHandling: "none",
+                  }
+                : {}),
             }}
           >
             {showRoute ? (

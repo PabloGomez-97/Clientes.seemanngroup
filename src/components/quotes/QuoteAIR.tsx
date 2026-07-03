@@ -7378,6 +7378,39 @@ function QuoteAPITester({
                           </span>
                         </div>
                       )}
+
+                      {incoterm === "EXW" && pickupFromAddress.trim() && (
+                        <div className="qa-exw-review">
+                          <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                            <span className="fw-semibold small">
+                              Recogida EXW
+                            </span>
+                            {(originSeleccionado?.label ??
+                              originNR?.label ??
+                              rutaSeleccionada.origin) &&
+                              exwResolvedDistanceKm != null && (
+                                <span className="qa-route-meta-pill">
+                                  {originSeleccionado?.label ??
+                                    originNR?.label ??
+                                    rutaSeleccionada.origin}
+                                  {" · "}
+                                  {exwResolvedDistanceKm.toFixed(0)} km
+                                </span>
+                              )}
+                          </div>
+                          <CotizadorAddressMap
+                            readOnly
+                            compact
+                            value={pickupFromAddress}
+                            onChange={() => undefined}
+                            pickupLabel={t("QuoteAIR.pickup")}
+                            deliveryValue={deliveryToAddressDerived}
+                            deliveryLabel={t("QuoteAIR.delivery")}
+                            destinationCoords={exwMapDestination}
+                            initialPickupCoords={pickupCoords}
+                          />
+                        </div>
+                      )}
                     </div>
 
                     <div className="mb-4">
