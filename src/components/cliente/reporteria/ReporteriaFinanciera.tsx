@@ -20,6 +20,11 @@ import {
 } from "recharts";
 import "@/components/cliente/styles/ReporteriaFinanciera.css";
 import { linbisFetch } from "@/services/linbisFetch";
+import { clearFinancialComplementCache } from "@/services/linbisFinancialComplement";
+import {
+  InvoiceComplementPanel,
+  PendingQuotesPanel,
+} from "@/components/cliente/reporteria/FinancialComplementPanels";
 
 interface OutletContext {
   accessToken: string;
@@ -853,11 +858,17 @@ function ReporteriaFinanciera() {
     localStorage.removeItem(cacheKey);
     localStorage.removeItem(`${cacheKey}_timestamp`);
     localStorage.removeItem(`${cacheKey}_page`);
+    clearFinancialComplementCache(activeUsername);
     setCurrentPage(1);
     setInvoices([]);
     setDisplayedInvoices([]);
     fetchInvoices(1, false);
   };
+
+  const financialFetchOptions = useMemo(
+    () => ({ accessToken, refreshAccessToken }),
+    [accessToken, refreshAccessToken],
+  );
 
   /* -- Generate PDF ----------------------------------------- */
 
@@ -1742,6 +1753,16 @@ function ReporteriaFinanciera() {
                     )}
                   </div>
                 </div>
+
+                {activeUsername && activeUsername !== "MundoGaming" ? (
+                  <PendingQuotesPanel
+                    consigneeName={activeUsername}
+                    period={periodFilter}
+                    fetchOptions={financialFetchOptions}
+                    formatCurrency={formatCurrency}
+                    formatDateShort={formatDateShort}
+                  />
+                ) : null}
               </div>
             )}
 
@@ -2242,6 +2263,28 @@ function ReporteriaFinanciera() {
                                                 </div>
                                               </div>
                                             ),
+                                          },
+                                          {
+                                            key: "context",
+                                            label: t(
+                                              "reportFinancial.tabContext",
+                                            ),
+                                            hidden: !invoice.shipment?.number,
+                                            content:
+                                              activeUsername &&
+                                              activeUsername !== "MundoGaming" ? (
+                                                <InvoiceComplementPanel
+                                                  invoiceKey={String(invoiceKey)}
+                                                  invoice={invoice}
+                                                  consigneeName={activeUsername}
+                                                  fetchOptions={
+                                                    financialFetchOptions
+                                                  }
+                                                  formatCurrency={
+                                                    formatCurrency
+                                                  }
+                                                />
+                                              ) : null,
                                           },
                                         ]}
                                       />
