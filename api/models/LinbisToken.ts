@@ -1,13 +1,15 @@
 // api/models/LinbisToken.ts
 import mongoose from 'mongoose';
 
-interface ILinbisToken {
+export interface ILinbisToken {
   _id: string;
   refresh_token: string;
   access_token?: string;
   access_token_expiry?: number;
   updated_at: Date;
 }
+
+export type LinbisTokenModel = mongoose.Model<ILinbisToken>;
 
 const LinbisTokenSchema = new mongoose.Schema<ILinbisToken>({
   _id: { type: String, required: true, default: 'linbis_token' },
@@ -17,7 +19,6 @@ const LinbisTokenSchema = new mongoose.Schema<ILinbisToken>({
   updated_at: { type: Date, default: Date.now }
 });
 
-export const LinbisToken = mongoose.models.LinbisToken || 
+export const LinbisToken = (
+  mongoose.models.LinbisToken as LinbisTokenModel | undefined) ||
   mongoose.model<ILinbisToken>('LinbisToken', LinbisTokenSchema);
-
-export type { ILinbisToken };

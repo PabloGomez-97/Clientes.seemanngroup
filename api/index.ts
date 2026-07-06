@@ -6165,7 +6165,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         const emailResult = normalizeQuoteResendEmails(body.emails, EMAIL_REGEX);
-        if (!emailResult.ok) {
+        if (emailResult.ok === false) {
           return res.status(400).json({ error: emailResult.error });
         }
 
@@ -7382,7 +7382,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           },
           async (email) => Ejecutivo.findOne({ email }).lean(),
         );
-        if (!authResult.ok) {
+        if (authResult.ok === false) {
           console.warn('[behavior-tracking] POST rejected:', authResult.error, decoded.sub);
           return res.status(authResult.status).json({ error: authResult.error });
         }
