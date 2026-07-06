@@ -155,11 +155,8 @@ function resolveShipmentRef(
   return shipment?.waybillNumber?.trim() || shipment?.number?.trim() || "";
 }
 
-function sumNullable(values: Array<number | null>): number | null {
-  if (values.some((value) => value == null)) return null;
-  return round2(
-    values.reduce<number>((sum, value) => sum + (value as number), 0),
-  );
+function sumNullAsZero(values: Array<number | null>): number {
+  return round2(values.reduce<number>((sum, value) => sum + (value ?? 0), 0));
 }
 
 async function fetchDataset(
@@ -365,7 +362,7 @@ export async function buildCommissionAnalysisReport(
       groupsMap.set(row.salesRep, {
         salesRep: row.salesRep,
         rows: [],
-        subtotal: { income: 0, expense: null, profit: null, commission: 0 },
+        subtotal: { income: 0, expense: 0, profit: 0, commission: 0 },
       });
     }
     const group = groupsMap.get(row.salesRep)!;
@@ -379,16 +376,16 @@ export async function buildCommissionAnalysisReport(
       ...group,
       subtotal: {
         ...group.subtotal,
-        expense: sumNullable(group.rows.map((row) => row.expense)),
-        profit: sumNullable(group.rows.map((row) => row.profit)),
+        expense: sumNullAsZero(group.rows.map((row) => row.expense)),
+        profit: sumNullAsZero(group.rows.map((row) => row.profit)),
       },
     }))
     .sort((a, b) => a.salesRep.localeCompare(b.salesRep, "es"));
 
   const totals = {
     income: round2(rows.reduce((sum, row) => sum + row.income, 0)),
-    expense: sumNullable(rows.map((row) => row.expense)),
-    profit: sumNullable(rows.map((row) => row.profit)),
+    expense: sumNullAsZero(rows.map((row) => row.expense)),
+    profit: sumNullAsZero(rows.map((row) => row.profit)),
     commission: 0,
   };
 

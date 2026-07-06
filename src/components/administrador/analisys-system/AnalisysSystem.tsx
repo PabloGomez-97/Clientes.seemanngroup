@@ -40,15 +40,15 @@ type DisplayRow =
       kind: "rep-subtotal";
       salesRep: string;
       income: number;
-      expense: number | null;
-      profit: number | null;
+      expense: number;
+      profit: number;
       commission: number;
     }
   | {
       kind: "grand-total";
       income: number;
-      expense: number | null;
-      profit: number | null;
+      expense: number;
+      profit: number;
       commission: number;
     };
 

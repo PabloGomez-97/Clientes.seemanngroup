@@ -28,8 +28,8 @@ export type CommissionAnalysisRepGroup = {
   rows: CommissionAnalysisInvoiceRow[];
   subtotal: {
     income: number;
-    expense: number | null;
-    profit: number | null;
+    expense: number;
+    profit: number;
     commission: number;
   };
 };
@@ -41,8 +41,8 @@ export type CommissionAnalysisReport = {
   groups: CommissionAnalysisRepGroup[];
   totals: {
     income: number;
-    expense: number | null;
-    profit: number | null;
+    expense: number;
+    profit: number;
     commission: number;
   };
   invoiceCount: number;
