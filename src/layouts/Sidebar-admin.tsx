@@ -233,6 +233,11 @@ function SidebarAdmin({
               name: t("admin.sidebar.billingReport"),
               badge: { text: t("admin.sidebar.badgeChief"), type: "admin" as const },
             },
+            {
+              path: "/admin/analisys-system",
+              name: t("admin.sidebar.analisysSystem"),
+              badge: { text: t("admin.sidebar.badgeChief"), type: "admin" as const },
+            },
           ],
         },
       ],

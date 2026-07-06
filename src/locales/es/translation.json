@@ -1250,6 +1250,7 @@
       "reportsLinbis": "Reportes LINBIS",
       "quotesReport": "Reporte de Cotizaciones",
       "billingReport": "Reporte de Facturaciones",
+      "analisysSystem": "Analisys System",
       "sectionAdministration": "Administración",
       "administration": "Administración",
       "userManagement": "Gestión de Usuarios",
@@ -1939,5 +1940,38 @@
     "submit": "Enviar",
     "thanks": "Muchas gracias por los comentarios.",
     "close": "Cerrar"
+  },
+  "analisysSystem": {
+    "title": "Analisys System",
+    "subtitle": "Commission Analysis Report desde Linbis — ingresos, gastos y profit por factura y ejecutivo.",
+    "filters": {
+      "title": "Filtros del reporte",
+      "from": "Invoice From Date",
+      "to": "Invoice To Date"
+    },
+    "actions": {
+      "generate": "Generar reporte",
+      "generating": "Generando...",
+      "refresh": "Actualizar datos"
+    },
+    "dataSource": "Fuente: API Linbis (invoices, shipments, allCharges)",
+    "reconciliation": {
+      "title": "Datos parciales — no coincide aún con el reporte oficial de Linbis",
+      "body": "{{complete}} facturas con expense/profit completos vía API. {{incomplete}} facturas con gastos huérfanos sin vínculo explícito en la API ({{unallocated}} CLP sin asignar). Linbis no expone el Commission Analysis Report como endpoint; expense/profit incompletos se muestran como «—» para no publicar cifras incorrectas.",
+      "incompleteRow": "Expense y profit no disponibles: hay cargos del módulo sin vínculo invoice en la API Linbis"
+    },
+    "empty": {
+      "title": "Sin reporte generado",
+      "description": "Selecciona un rango de fechas y pulsa Generar reporte."
+    },
+    "meta": {
+      "printedOn": "Impreso",
+      "invoices": "Facturas",
+      "reps": "Representantes"
+    },
+    "errors": {
+      "noToken": "No hay token de Linbis disponible.",
+      "generic": "No se pudo generar el reporte."
+    }
   }
 }

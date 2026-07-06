@@ -29,6 +29,7 @@ import ReporteriaDashboard from "@/components/administrador/reporteria/pages/Rep
 import ReporteriaKPIs from "@/components/administrador/reporteria/pages/ReporteriaKPIs";
 import ReporteriaExecutives from "@/components/administrador/reporteria/pages/ReporteriaExecutives";
 import ReporteriaTrends from "@/components/administrador/reporteria/pages/ReporteriaTrends";
+import AnalisysSystem from "@/components/administrador/analisys-system/AnalisysSystem";
 import PriceHistoryExplorer from "@/components/cliente/tarifas/priceHistory/PriceHistoryExplorer";
 import ConsultaTarifas from "@/components/cliente/tarifas/rateConsult/ConsultaTarifas";
 import Novedades from "@/components/cliente/novedades/Novedades";
@@ -110,6 +111,7 @@ export const adminRoutes = (
       path="reporteria/financiera/operacional"
       element={<Invoicesxejecutivo />}
     />
+    <Route path="analisys-system" element={<AnalisysSystem />} />
 
     <Route path="reporteria" element={<ReporteriaLayout />}>
       <Route
