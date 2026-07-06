@@ -742,17 +742,17 @@ const ANALISYS_LOADING_KEYFRAMES = `
 
 const AnalisysLoadingStyles = () => <style>{ANALISYS_LOADING_KEYFRAMES}</style>;
 
-const AnalisysLoadingSpinner = () => (
+const AnalisysLoadingSpinner = ({ size = 20 }: { size?: number }) => (
   <div
     role="status"
-    aria-hidden
+    aria-label="Loading"
     style={{
-      width: 40,
-      height: 40,
-      border: `4px solid ${C.negativeLight}`,
-      borderTopColor: C.negative,
+      width: size,
+      height: size,
+      border: `2px solid ${C.border}`,
+      borderTopColor: C.primary,
       borderRadius: "50%",
-      animation: "analisysSystemSpin 0.75s linear infinite",
+      animation: "analisysSystemSpin 0.7s linear infinite",
       flexShrink: 0,
     }}
   />
@@ -760,38 +760,36 @@ const AnalisysLoadingSpinner = () => (
 
 /** Banner de carga — generación de reporte o actualización de expense/profit */
 export const AnalisysLoadingBanner = ({ message }: { message: string }) => (
-  <div style={{ marginBottom: 20 }}>
+  <div
+    role="status"
+    aria-live="polite"
+    style={{
+      ...base,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 12,
+      marginBottom: 16,
+      padding: "12px 20px",
+      borderRadius: 6,
+      border: `1px solid ${C.border}`,
+      backgroundColor: C.white,
+      boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
+    }}
+  >
     <AnalisysLoadingStyles />
-    <div
+    <AnalisysLoadingSpinner />
+    <span
       style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 16,
-        minHeight: 148,
-        padding: "32px 24px",
-        borderRadius: 8,
-        border: `2px solid ${C.negative}`,
-        backgroundColor: C.negativeLight,
+        fontSize: 14,
+        fontWeight: 500,
+        color: C.text,
+        lineHeight: 1.4,
         textAlign: "center",
       }}
     >
-      <AnalisysLoadingSpinner />
-      <p
-        style={{
-          ...base,
-          margin: 0,
-          maxWidth: 520,
-          fontSize: 18,
-          fontWeight: 700,
-          lineHeight: 1.45,
-          color: C.negative,
-        }}
-      >
-        {message}
-      </p>
-    </div>
+      {message}
+    </span>
   </div>
 );
 
@@ -800,7 +798,6 @@ export const AnalisysSystemSkeleton = ({ message }: { message: string }) => (
   <div style={{ marginTop: 16 }}>
     <SkeletonStyles />
     <AnalisysLoadingBanner message={message} />
-    <SkeletonBanner />
     <SkeletonTableBlock titleWidth="32%" columns={2} rows={5} />
     <SkeletonTableBlock titleWidth="38%" columns={8} rows={8} />
   </div>

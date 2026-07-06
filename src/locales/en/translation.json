@@ -1990,9 +1990,9 @@
       }
     },
     "loading": {
-      "initial": "Generating report… This may take a few seconds.",
-      "wait": "Please wait. The report is still loading…",
-      "enriching": "Expense and profit are still loading. Amounts shown may not be final until complete."
+      "initial": "Generating report…",
+      "wait": "Processing data, please wait.",
+      "enriching": "Completing expense and profit amounts…"
     },
     "empty": {
       "title": "No report generated",

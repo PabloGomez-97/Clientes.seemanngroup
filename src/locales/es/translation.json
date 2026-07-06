@@ -1991,9 +1991,9 @@
       }
     },
     "loading": {
-      "initial": "Generando reporte… Esta información puede tardar unos segundos.",
-      "wait": "Por favor, espere. El reporte sigue cargándose…",
-      "enriching": "Expense y profit se están cargando. Los montos mostrados pueden no ser definitivos hasta finalizar."
+      "initial": "Generando reporte…",
+      "wait": "Procesando datos, un momento por favor.",
+      "enriching": "Completando montos de expense y profit…"
     },
     "empty": {
       "title": "Sin reporte generado",
