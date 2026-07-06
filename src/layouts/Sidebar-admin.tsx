@@ -215,13 +215,14 @@ function SidebarAdmin({
       items: [
         {
           menuId: "reports",
-          path: "/admin/reporteria",
+          path: "/admin/analisys-system",
           name: t("admin.sidebar.reports"),
           icon: "fa fa-chart-bar",
           subItems: [
             {
-              path: "/admin/reporteria",
-              name: t("admin.sidebar.reportsLinbis"),
+              path: "/admin/analisys-system",
+              name: t("admin.sidebar.analisysSystem"),
+              badge: { text: t("admin.sidebar.badgeChief"), type: "admin" as const },
             },
             {
               path: "/admin/reporteria/financiera/ejecutivo",
@@ -231,11 +232,6 @@ function SidebarAdmin({
             {
               path: "/admin/reporteria/financiera/operacional",
               name: t("admin.sidebar.billingReport"),
-              badge: { text: t("admin.sidebar.badgeChief"), type: "admin" as const },
-            },
-            {
-              path: "/admin/analisys-system",
-              name: t("admin.sidebar.analisysSystem"),
               badge: { text: t("admin.sidebar.badgeChief"), type: "admin" as const },
             },
           ],
