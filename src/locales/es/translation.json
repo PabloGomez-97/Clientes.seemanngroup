@@ -1947,7 +1947,13 @@
     "filters": {
       "title": "Filtros del reporte",
       "from": "Invoice From Date",
-      "to": "Invoice To Date"
+      "to": "Invoice To Date",
+      "salesRep": "Sales Representative",
+      "consignee": "CONSIGNEE",
+      "consigneePlaceholder": "Buscar consignee...",
+      "all": "Todos",
+      "resultsTitle": "Filtrar resultados",
+      "clear": "Limpiar filtros"
     },
     "actions": {
       "generate": "Generar reporte",
@@ -1962,12 +1968,15 @@
     },
     "empty": {
       "title": "Sin reporte generado",
-      "description": "Selecciona un rango de fechas y pulsa Generar reporte."
+      "description": "Selecciona un rango de fechas y pulsa Generar reporte.",
+      "noResultsTitle": "Sin resultados",
+      "noResultsDescription": "Ninguna factura coincide con los filtros seleccionados. Prueba otro ejecutivo o consignee."
     },
     "meta": {
       "printedOn": "Impreso",
       "invoices": "Facturas",
-      "reps": "Representantes"
+      "reps": "Representantes",
+      "showing": "Mostrando {{shown}} de {{total}} facturas"
     },
     "errors": {
       "noToken": "No hay token de Linbis disponible.",

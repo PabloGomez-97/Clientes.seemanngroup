@@ -1946,7 +1946,13 @@
     "filters": {
       "title": "Report filters",
       "from": "Invoice From Date",
-      "to": "Invoice To Date"
+      "to": "Invoice To Date",
+      "salesRep": "Sales Representative",
+      "consignee": "CONSIGNEE",
+      "consigneePlaceholder": "Search consignee...",
+      "all": "All",
+      "resultsTitle": "Filter results",
+      "clear": "Clear filters"
     },
     "actions": {
       "generate": "Generate report",
@@ -1961,12 +1967,15 @@
     },
     "empty": {
       "title": "No report generated",
-      "description": "Select a date range and click Generate report."
+      "description": "Select a date range and click Generate report.",
+      "noResultsTitle": "No results",
+      "noResultsDescription": "No invoices match the selected filters. Try another sales rep or consignee."
     },
     "meta": {
       "printedOn": "Printed on",
       "invoices": "Invoices",
-      "reps": "Representatives"
+      "reps": "Representatives",
+      "showing": "Showing {{shown}} of {{total}} invoices"
     },
     "errors": {
       "noToken": "Linbis token is not available.",

@@ -4,6 +4,7 @@ import { useOutletContext } from "react-router-dom";
 import {
   buildCommissionAnalysisReport,
   clearCommissionAnalysisCache,
+  filterCommissionAnalysisReport,
   formatCommissionAmount,
   formatReportDateRange,
 } from "./commissionAnalysisService";
@@ -101,10 +102,21 @@ export default function AnalisysSystem() {
   const defaultRange = useMemo(() => getPeriodRange("this-month"), []);
   const [startDate, setStartDate] = useState(defaultRange.startDate);
   const [endDate, setEndDate] = useState(defaultRange.endDate);
-  const [report, setReport] = useState<CommissionAnalysisReport | null>(null);
+  const [salesRepFilter, setSalesRepFilter] = useState("");
+  const [consigneeFilter, setConsigneeFilter] = useState("");
+  const [baseReport, setBaseReport] = useState<CommissionAnalysisReport | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fetchedAt, setFetchedAt] = useState<number | null>(null);
+
+  const report = useMemo(() => {
+    if (!baseReport) return null;
+    if (!salesRepFilter && !consigneeFilter.trim()) return baseReport;
+    return filterCommissionAnalysisReport(baseReport, {
+      salesRep: salesRepFilter || undefined,
+      consignee: consigneeFilter.trim() || undefined,
+    });
+  }, [baseReport, salesRepFilter, consigneeFilter]);
 
   const displayRows = useMemo(
     () => (report ? buildDisplayRows(report) : []),
@@ -112,9 +124,20 @@ export default function AnalisysSystem() {
   );
 
   const salesRepOptions = useMemo(() => {
-    if (!report) return [];
-    return report.groups.map((group) => group.salesRep);
-  }, [report]);
+    if (!baseReport) return [];
+    return baseReport.groups.map((group) => group.salesRep);
+  }, [baseReport]);
+
+  const consigneeOptions = useMemo(() => {
+    if (!baseReport) return [];
+    const set = new Set<string>();
+    for (const group of baseReport.groups) {
+      for (const row of group.rows) {
+        if (row.consignee) set.add(row.consignee);
+      }
+    }
+    return [...set].sort((a, b) => a.localeCompare(b, "es"));
+  }, [baseReport]);
 
   const handleGenerate = async (forceRefresh = false) => {
     if (!accessToken) {
@@ -132,7 +155,9 @@ export default function AnalisysSystem() {
         refreshAccessToken,
         { startDate, endDate, forceRefresh },
       );
-      setReport(nextReport);
+      setBaseReport(nextReport);
+      setSalesRepFilter("");
+      setConsigneeFilter("");
       setFetchedAt(Date.now());
     } catch (err) {
       const message =
@@ -185,6 +210,7 @@ export default function AnalisysSystem() {
               style={inputStyle}
             />
           </div>
+
           <button
             type="button"
             style={{ ...btnPrimary, opacity: loading ? 0.7 : 1 }}
@@ -196,7 +222,7 @@ export default function AnalisysSystem() {
           <button
             type="button"
             style={{ ...btnOutline, opacity: loading ? 0.7 : 1 }}
-            disabled={loading || !report}
+            disabled={loading || !baseReport}
             onClick={() => handleGenerate(true)}
           >
             {t("analisysSystem.actions.refresh")}
@@ -204,18 +230,81 @@ export default function AnalisysSystem() {
         </div>
       </CardSection>
 
+      {baseReport && (
+        <div style={{ marginTop: 16 }}>
+          <CardSection title={t("analisysSystem.filters.resultsTitle")}>
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 16,
+                alignItems: "flex-end",
+              }}
+            >
+              <div>
+                <label style={styles.label}>{t("analisysSystem.filters.salesRep")}</label>
+                <select
+                  value={salesRepFilter}
+                  onChange={(event) => setSalesRepFilter(event.target.value)}
+                  style={inputStyle}
+                >
+                  <option value="">{t("analisysSystem.filters.all")}</option>
+                  {salesRepOptions.map((value) => (
+                    <option key={value} value={value}>
+                      {value}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={styles.label}>{t("analisysSystem.filters.consignee")}</label>
+                <input
+                  list="analisys-consignee-options"
+                  value={consigneeFilter}
+                  onChange={(event) => setConsigneeFilter(event.target.value)}
+                  placeholder={t("analisysSystem.filters.consigneePlaceholder")}
+                  style={inputStyle}
+                />
+                <datalist id="analisys-consignee-options">
+                  {consigneeOptions.map((value) => (
+                    <option key={value} value={value} />
+                  ))}
+                </datalist>
+              </div>
+
+              {(salesRepFilter || consigneeFilter.trim()) && (
+                <button
+                  type="button"
+                  style={btnOutline}
+                  onClick={() => {
+                    setSalesRepFilter("");
+                    setConsigneeFilter("");
+                  }}
+                >
+                  {t("analisysSystem.filters.clear")}
+                </button>
+              )}
+            </div>
+          </CardSection>
+        </div>
+      )}
+
       {error && (
         <div style={{ marginTop: 16 }}>
           <ErrorBanner message={error} />
         </div>
       )}
 
-      {fetchedAt && report && (
+      {fetchedAt && baseReport && report && (
         <div style={{ marginTop: 16 }}>
           <DataSourceBanner>
             {t("analisysSystem.dataSource")} ·{" "}
-            {t("analisysSystem.meta.invoices")}: {report.invoiceCount} ·{" "}
-            {new Date(fetchedAt).toLocaleString("es-CL")}
+            {t("analisysSystem.meta.showing", {
+              shown: report.invoiceCount,
+              total: baseReport.invoiceCount,
+            })}{" "}
+            · {new Date(fetchedAt).toLocaleString("es-CL")}
           </DataSourceBanner>
           {!report.reconciliation.isFullyReconciled && (
             <div
@@ -245,7 +334,7 @@ export default function AnalisysSystem() {
         </div>
       )}
 
-      {!report && !loading && !error && (
+      {!baseReport && !loading && !error && (
         <div style={{ marginTop: 24 }}>
           <EmptyState
             title={t("analisysSystem.empty.title")}
@@ -256,6 +345,13 @@ export default function AnalisysSystem() {
 
       {report && (
         <div style={{ marginTop: 24 }}>
+          {report.invoiceCount === 0 ? (
+            <EmptyState
+              title={t("analisysSystem.empty.noResultsTitle")}
+              sub={t("analisysSystem.empty.noResultsDescription")}
+            />
+          ) : (
+            <>
           <div style={{ ...styles.cardPad, marginBottom: 16 }}>
             <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 12 }}>
               <div>
@@ -410,11 +506,7 @@ export default function AnalisysSystem() {
               </tbody>
             </table>
           </div>
-
-          {salesRepOptions.length > 0 && (
-            <p style={{ ...base, fontSize: 12, color: C.textMuted, marginTop: 12 }}>
-              {t("analisysSystem.meta.reps")}: {salesRepOptions.join(", ")}
-            </p>
+            </>
           )}
         </div>
       )}

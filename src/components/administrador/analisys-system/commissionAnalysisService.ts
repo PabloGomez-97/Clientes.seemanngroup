@@ -197,17 +197,103 @@ export function clearCommissionAnalysisCache(): void {
   datasetCache = null;
 }
 
+function buildGroupsFromRows(
+  rows: CommissionAnalysisInvoiceRow[],
+): CommissionAnalysisRepGroup[] {
+  const groupsMap = new Map<string, CommissionAnalysisRepGroup>();
+
+  for (const row of rows) {
+    if (!groupsMap.has(row.salesRep)) {
+      groupsMap.set(row.salesRep, {
+        salesRep: row.salesRep,
+        rows: [],
+        subtotal: { income: 0, expense: 0, profit: 0, commission: 0 },
+      });
+    }
+    const group = groupsMap.get(row.salesRep)!;
+    group.rows.push(row);
+    group.subtotal.income = round2(group.subtotal.income + row.income);
+    group.subtotal.commission = round2(group.subtotal.commission + row.commission);
+  }
+
+  return Array.from(groupsMap.values())
+    .map((group) => ({
+      ...group,
+      subtotal: {
+        ...group.subtotal,
+        expense: sumNullAsZero(group.rows.map((row) => row.expense)),
+        profit: sumNullAsZero(group.rows.map((row) => row.profit)),
+      },
+    }))
+    .sort((a, b) => a.salesRep.localeCompare(b.salesRep, "es"));
+}
+
+export function filterCommissionAnalysisReport(
+  report: CommissionAnalysisReport,
+  filters: { salesRep?: string; consignee?: string },
+): CommissionAnalysisReport {
+  const salesRepFilter = (filters.salesRep || "").trim();
+  const consigneeFilter = (filters.consignee || "").trim().toLowerCase();
+
+  const filteredRows: CommissionAnalysisInvoiceRow[] = [];
+
+  for (const group of report.groups) {
+    if (salesRepFilter && group.salesRep !== salesRepFilter) continue;
+
+    for (const row of group.rows) {
+      if (consigneeFilter && !row.consignee.toLowerCase().includes(consigneeFilter)) {
+        continue;
+      }
+      filteredRows.push(row);
+    }
+  }
+
+  filteredRows.sort((a, b) => {
+    const repCompare = a.salesRep.localeCompare(b.salesRep, "es");
+    if (repCompare !== 0) return repCompare;
+    const shipmentCompare = a.shipmentRef.localeCompare(b.shipmentRef, "es");
+    if (shipmentCompare !== 0) return shipmentCompare;
+    return (a.date || "").localeCompare(b.date || "");
+  });
+
+  const groups = buildGroupsFromRows(filteredRows);
+  let completeRows = 0;
+  let incompleteRows = 0;
+
+  for (const row of filteredRows) {
+    if (row.reconciliationStatus === "complete") completeRows += 1;
+    else incompleteRows += 1;
+  }
+
+  return {
+    ...report,
+    groups,
+    totals: {
+      income: round2(filteredRows.reduce((sum, row) => sum + row.income, 0)),
+      expense: sumNullAsZero(filteredRows.map((row) => row.expense)),
+      profit: sumNullAsZero(filteredRows.map((row) => row.profit)),
+      commission: round2(filteredRows.reduce((sum, row) => sum + row.commission, 0)),
+    },
+    invoiceCount: filteredRows.length,
+    reconciliation: {
+      ...report.reconciliation,
+      completeRows,
+      incompleteRows,
+      isFullyReconciled: incompleteRows === 0,
+    },
+  };
+}
+
 export async function buildCommissionAnalysisReport(
   accessToken: string,
   refreshAccessToken: () => Promise<string>,
   options: {
     startDate: string;
     endDate: string;
-    salesRep?: string;
     forceRefresh?: boolean;
   },
 ): Promise<CommissionAnalysisReport> {
-  const { startDate, endDate, salesRep, forceRefresh = false } = options;
+  const { startDate, endDate, forceRefresh = false } = options;
   const start = parseInputDate(startDate);
   const end = parseInputDate(endDate);
 
@@ -276,7 +362,6 @@ export async function buildCommissionAnalysisReport(
     if (!isInDateRange(invoice.date, start, endInclusive)) continue;
 
     const rep = (invoice.salesRep || "").trim();
-    if (salesRep && rep.toLowerCase() !== salesRep.trim().toLowerCase()) continue;
 
     const moduleId = invoiceCharges[0]?.moduleId ?? null;
     const moduleCharges =
@@ -325,6 +410,7 @@ export async function buildCommissionAnalysisReport(
     const resolvedRep = rep || (shipment?.salesRep || "").trim() || "Sin representante";
     const division = normalizeDivision(invoice, shipment);
     const shipmentRef = resolveShipmentRef(invoice, shipment);
+    const resolvedConsignee = (shipment?.consignee || invoice.billToName || "").trim();
 
     rows.push({
       invoice: invoiceNumber,
@@ -335,7 +421,7 @@ export async function buildCommissionAnalysisReport(
       hawbHbl: shipmentRef,
       shipmentRef,
       billTo: (invoice.billToName || "").trim(),
-      consignee: (shipment?.consignee || invoice.billToName || "").trim(),
+      consignee: resolvedConsignee,
       destination: (shipment?.finalDestination || shipment?.destination || "").trim(),
       income,
       expense,
@@ -355,32 +441,7 @@ export async function buildCommissionAnalysisReport(
     return (a.date || "").localeCompare(b.date || "");
   });
 
-  const groupsMap = new Map<string, CommissionAnalysisRepGroup>();
-
-  for (const row of rows) {
-    if (!groupsMap.has(row.salesRep)) {
-      groupsMap.set(row.salesRep, {
-        salesRep: row.salesRep,
-        rows: [],
-        subtotal: { income: 0, expense: 0, profit: 0, commission: 0 },
-      });
-    }
-    const group = groupsMap.get(row.salesRep)!;
-    group.rows.push(row);
-    group.subtotal.income = round2(group.subtotal.income + row.income);
-    group.subtotal.commission = round2(group.subtotal.commission + row.commission);
-  }
-
-  const groups = Array.from(groupsMap.values())
-    .map((group) => ({
-      ...group,
-      subtotal: {
-        ...group.subtotal,
-        expense: sumNullAsZero(group.rows.map((row) => row.expense)),
-        profit: sumNullAsZero(group.rows.map((row) => row.profit)),
-      },
-    }))
-    .sort((a, b) => a.salesRep.localeCompare(b.salesRep, "es"));
+  const groups = buildGroupsFromRows(rows);
 
   const totals = {
     income: round2(rows.reduce((sum, row) => sum + row.income, 0)),
