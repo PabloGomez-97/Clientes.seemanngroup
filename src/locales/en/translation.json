@@ -1941,8 +1941,8 @@
     "close": "Close"
   },
   "analisysSystem": {
-    "title": "Analisys System",
-    "subtitle": "Commission Analysis Report from Linbis — income, expense and profit per invoice and executive.",
+    "title": "Commission Analysis Report",
+    "subtitle": "Commission Analysis Report — income, expense and profit per invoice and executive.",
     "filters": {
       "title": "Report filters",
       "from": "Invoice From Date",
@@ -1959,11 +1959,40 @@
       "generating": "Generating...",
       "refresh": "Refresh data"
     },
-    "dataSource": "Source: Linbis API (invoices, shipments, allCharges)",
     "reconciliation": {
-      "title": "Partial data — does not yet match the official Linbis report",
-      "body": "{{complete}} invoices with expense/profit fully resolved via API. {{incomplete}} invoices with orphan charges that have no explicit API link ({{unallocated}} CLP unallocated). Linbis does not expose the Commission Analysis Report as an endpoint; incomplete expense/profit are shown as «—» to avoid publishing incorrect figures.",
-      "incompleteRow": "Expense and profit unavailable: module charges exist without an invoice link in the Linbis API"
+      "title": "Partial data on some invoices",
+      "body": "{{complete}} invoices with complete expense/profit. {{incomplete}} invoices with charges that have no explicit link ({{unallocated}} CLP unallocated). Incomplete amounts are shown as «—» to avoid publishing incorrect figures.",
+      "incompleteRow": "Expense and profit unavailable: module charges exist without an invoice link"
+    },
+    "operations": {
+      "title": "Operations by sales rep",
+      "subtitle": "Each operation groups invoices (INV) from the same shipment (HBL/HAWB/SOG). Click a row to see details.",
+      "openDetail": "View operation invoices",
+      "total": "TOTALS",
+      "repTotal": "Total {{name}}",
+      "columns": {
+        "operation": "OPERATION",
+        "invoices": "INVOICES (INV)",
+        "invoiceCount": "# INV",
+        "consignee": "CONSIGNEE",
+        "destination": "DESTINATION",
+        "income": "INCOME",
+        "expense": "EXPENSE",
+        "profit": "PROFIT"
+      }
+    },
+    "executives": {
+      "title": "Summary by sales rep",
+      "total": "TOTAL",
+      "columns": {
+        "name": "Sales rep name",
+        "operationCount": "Operations"
+      }
+    },
+    "loading": {
+      "initial": "Loading, this may take a few seconds",
+      "wait": "Please wait",
+      "enriching": "Updating expense and profit amounts…"
     },
     "empty": {
       "title": "No report generated",
@@ -1978,8 +2007,14 @@
       "showing": "Showing {{shown}} of {{total}} invoices"
     },
     "errors": {
-      "noToken": "Linbis token is not available.",
+      "noToken": "No active session. Please sign in again.",
       "generic": "Could not generate the report."
+    },
+    "modal": {
+      "title": "Operation {{operation}}",
+      "invoiceCountLabel": "invoices",
+      "close": "Close",
+      "loading": "Loading invoices…"
     }
   }
 }

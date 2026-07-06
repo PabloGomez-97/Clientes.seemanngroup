@@ -1250,7 +1250,7 @@
       "reportsLinbis": "Reportes LINBIS",
       "quotesReport": "Reporte de Cotizaciones",
       "billingReport": "Reporte de Facturaciones",
-      "analisysSystem": "Analisys System",
+      "analisysSystem": "Commission Analysis Report",
       "sectionAdministration": "Administración",
       "administration": "Administración",
       "userManagement": "Gestión de Usuarios",
@@ -1942,8 +1942,8 @@
     "close": "Cerrar"
   },
   "analisysSystem": {
-    "title": "Analisys System",
-    "subtitle": "Commission Analysis Report desde Linbis — ingresos, gastos y profit por factura y ejecutivo.",
+    "title": "Commission Analysis Report",
+    "subtitle": "Commission Analysis Report — ingresos, gastos y profit por factura y ejecutivo.",
     "filters": {
       "title": "Filtros del reporte",
       "from": "Invoice From Date",
@@ -1960,11 +1960,40 @@
       "generating": "Generando...",
       "refresh": "Actualizar datos"
     },
-    "dataSource": "Fuente: API Linbis (invoices, shipments, allCharges)",
     "reconciliation": {
-      "title": "Datos parciales — no coincide aún con el reporte oficial de Linbis",
-      "body": "{{complete}} facturas con expense/profit completos vía API. {{incomplete}} facturas con gastos huérfanos sin vínculo explícito en la API ({{unallocated}} CLP sin asignar). Linbis no expone el Commission Analysis Report como endpoint; expense/profit incompletos se muestran como «—» para no publicar cifras incorrectas.",
-      "incompleteRow": "Expense y profit no disponibles: hay cargos del módulo sin vínculo invoice en la API Linbis"
+      "title": "Datos parciales en algunas facturas",
+      "body": "{{complete}} facturas con expense/profit completos. {{incomplete}} facturas con gastos sin vínculo explícito ({{unallocated}} CLP sin asignar). Los montos incompletos se muestran como «—» para no publicar cifras incorrectas.",
+      "incompleteRow": "Expense y profit no disponibles: hay cargos del módulo sin vínculo a la factura"
+    },
+    "operations": {
+      "title": "Operaciones por ejecutivo",
+      "subtitle": "Cada operación agrupa las facturas (INV) del mismo embarque (HBL/HAWB/SOG). Haz clic en una fila para ver el detalle.",
+      "openDetail": "Ver facturas de la operación",
+      "total": "TOTALS",
+      "repTotal": "Total {{name}}",
+      "columns": {
+        "operation": "OPERACIÓN",
+        "invoices": "FACTURAS (INV)",
+        "invoiceCount": "# INV",
+        "consignee": "CONSIGNEE",
+        "destination": "DESTINATION",
+        "income": "INCOME",
+        "expense": "EXPENSE",
+        "profit": "PROFIT"
+      }
+    },
+    "executives": {
+      "title": "Resumen por ejecutivo",
+      "total": "TOTAL",
+      "columns": {
+        "name": "Nombre ejecutivo",
+        "operationCount": "N° de Operaciones"
+      }
+    },
+    "loading": {
+      "initial": "Cargando, esto puede tardar unos segundos",
+      "wait": "Por favor, espere",
+      "enriching": "Actualizando montos de expense y profit…"
     },
     "empty": {
       "title": "Sin reporte generado",
@@ -1979,8 +2008,14 @@
       "showing": "Mostrando {{shown}} de {{total}} facturas"
     },
     "errors": {
-      "noToken": "No hay token de Linbis disponible.",
+      "noToken": "No hay sesión activa. Vuelve a iniciar sesión.",
       "generic": "No se pudo generar el reporte."
+    },
+    "modal": {
+      "title": "Operación {{operation}}",
+      "invoiceCountLabel": "facturas",
+      "close": "Cerrar",
+      "loading": "Cargando facturas…"
     }
   }
 }

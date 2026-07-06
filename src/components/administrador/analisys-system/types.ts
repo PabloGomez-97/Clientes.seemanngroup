@@ -55,6 +55,33 @@ export type CommissionAnalysisReport = {
   };
 };
 
+/** Una operación Linbis agrupa varias facturas (INV) bajo el mismo embarque. */
+export type CommissionAnalysisOperation = {
+  salesRep: string;
+  /** Referencia visible del embarque (HBL/HAWB/SOG — `invoice.moduleNumber` en Linbis). */
+  operationRef: string;
+  moduleId: number | null;
+  invoices: string[];
+  invoiceCount: number;
+  consignee: string;
+  destination: string;
+  income: number;
+  expense: number;
+  profit: number;
+};
+
+export type CommissionAnalysisOperationsGroup = {
+  salesRep: string;
+  operations: CommissionAnalysisOperation[];
+  subtotal: {
+    operationCount: number;
+    invoiceCount: number;
+    income: number;
+    expense: number;
+    profit: number;
+  };
+};
+
 export type LinbisChargeRecord = {
   moduleId: number;
   id: number;

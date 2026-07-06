@@ -2,6 +2,7 @@ import { linbisFetch } from "@/services/linbisFetch";
 import { parseInputDate } from "@/components/administrador/reporteria/financiera/invoiceUtils";
 import type {
   CommissionAnalysisInvoiceRow,
+  CommissionAnalysisOperationsGroup,
   CommissionAnalysisReport,
   CommissionAnalysisRepGroup,
   InvoiceReconciliationStatus,
@@ -21,9 +22,9 @@ const SHIPMENTS_URL = "https://api.linbis.com/shipments/all";
 
 type DatasetCache = {
   fetchedAt: number;
-  charges: LinbisChargeRecord[];
   invoices: LinbisInvoiceRecord[];
   shipments: LinbisShipmentRecord[];
+  charges: LinbisChargeRecord[] | null;
 };
 
 type ModuleReconciliation = {
@@ -76,7 +77,7 @@ function invoiceDirectExpenseOnModule(
 
 /**
  * Asigna gastos huérfanos (sin income.invoice) usando únicamente vínculos
- * explícitos expuestos por la API Linbis en los cargos del mismo módulo:
+ * explícitos en los cargos del mismo módulo:
  * - expense.referenceNumber compartido con un cargo facturado
  * - expense.bill compartido con un cargo facturado
  */
@@ -159,38 +160,383 @@ function sumNullAsZero(values: Array<number | null>): number {
   return round2(values.reduce<number>((sum, value) => sum + (value ?? 0), 0));
 }
 
+type ShipmentIndexes = {
+  shipmentByNumber: Map<string, LinbisShipmentRecord>;
+  shipmentById: Map<number, LinbisShipmentRecord>;
+};
+
+function buildShipmentIndexes(shipments: LinbisShipmentRecord[]): ShipmentIndexes {
+  const shipmentByNumber = new Map<string, LinbisShipmentRecord>();
+  const shipmentById = new Map<number, LinbisShipmentRecord>();
+  for (const shipment of shipments) {
+    if (shipment.id != null) shipmentById.set(shipment.id, shipment);
+    if (shipment.number) shipmentByNumber.set(shipment.number, shipment);
+    if (shipment.waybillNumber) shipmentByNumber.set(shipment.waybillNumber, shipment);
+  }
+  return { shipmentByNumber, shipmentById };
+}
+
+function resolveShipmentForInvoice(
+  invoice: LinbisInvoiceRecord,
+  indexes: ShipmentIndexes,
+  moduleId: number | null,
+): LinbisShipmentRecord | null {
+  const moduleRef = (invoice.moduleNumber || "").trim();
+  if (moduleRef && indexes.shipmentByNumber.has(moduleRef)) {
+    return indexes.shipmentByNumber.get(moduleRef)!;
+  }
+  if (moduleId != null && indexes.shipmentById.has(moduleId)) {
+    return indexes.shipmentById.get(moduleId)!;
+  }
+  return null;
+}
+
+async function fetchJson<T>(
+  url: string,
+  accessToken: string,
+  refreshAccessToken: () => Promise<string>,
+): Promise<T[]> {
+  const response = await linbisFetch(
+    url,
+    { method: "GET", headers: LINBIS_JSON_HEADERS },
+    accessToken,
+    refreshAccessToken,
+  );
+  if (!response.ok) {
+    throw new Error(`Error al obtener datos (${response.status})`);
+  }
+  const payload = await response.json();
+  return Array.isArray(payload) ? payload : [];
+}
+
+async function fetchCoreDataset(
+  accessToken: string,
+  refreshAccessToken: () => Promise<string>,
+  force = false,
+): Promise<Pick<DatasetCache, "fetchedAt" | "invoices" | "shipments">> {
+  const now = Date.now();
+  if (!force && datasetCache && now - datasetCache.fetchedAt < CACHE_TTL_MS) {
+    return {
+      fetchedAt: datasetCache.fetchedAt,
+      invoices: datasetCache.invoices,
+      shipments: datasetCache.shipments,
+    };
+  }
+
+  const [invoices, shipments] = await Promise.all([
+    fetchJson<LinbisInvoiceRecord>(INVOICES_URL, accessToken, refreshAccessToken),
+    fetchJson<LinbisShipmentRecord>(SHIPMENTS_URL, accessToken, refreshAccessToken),
+  ]);
+
+  if (!datasetCache || force) {
+    datasetCache = { fetchedAt: now, invoices, shipments, charges: null };
+  } else {
+    datasetCache = { ...datasetCache, fetchedAt: now, invoices, shipments };
+  }
+
+  return { fetchedAt: now, invoices, shipments };
+}
+
+async function ensureChargesLoaded(
+  accessToken: string,
+  refreshAccessToken: () => Promise<string>,
+  force = false,
+): Promise<LinbisChargeRecord[]> {
+  const now = Date.now();
+  if (
+    !force &&
+    datasetCache?.charges &&
+    now - datasetCache.fetchedAt < CACHE_TTL_MS
+  ) {
+    return datasetCache.charges;
+  }
+
+  const charges = await fetchJson<LinbisChargeRecord>(
+    CHARGES_URL,
+    accessToken,
+    refreshAccessToken,
+  );
+
+  if (datasetCache) {
+    datasetCache = { ...datasetCache, fetchedAt: now, charges };
+  } else {
+    datasetCache = {
+      fetchedAt: now,
+      invoices: [],
+      shipments: [],
+      charges,
+    };
+  }
+
+  return charges;
+}
+
+function buildPreviewRows(
+  invoices: LinbisInvoiceRecord[],
+  shipments: LinbisShipmentRecord[],
+  start: Date,
+  endInclusive: Date,
+): CommissionAnalysisInvoiceRow[] {
+  const indexes = buildShipmentIndexes(shipments);
+  const rows: CommissionAnalysisInvoiceRow[] = [];
+
+  for (const invoice of invoices) {
+    if (!invoice.number || !isInDateRange(invoice.date, start, endInclusive)) continue;
+
+    const shipment = resolveShipmentForInvoice(invoice, indexes, null);
+    const rep = (invoice.salesRep || "").trim();
+    const resolvedRep = rep || (shipment?.salesRep || "").trim() || "Sin representante";
+    const division = normalizeDivision(invoice, shipment);
+    const shipmentRef = resolveShipmentRef(invoice, shipment);
+
+    rows.push({
+      invoice: invoice.number,
+      date: invoice.date,
+      status: invoice.status || "",
+      division,
+      type: normalizeType(division),
+      hawbHbl: shipmentRef,
+      shipmentRef,
+      billTo: (invoice.billToName || "").trim(),
+      consignee: (shipment?.consignee || invoice.billToName || "").trim(),
+      destination: (shipment?.finalDestination || shipment?.destination || "").trim(),
+      income: round2(invoice.homeTotalAmount ?? 0),
+      expense: null,
+      profit: null,
+      commission: 0,
+      salesRep: resolvedRep,
+      moduleId: null,
+      reconciliationStatus: "incomplete",
+    });
+  }
+
+  return rows;
+}
+
+function buildDetailedRows(
+  charges: LinbisChargeRecord[],
+  invoices: LinbisInvoiceRecord[],
+  shipments: LinbisShipmentRecord[],
+  start: Date,
+  endInclusive: Date,
+  filterInvoiceNumbers?: Set<string>,
+): CommissionAnalysisInvoiceRow[] {
+  const invoiceByNumber = new Map(
+    invoices.filter((invoice) => invoice.number).map((invoice) => [invoice.number, invoice]),
+  );
+  const indexes = buildShipmentIndexes(shipments);
+
+  const chargesByModule = new Map<number, LinbisChargeRecord[]>();
+  for (const charge of charges) {
+    if (!chargesByModule.has(charge.moduleId)) {
+      chargesByModule.set(charge.moduleId, []);
+    }
+    chargesByModule.get(charge.moduleId)!.push(charge);
+  }
+
+  const moduleReconciliationCache = new Map<number, ModuleReconciliation>();
+  const getModuleReconciliation = (moduleId: number): ModuleReconciliation => {
+    if (!moduleReconciliationCache.has(moduleId)) {
+      moduleReconciliationCache.set(
+        moduleId,
+        reconcileModuleOrphans(chargesByModule.get(moduleId) || []),
+      );
+    }
+    return moduleReconciliationCache.get(moduleId)!;
+  };
+
+  const chargesByInvoice = new Map<string, LinbisChargeRecord[]>();
+  for (const charge of charges) {
+    const invoiceNumber = charge.income?.invoice;
+    if (!invoiceNumber) continue;
+    if (!chargesByInvoice.has(invoiceNumber)) {
+      chargesByInvoice.set(invoiceNumber, []);
+    }
+    chargesByInvoice.get(invoiceNumber)!.push(charge);
+  }
+
+  const rows: CommissionAnalysisInvoiceRow[] = [];
+
+  for (const [invoiceNumber, invoiceCharges] of chargesByInvoice) {
+    if (filterInvoiceNumbers && !filterInvoiceNumbers.has(invoiceNumber)) continue;
+
+    const invoice = invoiceByNumber.get(invoiceNumber);
+    if (!invoice) continue;
+    if (!isInDateRange(invoice.date, start, endInclusive)) continue;
+
+    const rep = (invoice.salesRep || "").trim();
+    const moduleId = invoiceCharges[0]?.moduleId ?? null;
+    const moduleCharges =
+      moduleId != null ? chargesByModule.get(moduleId) || [] : invoiceCharges;
+
+    const income = round2(invoiceIncomeOnModule(moduleCharges, invoiceNumber));
+
+    let expense: number | null = null;
+    let profit: number | null = null;
+    let reconciliationStatus: InvoiceReconciliationStatus = "incomplete";
+
+    if (moduleId != null) {
+      const reconciliation = getModuleReconciliation(moduleId);
+      if (reconciliation.isComplete) {
+        const directExpense = invoiceDirectExpenseOnModule(moduleCharges, invoiceNumber);
+        const allocatedOrphans = reconciliation.orphanAllocation.get(invoiceNumber) || 0;
+        expense = round2(directExpense + allocatedOrphans);
+        profit = round2(income - expense);
+        reconciliationStatus = "complete";
+      }
+    } else {
+      const directExpense = invoiceDirectExpenseOnModule(moduleCharges, invoiceNumber);
+      expense = round2(directExpense);
+      profit = round2(income - expense);
+      reconciliationStatus = "complete";
+    }
+
+    const shipment = resolveShipmentForInvoice(invoice, indexes, moduleId);
+    const resolvedRep = rep || (shipment?.salesRep || "").trim() || "Sin representante";
+    const division = normalizeDivision(invoice, shipment);
+    const shipmentRef = resolveShipmentRef(invoice, shipment);
+
+    rows.push({
+      invoice: invoiceNumber,
+      date: invoice.date,
+      status: invoice.status || "",
+      division,
+      type: normalizeType(division),
+      hawbHbl: shipmentRef,
+      shipmentRef,
+      billTo: (invoice.billToName || "").trim(),
+      consignee: (shipment?.consignee || invoice.billToName || "").trim(),
+      destination: (shipment?.finalDestination || shipment?.destination || "").trim(),
+      income,
+      expense,
+      profit,
+      commission: 0,
+      salesRep: resolvedRep,
+      moduleId,
+      reconciliationStatus,
+    });
+  }
+
+  return rows;
+}
+
+function assembleReport(
+  rows: CommissionAnalysisInvoiceRow[],
+  startDate: string,
+  endDate: string,
+): CommissionAnalysisReport {
+  const sortedRows = [...rows].sort((a, b) => {
+    const repCompare = a.salesRep.localeCompare(b.salesRep, "es");
+    if (repCompare !== 0) return repCompare;
+    const shipmentCompare = a.shipmentRef.localeCompare(b.shipmentRef, "es");
+    if (shipmentCompare !== 0) return shipmentCompare;
+    return (a.date || "").localeCompare(b.date || "");
+  });
+
+  const groups = buildGroupsFromRows(sortedRows);
+
+  let completeRows = 0;
+  let incompleteRows = 0;
+  let unallocatedExpenseTotal = 0;
+  const modulesCounted = new Set<number>();
+
+  if (datasetCache?.charges) {
+    const chargesByModule = new Map<number, LinbisChargeRecord[]>();
+    for (const charge of datasetCache.charges) {
+      if (!chargesByModule.has(charge.moduleId)) {
+        chargesByModule.set(charge.moduleId, []);
+      }
+      chargesByModule.get(charge.moduleId)!.push(charge);
+    }
+
+    for (const row of sortedRows) {
+      if (row.reconciliationStatus === "complete") completeRows += 1;
+      else incompleteRows += 1;
+
+      if (row.moduleId != null && row.reconciliationStatus === "incomplete") {
+        if (!modulesCounted.has(row.moduleId)) {
+          modulesCounted.add(row.moduleId);
+          const reconciliation = reconcileModuleOrphans(
+            chargesByModule.get(row.moduleId) || [],
+          );
+          unallocatedExpenseTotal = round2(
+            unallocatedExpenseTotal + reconciliation.unallocatedExpense,
+          );
+        }
+      }
+    }
+  } else {
+    incompleteRows = sortedRows.length;
+  }
+
+  return {
+    generatedAt: new Date(),
+    startDate,
+    endDate,
+    groups,
+    totals: {
+      income: round2(sortedRows.reduce((sum, row) => sum + row.income, 0)),
+      expense: sumNullAsZero(sortedRows.map((row) => row.expense)),
+      profit: sumNullAsZero(sortedRows.map((row) => row.profit)),
+      commission: 0,
+    },
+    invoiceCount: sortedRows.length,
+    reconciliation: {
+      completeRows,
+      incompleteRows,
+      unallocatedExpenseTotal,
+      isFullyReconciled: incompleteRows === 0,
+    },
+  };
+}
+
+export async function fetchOperationInvoiceDetails(
+  accessToken: string,
+  refreshAccessToken: () => Promise<string>,
+  options: {
+    invoiceNumbers: string[];
+    moduleId: number | null;
+    startDate: string;
+    endDate: string;
+  },
+): Promise<CommissionAnalysisInvoiceRow[]> {
+  const { invoiceNumbers, startDate, endDate } = options;
+  const start = parseInputDate(startDate);
+  const end = parseInputDate(endDate);
+  if (!start || !end) throw new Error("Rango de fechas inválido");
+
+  const endInclusive = new Date(end);
+  endInclusive.setHours(23, 59, 59, 999);
+
+  const filterSet = new Set(invoiceNumbers);
+  const { invoices, shipments } = await fetchCoreDataset(accessToken, refreshAccessToken);
+  const charges = await ensureChargesLoaded(accessToken, refreshAccessToken);
+
+  const rows = buildDetailedRows(
+    charges,
+    invoices,
+    shipments,
+    start,
+    endInclusive,
+    filterSet,
+  );
+
+  return rows.sort((a, b) => a.invoice.localeCompare(b.invoice, "es"));
+}
+
 async function fetchDataset(
   accessToken: string,
   refreshAccessToken: () => Promise<string>,
   force = false,
-): Promise<DatasetCache> {
-  const now = Date.now();
-  if (!force && datasetCache && now - datasetCache.fetchedAt < CACHE_TTL_MS) {
-    return datasetCache;
-  }
-
-  const fetchJson = async (url: string) => {
-    const response = await linbisFetch(
-      url,
-      { method: "GET", headers: LINBIS_JSON_HEADERS },
-      accessToken,
-      refreshAccessToken,
-    );
-    if (!response.ok) {
-      throw new Error(`Error Linbis (${url}): ${response.status} ${response.statusText}`);
-    }
-    const payload = await response.json();
-    return Array.isArray(payload) ? payload : [];
+): Promise<Required<DatasetCache>> {
+  const core = await fetchCoreDataset(accessToken, refreshAccessToken, force);
+  const charges = await ensureChargesLoaded(accessToken, refreshAccessToken, force);
+  return {
+    fetchedAt: core.fetchedAt,
+    invoices: core.invoices,
+    shipments: core.shipments,
+    charges,
   };
-
-  const [charges, invoices, shipments] = await Promise.all([
-    fetchJson(CHARGES_URL) as Promise<LinbisChargeRecord[]>,
-    fetchJson(INVOICES_URL) as Promise<LinbisInvoiceRecord[]>,
-    fetchJson(SHIPMENTS_URL) as Promise<LinbisShipmentRecord[]>,
-  ]);
-
-  datasetCache = { fetchedAt: now, charges, invoices, shipments };
-  return datasetCache;
 }
 
 export function clearCommissionAnalysisCache(): void {
@@ -226,6 +572,80 @@ function buildGroupsFromRows(
       },
     }))
     .sort((a, b) => a.salesRep.localeCompare(b.salesRep, "es"));
+}
+
+function resolveOperationKey(row: CommissionAnalysisInvoiceRow): string {
+  if (row.moduleId != null) return `module:${row.moduleId}`;
+  if (row.shipmentRef) return row.shipmentRef;
+  return `invoice:${row.invoice}`;
+}
+
+function uniqueJoined(values: string[]): string {
+  return [...new Set(values.filter(Boolean))].join(", ");
+}
+
+export function buildOperationsSummary(
+  report: CommissionAnalysisReport,
+): CommissionAnalysisOperationsGroup[] {
+  const operationsByRep = new Map<string, Map<string, CommissionAnalysisInvoiceRow[]>>();
+
+  for (const group of report.groups) {
+    if (!operationsByRep.has(group.salesRep)) {
+      operationsByRep.set(group.salesRep, new Map());
+    }
+    const repOps = operationsByRep.get(group.salesRep)!;
+
+    for (const row of group.rows) {
+      const opKey = resolveOperationKey(row);
+      if (!repOps.has(opKey)) repOps.set(opKey, []);
+      repOps.get(opKey)!.push(row);
+    }
+  }
+
+  const result: CommissionAnalysisOperationsGroup[] = [];
+
+  for (const [salesRep, opsMap] of [...operationsByRep.entries()].sort((a, b) =>
+    a[0].localeCompare(b[0], "es"),
+  )) {
+    const operations = [...opsMap.entries()]
+      .map(([, invoiceRows]) => {
+        const sortedInvoices = [...invoiceRows].sort((a, b) =>
+          a.invoice.localeCompare(b.invoice, "es"),
+        );
+        const operationRef =
+          sortedInvoices.find((row) => row.shipmentRef)?.shipmentRef ||
+          sortedInvoices[0]?.invoice ||
+          "—";
+
+        return {
+          salesRep,
+          operationRef,
+          moduleId: sortedInvoices.find((row) => row.moduleId != null)?.moduleId ?? null,
+          invoices: sortedInvoices.map((row) => row.invoice),
+          invoiceCount: sortedInvoices.length,
+          consignee: uniqueJoined(sortedInvoices.map((row) => row.consignee)),
+          destination: uniqueJoined(sortedInvoices.map((row) => row.destination)),
+          income: round2(sortedInvoices.reduce((sum, row) => sum + row.income, 0)),
+          expense: sumNullAsZero(sortedInvoices.map((row) => row.expense)),
+          profit: sumNullAsZero(sortedInvoices.map((row) => row.profit)),
+        };
+      })
+      .sort((a, b) => a.operationRef.localeCompare(b.operationRef, "es"));
+
+    result.push({
+      salesRep,
+      operations,
+      subtotal: {
+        operationCount: operations.length,
+        invoiceCount: operations.reduce((sum, op) => sum + op.invoiceCount, 0),
+        income: round2(operations.reduce((sum, op) => sum + op.income, 0)),
+        expense: round2(operations.reduce((sum, op) => sum + op.expense, 0)),
+        profit: round2(operations.reduce((sum, op) => sum + op.profit, 0)),
+      },
+    });
+  }
+
+  return result;
 }
 
 export function filterCommissionAnalysisReport(
@@ -291,9 +711,10 @@ export async function buildCommissionAnalysisReport(
     startDate: string;
     endDate: string;
     forceRefresh?: boolean;
+    onProgress?: (report: CommissionAnalysisReport, phase: "preview" | "complete") => void;
   },
 ): Promise<CommissionAnalysisReport> {
-  const { startDate, endDate, forceRefresh = false } = options;
+  const { startDate, endDate, forceRefresh = false, onProgress } = options;
   const start = parseInputDate(startDate);
   const end = parseInputDate(endDate);
 
@@ -303,167 +724,33 @@ export async function buildCommissionAnalysisReport(
   const endInclusive = new Date(end);
   endInclusive.setHours(23, 59, 59, 999);
 
-  const { charges, invoices, shipments } = await fetchDataset(
+  const { invoices, shipments } = await fetchCoreDataset(
     accessToken,
     refreshAccessToken,
     forceRefresh,
   );
 
-  const invoiceByNumber = new Map(
-    invoices.filter((invoice) => invoice.number).map((invoice) => [invoice.number, invoice]),
+  const previewRows = buildPreviewRows(invoices, shipments, start, endInclusive);
+  const previewReport = assembleReport(previewRows, startDate, endDate);
+  onProgress?.(previewReport, "preview");
+
+  const charges = await ensureChargesLoaded(
+    accessToken,
+    refreshAccessToken,
+    forceRefresh,
   );
 
-  const shipmentByNumber = new Map<string, LinbisShipmentRecord>();
-  const shipmentById = new Map<number, LinbisShipmentRecord>();
-  for (const shipment of shipments) {
-    if (shipment.id != null) shipmentById.set(shipment.id, shipment);
-    if (shipment.number) shipmentByNumber.set(shipment.number, shipment);
-    if (shipment.waybillNumber) shipmentByNumber.set(shipment.waybillNumber, shipment);
-  }
+  const detailedRows = buildDetailedRows(
+    charges,
+    invoices,
+    shipments,
+    start,
+    endInclusive,
+  );
 
-  const chargesByModule = new Map<number, LinbisChargeRecord[]>();
-  for (const charge of charges) {
-    if (!chargesByModule.has(charge.moduleId)) {
-      chargesByModule.set(charge.moduleId, []);
-    }
-    chargesByModule.get(charge.moduleId)!.push(charge);
-  }
-
-  const moduleReconciliationCache = new Map<number, ModuleReconciliation>();
-  const getModuleReconciliation = (moduleId: number): ModuleReconciliation => {
-    if (!moduleReconciliationCache.has(moduleId)) {
-      moduleReconciliationCache.set(
-        moduleId,
-        reconcileModuleOrphans(chargesByModule.get(moduleId) || []),
-      );
-    }
-    return moduleReconciliationCache.get(moduleId)!;
-  };
-
-  const chargesByInvoice = new Map<string, LinbisChargeRecord[]>();
-  for (const charge of charges) {
-    const invoiceNumber = charge.income?.invoice;
-    if (!invoiceNumber) continue;
-    if (!chargesByInvoice.has(invoiceNumber)) {
-      chargesByInvoice.set(invoiceNumber, []);
-    }
-    chargesByInvoice.get(invoiceNumber)!.push(charge);
-  }
-
-  const rows: CommissionAnalysisInvoiceRow[] = [];
-  let completeRows = 0;
-  let incompleteRows = 0;
-  let unallocatedExpenseTotal = 0;
-  const modulesCountedForUnallocated = new Set<number>();
-
-  for (const [invoiceNumber, invoiceCharges] of chargesByInvoice) {
-    const invoice = invoiceByNumber.get(invoiceNumber);
-    if (!invoice) continue;
-    if (!isInDateRange(invoice.date, start, endInclusive)) continue;
-
-    const rep = (invoice.salesRep || "").trim();
-
-    const moduleId = invoiceCharges[0]?.moduleId ?? null;
-    const moduleCharges =
-      moduleId != null ? chargesByModule.get(moduleId) || [] : invoiceCharges;
-
-    const income = round2(invoiceIncomeOnModule(moduleCharges, invoiceNumber));
-
-    let expense: number | null = null;
-    let profit: number | null = null;
-    let reconciliationStatus: InvoiceReconciliationStatus = "incomplete";
-
-    if (moduleId != null) {
-      const reconciliation = getModuleReconciliation(moduleId);
-      if (reconciliation.isComplete) {
-        const directExpense = invoiceDirectExpenseOnModule(moduleCharges, invoiceNumber);
-        const allocatedOrphans = reconciliation.orphanAllocation.get(invoiceNumber) || 0;
-        expense = round2(directExpense + allocatedOrphans);
-        profit = round2(income - expense);
-        reconciliationStatus = "complete";
-        completeRows += 1;
-      } else {
-        incompleteRows += 1;
-        if (!modulesCountedForUnallocated.has(moduleId)) {
-          modulesCountedForUnallocated.add(moduleId);
-          unallocatedExpenseTotal = round2(
-            unallocatedExpenseTotal + reconciliation.unallocatedExpense,
-          );
-        }
-      }
-    } else {
-      const directExpense = invoiceDirectExpenseOnModule(moduleCharges, invoiceNumber);
-      expense = round2(directExpense);
-      profit = round2(income - expense);
-      reconciliationStatus = "complete";
-      completeRows += 1;
-    }
-
-    let shipment: LinbisShipmentRecord | null = null;
-    const moduleRef = (invoice.moduleNumber || "").trim();
-    if (moduleRef && shipmentByNumber.has(moduleRef)) {
-      shipment = shipmentByNumber.get(moduleRef)!;
-    } else if (moduleId != null && shipmentById.has(moduleId)) {
-      shipment = shipmentById.get(moduleId)!;
-    }
-
-    const resolvedRep = rep || (shipment?.salesRep || "").trim() || "Sin representante";
-    const division = normalizeDivision(invoice, shipment);
-    const shipmentRef = resolveShipmentRef(invoice, shipment);
-    const resolvedConsignee = (shipment?.consignee || invoice.billToName || "").trim();
-
-    rows.push({
-      invoice: invoiceNumber,
-      date: invoice.date,
-      status: invoice.status || "",
-      division,
-      type: normalizeType(division),
-      hawbHbl: shipmentRef,
-      shipmentRef,
-      billTo: (invoice.billToName || "").trim(),
-      consignee: resolvedConsignee,
-      destination: (shipment?.finalDestination || shipment?.destination || "").trim(),
-      income,
-      expense,
-      profit,
-      commission: 0,
-      salesRep: resolvedRep,
-      moduleId,
-      reconciliationStatus,
-    });
-  }
-
-  rows.sort((a, b) => {
-    const repCompare = a.salesRep.localeCompare(b.salesRep, "es");
-    if (repCompare !== 0) return repCompare;
-    const shipmentCompare = a.shipmentRef.localeCompare(b.shipmentRef, "es");
-    if (shipmentCompare !== 0) return shipmentCompare;
-    return (a.date || "").localeCompare(b.date || "");
-  });
-
-  const groups = buildGroupsFromRows(rows);
-
-  const totals = {
-    income: round2(rows.reduce((sum, row) => sum + row.income, 0)),
-    expense: sumNullAsZero(rows.map((row) => row.expense)),
-    profit: sumNullAsZero(rows.map((row) => row.profit)),
-    commission: 0,
-  };
-
-  return {
-    generatedAt: new Date(),
-    startDate,
-    endDate,
-    groups,
-    totals,
-    invoiceCount: rows.length,
-    reconciliation: {
-      completeRows,
-      incompleteRows,
-      unallocatedExpenseTotal,
-      isFullyReconciled: incompleteRows === 0,
-    },
-  };
+  const report = assembleReport(detailedRows, startDate, endDate);
+  onProgress?.(report, "complete");
+  return report;
 }
 
 export function formatCommissionAmount(value: number | null): string {

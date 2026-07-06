@@ -733,3 +733,39 @@ export const DoubleComparisonSkeleton = () => (
     </div>
   </>
 );
+
+/** Analisys System — resumen ejecutivos + operaciones */
+export const AnalisysSystemSkeleton = ({ message }: { message: string }) => (
+  <div style={{ marginTop: 16 }}>
+    <SkeletonStyles />
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        minHeight: 120,
+        marginBottom: 20,
+        padding: "24px 16px",
+        borderRadius: 8,
+        border: `1px solid ${C.border}`,
+        backgroundColor: C.bg,
+      }}
+    >
+      <p
+        style={{
+          ...base,
+          margin: 0,
+          fontSize: 15,
+          fontWeight: 600,
+          color: C.secondary,
+          textAlign: "center",
+        }}
+      >
+        {message}
+      </p>
+    </div>
+    <SkeletonBanner />
+    <SkeletonTableBlock titleWidth="32%" columns={2} rows={5} />
+    <SkeletonTableBlock titleWidth="38%" columns={8} rows={8} />
+  </div>
+);

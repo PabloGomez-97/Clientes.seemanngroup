@@ -1,24 +1,23 @@
-import { useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useOutletContext } from "react-router-dom";
 import {
   buildCommissionAnalysisReport,
+  buildOperationsSummary,
   clearCommissionAnalysisCache,
   filterCommissionAnalysisReport,
   formatCommissionAmount,
   formatReportDateRange,
 } from "./commissionAnalysisService";
-import type {
-  CommissionAnalysisInvoiceRow,
-  CommissionAnalysisReport,
-} from "./types";
+import type { CommissionAnalysisOperation, CommissionAnalysisReport } from "./types";
+import OperationInvoiceModal from "./OperationInvoiceModal";
 import {
+  AnalisysSystemSkeleton,
   C,
   base,
   btnOutline,
   btnPrimary,
   CardSection,
-  DataSourceBanner,
   EmptyState,
   ErrorBanner,
   inputStyle,
@@ -33,67 +32,10 @@ interface OutletContext {
   onLogout: () => void;
 }
 
-type DisplayRow =
-  | { kind: "rep-header"; salesRep: string }
-  | { kind: "shipment-header"; label: string }
-  | { kind: "invoice"; row: CommissionAnalysisInvoiceRow }
-  | {
-      kind: "rep-subtotal";
-      salesRep: string;
-      income: number;
-      expense: number;
-      profit: number;
-      commission: number;
-    }
-  | {
-      kind: "grand-total";
-      income: number;
-      expense: number;
-      profit: number;
-      commission: number;
-    };
-
-function buildDisplayRows(report: CommissionAnalysisReport): DisplayRow[] {
-  const displayRows: DisplayRow[] = [];
-
-  for (const group of report.groups) {
-    displayRows.push({ kind: "rep-header", salesRep: group.salesRep });
-    displayRows.push({ kind: "shipment-header", label: "SHIPMENT" });
-
-    let lastShipmentRef = "";
-
-    for (const row of group.rows) {
-      if (row.shipmentRef && row.shipmentRef !== lastShipmentRef) {
-        displayRows.push({ kind: "shipment-header", label: row.shipmentRef });
-        lastShipmentRef = row.shipmentRef;
-      }
-      displayRows.push({ kind: "invoice", row });
-    }
-
-    displayRows.push({
-      kind: "rep-subtotal",
-      salesRep: group.salesRep,
-      income: group.subtotal.income,
-      expense: group.subtotal.expense,
-      profit: group.subtotal.profit,
-      commission: group.subtotal.commission,
-    });
-  }
-
-  displayRows.push({
-    kind: "grand-total",
-    income: report.totals.income,
-    expense: report.totals.expense,
-    profit: report.totals.profit,
-    commission: report.totals.commission,
-  });
-
-  return displayRows;
-}
-
-function amountCell(value: number | null): string {
-  return formatCommissionAmount(value);
-}
+// Colores de filas en tablas de operaciones
+const REP_HEADER_BG = C.primaryLight;
+const REP_TOTAL_BG = "#f1f5f9";
+const GRAND_TOTAL_BG = C.borderLight;
 
 export default function AnalisysSystem() {
   const { t } = useTranslation();
@@ -106,8 +48,28 @@ export default function AnalisysSystem() {
   const [consigneeFilter, setConsigneeFilter] = useState("");
   const [baseReport, setBaseReport] = useState<CommissionAnalysisReport | null>(null);
   const [loading, setLoading] = useState(false);
+  const [enriching, setEnriching] = useState(false);
+  const [loadingMessagePhase, setLoadingMessagePhase] = useState<0 | 1>(0);
   const [error, setError] = useState<string | null>(null);
   const [fetchedAt, setFetchedAt] = useState<number | null>(null);
+  const [selectedOperation, setSelectedOperation] =
+    useState<CommissionAnalysisOperation | null>(null);
+
+  useEffect(() => {
+    if (!loading) {
+      setLoadingMessagePhase(0);
+      return;
+    }
+
+    setLoadingMessagePhase(0);
+    const timer = window.setTimeout(() => setLoadingMessagePhase(1), 2000);
+    return () => window.clearTimeout(timer);
+  }, [loading]);
+
+  const loadingMessage =
+    loadingMessagePhase === 0
+      ? t("analisysSystem.loading.initial")
+      : t("analisysSystem.loading.wait");
 
   const report = useMemo(() => {
     if (!baseReport) return null;
@@ -117,11 +79,6 @@ export default function AnalisysSystem() {
       consignee: consigneeFilter.trim() || undefined,
     });
   }, [baseReport, salesRepFilter, consigneeFilter]);
-
-  const displayRows = useMemo(
-    () => (report ? buildDisplayRows(report) : []),
-    [report],
-  );
 
   const salesRepOptions = useMemo(() => {
     if (!baseReport) return [];
@@ -139,6 +96,16 @@ export default function AnalisysSystem() {
     return [...set].sort((a, b) => a.localeCompare(b, "es"));
   }, [baseReport]);
 
+  const operationsSummary = useMemo(
+    () => (report && report.invoiceCount > 0 ? buildOperationsSummary(report) : []),
+    [report],
+  );
+
+  const totalOperations = useMemo(
+    () => operationsSummary.reduce((sum, group) => sum + group.subtotal.operationCount, 0),
+    [operationsSummary],
+  );
+
   const handleGenerate = async (forceRefresh = false) => {
     if (!accessToken) {
       setError(t("analisysSystem.errors.noToken"));
@@ -146,23 +113,34 @@ export default function AnalisysSystem() {
     }
 
     setLoading(true);
+    setEnriching(false);
     setError(null);
 
     try {
       if (forceRefresh) clearCommissionAnalysisCache();
-      const nextReport = await buildCommissionAnalysisReport(
-        accessToken,
-        refreshAccessToken,
-        { startDate, endDate, forceRefresh },
-      );
-      setBaseReport(nextReport);
+      await buildCommissionAnalysisReport(accessToken, refreshAccessToken, {
+        startDate,
+        endDate,
+        forceRefresh,
+        onProgress: (nextReport, phase) => {
+          if (phase === "preview") {
+            setBaseReport(nextReport);
+            setFetchedAt(Date.now());
+            setLoading(false);
+            setEnriching(true);
+          } else {
+            setBaseReport(nextReport);
+            setEnriching(false);
+          }
+        },
+      });
       setSalesRepFilter("");
       setConsigneeFilter("");
-      setFetchedAt(Date.now());
     } catch (err) {
       const message =
         err instanceof Error ? err.message : t("analisysSystem.errors.generic");
       setError(message);
+      setEnriching(false);
     } finally {
       setLoading(false);
     }
@@ -199,6 +177,7 @@ export default function AnalisysSystem() {
               value={startDate}
               onChange={(event) => setStartDate(event.target.value)}
               style={inputStyle}
+              disabled={loading || enriching}
             />
           </div>
           <div>
@@ -208,13 +187,14 @@ export default function AnalisysSystem() {
               value={endDate}
               onChange={(event) => setEndDate(event.target.value)}
               style={inputStyle}
+              disabled={loading || enriching}
             />
           </div>
 
           <button
             type="button"
             style={{ ...btnPrimary, opacity: loading ? 0.7 : 1 }}
-            disabled={loading}
+            disabled={loading || enriching}
             onClick={() => handleGenerate(false)}
           >
             {loading ? t("analisysSystem.actions.generating") : t("analisysSystem.actions.generate")}
@@ -222,7 +202,7 @@ export default function AnalisysSystem() {
           <button
             type="button"
             style={{ ...btnOutline, opacity: loading ? 0.7 : 1 }}
-            disabled={loading || !baseReport}
+            disabled={loading || enriching || !baseReport}
             onClick={() => handleGenerate(true)}
           >
             {t("analisysSystem.actions.refresh")}
@@ -230,7 +210,7 @@ export default function AnalisysSystem() {
         </div>
       </CardSection>
 
-      {baseReport && (
+      {baseReport && !loading && (
         <div style={{ marginTop: 16 }}>
           <CardSection title={t("analisysSystem.filters.resultsTitle")}>
             <div
@@ -296,40 +276,240 @@ export default function AnalisysSystem() {
         </div>
       )}
 
-      {fetchedAt && baseReport && report && (
+      {loading && <AnalisysSystemSkeleton message={loadingMessage} />}
+
+      {!loading && fetchedAt && baseReport && report && (
         <div style={{ marginTop: 16 }}>
-          <DataSourceBanner>
-            {t("analisysSystem.dataSource")} ·{" "}
+          <p style={{ ...base, fontSize: 13, color: C.textMuted, margin: "0 0 12px" }}>
             {t("analisysSystem.meta.showing", {
               shown: report.invoiceCount,
               total: baseReport.invoiceCount,
-            })}{" "}
-            · {new Date(fetchedAt).toLocaleString("es-CL")}
-          </DataSourceBanner>
-          {!report.reconciliation.isFullyReconciled && (
-            <div
+            })}
+            {printedRange ? ` · ${printedRange}` : ""}
+            {" · "}
+            {new Date(fetchedAt).toLocaleString("es-CL")}
+          </p>
+
+          {enriching && (
+            <p
               style={{
-                marginTop: 12,
-                padding: "12px 16px",
-                borderRadius: 8,
-                border: "1px solid #f59e0b",
-                backgroundColor: "#fffbeb",
-                color: C.text,
+                ...base,
                 fontSize: 13,
-                lineHeight: 1.5,
+                color: C.textMuted,
+                margin: "0 0 12px",
+                fontStyle: "italic",
               }}
             >
-              <strong>{t("analisysSystem.reconciliation.title")}</strong>
-              <div style={{ marginTop: 4 }}>
-                {t("analisysSystem.reconciliation.body", {
-                  complete: report.reconciliation.completeRows,
-                  incomplete: report.reconciliation.incompleteRows,
-                  unallocated: formatCommissionAmount(
-                    report.reconciliation.unallocatedExpenseTotal,
-                  ),
-                })}
-              </div>
+              {t("analisysSystem.loading.enriching")}
+            </p>
+          )}
+
+          {report.invoiceCount === 0 ? (
+            <div style={{ marginTop: 24 }}>
+              <EmptyState
+                title={t("analisysSystem.empty.noResultsTitle")}
+                sub={t("analisysSystem.empty.noResultsDescription")}
+              />
             </div>
+          ) : (
+            <>
+              <div style={{ marginTop: 16 }}>
+                <div style={{ ...styles.sectionTitle, marginBottom: 8 }}>
+                  {t("analisysSystem.executives.title")}
+                </div>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                    gap: 16,
+                  }}
+                >
+                  <div style={{ ...styles.card, overflowX: "auto" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                      <thead>
+                        <tr>
+                          <th style={styles.th}>{t("analisysSystem.executives.columns.name")}</th>
+                          <th style={{ ...styles.th, textAlign: "right" }}>
+                            {t("analisysSystem.executives.columns.operationCount")}
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {operationsSummary.map((group) => (
+                          <tr key={`exec-ops-${group.salesRep}`}>
+                            <td style={styles.td}>{group.salesRep}</td>
+                            <td style={{ ...styles.td, textAlign: "right" }}>
+                              {group.subtotal.operationCount}
+                            </td>
+                          </tr>
+                        ))}
+                        <tr style={{ backgroundColor: GRAND_TOTAL_BG }}>
+                          <td style={{ ...styles.td, fontWeight: 700 }}>
+                            {t("analisysSystem.executives.total")}
+                          </td>
+                          <td style={{ ...styles.td, textAlign: "right", fontWeight: 700 }}>
+                            {totalOperations}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div style={{ ...styles.card, overflowX: "auto" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                      <thead>
+                        <tr>
+                          <th style={styles.th}>{t("analisysSystem.executives.columns.name")}</th>
+                          <th style={{ ...styles.th, textAlign: "right" }}>
+                            {t("analisysSystem.operations.columns.income")}
+                          </th>
+                          <th style={{ ...styles.th, textAlign: "right" }}>
+                            {t("analisysSystem.operations.columns.expense")}
+                          </th>
+                          <th style={{ ...styles.th, textAlign: "right" }}>
+                            {t("analisysSystem.operations.columns.profit")}
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {operationsSummary.map((group) => (
+                          <tr key={`exec-fin-${group.salesRep}`}>
+                            <td style={styles.td}>{group.salesRep}</td>
+                            <td style={{ ...styles.td, textAlign: "right" }}>
+                              {formatCommissionAmount(group.subtotal.income)}
+                            </td>
+                            <td style={{ ...styles.td, textAlign: "right" }}>
+                              {formatCommissionAmount(group.subtotal.expense)}
+                            </td>
+                            <td style={{ ...styles.td, textAlign: "right" }}>
+                              {formatCommissionAmount(group.subtotal.profit)}
+                            </td>
+                          </tr>
+                        ))}
+                        <tr style={{ backgroundColor: GRAND_TOTAL_BG }}>
+                          <td style={{ ...styles.td, fontWeight: 700 }}>
+                            {t("analisysSystem.executives.total")}
+                          </td>
+                          <td style={{ ...styles.td, textAlign: "right", fontWeight: 700 }}>
+                            {formatCommissionAmount(report.totals.income)}
+                          </td>
+                          <td style={{ ...styles.td, textAlign: "right", fontWeight: 700 }}>
+                            {formatCommissionAmount(report.totals.expense)}
+                          </td>
+                          <td style={{ ...styles.td, textAlign: "right", fontWeight: 700 }}>
+                            {formatCommissionAmount(report.totals.profit)}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ marginTop: 16 }}>
+                <div style={{ ...styles.sectionTitle, marginBottom: 8 }}>
+                  {t("analisysSystem.operations.title")}
+                </div>
+                <p style={{ ...base, fontSize: 13, color: C.textMuted, margin: "0 0 12px" }}>
+                  {t("analisysSystem.operations.subtitle")}
+                </p>
+                <div style={{ ...styles.card, overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 960 }}>
+                    <thead>
+                      <tr>
+                        {[
+                          t("analisysSystem.operations.columns.operation"),
+                          t("analisysSystem.operations.columns.invoices"),
+                          t("analisysSystem.operations.columns.invoiceCount"),
+                          t("analisysSystem.operations.columns.consignee"),
+                          t("analisysSystem.operations.columns.destination"),
+                          t("analisysSystem.operations.columns.income"),
+                          t("analisysSystem.operations.columns.expense"),
+                          t("analisysSystem.operations.columns.profit"),
+                        ].map((header) => (
+                          <th key={header} style={styles.th}>
+                            {header}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {operationsSummary.map((group) => (
+                        <Fragment key={`op-group-${group.salesRep}`}>
+                          <tr>
+                            <td
+                              colSpan={8}
+                              style={{
+                                ...styles.td,
+                                fontWeight: 700,
+                                backgroundColor: REP_HEADER_BG,
+                              }}
+                            >
+                              {group.salesRep}
+                            </td>
+                          </tr>
+                          {group.operations.map((operation) => (
+                            <tr
+                              key={`${group.salesRep}-${operation.operationRef}-${operation.moduleId ?? "na"}`}
+                              onClick={() => setSelectedOperation(operation)}
+                              style={{ cursor: "pointer" }}
+                              title={t("analisysSystem.operations.openDetail")}
+                            >
+                              <td style={{ ...styles.td, fontWeight: 600 }}>
+                                {operation.operationRef}
+                              </td>
+                              <td style={styles.td}>{operation.invoices.join(", ")}</td>
+                              <td style={{ ...styles.td, textAlign: "right" }}>
+                                {operation.invoiceCount}
+                              </td>
+                              <td style={styles.td}>{operation.consignee}</td>
+                              <td style={styles.td}>{operation.destination}</td>
+                              <td style={{ ...styles.td, textAlign: "right" }}>
+                                {formatCommissionAmount(operation.income)}
+                              </td>
+                              <td style={{ ...styles.td, textAlign: "right" }}>
+                                {formatCommissionAmount(operation.expense)}
+                              </td>
+                              <td style={{ ...styles.td, textAlign: "right" }}>
+                                {formatCommissionAmount(operation.profit)}
+                              </td>
+                            </tr>
+                          ))}
+                          <tr style={{ backgroundColor: REP_TOTAL_BG }}>
+                            <td colSpan={5} style={{ ...styles.td, fontWeight: 700 }}>
+                              {t("analisysSystem.operations.repTotal", { name: group.salesRep })}
+                            </td>
+                            <td style={{ ...styles.td, textAlign: "right", fontWeight: 700 }}>
+                              {formatCommissionAmount(group.subtotal.income)}
+                            </td>
+                            <td style={{ ...styles.td, textAlign: "right", fontWeight: 700 }}>
+                              {formatCommissionAmount(group.subtotal.expense)}
+                            </td>
+                            <td style={{ ...styles.td, textAlign: "right", fontWeight: 700 }}>
+                              {formatCommissionAmount(group.subtotal.profit)}
+                            </td>
+                          </tr>
+                        </Fragment>
+                      ))}
+                      <tr style={{ backgroundColor: GRAND_TOTAL_BG }}>
+                        <td colSpan={5} style={{ ...styles.td, fontWeight: 800 }}>
+                          {t("analisysSystem.operations.total")}
+                        </td>
+                        <td style={{ ...styles.td, textAlign: "right", fontWeight: 800 }}>
+                          {formatCommissionAmount(report.totals.income)}
+                        </td>
+                        <td style={{ ...styles.td, textAlign: "right", fontWeight: 800 }}>
+                          {formatCommissionAmount(report.totals.expense)}
+                        </td>
+                        <td style={{ ...styles.td, textAlign: "right", fontWeight: 800 }}>
+                          {formatCommissionAmount(report.totals.profit)}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
           )}
         </div>
       )}
@@ -343,172 +523,15 @@ export default function AnalisysSystem() {
         </div>
       )}
 
-      {report && (
-        <div style={{ marginTop: 24 }}>
-          {report.invoiceCount === 0 ? (
-            <EmptyState
-              title={t("analisysSystem.empty.noResultsTitle")}
-              sub={t("analisysSystem.empty.noResultsDescription")}
-            />
-          ) : (
-            <>
-          <div style={{ ...styles.cardPad, marginBottom: 16 }}>
-            <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 12 }}>
-              <div>
-                <div style={{ ...styles.sectionTitle, fontSize: 16, textTransform: "none" }}>
-                  Seemann y Compañia Limitada
-                </div>
-                <div style={{ ...base, fontSize: 14, fontWeight: 600, color: C.secondary }}>
-                  Commision Analysis Report
-                </div>
-              </div>
-              <div style={{ ...base, fontSize: 12, color: C.textMuted, textAlign: "right" }}>
-                <div>
-                  {t("analisysSystem.meta.printedOn")}:{" "}
-                  {report.generatedAt.toLocaleDateString("es-CL")}
-                </div>
-                <div>{printedRange}</div>
-                <div>
-                  {t("analisysSystem.meta.invoices")}: {report.invoiceCount}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div style={{ ...styles.card, overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1200 }}>
-              <thead>
-                <tr>
-                  {[
-                    "INVOICE",
-                    "DATE",
-                    "STATUS",
-                    "DIVISION",
-                    "TYPE",
-                    "HAWB/HBL",
-                    "BILL TO",
-                    "CONSIGNEE",
-                    "DESTINATION",
-                    "INCOME",
-                    "EXPENSE",
-                    "PROFIT",
-                    "COMMISION",
-                  ].map((header) => (
-                    <th key={header} style={styles.th}>
-                      {header}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {displayRows.map((entry, index) => {
-                  if (entry.kind === "rep-header") {
-                    return (
-                      <tr key={`rep-${entry.salesRep}-${index}`}>
-                        <td colSpan={13} style={{ ...styles.td, fontWeight: 700, backgroundColor: C.bg }}>
-                          {entry.salesRep}
-                        </td>
-                      </tr>
-                    );
-                  }
-
-                  if (entry.kind === "shipment-header") {
-                    return (
-                      <tr key={`ship-${entry.label}-${index}`}>
-                        <td style={{ ...styles.td, fontWeight: 600 }}>{entry.label}</td>
-                        <td colSpan={12} style={styles.td} />
-                      </tr>
-                    );
-                  }
-
-                  if (entry.kind === "invoice") {
-                    const row = entry.row;
-                    const incomplete = row.reconciliationStatus === "incomplete";
-                    return (
-                      <tr key={`${row.invoice}-${index}`}>
-                        <td style={styles.td}>{row.invoice}</td>
-                        <td style={styles.td}>{row.date}</td>
-                        <td style={styles.td}>{row.status}</td>
-                        <td style={styles.td}>{row.division}</td>
-                        <td style={styles.td}>{row.type}</td>
-                        <td style={styles.td}>{row.hawbHbl}</td>
-                        <td style={styles.td}>{row.billTo}</td>
-                        <td style={styles.td}>{row.consignee}</td>
-                        <td style={styles.td}>{row.destination}</td>
-                        <td style={{ ...styles.td, textAlign: "right" }}>{amountCell(row.income)}</td>
-                        <td
-                          style={{
-                            ...styles.td,
-                            textAlign: "right",
-                            color: incomplete ? C.textMuted : undefined,
-                          }}
-                          title={incomplete ? t("analisysSystem.reconciliation.incompleteRow") : undefined}
-                        >
-                          {amountCell(row.expense)}
-                        </td>
-                        <td
-                          style={{
-                            ...styles.td,
-                            textAlign: "right",
-                            color: incomplete ? C.textMuted : undefined,
-                          }}
-                          title={incomplete ? t("analisysSystem.reconciliation.incompleteRow") : undefined}
-                        >
-                          {amountCell(row.profit)}
-                        </td>
-                        <td style={{ ...styles.td, textAlign: "right" }}>{amountCell(row.commission)}</td>
-                      </tr>
-                    );
-                  }
-
-                  if (entry.kind === "rep-subtotal") {
-                    return (
-                      <tr key={`subtotal-${entry.salesRep}-${index}`} style={{ backgroundColor: C.primaryLight }}>
-                        <td colSpan={9} style={{ ...styles.td, fontWeight: 700 }}>
-                          {entry.salesRep}
-                        </td>
-                        <td style={{ ...styles.td, textAlign: "right", fontWeight: 700 }}>
-                          {amountCell(entry.income)}
-                        </td>
-                        <td style={{ ...styles.td, textAlign: "right", fontWeight: 700 }}>
-                          {amountCell(entry.expense)}
-                        </td>
-                        <td style={{ ...styles.td, textAlign: "right", fontWeight: 700 }}>
-                          {amountCell(entry.profit)}
-                        </td>
-                        <td style={{ ...styles.td, textAlign: "right", fontWeight: 700 }}>
-                          {amountCell(entry.commission)}
-                        </td>
-                      </tr>
-                    );
-                  }
-
-                  return (
-                    <tr key={`total-${index}`} style={{ backgroundColor: C.borderLight }}>
-                      <td colSpan={9} style={{ ...styles.td, fontWeight: 800 }}>
-                        TOTALS
-                      </td>
-                      <td style={{ ...styles.td, textAlign: "right", fontWeight: 800 }}>
-                        {amountCell(entry.income)}
-                      </td>
-                      <td style={{ ...styles.td, textAlign: "right", fontWeight: 800 }}>
-                        {amountCell(entry.expense)}
-                      </td>
-                      <td style={{ ...styles.td, textAlign: "right", fontWeight: 800 }}>
-                        {amountCell(entry.profit)}
-                      </td>
-                      <td style={{ ...styles.td, textAlign: "right", fontWeight: 800 }}>
-                        {amountCell(entry.commission)}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-            </>
-          )}
-        </div>
+      {selectedOperation && baseReport && (
+        <OperationInvoiceModal
+          operation={selectedOperation}
+          startDate={baseReport.startDate}
+          endDate={baseReport.endDate}
+          accessToken={accessToken}
+          refreshAccessToken={refreshAccessToken}
+          onClose={() => setSelectedOperation(null)}
+        />
       )}
     </div>
   );
