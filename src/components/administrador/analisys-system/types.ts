@@ -92,6 +92,7 @@ export type LinbisChargeRecord = {
     invoice?: string | null;
     exchangeAmount?: number;
     billApplyTo?: string | null;
+    referenceNumber?: string | null;
   } | null;
   expense?: {
     invoice?: string | null;
@@ -107,6 +108,7 @@ export type LinbisInvoiceRecord = {
   status: string;
   type: string;
   divisionName?: string | null;
+  billToId?: number | null;
   billToName?: string | null;
   salesRep?: string | null;
   moduleNumber?: string | null;

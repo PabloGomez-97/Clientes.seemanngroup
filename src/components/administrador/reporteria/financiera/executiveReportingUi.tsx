@@ -734,36 +734,72 @@ export const DoubleComparisonSkeleton = () => (
   </>
 );
 
-/** Analisys System — resumen ejecutivos + operaciones */
-export const AnalisysSystemSkeleton = ({ message }: { message: string }) => (
-  <div style={{ marginTop: 16 }}>
-    <SkeletonStyles />
+const ANALISYS_LOADING_KEYFRAMES = `
+@keyframes analisysSystemSpin {
+  to { transform: rotate(360deg); }
+}
+`;
+
+const AnalisysLoadingStyles = () => <style>{ANALISYS_LOADING_KEYFRAMES}</style>;
+
+const AnalisysLoadingSpinner = () => (
+  <div
+    role="status"
+    aria-hidden
+    style={{
+      width: 40,
+      height: 40,
+      border: `4px solid ${C.negativeLight}`,
+      borderTopColor: C.negative,
+      borderRadius: "50%",
+      animation: "analisysSystemSpin 0.75s linear infinite",
+      flexShrink: 0,
+    }}
+  />
+);
+
+/** Banner de carga — generación de reporte o actualización de expense/profit */
+export const AnalisysLoadingBanner = ({ message }: { message: string }) => (
+  <div style={{ marginBottom: 20 }}>
+    <AnalisysLoadingStyles />
     <div
       style={{
         display: "flex",
+        flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        minHeight: 120,
-        marginBottom: 20,
-        padding: "24px 16px",
+        gap: 16,
+        minHeight: 148,
+        padding: "32px 24px",
         borderRadius: 8,
-        border: `1px solid ${C.border}`,
-        backgroundColor: C.bg,
+        border: `2px solid ${C.negative}`,
+        backgroundColor: C.negativeLight,
+        textAlign: "center",
       }}
     >
+      <AnalisysLoadingSpinner />
       <p
         style={{
           ...base,
           margin: 0,
-          fontSize: 15,
-          fontWeight: 600,
-          color: C.secondary,
-          textAlign: "center",
+          maxWidth: 520,
+          fontSize: 18,
+          fontWeight: 700,
+          lineHeight: 1.45,
+          color: C.negative,
         }}
       >
         {message}
       </p>
     </div>
+  </div>
+);
+
+/** Analisys System — resumen ejecutivos + operaciones */
+export const AnalisysSystemSkeleton = ({ message }: { message: string }) => (
+  <div style={{ marginTop: 16 }}>
+    <SkeletonStyles />
+    <AnalisysLoadingBanner message={message} />
     <SkeletonBanner />
     <SkeletonTableBlock titleWidth="32%" columns={2} rows={5} />
     <SkeletonTableBlock titleWidth="38%" columns={8} rows={8} />

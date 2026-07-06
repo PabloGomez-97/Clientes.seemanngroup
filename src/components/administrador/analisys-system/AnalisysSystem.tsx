@@ -12,6 +12,7 @@ import {
 import type { CommissionAnalysisOperation, CommissionAnalysisReport } from "./types";
 import OperationInvoiceModal from "./OperationInvoiceModal";
 import {
+  AnalisysLoadingBanner,
   AnalisysSystemSkeleton,
   C,
   base,
@@ -291,17 +292,7 @@ export default function AnalisysSystem() {
           </p>
 
           {enriching && (
-            <p
-              style={{
-                ...base,
-                fontSize: 13,
-                color: C.textMuted,
-                margin: "0 0 12px",
-                fontStyle: "italic",
-              }}
-            >
-              {t("analisysSystem.loading.enriching")}
-            </p>
+            <AnalisysLoadingBanner message={t("analisysSystem.loading.enriching")} />
           )}
 
           {report.invoiceCount === 0 ? (

@@ -1,5 +1,11 @@
 import { linbisFetch } from "@/services/linbisFetch";
 import { parseInputDate } from "@/components/administrador/reporteria/financiera/invoiceUtils";
+import {
+  applyModuleSalesRepPropagation,
+  buildBillToSalesRepIndex,
+  buildSalesRepResolver,
+  type TransportShipmentRecord,
+} from "./salesRepResolver";
 import type {
   CommissionAnalysisInvoiceRow,
   CommissionAnalysisOperationsGroup,
@@ -19,11 +25,32 @@ const LINBIS_JSON_HEADERS = {
 const CHARGES_URL = "https://api.linbis.com/shipments/allCharges";
 const INVOICES_URL = "https://api.linbis.com/invoices/all";
 const SHIPMENTS_URL = "https://api.linbis.com/shipments/all";
+const AIR_SHIPMENTS_URL = "https://api.linbis.com/air-shipments/all";
+const GROUND_SHIPMENTS_URL = "https://api.linbis.com/ground-shipments/all";
+const ACCOUNTS_LIST_URL = "https://api.linbis.com/accounts/list?take=10000";
+const SALESREPS_LIST_URL = "https://api.linbis.com/salesreps/list?take=100";
+
+type LinbisAccountListRecord = {
+  id: number;
+  salesRepId?: number | null;
+};
+
+type LinbisSalesRepListRecord = {
+  id: number;
+  name?: string | null;
+};
+
+/** Etiqueta solo cuando ninguna fuente de la API permite inferir ejecutivo. */
+const PENDING_SALES_REP = "Pendiente de asignación";
 
 type DatasetCache = {
   fetchedAt: number;
   invoices: LinbisInvoiceRecord[];
   shipments: LinbisShipmentRecord[];
+  airShipments: TransportShipmentRecord[];
+  groundShipments: TransportShipmentRecord[];
+  accounts: LinbisAccountListRecord[];
+  salesReps: LinbisSalesRepListRecord[];
   charges: LinbisChargeRecord[] | null;
 };
 
@@ -35,6 +62,23 @@ type ModuleReconciliation = {
 
 let datasetCache: DatasetCache | null = null;
 const CACHE_TTL_MS = 5 * 60 * 1000;
+
+function finalizeSalesRep(resolved: string): string {
+  const rep = resolved.trim();
+  return rep || PENDING_SALES_REP;
+}
+
+function buildQuoteSalesRepIndex(
+  airShipments: TransportShipmentRecord[],
+): Map<string, string> {
+  const index = new Map<string, string>();
+  for (const shipment of airShipments) {
+    const quoteNumber = (shipment.quoteNumber || "").trim();
+    const quoteSalesRep = (shipment.quoteSalesRep || "").trim();
+    if (quoteNumber && quoteSalesRep) index.set(quoteNumber, quoteSalesRep);
+  }
+  return index;
+}
 
 function round2(value: number): number {
   return Math.round(value * 100) / 100;
@@ -75,24 +119,53 @@ function invoiceDirectExpenseOnModule(
     .reduce((sum, charge) => sum + (charge.expense?.exchangeAmount || 0), 0);
 }
 
+function distributeProportional(
+  total: number,
+  weights: Map<string, number>,
+): Map<string, number> {
+  const result = new Map<string, number>();
+  const entries = [...weights.entries()];
+  const totalWeight = entries.reduce((sum, [, weight]) => sum + weight, 0);
+  if (total <= 0 || totalWeight <= 0) return result;
+
+  let allocated = 0;
+  for (let index = 0; index < entries.length; index++) {
+    const [invoice, weight] = entries[index];
+    const share =
+      index === entries.length - 1
+        ? round2(total - allocated)
+        : round2((total * weight) / totalWeight);
+    allocated = round2(allocated + share);
+    if (share !== 0) result.set(invoice, share);
+  }
+  return result;
+}
+
 /**
- * Asigna gastos huérfanos (sin income.invoice) usando únicamente vínculos
- * explícitos en los cargos del mismo módulo:
- * - expense.referenceNumber compartido con un cargo facturado
- * - expense.bill compartido con un cargo facturado
+ * Asigna gastos huérfanos (sin income.invoice) en el mismo módulo:
+ * 1. Vínculos explícitos: expense.invoice, expense.referenceNumber o expense.bill
+ *    compartidos con cargos facturados (incluye income.referenceNumber).
+ * 2. Residuo: reparto proporcional por gasto directo de cada factura; si no hay,
+ *    por ingreso facturado en el módulo.
  */
 function reconcileModuleOrphans(
   moduleCharges: LinbisChargeRecord[],
 ): ModuleReconciliation {
   const refToInvoice = new Map<string, string>();
   const billToInvoice = new Map<string, string>();
+  const invoicesOnModule = new Set<string>();
 
   for (const charge of moduleCharges) {
     const invoiceNumber = (charge.income?.invoice || "").trim();
     if (!invoiceNumber) continue;
 
-    const referenceNumber = (charge.expense?.referenceNumber || "").trim();
-    if (referenceNumber) refToInvoice.set(referenceNumber, invoiceNumber);
+    invoicesOnModule.add(invoiceNumber);
+
+    const expenseReference = (charge.expense?.referenceNumber || "").trim();
+    if (expenseReference) refToInvoice.set(expenseReference, invoiceNumber);
+
+    const incomeReference = (charge.income?.referenceNumber || "").trim();
+    if (incomeReference) refToInvoice.set(incomeReference, invoiceNumber);
 
     const billNumber = (charge.expense?.bill || "").trim();
     if (billNumber) billToInvoice.set(billNumber, invoiceNumber);
@@ -107,10 +180,14 @@ function reconcileModuleOrphans(
     const expenseAmount = charge.expense?.exchangeAmount || 0;
     if (expenseAmount <= 0) continue;
 
+    const expenseInvoice = (charge.expense?.invoice || "").trim();
     const referenceNumber = (charge.expense?.referenceNumber || "").trim();
     const billNumber = (charge.expense?.bill || "").trim();
 
     const recipient =
+      (expenseInvoice && invoicesOnModule.has(expenseInvoice)
+        ? expenseInvoice
+        : undefined) ||
       (referenceNumber ? refToInvoice.get(referenceNumber) : undefined) ||
       (billNumber ? billToInvoice.get(billNumber) : undefined) ||
       null;
@@ -124,6 +201,38 @@ function reconcileModuleOrphans(
       recipient,
       round2((orphanAllocation.get(recipient) || 0) + expenseAmount),
     );
+  }
+
+  if (unallocatedExpense > 0 && invoicesOnModule.size > 0) {
+    const directExpenseByInvoice = new Map<string, number>();
+    const incomeByInvoice = new Map<string, number>();
+
+    for (const invoiceNumber of invoicesOnModule) {
+      directExpenseByInvoice.set(
+        invoiceNumber,
+        invoiceDirectExpenseOnModule(moduleCharges, invoiceNumber),
+      );
+      incomeByInvoice.set(
+        invoiceNumber,
+        invoiceIncomeOnModule(moduleCharges, invoiceNumber),
+      );
+    }
+
+    const totalDirectExpense = [...directExpenseByInvoice.values()].reduce(
+      (sum, value) => sum + value,
+      0,
+    );
+    const weights =
+      totalDirectExpense > 0 ? directExpenseByInvoice : incomeByInvoice;
+
+    const proportional = distributeProportional(unallocatedExpense, weights);
+    for (const [invoice, share] of proportional) {
+      orphanAllocation.set(
+        invoice,
+        round2((orphanAllocation.get(invoice) || 0) + share),
+      );
+    }
+    unallocatedExpense = 0;
   }
 
   return {
@@ -213,28 +322,78 @@ async function fetchCoreDataset(
   accessToken: string,
   refreshAccessToken: () => Promise<string>,
   force = false,
-): Promise<Pick<DatasetCache, "fetchedAt" | "invoices" | "shipments">> {
+): Promise<
+  Pick<
+    DatasetCache,
+    | "fetchedAt"
+    | "invoices"
+    | "shipments"
+    | "airShipments"
+    | "groundShipments"
+    | "accounts"
+    | "salesReps"
+  >
+> {
   const now = Date.now();
   if (!force && datasetCache && now - datasetCache.fetchedAt < CACHE_TTL_MS) {
     return {
       fetchedAt: datasetCache.fetchedAt,
       invoices: datasetCache.invoices,
       shipments: datasetCache.shipments,
+      airShipments: datasetCache.airShipments,
+      groundShipments: datasetCache.groundShipments,
+      accounts: datasetCache.accounts,
+      salesReps: datasetCache.salesReps,
     };
   }
 
-  const [invoices, shipments] = await Promise.all([
-    fetchJson<LinbisInvoiceRecord>(INVOICES_URL, accessToken, refreshAccessToken),
-    fetchJson<LinbisShipmentRecord>(SHIPMENTS_URL, accessToken, refreshAccessToken),
-  ]);
+  const [invoices, shipments, airShipments, groundShipments, accounts, salesReps] =
+    await Promise.all([
+      fetchJson<LinbisInvoiceRecord>(INVOICES_URL, accessToken, refreshAccessToken),
+      fetchJson<LinbisShipmentRecord>(SHIPMENTS_URL, accessToken, refreshAccessToken),
+      fetchJson<TransportShipmentRecord>(AIR_SHIPMENTS_URL, accessToken, refreshAccessToken),
+      fetchJson<TransportShipmentRecord>(
+        GROUND_SHIPMENTS_URL,
+        accessToken,
+        refreshAccessToken,
+      ),
+      fetchJson<LinbisAccountListRecord>(ACCOUNTS_LIST_URL, accessToken, refreshAccessToken),
+      fetchJson<LinbisSalesRepListRecord>(SALESREPS_LIST_URL, accessToken, refreshAccessToken),
+    ]);
 
   if (!datasetCache || force) {
-    datasetCache = { fetchedAt: now, invoices, shipments, charges: null };
+    datasetCache = {
+      fetchedAt: now,
+      invoices,
+      shipments,
+      airShipments,
+      groundShipments,
+      accounts,
+      salesReps,
+      charges: null,
+    };
   } else {
-    datasetCache = { ...datasetCache, fetchedAt: now, invoices, shipments };
+    datasetCache = {
+      ...datasetCache,
+      fetchedAt: now,
+      invoices,
+      shipments,
+      airShipments,
+      groundShipments,
+      accounts,
+      salesReps,
+    };
   }
 
-  return { fetchedAt: now, invoices, shipments };
+  return {
+    fetchedAt: now,
+    invoices,
+    shipments,
+    airShipments,
+    groundShipments,
+    accounts,
+    salesReps,
+  };
 }
 
 async function ensureChargesLoaded(
@@ -264,6 +423,10 @@ async function ensureChargesLoaded(
       fetchedAt: now,
       invoices: [],
       shipments: [],
+      airShipments: [],
+      groundShipments: [],
+      accounts: [],
+      salesReps: [],
       charges,
     };
   }
@@ -274,18 +437,28 @@ async function ensureChargesLoaded(
 function buildPreviewRows(
   invoices: LinbisInvoiceRecord[],
   shipments: LinbisShipmentRecord[],
+  airShipments: TransportShipmentRecord[],
+  groundShipments: TransportShipmentRecord[],
+  accounts: LinbisAccountListRecord[],
+  salesReps: LinbisSalesRepListRecord[],
   start: Date,
   endInclusive: Date,
 ): CommissionAnalysisInvoiceRow[] {
   const indexes = buildShipmentIndexes(shipments);
+  const salesRepResolver = buildSalesRepResolver({
+    invoices,
+    oceanShipments: shipments,
+    airShipments,
+    groundShipments,
+    quoteSalesRepByNumber: buildQuoteSalesRepIndex(airShipments),
+    billToSalesRepByAccountId: buildBillToSalesRepIndex(accounts, salesReps),
+  });
   const rows: CommissionAnalysisInvoiceRow[] = [];
 
   for (const invoice of invoices) {
     if (!invoice.number || !isInDateRange(invoice.date, start, endInclusive)) continue;
 
     const shipment = resolveShipmentForInvoice(invoice, indexes, null);
-    const rep = (invoice.salesRep || "").trim();
-    const resolvedRep = rep || (shipment?.salesRep || "").trim() || "Sin representante";
     const division = normalizeDivision(invoice, shipment);
     const shipmentRef = resolveShipmentRef(invoice, shipment);
 
@@ -304,7 +477,7 @@ function buildPreviewRows(
       expense: null,
       profit: null,
       commission: 0,
-      salesRep: resolvedRep,
+      salesRep: finalizeSalesRep(salesRepResolver.resolve(invoice, null)),
       moduleId: null,
       reconciliationStatus: "incomplete",
     });
@@ -317,6 +490,10 @@ function buildDetailedRows(
   charges: LinbisChargeRecord[],
   invoices: LinbisInvoiceRecord[],
   shipments: LinbisShipmentRecord[],
+  airShipments: TransportShipmentRecord[],
+  groundShipments: TransportShipmentRecord[],
+  accounts: LinbisAccountListRecord[],
+  salesReps: LinbisSalesRepListRecord[],
   start: Date,
   endInclusive: Date,
   filterInvoiceNumbers?: Set<string>,
@@ -325,6 +502,15 @@ function buildDetailedRows(
     invoices.filter((invoice) => invoice.number).map((invoice) => [invoice.number, invoice]),
   );
   const indexes = buildShipmentIndexes(shipments);
+  const salesRepResolver = buildSalesRepResolver({
+    invoices,
+    oceanShipments: shipments,
+    airShipments,
+    groundShipments,
+    charges,
+    quoteSalesRepByNumber: buildQuoteSalesRepIndex(airShipments),
+    billToSalesRepByAccountId: buildBillToSalesRepIndex(accounts, salesReps),
+  });
 
   const chargesByModule = new Map<number, LinbisChargeRecord[]>();
   for (const charge of charges) {
@@ -364,7 +550,6 @@ function buildDetailedRows(
     if (!invoice) continue;
     if (!isInDateRange(invoice.date, start, endInclusive)) continue;
 
-    const rep = (invoice.salesRep || "").trim();
     const moduleId = invoiceCharges[0]?.moduleId ?? null;
     const moduleCharges =
       moduleId != null ? chargesByModule.get(moduleId) || [] : invoiceCharges;
@@ -392,7 +577,6 @@ function buildDetailedRows(
     }
 
     const shipment = resolveShipmentForInvoice(invoice, indexes, moduleId);
-    const resolvedRep = rep || (shipment?.salesRep || "").trim() || "Sin representante";
     const division = normalizeDivision(invoice, shipment);
     const shipmentRef = resolveShipmentRef(invoice, shipment);
 
@@ -411,10 +595,16 @@ function buildDetailedRows(
       expense,
       profit,
       commission: 0,
-      salesRep: resolvedRep,
+      salesRep: salesRepResolver.resolve(invoice, moduleId),
       moduleId,
       reconciliationStatus,
     });
+  }
+
+  applyModuleSalesRepPropagation(rows);
+
+  for (const row of rows) {
+    row.salesRep = finalizeSalesRep(row.salesRep);
   }
 
   return rows;
@@ -509,13 +699,18 @@ export async function fetchOperationInvoiceDetails(
   endInclusive.setHours(23, 59, 59, 999);
 
   const filterSet = new Set(invoiceNumbers);
-  const { invoices, shipments } = await fetchCoreDataset(accessToken, refreshAccessToken);
+  const { invoices, shipments, airShipments, groundShipments, accounts, salesReps } =
+    await fetchCoreDataset(accessToken, refreshAccessToken);
   const charges = await ensureChargesLoaded(accessToken, refreshAccessToken);
 
   const rows = buildDetailedRows(
     charges,
     invoices,
     shipments,
+    airShipments,
+    groundShipments,
+    accounts,
+    salesReps,
     start,
     endInclusive,
     filterSet,
@@ -535,6 +730,10 @@ async function fetchDataset(
     fetchedAt: core.fetchedAt,
     invoices: core.invoices,
     shipments: core.shipments,
+    airShipments: core.airShipments,
+    groundShipments: core.groundShipments,
+    accounts: core.accounts,
+    salesReps: core.salesReps,
     charges,
   };
 }
@@ -724,13 +923,19 @@ export async function buildCommissionAnalysisReport(
   const endInclusive = new Date(end);
   endInclusive.setHours(23, 59, 59, 999);
 
-  const { invoices, shipments } = await fetchCoreDataset(
-    accessToken,
-    refreshAccessToken,
-    forceRefresh,
-  );
+  const { invoices, shipments, airShipments, groundShipments, accounts, salesReps } =
+    await fetchCoreDataset(accessToken, refreshAccessToken, forceRefresh);
 
-  const previewRows = buildPreviewRows(invoices, shipments, start, endInclusive);
+  const previewRows = buildPreviewRows(
+    invoices,
+    shipments,
+    airShipments,
+    groundShipments,
+    accounts,
+    salesReps,
+    start,
+    endInclusive,
+  );
   const previewReport = assembleReport(previewRows, startDate, endDate);
   onProgress?.(previewReport, "preview");
 
@@ -744,6 +949,10 @@ export async function buildCommissionAnalysisReport(
     charges,
     invoices,
     shipments,
+    airShipments,
+    groundShipments,
+    accounts,
+    salesReps,
     start,
     endInclusive,
   );
