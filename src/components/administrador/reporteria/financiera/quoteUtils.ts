@@ -156,6 +156,14 @@ export function formatExecutiveAmount(
       maximumFractionDigits: 2,
     }).format(amount);
   }
+  if (currency === "EUR") {
+    return new Intl.NumberFormat("de-DE", {
+      style: "currency",
+      currency: "EUR",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  }
   if (currency === "CLP") {
     return new Intl.NumberFormat("es-CL", {
       style: "currency",
@@ -174,6 +182,97 @@ export function formatExecutiveAmount(
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
+}
+
+function extractCurrencyAbbr(value: unknown): string | null {
+  if (typeof value === "string" && value.trim()) {
+    return value.trim().toUpperCase();
+  }
+  if (value && typeof value === "object") {
+    const abbr = (value as { abbr?: unknown }).abbr;
+    if (typeof abbr === "string" && abbr.trim()) {
+      return abbr.trim().toUpperCase();
+    }
+  }
+  return null;
+}
+
+function getCurrencyFromChargeRecord(
+  charge: Record<string, unknown>,
+): string | null {
+  const income = charge.income;
+  const expense = charge.expense;
+
+  if (income && typeof income === "object") {
+    const incomeCurrency = extractCurrencyAbbr(
+      (income as { currency?: unknown }).currency,
+    );
+    if (incomeCurrency) return incomeCurrency;
+  }
+
+  if (expense && typeof expense === "object") {
+    const expenseCurrency = extractCurrencyAbbr(
+      (expense as { currency?: unknown }).currency,
+    );
+    if (expenseCurrency) return expenseCurrency;
+  }
+
+  return null;
+}
+
+function getCurrencyFromChargeCollection(value: unknown): string | null {
+  if (!Array.isArray(value)) return null;
+
+  for (const charge of value) {
+    if (!charge || typeof charge !== "object") continue;
+    const currency = getCurrencyFromChargeRecord(charge as Record<string, unknown>);
+    if (currency) return currency;
+  }
+
+  return null;
+}
+
+/** Resuelve la moneda de una cotización Linbis desde display values o cargos. */
+export function getQuoteCurrency(quote: Record<string, unknown>): string | null {
+  const fromDisplay =
+    parseCurrencyFromDisplayValue(quote.totalCharge_IncomeDisplayValue) ??
+    parseCurrencyFromDisplayValue(quote.totalCharge_ExpenseDisplayValue) ??
+    parseCurrencyFromDisplayValue(quote.totalCharge_ProfitDisplayValue);
+  if (fromDisplay) return fromDisplay;
+
+  const directCurrency =
+    extractCurrencyAbbr(quote.currency) ??
+    (typeof quote.currencyCode === "string" && quote.currencyCode.trim()
+      ? quote.currencyCode.trim().toUpperCase()
+      : null);
+  if (directCurrency) return directCurrency;
+
+  return (
+    getCurrencyFromChargeCollection(quote.chargeDetails) ??
+    getCurrencyFromChargeCollection(quote.charges)
+  );
+}
+
+export function formatQuoteChargeDisplay(
+  quote: Record<string, unknown>,
+  options?: {
+    displayValue?: unknown;
+    currencyOverride?: string | null;
+    fallbackCurrency?: string;
+  },
+): string {
+  const displayValue =
+    options?.displayValue ?? quote.totalCharge_IncomeDisplayValue;
+  const amount = parseLinbisAmount(
+    displayValue ?? quote.totalCharge_IncomeValue ?? quote.totalCharge_Income,
+  );
+  const currency =
+    options?.currencyOverride ??
+    getQuoteCurrency(quote) ??
+    options?.fallbackCurrency ??
+    "CLP";
+
+  return formatExecutiveAmount(amount, currency);
 }
 
 export function isQuoteCompleted(status: string): boolean {
