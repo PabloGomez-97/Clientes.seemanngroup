@@ -1991,7 +1991,7 @@
     },
     "loading": {
       "initial": "Generating report…",
-      "wait": "Processing data, please wait.",
+      "wait": "Mapping data, this may take a few minutes.",
       "enriching": "Completing expense and profit amounts…"
     },
     "empty": {

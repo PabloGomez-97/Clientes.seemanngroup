@@ -1992,7 +1992,7 @@
     },
     "loading": {
       "initial": "Generando reporte…",
-      "wait": "Procesando datos, un momento por favor.",
+      "wait": "Mapeando datos, esto puede tardar unos minutos.",
       "enriching": "Completando montos de expense y profit…"
     },
     "empty": {
