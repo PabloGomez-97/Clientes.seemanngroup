@@ -12,6 +12,7 @@ export const adminPaths = {
   operacionesTracking: "/admin/operaciones/tracking",
   operacionesComportamiento: "/admin/operaciones/clientes/comportamiento",
   pricingAlertas: "/admin/pricing/alertas",
+  analisysSystem: "/admin/analisys-system",
 } as const;
 
 export function adminClientPath(

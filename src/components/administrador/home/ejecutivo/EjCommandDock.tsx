@@ -2,6 +2,7 @@ import type { TFunction } from "i18next";
 import type { NavigateFunction } from "react-router-dom";
 import { adminPaths } from "@/config/adminPaths";
 import {
+  IconAnalysis,
   IconLastMile,
   IconPlus,
   IconTracking,
@@ -56,6 +57,14 @@ export function EjCommandDock({ t, navigate }: EjCommandDockProps) {
               <IconTracking size={14} />
               {t("admin.homeEjecutivo.trackings")}
             </button>
+            <button
+              type="button"
+              className="ej-command-dock__link"
+              onClick={() => navigate(adminPaths.analisysSystem)}
+            >
+              <IconAnalysis size={14} />
+              {t("admin.sidebar.analisysSystem")}
+            </button>
           </div>
         </div>
       </div>
@@ -71,7 +80,7 @@ export function EjCommandDockSkeleton() {
         <div className="ej-command-dock__actions">
           <div className="ej-skeleton ej-skeleton--dock-primary" />
           <div className="ej-command-dock__links">
-            {Array.from({ length: 3 }).map((_, i) => (
+            {Array.from({ length: 4 }).map((_, i) => (
               <div className="ej-skeleton ej-skeleton--dock-link" key={i} />
             ))}
           </div>
