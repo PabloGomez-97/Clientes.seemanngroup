@@ -1,6 +1,6 @@
-import type { AirShipment, Consignee, GroundShipment } from "../types/shipments.js";
-import { extractHbliFromCharges } from "./linbisQuoteLookup.js";
-import type { OceanListItem } from "./linbisShipmentMappers.js";
+import type { AirShipment, Consignee, GroundShipment } from "../types/shipments";
+import { extractHbliFromCharges } from "./linbisQuoteLookup";
+import type { OceanListItem } from "./linbisShipmentMappers";
 
 export type AirOceanOperacionesFilters = {
   number?: string;

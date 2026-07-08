@@ -1,13 +1,13 @@
-import type { AirShipment } from "../types/shipments.js";
+import type { AirShipment } from "../types/shipments";
 import type {
   AirShipment as ShipsgoAirShipment,
   OceanShipment as ShipsgoOceanShipment,
-} from "../components/cliente/tracking/shipsgo/types.js";
+} from "../components/cliente/tracking/shipsgo/types";
 import {
   extractHbliFromCharges,
   extractHbliFromCommodities,
-} from "./linbisQuoteLookup.js";
-import type { OceanListItem } from "./linbisShipmentMappers.js";
+} from "./linbisQuoteLookup";
+import type { OceanListItem } from "./linbisShipmentMappers";
 import {
   buildAirOpenTrackingTarget,
   buildOceanOpenTrackingTarget,
@@ -16,7 +16,7 @@ import {
   normalizeShipsgoAwbKey,
   normalizeShipsgoOceanKey,
   type ShipsGoOpenTrackingTarget,
-} from "./shipsgoTrackingNavigation.js";
+} from "./shipsgoTrackingNavigation";
 
 export type OperacionTrackingStatus = {
   isTracked: boolean;

@@ -1,4 +1,4 @@
-import type { AirShipment } from "../types/shipments.js";
+import type { AirShipment } from "../types/shipments";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type RawRecord = Record<string, any>;
