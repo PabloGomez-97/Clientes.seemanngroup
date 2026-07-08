@@ -6,6 +6,7 @@ import {
   buildSalesRepResolver,
   type TransportShipmentRecord,
 } from "./salesRepResolver";
+import { clearCommissionAnalyticsDerivatives } from "./commissionAnalytics";
 import type {
   CommissionAnalysisInvoiceRow,
   CommissionAnalysisOperationsGroup,
@@ -740,6 +741,7 @@ async function fetchDataset(
 
 export function clearCommissionAnalysisCache(): void {
   datasetCache = null;
+  clearCommissionAnalyticsDerivatives();
 }
 
 function buildGroupsFromRows(

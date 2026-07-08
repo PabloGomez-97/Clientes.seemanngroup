@@ -1959,6 +1959,126 @@
       "generating": "Generating...",
       "refresh": "Refresh data"
     },
+    "empty": {
+      "title": "No report generated",
+      "description": "Select a date range and click Generate report.",
+      "noResultsTitle": "No results",
+      "noResultsDescription": "No invoices match the selected filters. Try another executive or consignee.",
+      "suggestionsTitle": "Quick suggestions",
+      "suggestionsLead": "Pick a suggested range to speed up report generation. You can still adjust dates before generating.",
+      "suggestions": {
+        "annualidad": "Annual (last 12 months)",
+        "trimestre": "Quarter (current)",
+        "mesAnterior": "Previous month",
+        "mesActual": "Current month",
+        "mesAnteriorVsActual": "Previous month vs current",
+        "esteAno": "This year"
+      }
+    },
+    "sections": {
+      "summary": {
+        "title": "Operational summary",
+        "description": "Totals by executive, operations and invoice detail."
+      },
+      "trends": {
+        "title": "Trends",
+        "description": "How sales, cost and margin evolve over time."
+      },
+      "comparison": {
+        "title": "Team comparison",
+        "description": "Who contributes most to results and at what margin."
+      },
+      "topCustomers": {
+        "title": "Customer portfolio",
+        "description": "Consignees with the most invoices and sales weight."
+      }
+    },
+    "analytics": {
+      "total": "Team total",
+      "period": "Period",
+      "granularity": "Group by",
+      "insightsTitle": "What to observe",
+      "granularityOptions": {
+        "week": "Week",
+        "month": "Month",
+        "quarter": "Quarter",
+        "semester": "Semester",
+        "year": "Year"
+      },
+      "filtersSummaryOnly": "Result filters apply only to the Operational summary view.",
+      "trends": {
+        "lead": "Shows whether the business is growing or contracting period over period. Orange bars are invoiced sales, gray bars are associated cost, and the green line is the resulting margin.",
+        "chartTitle": "Evolution — {{rep}}",
+        "chartDescription": "Each column on the horizontal axis is a period. Compare bar heights (sales vs cost) and the green line trajectory (margin).",
+        "tableTitle": "Period detail — {{rep}}",
+        "tableDescription": "The Margin % column shows how much of income becomes profit. Margin vs previous shows whether it improved or worsened vs the prior period.",
+        "marginPct": "Margin %",
+        "profitVsPrev": "Margin vs prev.",
+        "granularityHint": "Options limited to range {{range}}: only groupings with at least 2 periods are shown.",
+        "guide": {
+          "income": "Total invoiced in the period (gross sales for the executive or team).",
+          "expense": "Direct costs associated with those invoices.",
+          "profit": "What remains after costs: sales minus expense."
+        },
+        "kpi": {
+          "incomeHint": "Across {{count}} active {{granularity}}(s)",
+          "marginHint": "Period margin: {{margin}}%",
+          "lastPeriod": "Latest period",
+          "vsPrevious": "vs previous period: {{change}}",
+          "bestPeriod": "Best period (margin)"
+        },
+        "insights": {
+          "total": "In the period {{range}}, {{rep}} accumulated sales of {{income}} and margin of {{profit}} ({{margin}} of sales).",
+          "bestPeriod": "In the period {{range}}, the most profitable segment was {{period}}, with margin of {{profit}}.",
+          "periodChange": "In the period {{range}}, between {{previous}} and {{current}}, margin changed {{change}} vs the previous segment.",
+          "average": "In the period {{range}}, on average, each {{granularity}} generated sales of {{income}} and margin of {{profit}}."
+        }
+      },
+      "comparison": {
+        "lead": "See who leads in volume, who is more efficient on margin, and whether team results are concentrated in a few executives.",
+        "selectReps": "Executives to compare",
+        "includeTotal": "Include team total row",
+        "incomeShare": "% sales",
+        "profitShare": "% margin",
+        "marginPct": "Margin %",
+        "chartTitle": "Sales by executive",
+        "chartDescription": "Compare invoiced volume for each selected executive. Taller bars mean a larger share of team sales.",
+        "tableTitle": "Comparison detail",
+        "tableDescription": "The % sales and % margin bars show each executive's relative weight against the period total.",
+        "insights": {
+          "leaderIncome": "In the period {{range}}, {{name}} leads in sales with {{amount}} ({{share}}% of the team).",
+          "leaderProfit": "In the period {{range}}, {{name}} contributes the most absolute margin: {{amount}} ({{share}}% of team margin).",
+          "leaderMargin": "In the period {{range}}, {{name}} has the best margin percentage in the group: {{margin}}% on their sales.",
+          "concentration": "In the period {{range}}, the top {{count}} executives by sales concentrate {{share}}% of team revenue.",
+          "volumeAndMargin": "In the period {{range}}, {{name}} leads in both volume and margin efficiency: strong commercial balance.",
+          "volumeVsMargin": "In the period {{range}}, {{volumeLeader}} invoices more, but {{marginLeader}} converts sales into margin more efficiently."
+        }
+      },
+      "topCustomers": {
+        "lead": "Identify which consignees generate the most operations and how much they weigh in the executive's portfolio. Sort by any column; by default those with the most invoices appear first.",
+        "invoices": "Invoices",
+        "expand": "Click to view invoices",
+        "chartTitle": "Top customers by invoice volume",
+        "chartDescription": "The 8 consignees with the most invoices for the executive. More bars = more invoiced operations, not necessarily higher sales.",
+        "tableTitle": "Consignee ranking",
+        "tableDescription": "Click a row to see invoice numbers (INV). % sales shows how much that customer represents of the executive's total.",
+        "kpi": {
+          "clients": "Active clients",
+          "clientsHint": "Distinct consignees with invoices",
+          "invoicesHint": "Invoices in the period",
+          "topClient": "Most operations",
+          "topClientHint": "{{count}} invoices",
+          "concentration": "Top 3 by sales",
+          "concentrationHint": "Cumulative share of executive sales"
+        },
+        "insights": {
+          "topInvoices": "In the period {{range}}, {{name}} has the highest operational activity: {{count}} invoices.",
+          "topIncome": "In the period {{range}}, {{name}} is the highest-sales client ({{amount}}, {{share}}% of the executive).",
+          "concentration": "In the period {{range}}, the top 3 clients of {{rep}} represent {{share}}% of their sales.",
+          "portfolio": "In the period {{range}}, portfolio of {{clients}} clients with {{invoices}} invoices."
+        }
+      }
+    },
     "reconciliation": {
       "title": "Partial data on some invoices",
       "body": "{{complete}} invoices with complete expense/profit. {{incomplete}} invoices with charges that have no explicit link ({{unallocated}} CLP unallocated). Incomplete amounts are shown as «—» to avoid publishing incorrect figures.",
@@ -1993,12 +2113,6 @@
       "initial": "Generating report…",
       "wait": "Mapping data, this may take a few minutes.",
       "enriching": "Completing expense and profit amounts…"
-    },
-    "empty": {
-      "title": "No report generated",
-      "description": "Select a date range and click Generate report.",
-      "noResultsTitle": "No results",
-      "noResultsDescription": "No invoices match the selected filters. Try another sales rep or consignee."
     },
     "meta": {
       "printedOn": "Printed on",

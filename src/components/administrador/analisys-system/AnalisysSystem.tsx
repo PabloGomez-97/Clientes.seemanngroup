@@ -1,16 +1,19 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useOutletContext } from "react-router-dom";
 import {
   buildCommissionAnalysisReport,
-  buildOperationsSummary,
   clearCommissionAnalysisCache,
   filterCommissionAnalysisReport,
-  formatCommissionAmount,
   formatReportDateRange,
 } from "./commissionAnalysisService";
+import type { AnalisysSectionId } from "./AnalisysSectionNav";
+import AnalisysSectionNav from "./AnalisysSectionNav";
 import type { CommissionAnalysisOperation, CommissionAnalysisReport } from "./types";
-import OperationInvoiceModal from "./OperationInvoiceModal";
+import ComparisonTab from "./tabs/ComparisonTab";
+import SummaryTab from "./tabs/SummaryTab";
+import TopCustomersTab from "./tabs/TopCustomersTab";
+import TrendsTab from "./tabs/TrendsTab";
 import {
   AnalisysLoadingBanner,
   AnalisysSystemSkeleton,
@@ -33,11 +36,6 @@ interface OutletContext {
   onLogout: () => void;
 }
 
-// Colores de filas en tablas de operaciones
-const REP_HEADER_BG = C.primaryLight;
-const REP_TOTAL_BG = "#f1f5f9";
-const GRAND_TOTAL_BG = C.borderLight;
-
 export default function AnalisysSystem() {
   const { t } = useTranslation();
   const { accessToken, refreshAccessToken } = useOutletContext<OutletContext>();
@@ -53,8 +51,38 @@ export default function AnalisysSystem() {
   const [loadingMessagePhase, setLoadingMessagePhase] = useState<0 | 1>(0);
   const [error, setError] = useState<string | null>(null);
   const [fetchedAt, setFetchedAt] = useState<number | null>(null);
+  const [activeSection, setActiveSection] = useState<AnalisysSectionId>("summary");
+  const [visitedSections, setVisitedSections] = useState<Set<AnalisysSectionId>>(
+    () => new Set(["summary"]),
+  );
   const [selectedOperation, setSelectedOperation] =
     useState<CommissionAnalysisOperation | null>(null);
+
+  const sections = useMemo(
+    () => [
+      {
+        id: "summary" as const,
+        label: t("analisysSystem.sections.summary.title"),
+        description: t("analisysSystem.sections.summary.description"),
+      },
+      {
+        id: "trends" as const,
+        label: t("analisysSystem.sections.trends.title"),
+        description: t("analisysSystem.sections.trends.description"),
+      },
+      {
+        id: "comparison" as const,
+        label: t("analisysSystem.sections.comparison.title"),
+        description: t("analisysSystem.sections.comparison.description"),
+      },
+      {
+        id: "topCustomers" as const,
+        label: t("analisysSystem.sections.topCustomers.title"),
+        description: t("analisysSystem.sections.topCustomers.description"),
+      },
+    ],
+    [t],
+  );
 
   useEffect(() => {
     if (!loading) {
@@ -72,7 +100,7 @@ export default function AnalisysSystem() {
       ? t("analisysSystem.loading.initial")
       : t("analisysSystem.loading.wait");
 
-  const report = useMemo(() => {
+  const filteredReport = useMemo(() => {
     if (!baseReport) return null;
     if (!salesRepFilter && !consigneeFilter.trim()) return baseReport;
     return filterCommissionAnalysisReport(baseReport, {
@@ -80,6 +108,13 @@ export default function AnalisysSystem() {
       consignee: consigneeFilter.trim() || undefined,
     });
   }, [baseReport, salesRepFilter, consigneeFilter]);
+
+  const report = useMemo(() => {
+    if (!baseReport) return null;
+    // Los filtros "Filtrar resultados" solo aplican al Resumen Operativo.
+    if (activeSection !== "summary") return baseReport;
+    return filteredReport;
+  }, [baseReport, filteredReport, activeSection]);
 
   const salesRepOptions = useMemo(() => {
     if (!baseReport) return [];
@@ -97,31 +132,34 @@ export default function AnalisysSystem() {
     return [...set].sort((a, b) => a.localeCompare(b, "es"));
   }, [baseReport]);
 
-  const operationsSummary = useMemo(
-    () => (report && report.invoiceCount > 0 ? buildOperationsSummary(report) : []),
-    [report],
-  );
+  const handleSectionChange = (section: AnalisysSectionId) => {
+    setActiveSection(section);
+    setVisitedSections((prev) => new Set(prev).add(section));
+  };
 
-  const totalOperations = useMemo(
-    () => operationsSummary.reduce((sum, group) => sum + group.subtotal.operationCount, 0),
-    [operationsSummary],
-  );
-
-  const handleGenerate = async (forceRefresh = false) => {
+  const handleGenerate = async (
+    forceRefresh = false,
+    overrideRange?: { startDate: string; endDate: string },
+  ) => {
     if (!accessToken) {
       setError(t("analisysSystem.errors.noToken"));
       return;
     }
 
+    const effectiveStart = overrideRange?.startDate ?? startDate;
+    const effectiveEnd = overrideRange?.endDate ?? endDate;
+
     setLoading(true);
     setEnriching(false);
     setError(null);
+    setActiveSection("summary");
+    setVisitedSections(new Set(["summary"]));
 
     try {
       if (forceRefresh) clearCommissionAnalysisCache();
       await buildCommissionAnalysisReport(accessToken, refreshAccessToken, {
-        startDate,
-        endDate,
+        startDate: effectiveStart,
+        endDate: effectiveEnd,
         forceRefresh,
         onProgress: (nextReport, phase) => {
           if (phase === "preview") {
@@ -150,6 +188,42 @@ export default function AnalisysSystem() {
   const printedRange = report
     ? formatReportDateRange(report.startDate, report.endDate)
     : "";
+
+  const analyticsReport = baseReport;
+
+  const applySuggestionRange = (range: { startDate: string; endDate: string }) => {
+    setStartDate(range.startDate);
+    setEndDate(range.endDate);
+    void handleGenerate(false, range);
+  };
+
+  const suggestionRanges = useMemo(() => {
+    const thisMonth = getPeriodRange("this-month");
+    const lastMonth = getPeriodRange("last-month");
+    const thisYear = getPeriodRange("this-year");
+    const last12 = getPeriodRange("last-12-months");
+
+    const now = new Date();
+    const quarterStartMonth = Math.floor(now.getMonth() / 3) * 3;
+    const quarterStart = new Date(now.getFullYear(), quarterStartMonth, 1);
+    const quarterStartIso = quarterStart.toISOString().slice(0, 10);
+    const todayIso = now.toISOString().slice(0, 10);
+
+    // Rango que cubre mes anterior + mes actual (hasta hoy).
+    const lastVsThis = {
+      startDate: lastMonth.startDate,
+      endDate: thisMonth.endDate,
+    };
+
+    return {
+      annualidad: last12,
+      trimestre: { startDate: quarterStartIso, endDate: todayIso },
+      mesAnterior: lastMonth,
+      mesActual: thisMonth,
+      mesAnteriorVsActual: lastVsThis,
+      esteAno: thisYear,
+    } as const;
+  }, []);
 
   return (
     <div style={pageWrap}>
@@ -211,7 +285,7 @@ export default function AnalisysSystem() {
         </div>
       </CardSection>
 
-      {baseReport && !loading && (
+      {baseReport && !loading && activeSection === "summary" && (
         <div style={{ marginTop: 16 }}>
           <CardSection title={t("analisysSystem.filters.resultsTitle")}>
             <div
@@ -267,7 +341,23 @@ export default function AnalisysSystem() {
                 </button>
               )}
             </div>
+            {activeSection === "summary" && (salesRepFilter || consigneeFilter.trim()) && (
+              <p style={{ ...base, fontSize: 12, color: C.textMuted, margin: "12px 0 0" }}>
+                {t("analisysSystem.analytics.filtersSummaryOnly")}
+              </p>
+            )}
           </CardSection>
+        </div>
+      )}
+
+      {!loading && fetchedAt && baseReport && report && analyticsReport && report.invoiceCount > 0 && (
+        <div style={{ marginTop: 12 }}>
+          <AnalisysSectionNav
+            layout="horizontal"
+            sections={sections}
+            activeSection={activeSection}
+            onChange={handleSectionChange}
+          />
         </div>
       )}
 
@@ -279,7 +369,7 @@ export default function AnalisysSystem() {
 
       {loading && <AnalisysSystemSkeleton message={loadingMessage} />}
 
-      {!loading && fetchedAt && baseReport && report && (
+      {!loading && fetchedAt && baseReport && report && analyticsReport && (
         <div style={{ marginTop: 16 }}>
           <p style={{ ...base, fontSize: 13, color: C.textMuted, margin: "0 0 12px" }}>
             {t("analisysSystem.meta.showing", {
@@ -304,202 +394,35 @@ export default function AnalisysSystem() {
             </div>
           ) : (
             <>
-              <div style={{ marginTop: 16 }}>
-                <div style={{ ...styles.sectionTitle, marginBottom: 8 }}>
-                  {t("analisysSystem.executives.title")}
+              {visitedSections.has("summary") && (
+                <div style={{ display: activeSection === "summary" ? "block" : "none" }}>
+                  <SummaryTab
+                    report={report}
+                    accessToken={accessToken}
+                    refreshAccessToken={refreshAccessToken}
+                    selectedOperation={selectedOperation}
+                    onSelectOperation={setSelectedOperation}
+                  />
                 </div>
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-                    gap: 16,
-                  }}
-                >
-                  <div style={{ ...styles.card, overflowX: "auto" }}>
-                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                      <thead>
-                        <tr>
-                          <th style={styles.th}>{t("analisysSystem.executives.columns.name")}</th>
-                          <th style={{ ...styles.th, textAlign: "right" }}>
-                            {t("analisysSystem.executives.columns.operationCount")}
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {operationsSummary.map((group) => (
-                          <tr key={`exec-ops-${group.salesRep}`}>
-                            <td style={styles.td}>{group.salesRep}</td>
-                            <td style={{ ...styles.td, textAlign: "right" }}>
-                              {group.subtotal.operationCount}
-                            </td>
-                          </tr>
-                        ))}
-                        <tr style={{ backgroundColor: GRAND_TOTAL_BG }}>
-                          <td style={{ ...styles.td, fontWeight: 700 }}>
-                            {t("analisysSystem.executives.total")}
-                          </td>
-                          <td style={{ ...styles.td, textAlign: "right", fontWeight: 700 }}>
-                            {totalOperations}
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
+              )}
 
-                  <div style={{ ...styles.card, overflowX: "auto" }}>
-                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                      <thead>
-                        <tr>
-                          <th style={styles.th}>{t("analisysSystem.executives.columns.name")}</th>
-                          <th style={{ ...styles.th, textAlign: "right" }}>
-                            {t("analisysSystem.operations.columns.income")}
-                          </th>
-                          <th style={{ ...styles.th, textAlign: "right" }}>
-                            {t("analisysSystem.operations.columns.expense")}
-                          </th>
-                          <th style={{ ...styles.th, textAlign: "right" }}>
-                            {t("analisysSystem.operations.columns.profit")}
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {operationsSummary.map((group) => (
-                          <tr key={`exec-fin-${group.salesRep}`}>
-                            <td style={styles.td}>{group.salesRep}</td>
-                            <td style={{ ...styles.td, textAlign: "right" }}>
-                              {formatCommissionAmount(group.subtotal.income)}
-                            </td>
-                            <td style={{ ...styles.td, textAlign: "right" }}>
-                              {formatCommissionAmount(group.subtotal.expense)}
-                            </td>
-                            <td style={{ ...styles.td, textAlign: "right" }}>
-                              {formatCommissionAmount(group.subtotal.profit)}
-                            </td>
-                          </tr>
-                        ))}
-                        <tr style={{ backgroundColor: GRAND_TOTAL_BG }}>
-                          <td style={{ ...styles.td, fontWeight: 700 }}>
-                            {t("analisysSystem.executives.total")}
-                          </td>
-                          <td style={{ ...styles.td, textAlign: "right", fontWeight: 700 }}>
-                            {formatCommissionAmount(report.totals.income)}
-                          </td>
-                          <td style={{ ...styles.td, textAlign: "right", fontWeight: 700 }}>
-                            {formatCommissionAmount(report.totals.expense)}
-                          </td>
-                          <td style={{ ...styles.td, textAlign: "right", fontWeight: 700 }}>
-                            {formatCommissionAmount(report.totals.profit)}
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
+              {visitedSections.has("trends") && analyticsReport && (
+                <div style={{ display: activeSection === "trends" ? "block" : "none" }}>
+                  <TrendsTab report={analyticsReport} />
                 </div>
-              </div>
+              )}
 
-              <div style={{ marginTop: 16 }}>
-                <div style={{ ...styles.sectionTitle, marginBottom: 8 }}>
-                  {t("analisysSystem.operations.title")}
+              {visitedSections.has("comparison") && analyticsReport && (
+                <div style={{ display: activeSection === "comparison" ? "block" : "none" }}>
+                  <ComparisonTab report={analyticsReport} />
                 </div>
-                <p style={{ ...base, fontSize: 13, color: C.textMuted, margin: "0 0 12px" }}>
-                  {t("analisysSystem.operations.subtitle")}
-                </p>
-                <div style={{ ...styles.card, overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 960 }}>
-                    <thead>
-                      <tr>
-                        {[
-                          t("analisysSystem.operations.columns.operation"),
-                          t("analisysSystem.operations.columns.invoices"),
-                          t("analisysSystem.operations.columns.invoiceCount"),
-                          t("analisysSystem.operations.columns.consignee"),
-                          t("analisysSystem.operations.columns.destination"),
-                          t("analisysSystem.operations.columns.income"),
-                          t("analisysSystem.operations.columns.expense"),
-                          t("analisysSystem.operations.columns.profit"),
-                        ].map((header) => (
-                          <th key={header} style={styles.th}>
-                            {header}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {operationsSummary.map((group) => (
-                        <Fragment key={`op-group-${group.salesRep}`}>
-                          <tr>
-                            <td
-                              colSpan={8}
-                              style={{
-                                ...styles.td,
-                                fontWeight: 700,
-                                backgroundColor: REP_HEADER_BG,
-                              }}
-                            >
-                              {group.salesRep}
-                            </td>
-                          </tr>
-                          {group.operations.map((operation) => (
-                            <tr
-                              key={`${group.salesRep}-${operation.operationRef}-${operation.moduleId ?? "na"}`}
-                              onClick={() => setSelectedOperation(operation)}
-                              style={{ cursor: "pointer" }}
-                              title={t("analisysSystem.operations.openDetail")}
-                            >
-                              <td style={{ ...styles.td, fontWeight: 600 }}>
-                                {operation.operationRef}
-                              </td>
-                              <td style={styles.td}>{operation.invoices.join(", ")}</td>
-                              <td style={{ ...styles.td, textAlign: "right" }}>
-                                {operation.invoiceCount}
-                              </td>
-                              <td style={styles.td}>{operation.consignee}</td>
-                              <td style={styles.td}>{operation.destination}</td>
-                              <td style={{ ...styles.td, textAlign: "right" }}>
-                                {formatCommissionAmount(operation.income)}
-                              </td>
-                              <td style={{ ...styles.td, textAlign: "right" }}>
-                                {formatCommissionAmount(operation.expense)}
-                              </td>
-                              <td style={{ ...styles.td, textAlign: "right" }}>
-                                {formatCommissionAmount(operation.profit)}
-                              </td>
-                            </tr>
-                          ))}
-                          <tr style={{ backgroundColor: REP_TOTAL_BG }}>
-                            <td colSpan={5} style={{ ...styles.td, fontWeight: 700 }}>
-                              {t("analisysSystem.operations.repTotal", { name: group.salesRep })}
-                            </td>
-                            <td style={{ ...styles.td, textAlign: "right", fontWeight: 700 }}>
-                              {formatCommissionAmount(group.subtotal.income)}
-                            </td>
-                            <td style={{ ...styles.td, textAlign: "right", fontWeight: 700 }}>
-                              {formatCommissionAmount(group.subtotal.expense)}
-                            </td>
-                            <td style={{ ...styles.td, textAlign: "right", fontWeight: 700 }}>
-                              {formatCommissionAmount(group.subtotal.profit)}
-                            </td>
-                          </tr>
-                        </Fragment>
-                      ))}
-                      <tr style={{ backgroundColor: GRAND_TOTAL_BG }}>
-                        <td colSpan={5} style={{ ...styles.td, fontWeight: 800 }}>
-                          {t("analisysSystem.operations.total")}
-                        </td>
-                        <td style={{ ...styles.td, textAlign: "right", fontWeight: 800 }}>
-                          {formatCommissionAmount(report.totals.income)}
-                        </td>
-                        <td style={{ ...styles.td, textAlign: "right", fontWeight: 800 }}>
-                          {formatCommissionAmount(report.totals.expense)}
-                        </td>
-                        <td style={{ ...styles.td, textAlign: "right", fontWeight: 800 }}>
-                          {formatCommissionAmount(report.totals.profit)}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
+              )}
+
+              {visitedSections.has("topCustomers") && analyticsReport && (
+                <div style={{ display: activeSection === "topCustomers" ? "block" : "none" }}>
+                  <TopCustomersTab report={analyticsReport} />
                 </div>
-              </div>
+              )}
             </>
           )}
         </div>
@@ -507,22 +430,63 @@ export default function AnalisysSystem() {
 
       {!baseReport && !loading && !error && (
         <div style={{ marginTop: 24 }}>
+          <div style={{ marginBottom: 16 }}>
+            <CardSection title={t("analisysSystem.empty.suggestionsTitle")}>
+              <p style={{ ...base, fontSize: 13, color: C.textMuted, margin: "0 0 12px" }}>
+                {t("analisysSystem.empty.suggestionsLead")}
+              </p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                <button
+                  type="button"
+                  style={btnOutline}
+                  onClick={() => applySuggestionRange(suggestionRanges.annualidad)}
+                >
+                  {t("analisysSystem.empty.suggestions.annualidad")}
+                </button>
+                <button
+                  type="button"
+                  style={btnOutline}
+                  onClick={() => applySuggestionRange(suggestionRanges.trimestre)}
+                >
+                  {t("analisysSystem.empty.suggestions.trimestre")}
+                </button>
+                <button
+                  type="button"
+                  style={btnOutline}
+                  onClick={() => applySuggestionRange(suggestionRanges.mesAnterior)}
+                >
+                  {t("analisysSystem.empty.suggestions.mesAnterior")}
+                </button>
+                <button
+                  type="button"
+                  style={btnOutline}
+                  onClick={() => applySuggestionRange(suggestionRanges.mesActual)}
+                >
+                  {t("analisysSystem.empty.suggestions.mesActual")}
+                </button>
+                <button
+                  type="button"
+                  style={btnOutline}
+                  onClick={() => applySuggestionRange(suggestionRanges.mesAnteriorVsActual)}
+                >
+                  {t("analisysSystem.empty.suggestions.mesAnteriorVsActual")}
+                </button>
+                <button
+                  type="button"
+                  style={btnOutline}
+                  onClick={() => applySuggestionRange(suggestionRanges.esteAno)}
+                >
+                  {t("analisysSystem.empty.suggestions.esteAno")}
+                </button>
+              </div>
+            </CardSection>
+          </div>
+
           <EmptyState
             title={t("analisysSystem.empty.title")}
             sub={t("analisysSystem.empty.description")}
           />
         </div>
-      )}
-
-      {selectedOperation && baseReport && (
-        <OperationInvoiceModal
-          operation={selectedOperation}
-          startDate={baseReport.startDate}
-          endDate={baseReport.endDate}
-          accessToken={accessToken}
-          refreshAccessToken={refreshAccessToken}
-          onClose={() => setSelectedOperation(null)}
-        />
       )}
     </div>
   );

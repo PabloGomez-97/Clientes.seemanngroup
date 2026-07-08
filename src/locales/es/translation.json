@@ -1960,6 +1960,126 @@
       "generating": "Generando...",
       "refresh": "Actualizar datos"
     },
+    "empty": {
+      "title": "Sin reporte generado",
+      "description": "Selecciona un rango de fechas y pulsa Generar reporte.",
+      "noResultsTitle": "Sin resultados",
+      "noResultsDescription": "Ninguna factura coincide con los filtros seleccionados. Prueba otro ejecutivo o consignee.",
+      "suggestionsTitle": "Sugerencias rápidas",
+      "suggestionsLead": "Selecciona un rango sugerido para acelerar la generación del reporte. Puedes ajustar fechas antes de generar.",
+      "suggestions": {
+        "annualidad": "Anualidad (últimos 12 meses)",
+        "trimestre": "Trimestre (actual)",
+        "mesAnterior": "Mes anterior",
+        "mesActual": "Mes actual",
+        "mesAnteriorVsActual": "Mes anterior vs actual",
+        "esteAno": "Este año"
+      }
+    },
+    "sections": {
+      "summary": {
+        "title": "Resumen operativo",
+        "description": "Totales por ejecutivo, operaciones e detalle de facturas."
+      },
+      "trends": {
+        "title": "Tendencias",
+        "description": "Cómo evoluciona venta, costo y margen en el tiempo."
+      },
+      "comparison": {
+        "title": "Comparativa de equipo",
+        "description": "Quién aporta más al resultado y con qué margen."
+      },
+      "topCustomers": {
+        "title": "Cartera de clientes",
+        "description": "Consignees con más facturas y mayor peso en la venta."
+      }
+    },
+    "analytics": {
+      "total": "Total equipo",
+      "period": "Período",
+      "granularity": "Agrupar por",
+      "insightsTitle": "Qué observar",
+      "granularityOptions": {
+        "week": "Semana",
+        "month": "Mes",
+        "quarter": "Trimestre",
+        "semester": "Semestre",
+        "year": "Año"
+      },
+      "filtersSummaryOnly": "Los filtros de resultados aplican solo a la vista Resumen operativo.",
+      "trends": {
+        "lead": "Muestra si el negocio crece o se contrae período a período. Las barras naranjas son venta facturada, las grises el costo asociado, y la línea verde el margen resultante.",
+        "chartTitle": "Evolución — {{rep}}",
+        "chartDescription": "Cada columna del eje horizontal es un período. Compara altura de barras (venta vs costo) y la trayectoria de la línea verde (margen).",
+        "tableTitle": "Detalle por período — {{rep}}",
+        "tableDescription": "La columna «Margen %» indica cuánto del ingreso se convierte en utilidad. «Margen vs anterior» muestra si mejoró o empeoró respecto al período previo.",
+        "marginPct": "Margen %",
+        "profitVsPrev": "Margen vs anterior",
+        "granularityHint": "Opciones limitadas al rango {{range}}: solo se muestran agrupaciones con al menos 2 períodos.",
+        "guide": {
+          "income": "Total facturado en el período (venta bruta del ejecutivo o equipo).",
+          "expense": "Costos directos asociados a esas facturas.",
+          "profit": "Lo que queda después de costos: venta menos gasto."
+        },
+        "kpi": {
+          "incomeHint": "En {{count}} {{granularity}}(s) con actividad",
+          "marginHint": "Margen global del período: {{margin}}%",
+          "lastPeriod": "Último período",
+          "vsPrevious": "vs período anterior: {{change}}",
+          "bestPeriod": "Mejor período (margen)"
+        },
+        "insights": {
+          "total": "En el período {{range}}, {{rep}} acumuló venta por {{income}} y margen de {{profit}} ({{margin}} de la venta).",
+          "bestPeriod": "En el período {{range}}, el tramo más rentable fue {{period}}, con margen de {{profit}}.",
+          "periodChange": "En el período {{range}}, entre {{previous}} y {{current}}, el margen varió {{change}} respecto al tramo anterior.",
+          "average": "En el período {{range}}, en promedio, cada {{granularity}} generó venta por {{income}} y margen de {{profit}}."
+        }
+      },
+      "comparison": {
+        "lead": "Permite ver quién lidera en volumen, quién es más eficiente en margen y si el resultado del equipo está concentrado en pocos ejecutivos.",
+        "selectReps": "Ejecutivos a comparar",
+        "includeTotal": "Incluir fila de total del equipo",
+        "incomeShare": "% venta",
+        "profitShare": "% margen",
+        "marginPct": "Margen %",
+        "chartTitle": "Venta por ejecutivo",
+        "chartDescription": "Compara el volumen facturado de cada ejecutivo seleccionado. Las barras más altas indican mayor participación en la venta del equipo.",
+        "tableTitle": "Detalle comparativo",
+        "tableDescription": "Las barras de % venta y % margen muestran el peso relativo de cada ejecutivo frente al total del período.",
+        "insights": {
+          "leaderIncome": "En el período {{range}}, {{name}} lidera en venta con {{amount}} ({{share}}% del equipo).",
+          "leaderProfit": "En el período {{range}}, {{name}} aporta más margen absoluto: {{amount}} ({{share}}% del margen del equipo).",
+          "leaderMargin": "En el período {{range}}, {{name}} tiene el mejor margen porcentual del grupo: {{margin}}% sobre su venta.",
+          "concentration": "En el período {{range}}, los {{count}} ejecutivos con mayor venta concentran el {{share}}% de la facturación del equipo.",
+          "volumeAndMargin": "En el período {{range}}, {{name}} lidera tanto en volumen como en eficiencia de margen: buen equilibrio comercial.",
+          "volumeVsMargin": "En el período {{range}}, {{volumeLeader}} factura más, pero {{marginLeader}} convierte mejor su venta en margen."
+        }
+      },
+      "topCustomers": {
+        "lead": "Identifica qué consignees generan más operaciones y cuánto pesan en la cartera del ejecutivo. Ordena por cualquier columna; por defecto se muestran primero los de más facturas.",
+        "invoices": "N° facturas",
+        "expand": "Clic para ver facturas",
+        "chartTitle": "Top clientes por volumen de facturas",
+        "chartDescription": "Los 8 consignees con más facturas del ejecutivo. Más barras = más operaciones facturadas, no necesariamente mayor venta.",
+        "tableTitle": "Ranking de consignees",
+        "tableDescription": "Haz clic en una fila para ver los números de factura (INV). El % venta indica cuánto representa ese cliente del total del ejecutivo.",
+        "kpi": {
+          "clients": "Clientes activos",
+          "clientsHint": "Consignees distintos con facturas",
+          "invoicesHint": "Facturas en el período",
+          "topClient": "Más operaciones",
+          "topClientHint": "{{count}} facturas",
+          "concentration": "Top 3 en venta",
+          "concentrationHint": "Participación acumulada en la venta del ejecutivo"
+        },
+        "insights": {
+          "topInvoices": "En el período {{range}}, {{name}} concentra la mayor actividad operativa: {{count}} facturas.",
+          "topIncome": "En el período {{range}}, {{name}} es el cliente de mayor venta ({{amount}}, {{share}}% del ejecutivo).",
+          "concentration": "En el período {{range}}, los 3 principales clientes de {{rep}} representan el {{share}}% de su venta.",
+          "portfolio": "En el período {{range}}, cartera de {{clients}} clientes con {{invoices}} facturas."
+        }
+      }
+    },
     "reconciliation": {
       "title": "Datos parciales en algunas facturas",
       "body": "{{complete}} facturas con expense/profit completos. {{incomplete}} facturas con gastos sin vínculo explícito ({{unallocated}} CLP sin asignar). Los montos incompletos se muestran como «—» para no publicar cifras incorrectas.",
@@ -1994,12 +2114,6 @@
       "initial": "Generando reporte…",
       "wait": "Mapeando datos, esto puede tardar unos minutos.",
       "enriching": "Completando montos de expense y profit…"
-    },
-    "empty": {
-      "title": "Sin reporte generado",
-      "description": "Selecciona un rango de fechas y pulsa Generar reporte.",
-      "noResultsTitle": "Sin resultados",
-      "noResultsDescription": "Ninguna factura coincide con los filtros seleccionados. Prueba otro ejecutivo o consignee."
     },
     "meta": {
       "printedOn": "Impreso",
