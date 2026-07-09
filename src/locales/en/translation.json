@@ -1963,22 +1963,42 @@
       "title": "No report generated",
       "description": "Select a date range and click Generate report.",
       "noResultsTitle": "No results",
-      "noResultsDescription": "No invoices match the selected filters. Try another executive or consignee.",
-      "suggestionsTitle": "Quick suggestions",
-      "suggestionsLead": "Pick a suggested range to speed up report generation. You can still adjust dates before generating.",
-      "suggestions": {
-        "annualidad": "Annual (last 12 months)",
-        "trimestre": "Quarter (current)",
-        "mesAnterior": "Previous month",
-        "mesActual": "Current month",
-        "mesAnteriorVsActual": "Previous month vs current",
-        "esteAno": "This year"
+      "noResultsDescription": "No invoices match the selected filters. Try another executive or consignee."
+    },
+    "suggestions": {
+      "title": "Quick suggestions",
+      "lead": "Management-ready comparisons: selecting an option loads data and opens the matching view. To view a single period without comparing, use Invoice From/To Date.",
+      "placeholder": "Choose a comparison…",
+      "categories": {
+        "month": "Month over month",
+        "quarterSemester": "Quarter & semester",
+        "year": "Year",
+        "teamTrends": "Team & trends"
+      },
+      "items": {
+        "mtdVsPrevMonthSameDay": "Month-to-date vs prior month (same day)",
+        "mtdVsPrevYearSameDay": "Month-to-date vs same month last year (same day)",
+        "last30VsPrev30": "Last 30 days vs previous 30 days",
+        "closedMonthVsPrev": "Closed month vs prior closed month",
+        "qtdVsPrevQuarterSamePoint": "Quarter-to-date vs prior quarter (same point)",
+        "closedQuarterVsPrev": "Closed quarter vs prior closed quarter",
+        "stdVsPrevSemesterSamePoint": "Semester-to-date vs prior semester (same point)",
+        "closedSemesterVsPrev": "Closed semester vs prior closed semester",
+        "ytdVsPrevYtd": "Year-to-date vs same point last year",
+        "closedYearVsPrev": "Closed year vs prior closed year",
+        "trend12Months": "12-month trend",
+        "teamComparisonYtd": "Compare executives — year-to-date",
+        "teamComparisonClosedMonth": "Compare executives — last closed month"
       }
     },
     "sections": {
       "summary": {
         "title": "Operational summary",
         "description": "Totals by executive, operations and invoice detail."
+      },
+      "periodComparison": {
+        "title": "Period comparison",
+        "description": "Compare sales, cost and margin across two date ranges."
       },
       "trends": {
         "title": "Trends",
@@ -2006,6 +2026,31 @@
         "year": "Year"
       },
       "filtersSummaryOnly": "Result filters apply only to the Operational summary view.",
+      "periodComparison": {
+        "lead": "Compare two periods using aligned date logic (month vs month, quarter vs quarter, year vs year). Period A is usually the most recent; Period B is the baseline for growth or decline.",
+        "activeSuggestion": "Active comparison: {{label}}",
+        "periodA": "Period A (recent)",
+        "periodB": "Period B (baseline)",
+        "deltaProfit": "Margin change",
+        "deltaProfitHint": "{{periodA}} vs {{periodB}}",
+        "deltaIncome": "Sales change",
+        "deltaIncomeHint": "Percentage change in invoiced income",
+        "deltaMargin": "Margin % change",
+        "deltaMarginHint": "Difference in percentage points",
+        "invoices": "Invoices",
+        "operations": "{{count}} operations",
+        "chartTitle": "Visual comparison",
+        "chartDescription": "Side-by-side bars for sales, cost and margin in each period.",
+        "emptyTitle": "No comparison selected",
+        "emptyDescription": "Choose a quick comparison from the selector above, or generate a report covering both periods.",
+        "insights": {
+          "headline": "Margin for {{periodA}}: {{profitA}} vs {{periodB}}: {{profitB}} ({{change}}).",
+          "income": "Sales in {{periodA}}: {{incomeA}} vs {{periodB}}: {{incomeB}} ({{change}}).",
+          "margin": "Margin % moved from {{marginB}}% to {{marginA}}% ({{changePts}}).",
+          "activity": "Activity: {{invoicesA}} invoices / {{operationsA}} operations vs {{invoicesB}} / {{operationsB}} ({{change}} in invoices).",
+          "expense": "Costs: {{expenseA}} vs {{expenseB}} ({{change}}). Rising costs can erode margin even when sales grow."
+        }
+      },
       "trends": {
         "lead": "Shows whether the business is growing or contracting period over period. Orange bars are invoiced sales, gray bars are associated cost, and the green line is the resulting margin.",
         "chartTitle": "Evolution — {{rep}}",

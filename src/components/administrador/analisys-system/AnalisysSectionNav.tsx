@@ -1,7 +1,12 @@
 import type { CSSProperties } from "react";
 import { C, base } from "@/components/administrador/reporteria/financiera/executiveReportingUi";
 
-export type AnalisysSectionId = "summary" | "trends" | "comparison" | "topCustomers";
+export type AnalisysSectionId =
+  | "summary"
+  | "periodComparison"
+  | "trends"
+  | "comparison"
+  | "topCustomers";
 
 export type AnalisysSectionDef = {
   id: AnalisysSectionId;

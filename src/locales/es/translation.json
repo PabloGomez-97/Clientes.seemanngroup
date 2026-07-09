@@ -1964,22 +1964,42 @@
       "title": "Sin reporte generado",
       "description": "Selecciona un rango de fechas y pulsa Generar reporte.",
       "noResultsTitle": "Sin resultados",
-      "noResultsDescription": "Ninguna factura coincide con los filtros seleccionados. Prueba otro ejecutivo o consignee.",
-      "suggestionsTitle": "Sugerencias rápidas",
-      "suggestionsLead": "Selecciona un rango sugerido para acelerar la generación del reporte. Puedes ajustar fechas antes de generar.",
-      "suggestions": {
-        "annualidad": "Anualidad (últimos 12 meses)",
-        "trimestre": "Trimestre (actual)",
-        "mesAnterior": "Mes anterior",
-        "mesActual": "Mes actual",
-        "mesAnteriorVsActual": "Mes anterior vs actual",
-        "esteAno": "Este año"
+      "noResultsDescription": "Ninguna factura coincide con los filtros seleccionados. Prueba otro ejecutivo o consignee."
+    },
+    "suggestions": {
+      "title": "Sugerencias rápidas",
+      "lead": "Comparativas listas para gerencia: al elegir una opción se cargan los datos y se abre la vista correspondiente. Para ver un solo período sin comparar, usa Invoice From/To Date.",
+      "placeholder": "Elegir comparativa…",
+      "categories": {
+        "month": "Mes a mes",
+        "quarterSemester": "Trimestre y semestre",
+        "year": "Año",
+        "teamTrends": "Equipo y tendencias"
+      },
+      "items": {
+        "mtdVsPrevMonthSameDay": "Mes en curso vs mes anterior (mismo día)",
+        "mtdVsPrevYearSameDay": "Mes en curso vs mismo mes año anterior (mismo día)",
+        "last30VsPrev30": "Últimos 30 días vs 30 días anteriores",
+        "closedMonthVsPrev": "Mes cerrado vs mes anterior cerrado",
+        "qtdVsPrevQuarterSamePoint": "Trimestre en curso vs trimestre anterior (mismo punto)",
+        "closedQuarterVsPrev": "Trimestre cerrado vs trimestre anterior cerrado",
+        "stdVsPrevSemesterSamePoint": "Semestre en curso vs semestre anterior (mismo punto)",
+        "closedSemesterVsPrev": "Semestre cerrado vs semestre anterior cerrado",
+        "ytdVsPrevYtd": "Año en curso (YTD) vs mismo punto año anterior",
+        "closedYearVsPrev": "Año cerrado vs año anterior cerrado",
+        "trend12Months": "Tendencia últimos 12 meses",
+        "teamComparisonYtd": "Comparar ejecutivos — año en curso (YTD)",
+        "teamComparisonClosedMonth": "Comparar ejecutivos — último mes cerrado"
       }
     },
     "sections": {
       "summary": {
         "title": "Resumen operativo",
         "description": "Totales por ejecutivo, operaciones e detalle de facturas."
+      },
+      "periodComparison": {
+        "title": "Comparativa de períodos",
+        "description": "Compara venta, costo y margen entre dos rangos de fechas."
       },
       "trends": {
         "title": "Tendencias",
@@ -2007,6 +2027,31 @@
         "year": "Año"
       },
       "filtersSummaryOnly": "Los filtros de resultados aplican solo a la vista Resumen operativo.",
+      "periodComparison": {
+        "lead": "Compara dos períodos con la misma lógica de fechas (mes a mes, trimestre a trimestre, año a año). El período A suele ser el más reciente; el B es la referencia para medir crecimiento o caída.",
+        "activeSuggestion": "Comparativa activa: {{label}}",
+        "periodA": "Período A (referencia reciente)",
+        "periodB": "Período B (referencia anterior)",
+        "deltaProfit": "Variación de margen",
+        "deltaProfitHint": "{{periodA}} vs {{periodB}}",
+        "deltaIncome": "Variación de venta",
+        "deltaIncomeHint": "Cambio porcentual de ingreso facturado",
+        "deltaMargin": "Variación margen %",
+        "deltaMarginHint": "Diferencia en puntos porcentuales",
+        "invoices": "Facturas",
+        "operations": "{{count}} operaciones",
+        "chartTitle": "Comparación visual",
+        "chartDescription": "Barras lado a lado para venta, costo y margen en cada período.",
+        "emptyTitle": "Sin comparativa seleccionada",
+        "emptyDescription": "Elige una sugerencia rápida de comparativa en el selector superior, o genera un reporte con un rango que cubra ambos períodos.",
+        "insights": {
+          "headline": "Margen de {{periodA}}: {{profitA}} frente a {{periodB}}: {{profitB}} ({{change}}).",
+          "income": "Venta en {{periodA}}: {{incomeA}} vs {{periodB}}: {{incomeB}} ({{change}}).",
+          "margin": "Margen % pasó de {{marginB}}% a {{marginA}}% ({{changePts}}).",
+          "activity": "Actividad: {{invoicesA}} facturas / {{operationsA}} operaciones vs {{invoicesB}} / {{operationsB}} ({{change}} en facturas).",
+          "expense": "Costos: {{expenseA}} vs {{expenseB}} ({{change}}). Un alza de costos puede erosionar margen aunque la venta crezca."
+        }
+      },
       "trends": {
         "lead": "Muestra si el negocio crece o se contrae período a período. Las barras naranjas son venta facturada, las grises el costo asociado, y la línea verde el margen resultante.",
         "chartTitle": "Evolución — {{rep}}",

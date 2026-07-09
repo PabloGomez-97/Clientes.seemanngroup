@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useOutletContext } from "react-router-dom";
 import {
@@ -11,9 +11,17 @@ import type { AnalisysSectionId } from "./AnalisysSectionNav";
 import AnalisysSectionNav from "./AnalisysSectionNav";
 import type { CommissionAnalysisOperation, CommissionAnalysisReport } from "./types";
 import ComparisonTab from "./tabs/ComparisonTab";
+import PeriodComparisonTab from "./tabs/PeriodComparisonTab";
 import SummaryTab from "./tabs/SummaryTab";
 import TopCustomersTab from "./tabs/TopCustomersTab";
 import TrendsTab from "./tabs/TrendsTab";
+import {
+  type AppliedComparisonSuggestion,
+  SUGGESTION_CATEGORY_LABEL_KEYS,
+  SUGGESTION_CATEGORY_ORDER,
+  buildComparisonSuggestions,
+  findSuggestionById,
+} from "./comparisonSuggestions";
 import {
   AnalisysLoadingBanner,
   AnalisysSystemSkeleton,
@@ -37,7 +45,7 @@ interface OutletContext {
 }
 
 export default function AnalisysSystem() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { accessToken, refreshAccessToken } = useOutletContext<OutletContext>();
 
   const defaultRange = useMemo(() => getPeriodRange("this-month"), []);
@@ -57,6 +65,10 @@ export default function AnalisysSystem() {
   );
   const [selectedOperation, setSelectedOperation] =
     useState<CommissionAnalysisOperation | null>(null);
+  const [activeComparison, setActiveComparison] =
+    useState<AppliedComparisonSuggestion | null>(null);
+  const [suggestionSelectKey, setSuggestionSelectKey] = useState(0);
+  const pendingSuggestionRef = useRef<AppliedComparisonSuggestion | null>(null);
 
   const sections = useMemo(
     () => [
@@ -64,6 +76,11 @@ export default function AnalisysSystem() {
         id: "summary" as const,
         label: t("analisysSystem.sections.summary.title"),
         description: t("analisysSystem.sections.summary.description"),
+      },
+      {
+        id: "periodComparison" as const,
+        label: t("analisysSystem.sections.periodComparison.title"),
+        description: t("analisysSystem.sections.periodComparison.description"),
       },
       {
         id: "trends" as const,
@@ -137,23 +154,41 @@ export default function AnalisysSystem() {
     setVisitedSections((prev) => new Set(prev).add(section));
   };
 
+  const comparisonSuggestions = useMemo(
+    () => buildComparisonSuggestions(i18n.language),
+    [i18n.language],
+  );
+
   const handleGenerate = async (
     forceRefresh = false,
-    overrideRange?: { startDate: string; endDate: string },
+    options?: {
+      overrideRange?: { startDate: string; endDate: string };
+      suggestion?: AppliedComparisonSuggestion;
+    },
   ) => {
     if (!accessToken) {
       setError(t("analisysSystem.errors.noToken"));
       return;
     }
 
-    const effectiveStart = overrideRange?.startDate ?? startDate;
-    const effectiveEnd = overrideRange?.endDate ?? endDate;
+    const effectiveStart = options?.overrideRange?.startDate ?? startDate;
+    const effectiveEnd = options?.overrideRange?.endDate ?? endDate;
+    const suggestion = options?.suggestion ?? null;
+
+    if (suggestion) {
+      pendingSuggestionRef.current = suggestion;
+    } else {
+      pendingSuggestionRef.current = null;
+      setActiveComparison(null);
+    }
 
     setLoading(true);
     setEnriching(false);
     setError(null);
-    setActiveSection("summary");
-    setVisitedSections(new Set(["summary"]));
+
+    const targetSection = suggestion?.targetSection ?? "summary";
+    setActiveSection(targetSection);
+    setVisitedSections(new Set([targetSection]));
 
     try {
       if (forceRefresh) clearCommissionAnalysisCache();
@@ -175,6 +210,11 @@ export default function AnalisysSystem() {
       });
       setSalesRepFilter("");
       setConsigneeFilter("");
+
+      if (pendingSuggestionRef.current?.targetSection === "periodComparison") {
+        setActiveComparison(pendingSuggestionRef.current);
+      }
+      pendingSuggestionRef.current = null;
     } catch (err) {
       const message =
         err instanceof Error ? err.message : t("analisysSystem.errors.generic");
@@ -191,39 +231,58 @@ export default function AnalisysSystem() {
 
   const analyticsReport = baseReport;
 
-  const applySuggestionRange = (range: { startDate: string; endDate: string }) => {
-    setStartDate(range.startDate);
-    setEndDate(range.endDate);
-    void handleGenerate(false, range);
-  };
+  const applySuggestion = (suggestionId: string) => {
+    const suggestion = findSuggestionById(suggestionId, i18n.language);
+    if (!suggestion) return;
 
-  const suggestionRanges = useMemo(() => {
-    const thisMonth = getPeriodRange("this-month");
-    const lastMonth = getPeriodRange("last-month");
-    const thisYear = getPeriodRange("this-year");
-    const last12 = getPeriodRange("last-12-months");
+    setStartDate(suggestion.loadRange.startDate);
+    setEndDate(suggestion.loadRange.endDate);
 
-    const now = new Date();
-    const quarterStartMonth = Math.floor(now.getMonth() / 3) * 3;
-    const quarterStart = new Date(now.getFullYear(), quarterStartMonth, 1);
-    const quarterStartIso = quarterStart.toISOString().slice(0, 10);
-    const todayIso = now.toISOString().slice(0, 10);
-
-    // Rango que cubre mes anterior + mes actual (hasta hoy).
-    const lastVsThis = {
-      startDate: lastMonth.startDate,
-      endDate: thisMonth.endDate,
+    const applied: AppliedComparisonSuggestion = {
+      ...suggestion,
+      appliedAt: Date.now(),
     };
 
-    return {
-      annualidad: last12,
-      trimestre: { startDate: quarterStartIso, endDate: todayIso },
-      mesAnterior: lastMonth,
-      mesActual: thisMonth,
-      mesAnteriorVsActual: lastVsThis,
-      esteAno: thisYear,
-    } as const;
-  }, []);
+    void handleGenerate(false, {
+      overrideRange: suggestion.loadRange,
+      suggestion: applied,
+    });
+    setSuggestionSelectKey((value) => value + 1);
+  };
+
+  const renderQuickSuggestionsSelect = () => (
+    <div style={{ minWidth: 280, flex: "1 1 320px" }}>
+      <label style={styles.label}>{t("analisysSystem.suggestions.title")}</label>
+      <select
+        key={suggestionSelectKey}
+        defaultValue=""
+        onChange={(event) => {
+          const { value } = event.target;
+          if (value) applySuggestion(value);
+        }}
+        style={{ ...inputStyle, width: "100%", maxWidth: 520 }}
+        disabled={loading || enriching}
+      >
+        <option value="">{t("analisysSystem.suggestions.placeholder")}</option>
+        {SUGGESTION_CATEGORY_ORDER.map((category) => {
+          const items = comparisonSuggestions.filter((item) => item.category === category);
+          if (items.length === 0) return null;
+          return (
+            <optgroup key={category} label={t(SUGGESTION_CATEGORY_LABEL_KEYS[category])}>
+              {items.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {t(item.labelKey)}
+                </option>
+              ))}
+            </optgroup>
+          );
+        })}
+      </select>
+      <p style={{ ...base, fontSize: 12, color: C.textMuted, margin: "8px 0 0" }}>
+        {t("analisysSystem.suggestions.lead")}
+      </p>
+    </div>
+  );
 
   return (
     <div style={pageWrap}>
@@ -278,10 +337,15 @@ export default function AnalisysSystem() {
             type="button"
             style={{ ...btnOutline, opacity: loading ? 0.7 : 1 }}
             disabled={loading || enriching || !baseReport}
-            onClick={() => handleGenerate(true)}
+            onClick={() => {
+              setActiveComparison(null);
+              void handleGenerate(true);
+            }}
           >
             {t("analisysSystem.actions.refresh")}
           </button>
+
+          {renderQuickSuggestionsSelect()}
         </div>
       </CardSection>
 
@@ -406,6 +470,24 @@ export default function AnalisysSystem() {
                 </div>
               )}
 
+              {visitedSections.has("periodComparison") && analyticsReport && (
+                <div
+                  style={{ display: activeSection === "periodComparison" ? "block" : "none" }}
+                >
+                  {activeComparison ? (
+                    <PeriodComparisonTab
+                      report={analyticsReport}
+                      suggestion={activeComparison}
+                    />
+                  ) : (
+                    <EmptyState
+                      title={t("analisysSystem.analytics.periodComparison.emptyTitle")}
+                      sub={t("analisysSystem.analytics.periodComparison.emptyDescription")}
+                    />
+                  )}
+                </div>
+              )}
+
               {visitedSections.has("trends") && analyticsReport && (
                 <div style={{ display: activeSection === "trends" ? "block" : "none" }}>
                   <TrendsTab report={analyticsReport} />
@@ -431,54 +513,8 @@ export default function AnalisysSystem() {
       {!baseReport && !loading && !error && (
         <div style={{ marginTop: 24 }}>
           <div style={{ marginBottom: 16 }}>
-            <CardSection title={t("analisysSystem.empty.suggestionsTitle")}>
-              <p style={{ ...base, fontSize: 13, color: C.textMuted, margin: "0 0 12px" }}>
-                {t("analisysSystem.empty.suggestionsLead")}
-              </p>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-                <button
-                  type="button"
-                  style={btnOutline}
-                  onClick={() => applySuggestionRange(suggestionRanges.annualidad)}
-                >
-                  {t("analisysSystem.empty.suggestions.annualidad")}
-                </button>
-                <button
-                  type="button"
-                  style={btnOutline}
-                  onClick={() => applySuggestionRange(suggestionRanges.trimestre)}
-                >
-                  {t("analisysSystem.empty.suggestions.trimestre")}
-                </button>
-                <button
-                  type="button"
-                  style={btnOutline}
-                  onClick={() => applySuggestionRange(suggestionRanges.mesAnterior)}
-                >
-                  {t("analisysSystem.empty.suggestions.mesAnterior")}
-                </button>
-                <button
-                  type="button"
-                  style={btnOutline}
-                  onClick={() => applySuggestionRange(suggestionRanges.mesActual)}
-                >
-                  {t("analisysSystem.empty.suggestions.mesActual")}
-                </button>
-                <button
-                  type="button"
-                  style={btnOutline}
-                  onClick={() => applySuggestionRange(suggestionRanges.mesAnteriorVsActual)}
-                >
-                  {t("analisysSystem.empty.suggestions.mesAnteriorVsActual")}
-                </button>
-                <button
-                  type="button"
-                  style={btnOutline}
-                  onClick={() => applySuggestionRange(suggestionRanges.esteAno)}
-                >
-                  {t("analisysSystem.empty.suggestions.esteAno")}
-                </button>
-              </div>
+            <CardSection title={t("analisysSystem.suggestions.title")}>
+              {renderQuickSuggestionsSelect()}
             </CardSection>
           </div>
 
