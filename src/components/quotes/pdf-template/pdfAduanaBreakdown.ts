@@ -1,5 +1,8 @@
 import type { IAgenciaAduanaConfig } from "../../../types/agenciaAduana";
-import { calculateAduanaCharges } from "../../../types/agenciaAduana";
+import {
+  applyDerechosExclusion,
+  calculateAduanaCharges,
+} from "../../../types/agenciaAduana";
 import type { IAgenciaAduanaFclConfig } from "../../../types/agenciaAduanaFcl";
 import { calculateAduanaChargesFcl } from "../../../types/agenciaAduanaFcl";
 import type { IAgenciaAduanaLclConfig } from "../../../types/agenciaAduanaLcl";
@@ -87,6 +90,7 @@ export function buildAirAduanaPdfBreakdown(params: {
   seguroMonto: number;
   currency: string;
   config: IAgenciaAduanaConfig | null | undefined;
+  derechosExcluidos?: boolean;
 }): PdfAduanaBreakdownAir | undefined {
   if (!params.activo || !params.config) return undefined;
 
@@ -100,13 +104,14 @@ export function buildAirAduanaPdfBreakdown(params: {
     params.seguroMonto,
   );
 
-  const result = calculateAduanaCharges(
+  const rawResult = calculateAduanaCharges(
     valorProducto,
     params.costoTransporte,
     seguroParaCIF,
     params.currency as Parameters<typeof calculateAduanaCharges>[3],
     params.config,
   );
+  const result = applyDerechosExclusion(rawResult, !!params.derechosExcluidos);
 
   return {
     mode: "air",
@@ -137,6 +142,7 @@ export function buildFclAduanaPdfBreakdown(params: {
   currency: string;
   cantidadContenedores: number;
   config: IAgenciaAduanaFclConfig | null | undefined;
+  derechosExcluidos?: boolean;
 }): PdfAduanaBreakdownFcl | undefined {
   if (!params.activo || !params.config) return undefined;
 
@@ -150,13 +156,14 @@ export function buildFclAduanaPdfBreakdown(params: {
     params.seguroMonto,
   );
 
-  const result = calculateAduanaChargesFcl(
+  const rawResult = calculateAduanaChargesFcl(
     valorProducto,
     params.costoTransporte,
     seguroParaCIF,
     params.cantidadContenedores,
     params.config,
   );
+  const result = applyDerechosExclusion(rawResult, !!params.derechosExcluidos);
 
   return {
     mode: "fcl",
@@ -188,6 +195,7 @@ export function buildLclAduanaPdfBreakdown(params: {
   currency: string;
   wmChargeable: number;
   config: IAgenciaAduanaLclConfig | null | undefined;
+  derechosExcluidos?: boolean;
 }): PdfAduanaBreakdownLcl | undefined {
   if (!params.activo || !params.config) return undefined;
 
@@ -201,13 +209,14 @@ export function buildLclAduanaPdfBreakdown(params: {
     params.seguroMonto,
   );
 
-  const result = calculateAduanaChargesLcl(
+  const rawResult = calculateAduanaChargesLcl(
     valorProducto,
     params.costoTransporte,
     seguroParaCIF,
     params.wmChargeable,
     params.config,
   );
+  const result = applyDerechosExclusion(rawResult, !!params.derechosExcluidos);
 
   return {
     mode: "lcl",

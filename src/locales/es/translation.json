@@ -1478,6 +1478,7 @@
     "mensajeria": "Mensajería",
     "ivaAduanero": "IVA Aduanero",
     "derechos": "Derechos de Aduana",
+    "eliminarDerechos": "Eliminar derechos de aduana de la cotización",
     "totalAduana": "Total Agencia de Aduana",
     "notaSeguroTeorico": "El seguro se calcula de forma teórica: ((Valor Producto + Costo Transporte) × 1.1) × 2%. Active el seguro para usar el valor real."
   },

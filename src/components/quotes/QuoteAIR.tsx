@@ -52,6 +52,7 @@ import { AduanaSection } from "./Handlers/Air/AduanaSection";
 import { useAgenciaAduanas } from "../../hooks/useAgenciaAduanas";
 import {
   calculateAduanaCharges,
+  applyDerechosExclusion,
   type SupportedCurrency,
 } from "../../types/agenciaAduana";
 import { useQuoteTracking } from "../../hooks/useQuoteTracking";
@@ -710,6 +711,7 @@ function QuoteAPITester({
   // Estado para Agencia de Aduanas y Nacionalización
   const [aduanaActivo, setAduanaActivo] = useState(false);
   const [valorProductoAduana, setValorProductoAduana] = useState<string>("");
+  const [derechosAduanaExcluidos, setDerechosAduanaExcluidos] = useState(false);
   const [aduanaMaster, setAduanaMaster] = useState<boolean | null>(null);
   const { config: aduanaConfig, loading: aduanaConfigLoading } =
     useAgenciaAduanas();
@@ -1163,6 +1165,7 @@ function QuoteAPITester({
       // Se desactiva aduana
       setAduanaActivo(false);
       setAduanaMaster(null);
+      setDerechosAduanaExcluidos(false);
     }
   };
 
@@ -2408,6 +2411,7 @@ function QuoteAPITester({
       valorMercaderia,
       aduanaActivo,
       valorProductoAduana,
+      derechosAduanaExcluidos: isEjecutivoMode && derechosAduanaExcluidos,
       aduanaConfig,
       gastolocal,
     },
@@ -2463,6 +2467,7 @@ function QuoteAPITester({
     setValorMercaderia("");
     setAduanaActivo(false);
     setValorProductoAduana("");
+    setDerechosAduanaExcluidos(false);
     setAduanaMaster(null);
     setUltimaMillaActivo(false);
     setUltimaMillaDireccion("");
@@ -2619,7 +2624,10 @@ function QuoteAPITester({
       aduanaConfig,
     );
 
-    return result.total;
+    return applyDerechosExclusion(
+      result,
+      isEjecutivoMode && derechosAduanaExcluidos,
+    ).total;
   };
 
   const buildAirConnectLinbisCommodities = () => {
@@ -2835,12 +2843,15 @@ function QuoteAPITester({
         const seguroParaCIF = seguroActivo
           ? Math.max((valorCarga + offer.apiWithLand) * 1.1 * 0.0025, 25)
           : (valorProd + offer.apiWithLand) * 1.1 * 0.02;
-        const aduanaAmount = calculateAduanaCharges(
-          valorProd,
-          offer.apiWithLand,
-          seguroParaCIF,
-          AIR_CONNECT_CURRENCY as SupportedCurrency,
-          aduanaConfig,
+        const aduanaAmount = applyDerechosExclusion(
+          calculateAduanaCharges(
+            valorProd,
+            offer.apiWithLand,
+            seguroParaCIF,
+            AIR_CONNECT_CURRENCY as SupportedCurrency,
+            aduanaConfig,
+          ),
+          isEjecutivoMode && derechosAduanaExcluidos,
         ).total;
         if (aduanaAmount > 0) {
           pdfCharges.push({
@@ -2892,6 +2903,7 @@ function QuoteAPITester({
         seguroMonto: airConnectSeguroMonto,
         currency: AIR_CONNECT_CURRENCY,
         config: aduanaConfig,
+        derechosExcluidos: isEjecutivoMode && derechosAduanaExcluidos,
       });
       const chargeableWeight =
         airConnect.quote?.parcelsData?.airChargeableWeight ?? pesoChargeable;
@@ -3642,6 +3654,7 @@ function QuoteAPITester({
             seguroMonto: calculateSeguro(),
             currency: rutaSeleccionada.currency,
             config: aduanaConfig,
+            derechosExcluidos: isEjecutivoMode && derechosAduanaExcluidos,
           })
           : undefined;
 
@@ -5655,6 +5668,11 @@ function QuoteAPITester({
           config={aduanaConfig}
           configLoading={aduanaConfigLoading}
           valorProductoDisabled={aduanaMaster === false}
+          showDerechosExclusionControl={
+            isEjecutivoMode && !derechosAduanaExcluidos
+          }
+          derechosExcluidos={isEjecutivoMode && derechosAduanaExcluidos}
+          onExcluirDerechos={() => setDerechosAduanaExcluidos(true)}
         />
       </div>
     ) : null;

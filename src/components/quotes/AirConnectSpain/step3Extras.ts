@@ -1,4 +1,4 @@
-import { calculateAduanaCharges } from "../../../types/agenciaAduana";
+import { calculateAduanaCharges, applyDerechosExclusion } from "../../../types/agenciaAduana";
 import type { IAgenciaAduanaConfig } from "../../../types/agenciaAduana";
 import type { SupportedCurrency } from "../../../types/agenciaAduana";
 import { AIR_CONNECT_CURRENCY } from "../../../services/airConnectSpainQuote";
@@ -11,6 +11,7 @@ export interface AirConnectStep3ExtrasParams {
   valorMercaderia: string;
   aduanaActivo: boolean;
   valorProductoAduana: string;
+  derechosAduanaExcluidos?: boolean;
   aduanaConfig: IAgenciaAduanaConfig | null;
   gastolocal: boolean;
 }
@@ -40,12 +41,15 @@ export function calculateAirConnectStep3Extras(
             25,
           )
         : (valorProd + params.transportBaseline) * 1.1 * 0.02;
-      extra += calculateAduanaCharges(
-        valorProd,
-        params.transportBaseline,
-        seguroParaCIF,
-        AIR_CONNECT_CURRENCY as SupportedCurrency,
-        params.aduanaConfig,
+      extra += applyDerechosExclusion(
+        calculateAduanaCharges(
+          valorProd,
+          params.transportBaseline,
+          seguroParaCIF,
+          AIR_CONNECT_CURRENCY as SupportedCurrency,
+          params.aduanaConfig,
+        ),
+        !!params.derechosAduanaExcluidos,
       ).total;
     }
   }

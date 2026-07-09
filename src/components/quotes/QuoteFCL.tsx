@@ -115,6 +115,7 @@ import {
   useAgenciaAduanasFcl,
   calculateAduanaChargesFcl,
 } from "../../hooks/useAgenciaAduanasFcl";
+import { applyDerechosExclusion } from "../../types/agenciaAduana";
 
 const INITIAL_VISIBLE_ROUTES = 5;
 
@@ -279,6 +280,7 @@ export default function QuoteFCL({
   // Agencia de Aduanas y Nacionalización
   const [aduanaActivo, setAduanaActivo] = useState(false);
   const [valorProductoAduana, setValorProductoAduana] = useState<string>("");
+  const [derechosAduanaExcluidos, setDerechosAduanaExcluidos] = useState(false);
   const [aduanaMaster, setAduanaMaster] = useState<boolean | null>(null);
   const { config: aduanaFclConfig, loading: aduanaFclConfigLoading } =
     useAgenciaAduanasFcl();
@@ -1161,6 +1163,7 @@ export default function QuoteFCL({
     setValorMercaderia("");
     setAduanaActivo(false);
     setValorProductoAduana("");
+    setDerechosAduanaExcluidos(false);
     setAduanaMaster(null);
     setGastolocal(false);
     setLiveTrackingActivo(false);
@@ -1732,6 +1735,7 @@ export default function QuoteFCL({
     } else {
       setAduanaActivo(false);
       setAduanaMaster(null);
+      setDerechosAduanaExcluidos(false);
     }
   };
 
@@ -1777,7 +1781,10 @@ export default function QuoteFCL({
       aduanaFclConfig,
     );
 
-    return result.total;
+    return applyDerechosExclusion(
+      result,
+      isEjecutivoMode && derechosAduanaExcluidos,
+    ).total;
   };
 
   const ultimaMillaDisponible = isUltimaMillaEligiblePOD(
@@ -2176,6 +2183,7 @@ export default function QuoteFCL({
             currency: rutaSeleccionada.currency,
             cantidadContenedores,
             config: aduanaFclConfig,
+            derechosExcluidos: isEjecutivoMode && derechosAduanaExcluidos,
           })
           : undefined;
 
@@ -4577,6 +4585,11 @@ export default function QuoteFCL({
                     cantidadContenedores={cantidadContenedores}
                     config={aduanaFclConfig}
                     valorProductoDisabled={aduanaMaster === false}
+                    showDerechosExclusionControl={
+                      isEjecutivoMode && !derechosAduanaExcluidos
+                    }
+                    derechosExcluidos={isEjecutivoMode && derechosAduanaExcluidos}
+                    onExcluirDerechos={() => setDerechosAduanaExcluidos(true)}
                   />
                 </div>
               )}

@@ -128,3 +128,16 @@ export function calculateAduanaCharges(
     currency,
   };
 }
+
+/** Aplica exclusión de derechos de aduana en cotizaciones de ejecutivo (muestra 0 y reduce el total). */
+export function applyDerechosExclusion<T extends { derechos: number; total: number }>(
+  result: T,
+  excluidos: boolean,
+): T {
+  if (!excluidos) return result;
+  return {
+    ...result,
+    derechos: 0,
+    total: result.total - result.derechos,
+  };
+}

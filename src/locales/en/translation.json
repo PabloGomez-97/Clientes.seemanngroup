@@ -1477,6 +1477,7 @@
     "mensajeria": "Courier",
     "ivaAduanero": "Customs VAT",
     "derechos": "Customs Duties",
+    "eliminarDerechos": "Remove customs duties from the quote",
     "totalAduana": "Total Customs Agency",
     "notaSeguroTeorico": "Insurance is calculated theoretically: ((Product Value + Transport Cost) × 1.1) × 2%. Enable insurance to use the actual value."
   },

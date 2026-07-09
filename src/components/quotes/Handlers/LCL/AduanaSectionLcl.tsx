@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import type { IAgenciaAduanaLclConfig } from "../../../../types/agenciaAduanaLcl";
 import { calculateAduanaChargesLcl } from "../../../../types/agenciaAduanaLcl";
+import { applyDerechosExclusion } from "../../../../types/agenciaAduana";
 
 interface AduanaSectionLclProps {
   activo: boolean;
@@ -12,6 +13,9 @@ interface AduanaSectionLclProps {
   currency: string;
   wmChargeable: number;
   config: IAgenciaAduanaLclConfig;
+  showDerechosExclusionControl?: boolean;
+  derechosExcluidos?: boolean;
+  onExcluirDerechos?: () => void;
 }
 
 export const AduanaSectionLcl: React.FC<AduanaSectionLclProps> = ({
@@ -23,6 +27,9 @@ export const AduanaSectionLcl: React.FC<AduanaSectionLclProps> = ({
   currency,
   wmChargeable,
   config,
+  showDerechosExclusionControl = false,
+  derechosExcluidos = false,
+  onExcluirDerechos,
 }) => {
   const { t } = useTranslation();
 
@@ -62,11 +69,15 @@ export const AduanaSectionLcl: React.FC<AduanaSectionLclProps> = ({
       maximumFractionDigits: 2,
     });
 
+  const displayResult =
+    aduanaResult &&
+    applyDerechosExclusion(aduanaResult, derechosExcluidos);
+
   if (!activo) return null;
 
   return (
     <div className="mt-2 ps-4">
-      {valorProductoNum > 0 && wmChargeable > 0 && aduanaResult && (
+      {valorProductoNum > 0 && wmChargeable > 0 && displayResult && (
         <div className="mt-3">
           <div
             className="p-2 rounded mb-2"
@@ -113,7 +124,7 @@ export const AduanaSectionLcl: React.FC<AduanaSectionLclProps> = ({
               <div className="d-flex justify-content-between fw-bold">
                 <span>CIF</span>
                 <span className="text-primary">
-                  {currency} {fmt(aduanaResult.cif)}
+                  {currency} {fmt(displayResult.cif)}
                 </span>
               </div>
             </div>
@@ -139,7 +150,7 @@ export const AduanaSectionLcl: React.FC<AduanaSectionLclProps> = ({
                   {t("AgenciaAduana.honorarios")}
                 </span>
                 <span>
-                  {currency} {fmt(aduanaResult.honorarios)}
+                  {currency} {fmt(displayResult.honorarios)}
                 </span>
               </div>
               <div className="d-flex justify-content-between">
@@ -147,17 +158,17 @@ export const AduanaSectionLcl: React.FC<AduanaSectionLclProps> = ({
                   {t("AgenciaAduanaLcl.customsClearance")}
                 </span>
                 <span>
-                  {currency} {fmt(aduanaResult.customsClearance)}
+                  {currency} {fmt(displayResult.customsClearance)}
                 </span>
               </div>
               <div className="d-flex justify-content-between">
                 <span className="text-muted">
                   {t("AgenciaAduanaLcl.extraportCharges")} (
-                  {t("AgenciaAduanaLcl.wmLabel")}: {aduanaResult.wmChargeable}{" "}
+                  {t("AgenciaAduanaLcl.wmLabel")}: {displayResult.wmChargeable}{" "}
                   {t("AgenciaAduanaLcl.wmUnit")})
                 </span>
                 <span>
-                  {currency} {fmt(aduanaResult.extraportCharges)}
+                  {currency} {fmt(displayResult.extraportCharges)}
                 </span>
               </div>
               <div className="d-flex justify-content-between">
@@ -166,22 +177,32 @@ export const AduanaSectionLcl: React.FC<AduanaSectionLclProps> = ({
                   {config.charges.ivaAduaneroPct}%)
                 </span>
                 <span>
-                  {currency} {fmt(aduanaResult.ivaAduanero)}
+                  {currency} {fmt(displayResult.ivaAduanero)}
                 </span>
               </div>
-              <div className="d-flex justify-content-between">
-                <span className="text-muted">
+              <div className="d-flex justify-content-between align-items-center">
+                <span className="text-muted d-flex align-items-center gap-2">
                   {t("AgenciaAduana.derechos")} ({config.charges.derechosPct}%)
+                  {showDerechosExclusionControl && !derechosExcluidos && (
+                    <button
+                      type="button"
+                      className="btn btn-link btn-sm text-danger p-0"
+                      title={t("AgenciaAduana.eliminarDerechos")}
+                      onClick={onExcluirDerechos}
+                    >
+                      <i className="bi bi-trash" />
+                    </button>
+                  )}
                 </span>
                 <span>
-                  {currency} {fmt(aduanaResult.derechos)}
+                  {currency} {fmt(displayResult.derechos)}
                 </span>
               </div>
               <hr className="my-1" />
               <div className="d-flex justify-content-between fw-bold">
                 <span>{t("AgenciaAduana.totalAduana")}</span>
                 <span className="text-danger">
-                  {currency} {fmt(aduanaResult.total)}
+                  {currency} {fmt(displayResult.total)}
                 </span>
               </div>
             </div>

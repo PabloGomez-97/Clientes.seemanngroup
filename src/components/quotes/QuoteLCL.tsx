@@ -128,6 +128,7 @@ import {
   useAgenciaAduanasLcl,
   calculateAduanaChargesLcl,
 } from "../../hooks/useAgenciaAduanasLcl";
+import { applyDerechosExclusion } from "../../types/agenciaAduana";
 import { packageTypeOptions } from "./PackageTypes/PiecestypesLCL";
 import { ReviewAddonCard } from "./ReviewAddonCard";
 
@@ -418,6 +419,7 @@ export default function QuoteLCL({
   // Agencia de Aduanas y Nacionalización
   const [aduanaActivo, setAduanaActivo] = useState(false);
   const [valorProductoAduana, setValorProductoAduana] = useState<string>("");
+  const [derechosAduanaExcluidos, setDerechosAduanaExcluidos] = useState(false);
   const [aduanaMaster, setAduanaMaster] = useState<boolean | null>(null);
   const { config: aduanaLclConfig, loading: aduanaLclConfigLoading } =
     useAgenciaAduanasLcl();
@@ -1458,6 +1460,7 @@ export default function QuoteLCL({
     setValorMercaderia("");
     setAduanaActivo(false);
     setValorProductoAduana("");
+    setDerechosAduanaExcluidos(false);
     setAduanaMaster(null);
     setGastolocal(false);
     setLiveTrackingActivo(false);
@@ -2112,6 +2115,7 @@ export default function QuoteLCL({
     } else {
       setAduanaActivo(false);
       setAduanaMaster(null);
+      setDerechosAduanaExcluidos(false);
     }
   };
 
@@ -2156,7 +2160,10 @@ export default function QuoteLCL({
       aduanaLclConfig,
     );
 
-    return result.total;
+    return applyDerechosExclusion(
+      result,
+      isEjecutivoMode && derechosAduanaExcluidos,
+    ).total;
   };
 
   const aduanaPuedeActivarse = chargeableVolume > 0;
@@ -2601,6 +2608,7 @@ export default function QuoteLCL({
             currency: rutaSeleccionada.currency,
             wmChargeable: chargeableVolume,
             config: aduanaLclConfig,
+            derechosExcluidos: isEjecutivoMode && derechosAduanaExcluidos,
           })
           : undefined;
 
@@ -5220,6 +5228,11 @@ export default function QuoteLCL({
                     currency={rutaSeleccionada.currency}
                     wmChargeable={chargeableVolume}
                     config={aduanaLclConfig}
+                    showDerechosExclusionControl={
+                      isEjecutivoMode && !derechosAduanaExcluidos
+                    }
+                    derechosExcluidos={isEjecutivoMode && derechosAduanaExcluidos}
+                    onExcluirDerechos={() => setDerechosAduanaExcluidos(true)}
                   />
                 </div>
               )}

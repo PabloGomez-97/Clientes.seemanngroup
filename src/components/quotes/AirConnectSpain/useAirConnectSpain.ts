@@ -106,6 +106,8 @@ export interface UseAirConnectSpainParams {
 
     valorProductoAduana: string;
 
+    derechosAduanaExcluidos?: boolean;
+
     aduanaConfig: IAgenciaAduanaConfig | null;
 
     gastolocal: boolean;
@@ -662,6 +664,8 @@ export function useAirConnectSpain(params: UseAirConnectSpainParams) {
 
         valorProductoAduana: step3.valorProductoAduana,
 
+        derechosAduanaExcluidos: step3.derechosAduanaExcluidos,
+
         aduanaConfig: step3.aduanaConfig,
 
         gastolocal: step3.gastolocal,
@@ -681,6 +685,8 @@ export function useAirConnectSpain(params: UseAirConnectSpainParams) {
       step3.aduanaActivo,
 
       step3.valorProductoAduana,
+
+      step3.derechosAduanaExcluidos,
 
       step3.aduanaConfig,
 
