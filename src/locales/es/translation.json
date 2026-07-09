@@ -1962,14 +1962,14 @@
     },
     "empty": {
       "title": "Sin reporte generado",
-      "description": "Selecciona un rango de fechas y pulsa Generar reporte.",
+      "description": "Defina el rango de fechas y pulse Generar reporte, o seleccione una comparativa en Sugerencias rápidas.",
       "noResultsTitle": "Sin resultados",
       "noResultsDescription": "Ninguna factura coincide con los filtros seleccionados. Prueba otro ejecutivo o consignee."
     },
     "suggestions": {
       "title": "Sugerencias rápidas",
-      "lead": "Comparativas listas para gerencia: al elegir una opción se cargan los datos y se abre la vista correspondiente. Para ver un solo período sin comparar, usa Invoice From/To Date.",
-      "placeholder": "Elegir comparativa…",
+      "lead": "Comparativas entre períodos. Al seleccionar una opción, el sistema carga los datos y abre las vistas en modo comparativo.",
+      "placeholder": "Seleccionar comparativa…",
       "categories": {
         "month": "Mes a mes",
         "quarterSemester": "Trimestre y semestre",
@@ -2027,6 +2027,25 @@
         "year": "Año"
       },
       "filtersSummaryOnly": "Los filtros de resultados aplican solo a la vista Resumen operativo.",
+      "comparisonMode": {
+        "summaryDescription": "Ejecutivos y operaciones comparados entre el período reciente y el de referencia.",
+        "teamDescription": "Participación y eficiencia de cada ejecutivo en ambos períodos de la comparativa.",
+        "trendsDescription": "Evolución del equipo entre los dos períodos seleccionados en la sugerencia rápida.",
+        "customersDescription": "Consignees de cada ejecutivo comparados entre ambos períodos.",
+        "opsA": "Ops {{period}}",
+        "opsB": "Ops {{period}}",
+        "delta": "Variación",
+        "incomeA": "Venta A",
+        "incomeB": "Venta B",
+        "profitA": "Margen A",
+        "profitB": "Margen B",
+        "deltaProfit": "Δ Margen",
+        "invoicesA": "Facturas A",
+        "invoicesB": "Facturas B",
+        "profitChartTitle": "Margen por ejecutivo — período A vs B",
+        "teamTrendTitle": "Equipo completo — período A vs período B",
+        "periodLegend": "Las columnas y métricas marcadas como «A» corresponden al Período A; las marcadas como «B», al Período B."
+      },
       "periodComparison": {
         "lead": "Compara dos períodos con la misma lógica de fechas (mes a mes, trimestre a trimestre, año a año). El período A suele ser el más reciente; el B es la referencia para medir crecimiento o caída.",
         "activeSuggestion": "Comparativa activa: {{label}}",

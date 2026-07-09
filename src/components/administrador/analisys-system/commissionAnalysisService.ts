@@ -849,6 +849,65 @@ export function buildOperationsSummary(
   return result;
 }
 
+function rowIsoDate(row: CommissionAnalysisInvoiceRow): string | null {
+  const parsed = parseUsDate(row.date);
+  if (!parsed) return null;
+  return parsed.toISOString().split("T")[0];
+}
+
+export function filterReportByIsoDateRange(
+  report: CommissionAnalysisReport,
+  startDate: string,
+  endDate: string,
+): CommissionAnalysisReport {
+  const filteredRows: CommissionAnalysisInvoiceRow[] = [];
+
+  for (const group of report.groups) {
+    for (const row of group.rows) {
+      const iso = rowIsoDate(row);
+      if (!iso || iso < startDate || iso > endDate) continue;
+      filteredRows.push(row);
+    }
+  }
+
+  filteredRows.sort((a, b) => {
+    const repCompare = a.salesRep.localeCompare(b.salesRep, "es");
+    if (repCompare !== 0) return repCompare;
+    const shipmentCompare = a.shipmentRef.localeCompare(b.shipmentRef, "es");
+    if (shipmentCompare !== 0) return shipmentCompare;
+    return (a.date || "").localeCompare(b.date || "");
+  });
+
+  const groups = buildGroupsFromRows(filteredRows);
+  let completeRows = 0;
+  let incompleteRows = 0;
+
+  for (const row of filteredRows) {
+    if (row.reconciliationStatus === "complete") completeRows += 1;
+    else incompleteRows += 1;
+  }
+
+  return {
+    ...report,
+    startDate,
+    endDate,
+    groups,
+    totals: {
+      income: round2(filteredRows.reduce((sum, row) => sum + row.income, 0)),
+      expense: sumNullAsZero(filteredRows.map((row) => row.expense)),
+      profit: sumNullAsZero(filteredRows.map((row) => row.profit)),
+      commission: round2(filteredRows.reduce((sum, row) => sum + row.commission, 0)),
+    },
+    invoiceCount: filteredRows.length,
+    reconciliation: {
+      ...report.reconciliation,
+      completeRows,
+      incompleteRows,
+      isFullyReconciled: incompleteRows === 0,
+    },
+  };
+}
+
 export function filterCommissionAnalysisReport(
   report: CommissionAnalysisReport,
   filters: { salesRep?: string; consignee?: string },

@@ -16,6 +16,7 @@ export type PeriodComparisonDeltas = {
   profitPct: number | null;
   marginPts: number | null;
   invoiceCountPct: number | null;
+  operationCountPct: number | null;
 };
 
 export type PeriodComparisonResult = {
@@ -141,6 +142,7 @@ export function buildPeriodComparison(
           ? round2(periodAMetrics.marginPct - periodBMetrics.marginPct)
           : null,
       invoiceCountPct: pctChange(periodAMetrics.invoiceCount, periodBMetrics.invoiceCount),
+      operationCountPct: pctChange(periodAMetrics.operationCount, periodBMetrics.operationCount),
     },
   };
 }

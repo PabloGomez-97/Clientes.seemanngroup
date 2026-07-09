@@ -19,6 +19,7 @@ import {
 import type { CommissionAnalysisReport } from "../types";
 import {
   AnalyticsSectionHeader,
+  ComparisonModeBanner,
   InsightPanel,
   KpiCard,
   KpiGrid,
@@ -64,38 +65,43 @@ function PeriodColumn({
   const { t } = useTranslation();
 
   return (
-    <div style={{ ...styles.card, padding: 16, flex: "1 1 280px" }}>
+    <div style={{ ...styles.card, padding: 16, flex: "1 1 300px", minWidth: 0 }}>
       <div style={{ marginBottom: 12 }}>
         <div style={{ ...styles.sectionTitle, marginBottom: 4 }}>{title}</div>
         <div style={{ ...base, fontSize: 12, color: C.textMuted }}>{subtitle}</div>
       </div>
-      <KpiGrid>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         <KpiCard
+          compact
           label={t("analisysSystem.operations.columns.income")}
           value={formatCommissionAmount(metrics.income)}
           accent="primary"
         />
         <KpiCard
+          compact
           label={t("analisysSystem.operations.columns.expense")}
           value={formatCommissionAmount(metrics.expense)}
         />
         <KpiCard
+          compact
           label={t("analisysSystem.operations.columns.profit")}
           value={formatCommissionAmount(metrics.profit)}
           accent="positive"
         />
         <KpiCard
+          compact
           label={t("analisysSystem.analytics.comparison.marginPct")}
           value={metrics.marginPct != null ? `${metrics.marginPct}%` : "—"}
         />
         <KpiCard
+          compact
           label={t("analisysSystem.analytics.periodComparison.invoices")}
           value={String(metrics.invoiceCount)}
           hint={t("analisysSystem.analytics.periodComparison.operations", {
             count: metrics.operationCount,
           })}
         />
-      </KpiGrid>
+      </div>
     </div>
   );
 }
@@ -207,11 +213,11 @@ export default function PeriodComparisonTab({ report, suggestion }: Props) {
         description={t("analisysSystem.analytics.periodComparison.lead")}
       />
 
-      <p style={{ ...base, fontSize: 13, color: C.textMuted, margin: "0 0 16px" }}>
-        {t("analisysSystem.analytics.periodComparison.activeSuggestion", {
-          label: t(suggestion.labelKey),
-        })}
-      </p>
+      <ComparisonModeBanner
+        label={t(suggestion.labelKey)}
+        periodALabel={suggestion.periodA.label}
+        periodBLabel={suggestion.periodB.label}
+      />
 
       <div
         style={{
@@ -244,8 +250,8 @@ export default function PeriodComparisonTab({ report, suggestion }: Props) {
 
       <div
         style={{
-          display: "flex",
-          flexWrap: "wrap",
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 300px), 1fr))",
           gap: 16,
           marginBottom: 20,
         }}

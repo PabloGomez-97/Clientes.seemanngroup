@@ -10,6 +10,8 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import type { AppliedComparisonSuggestion } from "../comparisonSuggestions";
+import { buildCustomerPeriodComparison, formatComparisonDelta } from "../comparisonModeAnalytics";
 import { formatCommissionAmount } from "../commissionAnalysisService";
 import {
   buildTopCustomerInsightData,
@@ -21,6 +23,7 @@ import type { CommissionAnalysisReport } from "../types";
 import { formatReportDateRange } from "../commissionAnalysisService";
 import {
   AnalyticsSectionHeader,
+  ComparisonModeBanner,
   InsightPanel,
   KpiCard,
   KpiGrid,
@@ -39,6 +42,7 @@ import {
 
 type Props = {
   report: CommissionAnalysisReport;
+  comparisonSuggestion?: AppliedComparisonSuggestion | null;
 };
 
 type SortKey = keyof Pick<
@@ -48,7 +52,7 @@ type SortKey = keyof Pick<
 
 type SortDir = "asc" | "desc";
 
-export default function TopCustomersTab({ report }: Props) {
+export default function TopCustomersTab({ report, comparisonSuggestion }: Props) {
   const { t } = useTranslation();
   const reps = useMemo(() => listSalesRepsFromReport(report), [report]);
   const [salesRep, setSalesRep] = useState(reps[0] ?? "");
@@ -140,6 +144,14 @@ export default function TopCustomersTab({ report }: Props) {
     return items;
   }, [insightData, salesRep, rangeLabel, t]);
 
+  const customerComparisonRows = useMemo(
+    () =>
+      comparisonSuggestion && salesRep
+        ? buildCustomerPeriodComparison(report, salesRep, comparisonSuggestion)
+        : [],
+    [comparisonSuggestion, salesRep, report],
+  );
+
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
       setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -150,6 +162,90 @@ export default function TopCustomersTab({ report }: Props) {
   };
 
   if (!salesRep && reps.length === 0) return null;
+
+  if (comparisonSuggestion) {
+    return (
+      <div>
+        <AnalyticsSectionHeader
+          title={t("analisysSystem.sections.topCustomers.title")}
+          description={t("analisysSystem.analytics.comparisonMode.customersDescription")}
+        />
+        <ComparisonModeBanner
+          label={t(comparisonSuggestion.labelKey)}
+          periodALabel={comparisonSuggestion.periodA.label}
+          periodBLabel={comparisonSuggestion.periodB.label}
+        />
+        <div style={{ marginBottom: 16 }}>
+          <label style={styles.label}>{t("analisysSystem.filters.salesRep")}</label>
+          <select
+            value={salesRep}
+            onChange={(e) => setSalesRep(e.target.value)}
+            style={{ ...inputStyle, minWidth: 220 }}
+          >
+            {reps.map((rep) => (
+              <option key={rep} value={rep}>
+                {rep}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div style={{ ...styles.card, overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 880 }}>
+            <thead>
+              <tr>
+                <th style={styles.th}>{t("analisysSystem.operations.columns.consignee")}</th>
+                <th style={{ ...styles.th, textAlign: "right" }}>
+                  {t("analisysSystem.analytics.comparisonMode.invoicesA")}
+                </th>
+                <th style={{ ...styles.th, textAlign: "right" }}>
+                  {t("analisysSystem.analytics.comparisonMode.invoicesB")}
+                </th>
+                <th style={{ ...styles.th, textAlign: "right" }}>
+                  {t("analisysSystem.analytics.comparisonMode.incomeA")}
+                </th>
+                <th style={{ ...styles.th, textAlign: "right" }}>
+                  {t("analisysSystem.analytics.comparisonMode.incomeB")}
+                </th>
+                <th style={{ ...styles.th, textAlign: "right" }}>
+                  {t("analisysSystem.analytics.comparisonMode.profitA")}
+                </th>
+                <th style={{ ...styles.th, textAlign: "right" }}>
+                  {t("analisysSystem.analytics.comparisonMode.profitB")}
+                </th>
+                <th style={{ ...styles.th, textAlign: "right" }}>
+                  {t("analisysSystem.analytics.comparisonMode.deltaProfit")}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {customerComparisonRows.map((row) => (
+                <tr key={row.consignee}>
+                  <td style={styles.td}>{row.consignee}</td>
+                  <td style={{ ...styles.td, textAlign: "right" }}>{row.periodA.invoiceCount}</td>
+                  <td style={{ ...styles.td, textAlign: "right" }}>{row.periodB.invoiceCount}</td>
+                  <td style={{ ...styles.td, textAlign: "right" }}>
+                    {formatCommissionAmount(row.periodA.income)}
+                  </td>
+                  <td style={{ ...styles.td, textAlign: "right" }}>
+                    {formatCommissionAmount(row.periodB.income)}
+                  </td>
+                  <td style={{ ...styles.td, textAlign: "right" }}>
+                    {formatCommissionAmount(row.periodA.profit)}
+                  </td>
+                  <td style={{ ...styles.td, textAlign: "right" }}>
+                    {formatCommissionAmount(row.periodB.profit)}
+                  </td>
+                  <td style={{ ...styles.td, textAlign: "right" }}>
+                    {formatComparisonDelta(row.deltas.profitPct)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>

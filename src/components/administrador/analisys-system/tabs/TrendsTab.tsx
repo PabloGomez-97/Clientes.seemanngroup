@@ -11,7 +11,10 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { formatCommissionAmount } from "../commissionAnalysisService";
+import type { AppliedComparisonSuggestion } from "../comparisonSuggestions";
+import { buildRepPeriodComparison, formatComparisonDelta } from "../comparisonModeAnalytics";
+import { buildPeriodComparison } from "../periodComparisonAnalytics";
+import { formatCommissionAmount, formatReportDateRange } from "../commissionAnalysisService";
 import {
   TOTAL_SERIES_KEY,
   TIME_GRANULARITIES,
@@ -24,10 +27,10 @@ import {
   type TimeGranularity,
 } from "../commissionAnalytics";
 import type { CommissionAnalysisReport } from "../types";
-import { formatReportDateRange } from "../commissionAnalysisService";
 import {
   AnalyticsSectionHeader,
   ChartGuide,
+  ComparisonModeBanner,
   InsightPanel,
   KpiCard,
   KpiGrid,
@@ -42,6 +45,7 @@ import {
 
 type Props = {
   report: CommissionAnalysisReport;
+  comparisonSuggestion?: AppliedComparisonSuggestion | null;
 };
 
 function formatDelta(value: number | null): string {
@@ -55,7 +59,7 @@ function deltaTone(value: number | null): "positive" | "negative" | "neutral" {
   return value > 0 ? "positive" : "negative";
 }
 
-export default function TrendsTab({ report }: Props) {
+export default function TrendsTab({ report, comparisonSuggestion }: Props) {
   const { t, i18n } = useTranslation();
   const reps = useMemo(() => listSalesRepsFromReport(report), [report]);
   const [granularity, setGranularity] = useState<TimeGranularity>("month");
@@ -164,6 +168,106 @@ export default function TrendsTab({ report }: Props) {
 
     return items;
   }, [summary, repLabel, granularityLabel, rangeLabel, t]);
+
+  const periodComparison = useMemo(
+    () => (comparisonSuggestion ? buildPeriodComparison(report, comparisonSuggestion) : null),
+    [report, comparisonSuggestion],
+  );
+
+  const repPeriodRows = useMemo(
+    () =>
+      comparisonSuggestion
+        ? buildRepPeriodComparison(report, comparisonSuggestion)
+        : [],
+    [report, comparisonSuggestion],
+  );
+
+  const comparisonChartData = useMemo(() => {
+    if (!periodComparison) return [];
+    return [
+      {
+        label: periodComparison.periodA.label,
+        income: periodComparison.periodA.income,
+        expense: periodComparison.periodA.expense,
+        profit: periodComparison.periodA.profit,
+      },
+      {
+        label: periodComparison.periodB.label,
+        income: periodComparison.periodB.income,
+        expense: periodComparison.periodB.expense,
+        profit: periodComparison.periodB.profit,
+      },
+    ];
+  }, [periodComparison]);
+
+  if (comparisonSuggestion && periodComparison) {
+    return (
+      <div>
+        <AnalyticsSectionHeader
+          title={t("analisysSystem.sections.trends.title")}
+          description={t("analisysSystem.analytics.comparisonMode.trendsDescription")}
+        />
+        <ComparisonModeBanner
+          label={t(comparisonSuggestion.labelKey)}
+          periodALabel={comparisonSuggestion.periodA.label}
+          periodBLabel={comparisonSuggestion.periodB.label}
+        />
+        <div style={{ ...styles.card, padding: 16, marginBottom: 20 }}>
+          <div style={{ ...styles.sectionTitle, marginBottom: 12 }}>
+            {t("analisysSystem.analytics.comparisonMode.teamTrendTitle")}
+          </div>
+          <div style={{ width: "100%", height: 320 }}>
+            <ResponsiveContainer>
+              <ComposedChart data={comparisonChartData} margin={{ top: 8, right: 16, left: 8, bottom: 8 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
+                <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => formatCommissionAmount(v)} width={88} />
+                <Tooltip formatter={(value) => formatCommissionAmount(Number(value))} />
+                <Legend />
+                <Bar dataKey="income" name={t("analisysSystem.operations.columns.income")} fill={C.primary} />
+                <Bar dataKey="expense" name={t("analisysSystem.operations.columns.expense")} fill={C.textMuted} />
+                <Line type="monotone" dataKey="profit" name={t("analisysSystem.operations.columns.profit")} stroke={C.positive} strokeWidth={2} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+        <div style={{ ...styles.card, overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 720 }}>
+            <thead>
+              <tr>
+                <th style={styles.th}>{t("analisysSystem.filters.salesRep")}</th>
+                <th style={{ ...styles.th, textAlign: "right" }}>
+                  {t("analisysSystem.analytics.comparisonMode.profitA")}
+                </th>
+                <th style={{ ...styles.th, textAlign: "right" }}>
+                  {t("analisysSystem.analytics.comparisonMode.profitB")}
+                </th>
+                <th style={{ ...styles.th, textAlign: "right" }}>
+                  {t("analisysSystem.analytics.comparisonMode.deltaProfit")}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {repPeriodRows.map((row) => (
+                <tr key={row.salesRep}>
+                  <td style={styles.td}>{row.salesRep}</td>
+                  <td style={{ ...styles.td, textAlign: "right" }}>
+                    {formatCommissionAmount(row.periodA.profit)}
+                  </td>
+                  <td style={{ ...styles.td, textAlign: "right" }}>
+                    {formatCommissionAmount(row.periodB.profit)}
+                  </td>
+                  <td style={{ ...styles.td, textAlign: "right" }}>
+                    {formatComparisonDelta(row.deltas.profitPct)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>

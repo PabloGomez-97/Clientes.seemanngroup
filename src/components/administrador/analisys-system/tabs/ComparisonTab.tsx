@@ -11,16 +11,21 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { formatCommissionAmount } from "../commissionAnalysisService";
+import type { AppliedComparisonSuggestion } from "../comparisonSuggestions";
+import {
+  buildRepPeriodComparison,
+  formatComparisonDelta,
+} from "../comparisonModeAnalytics";
 import {
   buildComparisonInsightData,
   buildRepComparison,
   listSalesRepsFromReport,
 } from "../commissionAnalytics";
 import type { CommissionAnalysisReport } from "../types";
-import { formatReportDateRange } from "../commissionAnalysisService";
+import { formatCommissionAmount, formatReportDateRange } from "../commissionAnalysisService";
 import {
   AnalyticsSectionHeader,
+  ComparisonModeBanner,
   InsightPanel,
   ShareBar,
   computeMarginPct,
@@ -34,12 +39,32 @@ import {
 
 type Props = {
   report: CommissionAnalysisReport;
+  comparisonSuggestion?: AppliedComparisonSuggestion | null;
 };
 
 const CHART_COLORS = [C.primary, "#3b82f6", "#8b5cf6", "#06b6d4", "#f59e0b", "#64748b"];
 
-export default function ComparisonTab({ report }: Props) {
+export default function ComparisonTab({ report, comparisonSuggestion }: Props) {
   const { t } = useTranslation();
+
+  const repPeriodRows = useMemo(
+    () =>
+      comparisonSuggestion
+        ? buildRepPeriodComparison(report, comparisonSuggestion)
+        : [],
+    [report, comparisonSuggestion],
+  );
+
+  const comparisonChartData = useMemo(
+    () =>
+      repPeriodRows.map((row) => ({
+        name: row.salesRep,
+        profitA: row.periodA.profit,
+        profitB: row.periodB.profit,
+      })),
+    [repPeriodRows],
+  );
+
   const allReps = useMemo(() => listSalesRepsFromReport(report), [report]);
   const [selectedReps, setSelectedReps] = useState<string[]>([]);
   const [includeTotal, setIncludeTotal] = useState(true);
@@ -157,6 +182,108 @@ export default function ComparisonTab({ report }: Props) {
       prev.includes(rep) ? prev.filter((r) => r !== rep) : [...prev, rep],
     );
   };
+
+  if (comparisonSuggestion) {
+    return (
+      <div>
+        <AnalyticsSectionHeader
+          title={t("analisysSystem.sections.comparison.title")}
+          description={t("analisysSystem.analytics.comparisonMode.teamDescription")}
+        />
+        <ComparisonModeBanner
+          label={t(comparisonSuggestion.labelKey)}
+          periodALabel={comparisonSuggestion.periodA.label}
+          periodBLabel={comparisonSuggestion.periodB.label}
+        />
+        <div style={{ ...styles.card, overflowX: "auto", marginBottom: 20 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 880 }}>
+            <thead>
+              <tr>
+                <th style={styles.th}>{t("analisysSystem.filters.salesRep")}</th>
+                <th style={{ ...styles.th, textAlign: "right" }}>
+                  {t("analisysSystem.analytics.comparisonMode.incomeA")}
+                </th>
+                <th style={{ ...styles.th, textAlign: "right" }}>
+                  {t("analisysSystem.analytics.comparisonMode.incomeB")}
+                </th>
+                <th style={{ ...styles.th, textAlign: "right" }}>
+                  {t("analisysSystem.analytics.comparisonMode.profitA")}
+                </th>
+                <th style={{ ...styles.th, textAlign: "right" }}>
+                  {t("analisysSystem.analytics.comparisonMode.profitB")}
+                </th>
+                <th style={{ ...styles.th, textAlign: "right" }}>
+                  {t("analisysSystem.analytics.comparisonMode.deltaProfit")}
+                </th>
+                <th style={{ ...styles.th, textAlign: "right" }}>
+                  {t("analisysSystem.analytics.comparison.marginPct")} A
+                </th>
+                <th style={{ ...styles.th, textAlign: "right" }}>
+                  {t("analisysSystem.analytics.comparison.marginPct")} B
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {repPeriodRows.map((row) => (
+                <tr key={row.salesRep}>
+                  <td style={styles.td}>{row.salesRep}</td>
+                  <td style={{ ...styles.td, textAlign: "right" }}>
+                    {formatCommissionAmount(row.periodA.income)}
+                  </td>
+                  <td style={{ ...styles.td, textAlign: "right" }}>
+                    {formatCommissionAmount(row.periodB.income)}
+                  </td>
+                  <td style={{ ...styles.td, textAlign: "right" }}>
+                    {formatCommissionAmount(row.periodA.profit)}
+                  </td>
+                  <td style={{ ...styles.td, textAlign: "right" }}>
+                    {formatCommissionAmount(row.periodB.profit)}
+                  </td>
+                  <td style={{ ...styles.td, textAlign: "right" }}>
+                    {formatComparisonDelta(row.deltas.profitPct)}
+                  </td>
+                  <td style={{ ...styles.td, textAlign: "right" }}>
+                    {row.periodA.marginPct != null ? `${row.periodA.marginPct}%` : "—"}
+                  </td>
+                  <td style={{ ...styles.td, textAlign: "right" }}>
+                    {row.periodB.marginPct != null ? `${row.periodB.marginPct}%` : "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div style={{ ...styles.card, padding: 16 }}>
+          <div style={{ ...styles.sectionTitle, marginBottom: 12 }}>
+            {t("analisysSystem.analytics.comparisonMode.profitChartTitle")}
+          </div>
+          <div style={{ width: "100%", height: 320 }}>
+            <ResponsiveContainer>
+              <BarChart data={comparisonChartData} margin={{ top: 8, right: 16, left: 8, bottom: 8 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
+                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => formatCommissionAmount(v)} width={88} />
+                <Tooltip formatter={(value) => formatCommissionAmount(Number(value))} />
+                <Legend />
+                <Bar
+                  dataKey="profitA"
+                  name={comparisonSuggestion.periodA.label}
+                  fill={C.primary}
+                  radius={[4, 4, 0, 0]}
+                />
+                <Bar
+                  dataKey="profitB"
+                  name={comparisonSuggestion.periodB.label}
+                  fill={C.textMuted}
+                  radius={[4, 4, 0, 0]}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>

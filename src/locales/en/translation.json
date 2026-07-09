@@ -1961,14 +1961,14 @@
     },
     "empty": {
       "title": "No report generated",
-      "description": "Select a date range and click Generate report.",
+      "description": "Set the date range and click Generate report, or select a comparison under Quick suggestions.",
       "noResultsTitle": "No results",
       "noResultsDescription": "No invoices match the selected filters. Try another executive or consignee."
     },
     "suggestions": {
       "title": "Quick suggestions",
-      "lead": "Management-ready comparisons: selecting an option loads data and opens the matching view. To view a single period without comparing, use Invoice From/To Date.",
-      "placeholder": "Choose a comparison…",
+      "lead": "Period-over-period comparisons. Selecting an option loads data and opens views in comparison mode.",
+      "placeholder": "Select comparison…",
       "categories": {
         "month": "Month over month",
         "quarterSemester": "Quarter & semester",
@@ -2026,6 +2026,25 @@
         "year": "Year"
       },
       "filtersSummaryOnly": "Result filters apply only to the Operational summary view.",
+      "comparisonMode": {
+        "summaryDescription": "Executives and operations compared between the recent period and the baseline.",
+        "teamDescription": "Each executive's contribution and efficiency across both comparison periods.",
+        "trendsDescription": "Team evolution between the two periods selected in the quick suggestion.",
+        "customersDescription": "Each executive's consignees compared across both periods.",
+        "opsA": "Ops {{period}}",
+        "opsB": "Ops {{period}}",
+        "delta": "Change",
+        "incomeA": "Sales A",
+        "incomeB": "Sales B",
+        "profitA": "Margin A",
+        "profitB": "Margin B",
+        "deltaProfit": "Δ Margin",
+        "invoicesA": "Invoices A",
+        "invoicesB": "Invoices B",
+        "profitChartTitle": "Margin by executive — period A vs B",
+        "teamTrendTitle": "Full team — period A vs period B",
+        "periodLegend": "Columns and metrics marked «A» belong to Period A; those marked «B» belong to Period B."
+      },
       "periodComparison": {
         "lead": "Compare two periods using aligned date logic (month vs month, quarter vs quarter, year vs year). Period A is usually the most recent; Period B is the baseline for growth or decline.",
         "activeSuggestion": "Active comparison: {{label}}",

@@ -9,6 +9,7 @@ import {
 } from "./commissionAnalysisService";
 import type { AnalisysSectionId } from "./AnalisysSectionNav";
 import AnalisysSectionNav from "./AnalisysSectionNav";
+import QuickSuggestionsPanel from "./QuickSuggestionsPanel";
 import type { CommissionAnalysisOperation, CommissionAnalysisReport } from "./types";
 import ComparisonTab from "./tabs/ComparisonTab";
 import PeriodComparisonTab from "./tabs/PeriodComparisonTab";
@@ -17,8 +18,6 @@ import TopCustomersTab from "./tabs/TopCustomersTab";
 import TrendsTab from "./tabs/TrendsTab";
 import {
   type AppliedComparisonSuggestion,
-  SUGGESTION_CATEGORY_LABEL_KEYS,
-  SUGGESTION_CATEGORY_ORDER,
   buildComparisonSuggestions,
   findSuggestionById,
 } from "./comparisonSuggestions";
@@ -65,9 +64,8 @@ export default function AnalisysSystem() {
   );
   const [selectedOperation, setSelectedOperation] =
     useState<CommissionAnalysisOperation | null>(null);
-  const [activeComparison, setActiveComparison] =
+  const [activeSuggestion, setActiveSuggestion] =
     useState<AppliedComparisonSuggestion | null>(null);
-  const [suggestionSelectKey, setSuggestionSelectKey] = useState(0);
   const pendingSuggestionRef = useRef<AppliedComparisonSuggestion | null>(null);
 
   const sections = useMemo(
@@ -100,6 +98,19 @@ export default function AnalisysSystem() {
     ],
     [t],
   );
+
+  const isPeriodComparisonMode =
+    activeSuggestion?.targetSection === "periodComparison";
+
+  const visibleSections = useMemo(() => {
+    if (isPeriodComparisonMode) return sections;
+    if (activeSuggestion) {
+      return sections.filter((section) => section.id === activeSuggestion.targetSection);
+    }
+    return sections;
+  }, [sections, activeSuggestion, isPeriodComparisonMode]);
+
+  const comparisonSuggestion = isPeriodComparisonMode ? activeSuggestion : null;
 
   useEffect(() => {
     if (!loading) {
@@ -177,9 +188,10 @@ export default function AnalisysSystem() {
 
     if (suggestion) {
       pendingSuggestionRef.current = suggestion;
+      setActiveSuggestion(suggestion);
     } else {
       pendingSuggestionRef.current = null;
-      setActiveComparison(null);
+      setActiveSuggestion(null);
     }
 
     setLoading(true);
@@ -210,10 +222,6 @@ export default function AnalisysSystem() {
       });
       setSalesRepFilter("");
       setConsigneeFilter("");
-
-      if (pendingSuggestionRef.current?.targetSection === "periodComparison") {
-        setActiveComparison(pendingSuggestionRef.current);
-      }
       pendingSuggestionRef.current = null;
     } catch (err) {
       const message =
@@ -243,46 +251,13 @@ export default function AnalisysSystem() {
       appliedAt: Date.now(),
     };
 
+    setActiveSuggestion(applied);
+
     void handleGenerate(false, {
       overrideRange: suggestion.loadRange,
       suggestion: applied,
     });
-    setSuggestionSelectKey((value) => value + 1);
   };
-
-  const renderQuickSuggestionsSelect = () => (
-    <div style={{ minWidth: 280, flex: "1 1 320px" }}>
-      <label style={styles.label}>{t("analisysSystem.suggestions.title")}</label>
-      <select
-        key={suggestionSelectKey}
-        defaultValue=""
-        onChange={(event) => {
-          const { value } = event.target;
-          if (value) applySuggestion(value);
-        }}
-        style={{ ...inputStyle, width: "100%", maxWidth: 520 }}
-        disabled={loading || enriching}
-      >
-        <option value="">{t("analisysSystem.suggestions.placeholder")}</option>
-        {SUGGESTION_CATEGORY_ORDER.map((category) => {
-          const items = comparisonSuggestions.filter((item) => item.category === category);
-          if (items.length === 0) return null;
-          return (
-            <optgroup key={category} label={t(SUGGESTION_CATEGORY_LABEL_KEYS[category])}>
-              {items.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {t(item.labelKey)}
-                </option>
-              ))}
-            </optgroup>
-          );
-        })}
-      </select>
-      <p style={{ ...base, fontSize: 12, color: C.textMuted, margin: "8px 0 0" }}>
-        {t("analisysSystem.suggestions.lead")}
-      </p>
-    </div>
-  );
 
   return (
     <div style={pageWrap}>
@@ -338,18 +313,22 @@ export default function AnalisysSystem() {
             style={{ ...btnOutline, opacity: loading ? 0.7 : 1 }}
             disabled={loading || enriching || !baseReport}
             onClick={() => {
-              setActiveComparison(null);
-              void handleGenerate(true);
+              void handleGenerate(true, activeSuggestion ? { suggestion: activeSuggestion } : undefined);
             }}
           >
             {t("analisysSystem.actions.refresh")}
           </button>
-
-          {renderQuickSuggestionsSelect()}
         </div>
+
+        <QuickSuggestionsPanel
+          suggestions={comparisonSuggestions}
+          activeSuggestion={activeSuggestion}
+          onSelect={applySuggestion}
+          disabled={loading || enriching}
+        />
       </CardSection>
 
-      {baseReport && !loading && activeSection === "summary" && (
+      {baseReport && !loading && activeSection === "summary" && !activeSuggestion && (
         <div style={{ marginTop: 16 }}>
           <CardSection title={t("analisysSystem.filters.resultsTitle")}>
             <div
@@ -418,7 +397,7 @@ export default function AnalisysSystem() {
         <div style={{ marginTop: 12 }}>
           <AnalisysSectionNav
             layout="horizontal"
-            sections={sections}
+            sections={visibleSections}
             activeSection={activeSection}
             onChange={handleSectionChange}
           />
@@ -466,6 +445,7 @@ export default function AnalisysSystem() {
                     refreshAccessToken={refreshAccessToken}
                     selectedOperation={selectedOperation}
                     onSelectOperation={setSelectedOperation}
+                    comparisonSuggestion={comparisonSuggestion}
                   />
                 </div>
               )}
@@ -474,10 +454,10 @@ export default function AnalisysSystem() {
                 <div
                   style={{ display: activeSection === "periodComparison" ? "block" : "none" }}
                 >
-                  {activeComparison ? (
+                  {comparisonSuggestion ? (
                     <PeriodComparisonTab
                       report={analyticsReport}
-                      suggestion={activeComparison}
+                      suggestion={comparisonSuggestion}
                     />
                   ) : (
                     <EmptyState
@@ -490,19 +470,19 @@ export default function AnalisysSystem() {
 
               {visitedSections.has("trends") && analyticsReport && (
                 <div style={{ display: activeSection === "trends" ? "block" : "none" }}>
-                  <TrendsTab report={analyticsReport} />
+                  <TrendsTab report={analyticsReport} comparisonSuggestion={comparisonSuggestion} />
                 </div>
               )}
 
               {visitedSections.has("comparison") && analyticsReport && (
                 <div style={{ display: activeSection === "comparison" ? "block" : "none" }}>
-                  <ComparisonTab report={analyticsReport} />
+                  <ComparisonTab report={analyticsReport} comparisonSuggestion={comparisonSuggestion} />
                 </div>
               )}
 
               {visitedSections.has("topCustomers") && analyticsReport && (
                 <div style={{ display: activeSection === "topCustomers" ? "block" : "none" }}>
-                  <TopCustomersTab report={analyticsReport} />
+                  <TopCustomersTab report={analyticsReport} comparisonSuggestion={comparisonSuggestion} />
                 </div>
               )}
             </>
@@ -511,18 +491,10 @@ export default function AnalisysSystem() {
       )}
 
       {!baseReport && !loading && !error && (
-        <div style={{ marginTop: 24 }}>
-          <div style={{ marginBottom: 16 }}>
-            <CardSection title={t("analisysSystem.suggestions.title")}>
-              {renderQuickSuggestionsSelect()}
-            </CardSection>
-          </div>
-
-          <EmptyState
-            title={t("analisysSystem.empty.title")}
-            sub={t("analisysSystem.empty.description")}
-          />
-        </div>
+        <EmptyState
+          title={t("analisysSystem.empty.title")}
+          sub={t("analisysSystem.empty.description")}
+        />
       )}
     </div>
   );

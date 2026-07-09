@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { C, base, styles } from "@/components/administrador/reporteria/financiera/executiveReportingUi";
 
 export type InsightTone = "neutral" | "positive" | "negative" | "warning";
@@ -62,11 +63,13 @@ export function KpiCard({
   value,
   hint,
   accent,
+  compact,
 }: {
   label: string;
   value: string;
   hint?: string;
   accent?: "primary" | "positive" | "neutral";
+  compact?: boolean;
 }) {
   const borderColor =
     accent === "primary" ? C.primary : accent === "positive" ? C.positive : C.border;
@@ -75,13 +78,95 @@ export function KpiCard({
     <div
       style={{
         ...styles.card,
-        padding: "14px 16px",
+        padding: compact ? "12px 14px" : "14px 16px",
         borderLeft: `3px solid ${borderColor}`,
+        minWidth: 0,
+        overflow: "hidden",
       }}
     >
       <div style={styles.label}>{label}</div>
-      <div style={{ ...styles.bigVal, fontSize: 22 }}>{value}</div>
+      <div
+        style={{
+          ...styles.bigVal,
+          fontSize: compact ? "clamp(14px, 1.8vw, 18px)" : "clamp(15px, 2.2vw, 22px)",
+          lineHeight: 1.25,
+          wordBreak: "break-word",
+          overflowWrap: "anywhere",
+        }}
+      >
+        {value}
+      </div>
       {hint && <div style={styles.sub}>{hint}</div>}
+    </div>
+  );
+}
+
+export function ComparisonModeBanner({
+  label,
+  periodALabel,
+  periodBLabel,
+}: {
+  label: string;
+  periodALabel: string;
+  periodBLabel: string;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <div
+      style={{
+        padding: "14px 16px",
+        backgroundColor: C.primaryLight,
+        borderRadius: 6,
+        marginBottom: 16,
+        border: `1px solid ${C.border}`,
+      }}
+    >
+      <div style={{ ...base, fontSize: 13, fontWeight: 600, color: C.secondary, marginBottom: 10 }}>
+        {label}
+      </div>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 220px), 1fr))",
+          gap: 10,
+          marginBottom: 10,
+        }}
+      >
+        <div
+          style={{
+            ...styles.card,
+            padding: "10px 12px",
+            borderLeft: `4px solid ${C.primary}`,
+            backgroundColor: C.white,
+          }}
+        >
+          <div style={{ ...styles.label, marginBottom: 4 }}>
+            {t("analisysSystem.analytics.periodComparison.periodA")}
+          </div>
+          <div style={{ ...base, fontSize: 14, fontWeight: 700, color: C.secondary }}>
+            {periodALabel}
+          </div>
+        </div>
+        <div
+          style={{
+            ...styles.card,
+            padding: "10px 12px",
+            borderLeft: `4px solid ${C.textMuted}`,
+            backgroundColor: C.white,
+          }}
+        >
+          <div style={{ ...styles.label, marginBottom: 4 }}>
+            {t("analisysSystem.analytics.periodComparison.periodB")}
+          </div>
+          <div style={{ ...base, fontSize: 14, fontWeight: 700, color: C.secondary }}>
+            {periodBLabel}
+          </div>
+        </div>
+      </div>
+      <p style={{ ...base, fontSize: 12, color: C.textMuted, margin: 0, lineHeight: 1.5 }}>
+        {t("analisysSystem.analytics.comparisonMode.periodLegend")}
+      </p>
     </div>
   );
 }
