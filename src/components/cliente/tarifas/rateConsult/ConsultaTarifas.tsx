@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Modal } from "react-bootstrap";
+import { useAuth } from "@/auth/AuthContext";
+import type { Roles } from "@/auth/authApi";
 import LoadingTips from "@/components/cliente/embarques/LoadingTips";
 import {
   fetchBrowsableRatesCached,
@@ -32,6 +34,9 @@ import {
   type CountryRateService,
 } from "@/components/quotes/Handlers/shared/countryRatesTypes";
 import { CountryRatesDownloadButton } from "@/components/quotes/Handlers/shared/CountryRatesDownloadButton";
+import { CustomRatesDownloadButton } from "@/components/quotes/Handlers/shared/CustomRatesDownloadButton";
+import { CustomRatesSelectionCart } from "@/components/quotes/Handlers/shared/CustomRatesSelectionCart";
+import { customRateSelectionKey } from "@/components/quotes/Handlers/shared/customRatesExport";
 import { fetchHistoricalExplorerSnapshotCached } from "@/components/quotes/Handlers/shared/historicalExplorerCache";
 import type { HistoricalExplorerSnapshot } from "@/components/quotes/Handlers/shared/historicalExplorerParse";
 import type { AirResponse, OceanResponse } from "@/components/cliente/tracking/shipsgo/types";
@@ -39,6 +44,16 @@ import { PriceHistoryExplorerChart } from "../priceHistory/PriceHistoryExplorerC
 import "@/components/quotes/QuoteAIR.css";
 import "@/components/quotes/Handlers/shared/CountryRatesDownload.css";
 import "@/components/cliente/styles/ConsultaTarifas.css";
+
+function canUseCustomRatesDownload(roles?: Roles): boolean {
+  if (!roles) return false;
+  return Boolean(
+    roles.administrador ||
+      roles.pricing ||
+      roles.ejecutivo ||
+      roles.proveedor,
+  );
+}
 
 const MODES: CountryRateService[] = ["air", "fcl", "lcl"];
 const DEFAULT_ROWS_PER_PAGE = 15;
@@ -136,6 +151,12 @@ interface RatesTablePanelProps {
   onTablePageChange: (page: number) => void;
   downloadContext: ReturnType<typeof buildDownloadContext>;
   onViewHistory: (row: BrowsableRateRow) => void;
+  selectionEnabled: boolean;
+  selectedKeys: Set<string>;
+  selectedRows: BrowsableRateRow[];
+  onToggleRow: (row: BrowsableRateRow) => void;
+  onTogglePageRows: (rows: BrowsableRateRow[], select: boolean) => void;
+  showCustomDownloadHint?: boolean;
   t: (key: string, opts?: Record<string, unknown>) => string;
 }
 
@@ -149,6 +170,12 @@ function RatesTablePanel({
   onTablePageChange,
   downloadContext,
   onViewHistory,
+  selectionEnabled,
+  selectedKeys,
+  selectedRows,
+  onToggleRow,
+  onTogglePageRows,
+  showCustomDownloadHint = false,
   t,
 }: RatesTablePanelProps) {
   const columns = COLUMNS_BY_MODE[mode];
@@ -157,6 +184,13 @@ function RatesTablePanel({
     (tablePage - 1) * rowsPerPage,
     tablePage * rowsPerPage,
   );
+  const pageSelectedCount = paginatedRows.filter((row) =>
+    selectedKeys.has(customRateSelectionKey(row)),
+  ).length;
+  const allPageSelected =
+    paginatedRows.length > 0 && pageSelectedCount === paginatedRows.length;
+  const somePageSelected =
+    pageSelectedCount > 0 && pageSelectedCount < paginatedRows.length;
   const rangeText =
     rows.length === 0
       ? "0 de 0"
@@ -169,19 +203,27 @@ function RatesTablePanel({
         <span className="ct-results">
           {t("consultaTarifas.resultsCount", { count: rows.length })}
         </span>
-        {downloadContext ? (
-          <CountryRatesDownloadButton
-            service={mode}
-            countryCode={downloadContext.country.code}
-            countryLabel={downloadContext.country.label}
-            destinationLabel={downloadContext.destLabel}
-            destinationCode={downloadContext.destNorm}
-            selectedOriginLabel={downloadContext.originLabel}
-            columns={columns}
-            rows={downloadContext.rows}
-            translationNs={TRANSLATION_NS_BY_MODE[mode]}
-          />
-        ) : null}
+        <div className="ct-toolbar__actions">
+          {selectionEnabled ? (
+            <CustomRatesDownloadButton
+              rows={selectedRows}
+              showHint={showCustomDownloadHint}
+            />
+          ) : null}
+          {downloadContext ? (
+            <CountryRatesDownloadButton
+              service={mode}
+              countryCode={downloadContext.country.code}
+              countryLabel={downloadContext.country.label}
+              destinationLabel={downloadContext.destLabel}
+              destinationCode={downloadContext.destNorm}
+              selectedOriginLabel={downloadContext.originLabel}
+              columns={columns}
+              rows={downloadContext.rows}
+              translationNs={TRANSLATION_NS_BY_MODE[mode]}
+            />
+          ) : null}
+        </div>
       </div>
       {rows.length === 0 ? (
         <div className="ct-empty ct-empty--inline">
@@ -193,6 +235,24 @@ function RatesTablePanel({
             <table className="ct-table">
               <thead>
                 <tr>
+                  {selectionEnabled ? (
+                    <th className="ct-th ct-th--select">
+                      <input
+                        type="checkbox"
+                        className="ct-select-checkbox"
+                        checked={allPageSelected}
+                        ref={(el) => {
+                          if (el) el.indeterminate = somePageSelected;
+                        }}
+                        onChange={(e) =>
+                          onTogglePageRows(paginatedRows, e.target.checked)
+                        }
+                        aria-label={t(
+                          "consultaTarifas.customDownload.selectPage",
+                        )}
+                      />
+                    </th>
+                  ) : null}
                   {columns.map((col) => (
                     <th key={col.key} className={`ct-th ct-th--${col.type}`}>
                       {col.label}
@@ -207,11 +267,30 @@ function RatesTablePanel({
                 {paginatedRows.map((row) => {
                   const expired = row.validityState === "expired";
                   const expiringSoon = row.validityState === "expiring-soon";
+                  const rowKey = customRateSelectionKey(row);
+                  const isSelected = selectedKeys.has(rowKey);
                   return (
                     <tr
                       key={row.id}
-                      className={`ct-tr${expired ? " ct-tr--expired" : ""}`}
+                      className={`ct-tr${expired ? " ct-tr--expired" : ""}${isSelected ? " ct-tr--selected" : ""}`}
                     >
+                      {selectionEnabled ? (
+                        <td className="ct-td ct-td--select">
+                          <input
+                            type="checkbox"
+                            className="ct-select-checkbox"
+                            checked={isSelected}
+                            onChange={() => onToggleRow(row)}
+                            aria-label={t(
+                              "consultaTarifas.customDownload.selectRow",
+                              {
+                                origin: row.origin,
+                                destination: row.destination,
+                              },
+                            )}
+                          />
+                        </td>
+                      ) : null}
                       {columns.map((col) => {
                         const value = getCountryRateCellValue(row, col);
                         if (col.key === "validUntil") {
@@ -309,6 +388,8 @@ function RatesTablePanel({
 
 export default function ConsultaTarifas() {
   const { t } = useTranslation();
+  const { user } = useAuth();
+  const selectionEnabled = canUseCustomRatesDownload(user?.roles);
 
   const [ratesLoading, setRatesLoading] = useState(true);
   const [ratesError, setRatesError] = useState<string | null>(null);
@@ -337,6 +418,9 @@ export default function ConsultaTarifas() {
     useState<PopularRouteStat | null>(null);
   const [popularPanelOpen, setPopularPanelOpen] = useState(false);
   const [chartRow, setChartRow] = useState<BrowsableRateRow | null>(null);
+  const [selectedByKey, setSelectedByKey] = useState<
+    Record<string, BrowsableRateRow>
+  >({});
 
   const showDualMaritime = selectedPopularRoute?.mode === "ocean";
 
@@ -527,6 +611,19 @@ export default function ConsultaTarifas() {
     return filteredRows.slice(start, start + rowsPerPage);
   }, [filteredRows, tablePage, rowsPerPage]);
 
+  const pageSelectedCount = useMemo(
+    () =>
+      paginatedRows.filter((row) =>
+        Boolean(selectedByKey[customRateSelectionKey(row)]),
+      ).length,
+    [paginatedRows, selectedByKey],
+  );
+
+  const allPageSelected =
+    paginatedRows.length > 0 && pageSelectedCount === paginatedRows.length;
+  const somePageSelected =
+    pageSelectedCount > 0 && pageSelectedCount < paginatedRows.length;
+
   const paginationRangeText = useMemo(() => {
     if (filteredRows.length === 0) return "0 de 0";
     const start = (tablePage - 1) * rowsPerPage + 1;
@@ -692,6 +789,57 @@ export default function ConsultaTarifas() {
       ),
     [filteredLclRows, snapshot, countryCode, destNorm, originNorm],
   );
+
+  const selectedRows = useMemo(
+    () => Object.values(selectedByKey),
+    [selectedByKey],
+  );
+
+  const selectedKeys = useMemo(
+    () => new Set(Object.keys(selectedByKey)),
+    [selectedByKey],
+  );
+
+  const toggleSelectedRow = useCallback((row: BrowsableRateRow) => {
+    const key = customRateSelectionKey(row);
+    setSelectedByKey((prev) => {
+      if (prev[key]) {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      }
+      return { ...prev, [key]: row };
+    });
+  }, []);
+
+  const togglePageRows = useCallback(
+    (rows: BrowsableRateRow[], select: boolean) => {
+      setSelectedByKey((prev) => {
+        const next = { ...prev };
+        for (const row of rows) {
+          const key = customRateSelectionKey(row);
+          if (select) next[key] = row;
+          else delete next[key];
+        }
+        return next;
+      });
+    },
+    [],
+  );
+
+  const removeSelectedRow = useCallback((row: BrowsableRateRow) => {
+    const key = customRateSelectionKey(row);
+    setSelectedByKey((prev) => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  }, []);
+
+  const clearSelectedRows = useCallback(() => {
+    setSelectedByKey({});
+  }, []);
 
   const chartBundle = useMemo(() => {
     if (!chartRow || !history) return null;
@@ -974,6 +1122,14 @@ export default function ConsultaTarifas() {
         </p>
       ) : null}
 
+      {selectionEnabled ? (
+        <CustomRatesSelectionCart
+          selectedRows={selectedRows}
+          onRemove={removeSelectedRow}
+          onClear={clearSelectedRows}
+        />
+      ) : null}
+
       {showDualMaritime ? (
         <div className="ct-maritime-stack">
           <RatesTablePanel
@@ -986,6 +1142,12 @@ export default function ConsultaTarifas() {
             onTablePageChange={setFclTablePage}
             downloadContext={fclDownloadContext}
             onViewHistory={handleViewHistory}
+            selectionEnabled={selectionEnabled}
+            selectedKeys={selectedKeys}
+            selectedRows={selectedRows}
+            onToggleRow={toggleSelectedRow}
+            onTogglePageRows={togglePageRows}
+            showCustomDownloadHint
             t={t}
           />
           <RatesTablePanel
@@ -998,6 +1160,11 @@ export default function ConsultaTarifas() {
             onTablePageChange={setLclTablePage}
             downloadContext={lclDownloadContext}
             onViewHistory={handleViewHistory}
+            selectionEnabled={selectionEnabled}
+            selectedKeys={selectedKeys}
+            selectedRows={selectedRows}
+            onToggleRow={toggleSelectedRow}
+            onTogglePageRows={togglePageRows}
             t={t}
           />
         </div>
@@ -1007,24 +1174,29 @@ export default function ConsultaTarifas() {
             <span className="ct-results">
               {t("consultaTarifas.resultsCount", { count: filteredRows.length })}
             </span>
-            {downloadContext ? (
-              <CountryRatesDownloadButton
-                service={activeMode}
-                countryCode={downloadContext.country.code}
-                countryLabel={downloadContext.country.label}
-                destinationLabel={downloadContext.destLabel}
-                destinationCode={downloadContext.destNorm}
-                selectedOriginLabel={downloadContext.originLabel}
-                columns={columns}
-                rows={downloadContext.rows}
-                translationNs={TRANSLATION_NS_BY_MODE[activeMode]}
-              />
-            ) : (
-              <span className="ct-download-hint">
-                <i className="bi bi-info-circle me-1" aria-hidden />
-                {t("consultaTarifas.downloadHint")}
-              </span>
-            )}
+            <div className="ct-toolbar__actions">
+              {selectionEnabled ? (
+                <CustomRatesDownloadButton rows={selectedRows} showHint />
+              ) : null}
+              {downloadContext ? (
+                <CountryRatesDownloadButton
+                  service={activeMode}
+                  countryCode={downloadContext.country.code}
+                  countryLabel={downloadContext.country.label}
+                  destinationLabel={downloadContext.destLabel}
+                  destinationCode={downloadContext.destNorm}
+                  selectedOriginLabel={downloadContext.originLabel}
+                  columns={columns}
+                  rows={downloadContext.rows}
+                  translationNs={TRANSLATION_NS_BY_MODE[activeMode]}
+                />
+              ) : (
+                <span className="ct-download-hint">
+                  <i className="bi bi-info-circle me-1" aria-hidden />
+                  {t("consultaTarifas.downloadHint")}
+                </span>
+              )}
+            </div>
           </div>
 
           {filteredRows.length === 0 ? (
@@ -1049,6 +1221,24 @@ export default function ConsultaTarifas() {
                 <table className="ct-table">
                   <thead>
                     <tr>
+                      {selectionEnabled ? (
+                        <th className="ct-th ct-th--select">
+                          <input
+                            type="checkbox"
+                            className="ct-select-checkbox"
+                            checked={allPageSelected}
+                            ref={(el) => {
+                              if (el) el.indeterminate = somePageSelected;
+                            }}
+                            onChange={(e) =>
+                              togglePageRows(paginatedRows, e.target.checked)
+                            }
+                            aria-label={t(
+                              "consultaTarifas.customDownload.selectPage",
+                            )}
+                          />
+                        </th>
+                      ) : null}
                       {columns.map((col) => (
                         <th key={col.key} className={`ct-th ct-th--${col.type}`}>
                           {col.label}
@@ -1063,11 +1253,30 @@ export default function ConsultaTarifas() {
                     {paginatedRows.map((row) => {
                       const expired = row.validityState === "expired";
                       const expiringSoon = row.validityState === "expiring-soon";
+                      const rowKey = customRateSelectionKey(row);
+                      const isSelected = Boolean(selectedByKey[rowKey]);
                       return (
                         <tr
                           key={row.id}
-                          className={`ct-tr${expired ? " ct-tr--expired" : ""}`}
+                          className={`ct-tr${expired ? " ct-tr--expired" : ""}${isSelected ? " ct-tr--selected" : ""}`}
                         >
+                          {selectionEnabled ? (
+                            <td className="ct-td ct-td--select">
+                              <input
+                                type="checkbox"
+                                className="ct-select-checkbox"
+                                checked={isSelected}
+                                onChange={() => toggleSelectedRow(row)}
+                                aria-label={t(
+                                  "consultaTarifas.customDownload.selectRow",
+                                  {
+                                    origin: row.origin,
+                                    destination: row.destination,
+                                  },
+                                )}
+                              />
+                            </td>
+                          ) : null}
                           {columns.map((col) => {
                             const value = getCountryRateCellValue(row, col);
                             if (col.key === "validUntil") {

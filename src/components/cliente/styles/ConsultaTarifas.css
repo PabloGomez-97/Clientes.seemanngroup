@@ -205,6 +205,61 @@
   margin-bottom: 14px;
 }
 
+.ct-toolbar__actions {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ct-custom-download {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.ct-custom-download__hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  max-width: 280px;
+  padding: 6px 8px 6px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #f9fafb;
+}
+
+.ct-custom-download__hint-text {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+  font-size: 0.6875rem;
+  line-height: 1.4;
+  color: #6b7280;
+}
+
+.ct-custom-download__hint-close {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: #9ca3af;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.ct-custom-download__hint-close:hover {
+  background: #e5e7eb;
+  color: #4b5563;
+}
+
 .ct-results {
   font-size: 0.8125rem;
   font-weight: 600;
@@ -216,6 +271,194 @@
   color: #6b7280;
   display: inline-flex;
   align-items: center;
+}
+
+.ct-th--select,
+.ct-td--select {
+  width: 42px;
+  text-align: center;
+  padding-left: 10px;
+  padding-right: 6px;
+}
+
+.ct-select-checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: #ff6200;
+  cursor: pointer;
+}
+
+.ct-tr--selected {
+  background: #fff7ed;
+}
+
+.ct-tr--selected:hover {
+  background: #ffedd5;
+}
+
+/* ── Carrito de descarga personalizada ── */
+.ct-cart {
+  border: 1px solid #fed7aa;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #fffaf5 0%, #ffffff 48%);
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+
+.ct-cart__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.ct-cart__heading {
+  min-width: 0;
+}
+
+.ct-cart__title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+.ct-cart__subtitle {
+  margin: 2px 0 0;
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.ct-cart__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ct-cart__clear {
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  color: #4b5563;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 7px 12px;
+  cursor: pointer;
+}
+
+.ct-cart__clear:hover {
+  background: #f9fafb;
+  color: #111827;
+}
+
+.ct-cart__groups {
+  display: grid;
+  gap: 12px;
+}
+
+.ct-cart__group {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.ct-cart__group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.ct-cart__badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 999px;
+  color: #fff;
+}
+
+.ct-cart__badge--air {
+  background: #0284c7;
+}
+
+.ct-cart__badge--fcl {
+  background: #0f766e;
+}
+
+.ct-cart__badge--lcl {
+  background: #7c3aed;
+}
+
+.ct-cart__group-count {
+  font-size: 0.75rem;
+  color: #6b7280;
+  font-weight: 600;
+}
+
+.ct-cart__table-wrap {
+  overflow-x: auto;
+}
+
+.ct-cart__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+
+.ct-cart__table th,
+.ct-cart__table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid #f3f4f6;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.ct-cart__table th {
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #6b7280;
+  font-weight: 700;
+  background: #fff;
+}
+
+.ct-cart__table tr:last-child td {
+  border-bottom: none;
+}
+
+.ct-cart__th-actions,
+.ct-cart__td-actions {
+  width: 44px;
+  text-align: center;
+}
+
+.ct-cart__remove {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #9ca3af;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ct-cart__remove:hover {
+  background: #fee2e2;
+  color: #dc2626;
 }
 
 /* ── Tabla ── */
