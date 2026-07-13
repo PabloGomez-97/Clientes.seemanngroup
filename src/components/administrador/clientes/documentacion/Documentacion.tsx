@@ -5,6 +5,12 @@ import { useAuth } from "@/auth/AuthContext";
 import { DocumentosUnificadosView } from "@/components/cliente/documentos/DocumentosUnificadosView";
 import { fetchDocumentCountsBatch } from "@/utils/documentCounts";
 
+import {
+  ClientDirectoryList,
+  ClientDirectorySortChips,
+  type ClientDirectorySortMode,
+} from "@/components/administrador/shared/ClientDirectoryList";
+
 interface OutletContext {
   accessToken: string;
   refreshAccessToken: () => Promise<string>;
@@ -137,9 +143,7 @@ function Documentacion() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedClient, setSelectedClient] = useState<Cliente | null>(null);
   const [documentCounts, setDocumentCounts] = useState<DocumentCounts>({});
-  const [sortMode, setSortMode] = useState<"az" | "recent" | "subcuentas">(
-    "az",
-  );
+  const [sortMode, setSortMode] = useState<ClientDirectorySortMode>("az");
 
   // Fetch clients
   useEffect(() => {
@@ -646,179 +650,66 @@ function Documentacion() {
         </div>
       )}
 
-      {/* ── Chips de ordenamiento ── */}
-      <div
-        style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}
-      >
-        {(
-          [
-            { key: "az" as const, label: "A → Z" },
-            { key: "recent" as const, label: "Más recientes" },
-            { key: "subcuentas" as const, label: "Solo subcuentas" },
-          ] as const
-        ).map((opt) => (
-          <button
-            key={opt.key}
-            type="button"
-            onClick={() => setSortMode(opt.key)}
-            style={{
-              padding: "4px 12px",
-              background: sortMode === opt.key ? "#fff7ed" : "#fff",
-              border:
-                sortMode === opt.key
-                  ? "1px solid #ff6200"
-                  : "1px solid #e5e7eb",
-              borderRadius: 20,
-              cursor: "pointer",
-              fontSize: 12,
-              fontWeight: sortMode === opt.key ? 500 : 400,
-              color: sortMode === opt.key ? "#9a3412" : "#6b7280",
-              transition: "all 0.15s",
-              fontFamily: FONT,
-            }}
-          >
-            {opt.label}
-          </button>
-        ))}
-      </div>
+      <ClientDirectorySortChips
+        sortMode={sortMode}
+        onSortModeChange={setSortMode}
+        font={FONT}
+      />
 
-      {/* Client list */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-        {sortedClients.map((client) => (
+      <ClientDirectoryList
+        clients={sortedClients}
+        onSelect={handleSelectClient}
+        font={FONT}
+        pageResetKey={`${searchQuery}-${sortMode}`}
+        getRowKey={(client) =>
+          `${client.id}:${normalizeAccountName(client.username)}`
+        }
+        metaColumns={[
+          {
+            header: "Docs",
+            width: "72px",
+            align: "right",
+            render: (client) => {
+              const n = documentCounts[client.username] ?? 0;
+              return (
+                <span style={{ fontWeight: 600, color: "#374151" }}>
+                  {n} doc{n !== 1 ? "s" : ""}
+                </span>
+              );
+            },
+          },
+          {
+            header: "Registro",
+            width: "120px",
+            align: "right",
+            render: (client) =>
+              client.createdAt
+                ? new Date(client.createdAt).toLocaleDateString("es-CL", {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                  })
+                : "—",
+          },
+        ]}
+        emptyState={
           <div
-            key={`${client.id}:${normalizeAccountName(client.username)}`}
-            onClick={() => handleSelectClient(client)}
             style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 12,
-              padding: "12px 16px",
-              background: "#fff",
-              border: "1px solid #e5e7eb",
-              borderRadius: 10,
-              cursor: "pointer",
-              transition: "all 0.12s",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = "#2563eb";
-              e.currentTarget.style.boxShadow = "0 2px 6px rgba(0,0,0,0.04)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = "#e5e7eb";
-              e.currentTarget.style.boxShadow = "none";
+              textAlign: "center",
+              padding: 60,
+              color: "#9ca3af",
+              fontSize: 14,
             }}
           >
-            <div
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 9,
-                background: "#232f3e",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 14,
-                fontWeight: 700,
-                color: "#fff",
-                flexShrink: 0,
-              }}
-            >
-              {(client.username || "?").charAt(0).toUpperCase()}
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                  flexWrap: "wrap",
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: 14,
-                    fontWeight: 600,
-                    color: "#1f2937",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {client.username}
-                </div>
-                {client.parentUsername && (
-                  <span
-                    style={{
-                      background: "#fef3c7",
-                      color: "#92400e",
-                      fontSize: 10,
-                      fontWeight: 500,
-                      padding: "1px 6px",
-                      borderRadius: 3,
-                      whiteSpace: "nowrap",
-                      flexShrink: 0,
-                    }}
-                  >
-                    subcuenta de {client.parentUsername}
-                  </span>
-                )}
-              </div>
-              <div style={{ fontSize: 12, color: "#9ca3af" }}>
-                {client.email}
-              </div>
-            </div>
-            <div style={{ fontSize: 11, color: "#9ca3af", flexShrink: 0 }}>
-              {new Date(client.createdAt).toLocaleDateString("es-CL", {
-                day: "2-digit",
-                month: "short",
-                year: "numeric",
-              })}
-            </div>
-            <div
-              style={{
-                minWidth: 56,
-                textAlign: "right",
-                fontSize: 11,
-                fontWeight: 600,
-                color: "#374151",
-                flexShrink: 0,
-              }}
-            >
-              {documentCounts[client.username] ?? 0} doc
-              {(documentCounts[client.username] ?? 0) !== 1 ? "s" : ""}
-            </div>
-            <svg
-              width="14"
-              height="14"
-              fill="none"
-              stroke="#d1d5db"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              viewBox="0 0 24 24"
-            >
-              <polyline points="9 18 15 12 9 6" />
-            </svg>
+            {sortMode === "subcuentas"
+              ? "Ningún cliente tiene subcuentas asignadas."
+              : searchQuery
+                ? `Sin resultados para "${searchQuery}"`
+                : "No hay clientes asignados."}
           </div>
-        ))}
-      </div>
+        }
+      />
 
-      {sortedClients.length === 0 && (
-        <div
-          style={{
-            textAlign: "center",
-            padding: 60,
-            color: "#9ca3af",
-            fontSize: 14,
-          }}
-        >
-          {sortMode === "subcuentas"
-            ? "Ningún cliente tiene subcuentas asignadas."
-            : searchQuery
-              ? `Sin resultados para "${searchQuery}"`
-              : "No hay clientes asignados."}
-        </div>
-      )}
     </div>
   );
 }

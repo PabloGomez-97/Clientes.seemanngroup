@@ -5,6 +5,11 @@ import { useOutletContext, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/auth/AuthContext";
 import { adminPaths } from "@/config/adminPaths";
 import "./ComportamientoDeClients.css";
+import {
+  ClientDirectoryList,
+  ClientDirectorySortChips,
+  type ClientDirectorySortMode,
+} from "@/components/administrador/shared/ClientDirectoryList";
 
 const FONT =
   '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
@@ -655,6 +660,7 @@ export default function ComportamientoDeClientes({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [sortMode, setSortMode] = useState<ClientDirectorySortMode>("az");
 
   // Detail view
   const [selectedClient, setSelectedClient] = useState<ClientBehavior | null>(
@@ -847,21 +853,31 @@ export default function ComportamientoDeClientes({
     );
   }, [clients, search]);
 
-  // Sort: clients with activity first, then alphabetical; then expand for multi-company
+  // Sort + expand multi-company; then apply directory sort chips
   const sortedClients = useMemo(() => {
-    const sorted = [...filteredClients].sort((a, b) => {
-      if (a.stats && !b.stats) return -1;
-      if (!a.stats && b.stats) return 1;
-      if (a.stats && b.stats) {
-        return (
-          new Date(b.stats.lastActivity).getTime() -
-          new Date(a.stats.lastActivity).getTime()
-        );
-      }
-      return a.username.localeCompare(b.username);
-    });
-    return expandClients(sorted);
-  }, [filteredClients]);
+    let list = expandClients([...filteredClients]);
+    if (sortMode === "az") {
+      list.sort((a, b) =>
+        a.username.localeCompare(b.username, "es", { sensitivity: "base" }),
+      );
+    } else if (sortMode === "recent") {
+      list.sort((a, b) => {
+        const aT = a.stats?.lastActivity
+          ? new Date(a.stats.lastActivity).getTime()
+          : 0;
+        const bT = b.stats?.lastActivity
+          ? new Date(b.stats.lastActivity).getTime()
+          : 0;
+        if (bT !== aT) return bT - aT;
+        return a.username.localeCompare(b.username, "es", {
+          sensitivity: "base",
+        });
+      });
+    } else if (sortMode === "subcuentas") {
+      list = list.filter((c) => !!c.parentUsername);
+    }
+    return list;
+  }, [filteredClients, sortMode]);
 
   const uniqueAccountCount = useMemo(
     () => new Set(clients.map((c) => c.email)).size,
@@ -2213,97 +2229,43 @@ export default function ComportamientoDeClientes({
         />
       </div>
 
-      {/* Client cards */}
-      {sortedClients.length === 0 ? (
-        <div
-          style={{
-            textAlign: "center",
-            padding: 40,
-            color: "#8d99a8",
-            fontSize: 13,
-          }}
-        >
-          {search
-            ? "No se encontraron clientes."
-            : "Aún no hay datos de comportamiento registrados."}
-        </div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {sortedClients.map((client) => {
-            const quoteStats = getQuoteOutcomeStats(client.stats);
-            return (
-            <div
-              key={`${client.email}-${client.username}`}
-              onClick={() => openClientDetail(client)}
-              style={{
-                background: client.parentUsername ? "#fffbf5" : "#fff",
-                border: client.parentUsername
-                  ? "1px solid #fde68a"
-                  : "1px solid #e5e7eb",
-                borderRadius: 10,
-                padding: "14px 18px",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: 14,
-                transition: "border-color 0.15s, box-shadow 0.15s",
-                flexWrap: "wrap",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = client.parentUsername
-                  ? "#f59e0b"
-                  : "rgba(255,98,0,0.35)";
-                e.currentTarget.style.boxShadow =
-                  "0 2px 10px rgba(255,98,0,0.08)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = client.parentUsername
-                  ? "#fde68a"
-                  : "#e5e7eb";
-                e.currentTarget.style.boxShadow = "none";
-              }}
-            >
-              {/* Avatar */}
-              <div
-                style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: 10,
-                  background: client.parentUsername ? "#f59e0b" : "#232f3e",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 15,
-                  fontWeight: 700,
-                  color: "#fff",
-                  flexShrink: 0,
-                }}
-              >
-                {client.username.charAt(0).toUpperCase()}
-              </div>
+      <ClientDirectorySortChips
+        sortMode={sortMode}
+        onSortModeChange={setSortMode}
+        font={FONT}
+      />
 
-              {/* Name/email */}
-              <div style={{ flex: 1, minWidth: 120 }}>
+      <ClientDirectoryList
+        clients={sortedClients}
+        onSelect={openClientDetail}
+        font={FONT}
+        pageResetKey={`${search}-${sortMode}`}
+        getRowKey={(client) => `${client.email}-${client.username}`}
+        metaColumns={[
+          {
+            header: "Actividad",
+            width: "minmax(180px, 1.6fr)",
+            render: (row) => {
+              const client = row as (typeof sortedClients)[number];
+              const quoteStats = getQuoteOutcomeStats(client.stats);
+              if (!client.stats || quoteStats.totalWithOutcome === 0) {
+                return (
+                  <span style={{ color: "#d1d5db", fontSize: 12 }}>
+                    Sin actividad
+                  </span>
+                );
+              }
+              return (
                 <div
-                  style={{ fontSize: 14, fontWeight: 600, color: "#1f2937" }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    flexWrap: "wrap",
+                    justifyContent: "flex-end",
+                  }}
                 >
-                  {client.username}
-                </div>
-                {client.parentUsername && (
-                  <div style={{ fontSize: 11, color: "#d97706", marginTop: 1 }}>
-                    Cuenta: {client.parentUsername}
-                  </div>
-                )}
-                <div style={{ fontSize: 12, color: "#9ca3af" }}>
-                  {client.email}
-                </div>
-              </div>
-
-              {/* Stats */}
-              {client.stats && quoteStats.totalWithOutcome > 0 ? (
-                <>
-                  {/* Quote types */}
-                  <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+                  <div style={{ display: "flex", gap: 4 }}>
                     {client.stats.quoteTypes.map((type) => (
                       <span
                         key={type}
@@ -2320,72 +2282,54 @@ export default function ComportamientoDeClientes({
                       </span>
                     ))}
                   </div>
-
-                  {/* Numbers */}
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: 16,
-                      fontSize: 12,
-                      color: "#6b7280",
-                      flexShrink: 0,
-                    }}
-                  >
-                    <span>
-                      Completadas:{" "}
-                      <strong style={{ color: "#10b981" }}>
-                        {quoteStats.completed}
-                      </strong>
-                    </span>
-                    <span>
-                      Abandonadas:{" "}
-                      <strong style={{ color: "#ef4444" }}>
-                        {quoteStats.abandoned}
-                      </strong>
-                    </span>
-                  </div>
-
-                  {/* Completion rate */}
-                  <div style={{ width: 48, textAlign: "right", flexShrink: 0 }}>
-                    <span
-                      style={{
-                        fontSize: 14,
-                        fontWeight: 700,
-                        color:
-                          quoteStats.completionRate >= 70
-                            ? "#10b981"
-                            : quoteStats.completionRate >= 40
-                              ? "#f59e0b"
-                              : "#ef4444",
-                      }}
-                    >
-                      {quoteStats.completionRate}%
-                    </span>
-                  </div>
-
-                  {/* Last activity */}
+                  <span style={{ fontSize: 12, color: "#6b7280" }}>
+                    <strong style={{ color: "#10b981" }}>
+                      {quoteStats.completed}
+                    </strong>
+                    {" / "}
+                    <strong style={{ color: "#ef4444" }}>
+                      {quoteStats.abandoned}
+                    </strong>
+                  </span>
                   <span
                     style={{
-                      fontSize: 11,
-                      color: "#9ca3af",
-                      flexShrink: 0,
-                      minWidth: 60,
-                      textAlign: "right",
+                      fontSize: 13,
+                      fontWeight: 700,
+                      color:
+                        quoteStats.completionRate >= 70
+                          ? "#10b981"
+                          : quoteStats.completionRate >= 40
+                            ? "#f59e0b"
+                            : "#ef4444",
                     }}
                   >
+                    {quoteStats.completionRate}%
+                  </span>
+                  <span style={{ fontSize: 11, color: "#9ca3af" }}>
                     {timeAgo(client.stats.lastActivity)}
                   </span>
-                </>
-              ) : (
-                <span style={{ fontSize: 12, color: "#d1d5db" }}>
-                  Sin actividad
-                </span>
-              )}
-            </div>
-            );
-          })}
-        </div>
-      )}
+                </div>
+              );
+            },
+          },
+        ]}
+        emptyState={
+          <div
+            style={{
+              textAlign: "center",
+              padding: 40,
+              color: "#8d99a8",
+              fontSize: 13,
+            }}
+          >
+            {sortMode === "subcuentas"
+              ? "Ningún cliente tiene subcuentas asignadas."
+              : search
+                ? "No se encontraron clientes."
+                : "Aún no hay datos de comportamiento registrados."}
+          </div>
+        }
+      />
 
       {/* ── Modal: clients who generated started/completed/abandoned quotes ── */}
       {modalType && (

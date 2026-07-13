@@ -12,6 +12,12 @@ import type {
   OceanResponse,
 } from "@/components/cliente/tracking/shipsgo/types";
 
+import {
+  ClientDirectoryList,
+  ClientDirectorySortChips,
+  type ClientDirectorySortMode,
+} from "@/components/administrador/shared/ClientDirectoryList";
+
 const FONT =
   '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
 
@@ -81,9 +87,7 @@ function ShipsGoTrackingAdmin() {
 
   // Key to force remount ShipsGoTracking after creating a new tracking
   const [trackingKey, setTrackingKey] = useState(0);
-  const [sortMode, setSortMode] = useState<"az" | "recent" | "subcuentas">(
-    "az",
-  );
+  const [sortMode, setSortMode] = useState<ClientDirectorySortMode>("az");
 
   // ── Fetch ejecutivo's own clients via /api/ejecutivo/clientes ──
   useEffect(() => {
@@ -735,153 +739,51 @@ function ShipsGoTrackingAdmin() {
         )}
       </div>
 
-      {/* ── Chips de ordenamiento ── */}
-      <div
-        style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}
-      >
-        {(
-          [
-            { key: "az" as const, label: "A → Z" },
-            { key: "recent" as const, label: "Más recientes" },
-            { key: "subcuentas" as const, label: "Solo subcuentas" },
-          ] as const
-        ).map((opt) => (
-          <button
-            key={opt.key}
-            type="button"
-            onClick={() => setSortMode(opt.key)}
-            style={{
-              padding: "4px 12px",
-              background: sortMode === opt.key ? "#fff7ed" : "#fff",
-              border:
-                sortMode === opt.key
-                  ? "1px solid #ff6200"
-                  : "1px solid #e5e7eb",
-              borderRadius: 20,
-              cursor: "pointer",
-              fontSize: 12,
-              fontWeight: sortMode === opt.key ? 500 : 400,
-              color: sortMode === opt.key ? "#9a3412" : "#6b7280",
-              transition: "all 0.15s",
-              fontFamily: FONT,
-            }}
-          >
-            {opt.label}
-          </button>
-        ))}
-      </div>
+      <ClientDirectorySortChips
+        sortMode={sortMode}
+        onSortModeChange={setSortMode}
+        font={FONT}
+      />
 
-      {/* Client List */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        {sortedClients.map((client) => {
-          const counts = clientShipmentCounts.get(client.username);
-          const airCount = counts?.air ?? 0;
-          const oceanCount = counts?.ocean ?? 0;
-          const totalCount = airCount + oceanCount;
-
-          return (
-            <div
-              key={`${client.id}-${client.username}`}
-              onClick={() => handleSelectClient(client)}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 14,
-                padding: "14px 18px",
-                background: "#fff",
-                border: "1px solid #e5e7eb",
-                borderRadius: 10,
-                cursor: "pointer",
-                transition: "all 0.15s",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = "#ff9900";
-                e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.04)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = "#e5e7eb";
-                e.currentTarget.style.boxShadow = "none";
-              }}
-            >
-              {/* Avatar */}
-              <div
-                style={{
-                  width: 38,
-                  height: 38,
-                  borderRadius: 10,
-                  background: "#232f3e",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 14,
-                  fontWeight: 700,
-                  color: "#fff",
-                  flexShrink: 0,
-                }}
-              >
-                {(client.username || "?").charAt(0).toUpperCase()}
-              </div>
-
-              {/* Client info */}
-              <div style={{ flex: 1, minWidth: 0 }}>
+      <ClientDirectoryList
+        clients={sortedClients}
+        onSelect={handleSelectClient}
+        font={FONT}
+        pageResetKey={`${searchQuery}-${sortMode}`}
+        metaColumns={[
+          {
+            header: "Seguimientos",
+            width: "160px",
+            align: "right",
+            render: (client) => {
+              if (!shipmentsLoaded) return null;
+              const counts = clientShipmentCounts.get(client.username);
+              const airCount = counts?.air ?? 0;
+              const oceanCount = counts?.ocean ?? 0;
+              if (airCount + oceanCount === 0) {
+                return <span style={{ color: "#d1d5db" }}>—</span>;
+              }
+              return (
                 <div
                   style={{
                     display: "flex",
-                    alignItems: "center",
                     gap: 6,
-                    flexWrap: "wrap",
+                    justifyContent: "flex-end",
                   }}
                 >
-                  <div
-                    style={{
-                      fontSize: 14,
-                      fontWeight: 600,
-                      color: "#1f2937",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {client.username}
-                  </div>
-                  {client.parentUsername && (
-                    <span
-                      style={{
-                        background: "#fef3c7",
-                        color: "#92400e",
-                        fontSize: 10,
-                        fontWeight: 500,
-                        padding: "1px 6px",
-                        borderRadius: 3,
-                        whiteSpace: "nowrap",
-                        flexShrink: 0,
-                      }}
-                    >
-                      subcuenta de {client.parentUsername}
-                    </span>
-                  )}
-                </div>
-                <div style={{ fontSize: 12, color: "#9ca3af" }}>
-                  {client.email}
-                </div>
-              </div>
-
-              {/* Shipment counts */}
-              {shipmentsLoaded && totalCount > 0 && (
-                <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
                   {airCount > 0 && (
                     <span
                       style={{
                         fontSize: 11,
                         fontWeight: 600,
-                        padding: "3px 8px",
-                        borderRadius: 6,
+                        padding: "2px 7px",
+                        borderRadius: 4,
                         background: "#eff6ff",
                         color: "#2563eb",
                         whiteSpace: "nowrap",
                       }}
                     >
-                      ✈️ {airCount}
+                      ✈ {airCount}
                     </span>
                   )}
                   {oceanCount > 0 && (
@@ -889,8 +791,8 @@ function ShipsGoTrackingAdmin() {
                       style={{
                         fontSize: 11,
                         fontWeight: 600,
-                        padding: "3px 8px",
-                        borderRadius: 6,
+                        padding: "2px 7px",
+                        borderRadius: 4,
                         background: "#f0fdf4",
                         color: "#16a34a",
                         whiteSpace: "nowrap",
@@ -900,42 +802,28 @@ function ShipsGoTrackingAdmin() {
                     </span>
                   )}
                 </div>
-              )}
+              );
+            },
+          },
+        ]}
+        emptyState={
+          <div
+            style={{
+              textAlign: "center",
+              padding: 60,
+              color: "#9ca3af",
+              fontSize: 14,
+            }}
+          >
+            {sortMode === "subcuentas"
+              ? "Ningún cliente tiene subcuentas asignadas."
+              : searchQuery
+                ? `No se encontraron clientes para "${searchQuery}"`
+                : "No hay clientes asignados."}
+          </div>
+        }
+      />
 
-              {/* Arrow */}
-              <svg
-                width="16"
-                height="16"
-                fill="none"
-                stroke="#9ca3af"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                viewBox="0 0 24 24"
-              >
-                <polyline points="9 18 15 12 9 6" />
-              </svg>
-            </div>
-          );
-        })}
-      </div>
-
-      {sortedClients.length === 0 && (
-        <div
-          style={{
-            textAlign: "center",
-            padding: 60,
-            color: "#9ca3af",
-            fontSize: 14,
-          }}
-        >
-          {sortMode === "subcuentas"
-            ? "Ningún cliente tiene subcuentas asignadas."
-            : searchQuery
-              ? `No se encontraron clientes para "${searchQuery}"`
-              : "No hay clientes asignados."}
-        </div>
-      )}
     </div>
   );
 }

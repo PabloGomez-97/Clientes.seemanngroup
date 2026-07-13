@@ -13,11 +13,15 @@ import { ClientOverrideProvider } from "@/contexts/ClientOverrideContext";
 import AirShipmentsView from "@/components/cliente/embarques/AirShipmentsView";
 import OceanShipmentsView from "@/components/cliente/embarques/OceanShipmentsView";
 import GroundShipmentsView from "@/components/cliente/embarques/GroundShipmentsView";
-import EXWChargesView from "@/components/administrador/cobros/EXWChargesView";
 import QuotesView from "@/components/cliente/cotizaciones/QuotesView";
 import ClientTrackingView from "@/components/administrador/clientes/tracking/ClientTrackingView";
 import { ReporteriaClientesProvider } from "@/contexts/ReporteriaClientesContext";
 import SettingsClient from "@/components/cliente/configuracion/SettingsClient";
+import {
+  ClientDirectoryList,
+  ClientDirectorySortChips,
+  type ClientDirectorySortMode,
+} from "@/components/administrador/shared/ClientDirectoryList";
 
 interface OutletContext {
   accessToken: string;
@@ -41,7 +45,6 @@ interface ReporteriaClientesLocationState {
     | "ocean"
     | "ground"
     | "quotes"
-    | "exw"
     | "tracking"
     | "settings";
   shipmentFilterNumber?: string;
@@ -116,9 +119,8 @@ function ReporteriaClientes() {
 
   // Selected client
   const [selectedClient, setSelectedClient] = useState<Cliente | null>(null);
-  const [showAllExw, setShowAllExw] = useState(false);
   const [activeTab, setActiveTab] = useState<
-    "air" | "ocean" | "ground" | "quotes" | "exw" | "tracking" | "settings"
+    "air" | "ocean" | "ground" | "quotes" | "tracking" | "settings"
   >("air");
   const [quoteFilterNumber, setQuoteFilterNumber] = useState<
     string | undefined
@@ -134,9 +136,7 @@ function ReporteriaClientes() {
       null,
     );
   const [opsOpen, setOpsOpen] = useState(false);
-  const [sortMode, setSortMode] = useState<"az" | "recent" | "subcuentas">(
-    "az",
-  );
+  const [sortMode, setSortMode] = useState<ClientDirectorySortMode>("az");
 
   // ── Fetch clients list (with cache) ──
   useEffect(() => {
@@ -179,7 +179,6 @@ function ReporteriaClientes() {
   // When a client is selected, show their portal view
   const handleSelectClient = useCallback(
     (cliente: Cliente) => {
-      setShowAllExw(false);
       setSelectedClient(cliente);
       setActiveTab("air");
       setOpsOpen(false);
@@ -193,14 +192,8 @@ function ReporteriaClientes() {
     [navigate],
   );
 
-  const handleSelectAllExw = useCallback(() => {
-    setSelectedClient(null);
-    setShowAllExw(true);
-  }, []);
-
   // Go back to list — only navigate; the useEffect below clears selectedClient
   const handleBack = () => {
-    setShowAllExw(false);
     setOpsOpen(false);
     navigate("/admin/clientes/reporteria", { replace: true });
   };
@@ -344,99 +337,6 @@ function ReporteriaClientes() {
           </div>
           <div style={{ fontSize: 13, color: "#6b7280" }}>{error}</div>
         </div>
-      </div>
-    );
-  }
-
-  if (showAllExw) {
-    return (
-      <div style={{ fontFamily: FONT }}>
-        <button
-          onClick={handleBack}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            padding: "8px 16px",
-            background: "none",
-            border: "1px solid #e5e7eb",
-            borderRadius: 8,
-            cursor: "pointer",
-            fontSize: 13,
-            fontWeight: 500,
-            color: "#374151",
-            marginBottom: 20,
-            transition: "all 0.15s",
-            fontFamily: FONT,
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = "#f9fafb";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = "none";
-          }}
-        >
-          <svg
-            width="16"
-            height="16"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            viewBox="0 0 24 24"
-          >
-            <polyline points="15 18 9 12 15 6" />
-          </svg>
-          Volver a la lista
-        </button>
-
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 16,
-            marginBottom: 20,
-          }}
-        >
-          <div
-            style={{
-              width: 48,
-              height: 48,
-              borderRadius: 12,
-              background: "#232f3e",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 18,
-              fontWeight: 700,
-              color: "#fff",
-              flexShrink: 0,
-            }}
-          >
-            EXW
-          </div>
-          <div>
-            <h1
-              style={{
-                fontSize: 22,
-                fontWeight: 700,
-                color: "#1f2937",
-                margin: 0,
-              }}
-            >
-              All EXW Charges
-            </h1>
-            <p style={{ fontSize: 14, color: "#6b7280", margin: "2px 0 0" }}>
-              Consolidado de cobros EXW para los {clientes.length} clientes del
-              ejecutivo.
-            </p>
-          </div>
-        </div>
-
-        <EXWChargesView
-          clientUsernames={clientes.map((client) => client.username)}
-        />
       </div>
     );
   }
@@ -1069,255 +969,35 @@ function ReporteriaClientes() {
         )}
       </div>
 
-      {/* ── Chips de ordenamiento ── */}
-      <div
-        style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}
-      >
-        {(
-          [
-            { key: "az" as const, label: "A → Z" },
-            { key: "recent" as const, label: "Más recientes" },
-            { key: "subcuentas" as const, label: "Solo subcuentas" },
-          ] as const
-        ).map((opt) => (
-          <button
-            key={opt.key}
-            type="button"
-            onClick={() => setSortMode(opt.key)}
+      <ClientDirectorySortChips
+        sortMode={sortMode}
+        onSortModeChange={setSortMode}
+        font={FONT}
+      />
+
+      <ClientDirectoryList
+        clients={sortedClients}
+        onSelect={handleSelectClient}
+        font={FONT}
+        pageResetKey={`${searchQuery}-${sortMode}`}
+        emptyState={
+          <div
             style={{
-              padding: "4px 12px",
-              background: sortMode === opt.key ? "#fff7ed" : "#fff",
-              border:
-                sortMode === opt.key
-                  ? "1px solid #ff6200"
-                  : "1px solid #e5e7eb",
-              borderRadius: 20,
-              cursor: "pointer",
-              fontSize: 12,
-              fontWeight: sortMode === opt.key ? 500 : 400,
-              color: sortMode === opt.key ? "#9a3412" : "#6b7280",
-              transition: "all 0.15s",
-              fontFamily: FONT,
+              textAlign: "center",
+              padding: 60,
+              color: "#9ca3af",
+              fontSize: 14,
             }}
           >
-            {opt.label}
-          </button>
-        ))}
-      </div>
+            {sortMode === "subcuentas"
+              ? "Ningún cliente tiene subcuentas asignadas."
+              : searchQuery
+                ? `No se encontraron clientes para "${searchQuery}"`
+                : "No hay clientes asignados a este ejecutivo."}
+          </div>
+        }
+      />
 
-      {/* Client List */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        {sortedClients.map((client) => {
-          return (
-            <div
-              key={`${client.id}-${client.username}`}
-              onClick={() => handleSelectClient(client)}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 14,
-                padding: "14px 18px",
-                background: client.parentUsername ? "#fffbf5" : "#fff",
-                border: client.parentUsername
-                  ? "1px solid #fde68a"
-                  : "1px solid #e5e7eb",
-                borderRadius: 10,
-                cursor: "pointer",
-                transition: "all 0.15s",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = "#ff9900";
-                e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.04)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = client.parentUsername
-                  ? "#fde68a"
-                  : "#e5e7eb";
-                e.currentTarget.style.boxShadow = "none";
-              }}
-            >
-              {/* Avatar */}
-              <div
-                style={{
-                  width: 38,
-                  height: 38,
-                  borderRadius: 10,
-                  background: client.parentUsername ? "#f59e0b" : "#232f3e",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 14,
-                  fontWeight: 700,
-                  color: "#fff",
-                  flexShrink: 0,
-                }}
-              >
-                {(client.username || "?").charAt(0).toUpperCase()}
-              </div>
-
-              {/* Client info */}
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6,
-                    flexWrap: "wrap",
-                  }}
-                >
-                  <div
-                    style={{
-                      fontSize: 14,
-                      fontWeight: 600,
-                      color: "#1f2937",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {client.username}
-                  </div>
-                  {client.parentUsername && (
-                    <span
-                      style={{
-                        background: "#fef3c7",
-                        color: "#92400e",
-                        fontSize: 10,
-                        fontWeight: 500,
-                        padding: "1px 6px",
-                        borderRadius: 3,
-                        whiteSpace: "nowrap",
-                        flexShrink: 0,
-                      }}
-                    >
-                      subcuenta de {client.parentUsername}
-                    </span>
-                  )}
-                </div>
-                <div style={{ fontSize: 12, color: "#9ca3af" }}>
-                  {client.email}
-                </div>
-              </div>
-
-              {/* Registration date */}
-              <div style={{ fontSize: 12, color: "#9ca3af", flexShrink: 0 }}>
-                {new Date(client.createdAt).toLocaleDateString("es-CL", {
-                  day: "2-digit",
-                  month: "short",
-                  year: "numeric",
-                })}
-              </div>
-
-              {/* Arrow */}
-              <svg
-                width="16"
-                height="16"
-                fill="none"
-                stroke="#9ca3af"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                viewBox="0 0 24 24"
-              >
-                <polyline points="9 18 15 12 9 6" />
-              </svg>
-            </div>
-          );
-        })}
-
-        {clientes.length > 0 && (
-          <button
-            type="button"
-            onClick={handleSelectAllExw}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 14,
-              padding: "16px 18px",
-              background: "#fff7ed",
-              border: "1px dashed #fb923c",
-              borderRadius: 10,
-              cursor: "pointer",
-              transition: "all 0.15s",
-              textAlign: "left",
-              fontFamily: FONT,
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = "#ffedd5";
-              e.currentTarget.style.borderColor = "#f97316";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = "#fff7ed";
-              e.currentTarget.style.borderColor = "#fb923c";
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-              <div
-                style={{
-                  width: 38,
-                  height: 38,
-                  borderRadius: 10,
-                  background: "#ff6200",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 12,
-                  fontWeight: 700,
-                  color: "#fff",
-                  flexShrink: 0,
-                }}
-              >
-                EXW
-              </div>
-              <div>
-                <div
-                  style={{
-                    fontSize: 14,
-                    fontWeight: 700,
-                    color: "#9a3412",
-                  }}
-                >
-                  All EXW Charges
-                </div>
-                <div style={{ fontSize: 12, color: "#c2410c" }}>
-                  Ver cobros EXW consolidados de todos los clientes asignados.
-                </div>
-              </div>
-            </div>
-
-            <svg
-              width="16"
-              height="16"
-              fill="none"
-              stroke="#c2410c"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              viewBox="0 0 24 24"
-            >
-              <polyline points="9 18 15 12 9 6" />
-            </svg>
-          </button>
-        )}
-      </div>
-
-      {sortedClients.length === 0 && (
-        <div
-          style={{
-            textAlign: "center",
-            padding: 60,
-            color: "#9ca3af",
-            fontSize: 14,
-          }}
-        >
-          {sortMode === "subcuentas"
-            ? "Ningún cliente tiene subcuentas asignadas."
-            : searchQuery
-              ? `No se encontraron clientes para "${searchQuery}"`
-              : "No hay clientes asignados a este ejecutivo."}
-        </div>
-      )}
     </div>
   );
 }
