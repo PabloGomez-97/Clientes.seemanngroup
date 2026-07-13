@@ -2982,6 +2982,7 @@ app.get('/api/linbis-token', async (req, res) => {
   try {
     const LINBIS_CLIENT_ID = process.env.LINBIS_CLIENT_ID;
     const LINBIS_TOKEN_URL = process.env.LINBIS_TOKEN_URL;
+    const OAUTH_REFRESH_TIMEOUT_MS = 15_000;
 
     if (!LINBIS_CLIENT_ID || !LINBIS_TOKEN_URL) {
       return res.status(500).json({ 
@@ -3000,21 +3001,46 @@ app.get('/api/linbis-token', async (req, res) => {
         linbisTokenCache.access_token_expiry && 
         linbisTokenCache.access_token_expiry > now + 300000) {
       console.log('[linbis-token] Using cached access token');
-      return res.json({ token: linbisTokenCache.access_token });
+      return res.json({
+        token: linbisTokenCache.access_token,
+        expiresAt: linbisTokenCache.access_token_expiry,
+        expiresIn: Math.max(
+          0,
+          Math.floor((linbisTokenCache.access_token_expiry - now) / 1000),
+        ),
+      });
     }
 
     console.log('[linbis-token] Refreshing access token...');
 
-    const response = await fetch(LINBIS_TOKEN_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        grant_type: 'refresh_token',
-        client_id: LINBIS_CLIENT_ID,
-        refresh_token: linbisTokenCache.refresh_token,
-        scope: 'https://linbis.onmicrosoft.com/linbis-api/access_as_user openid profile offline_access'
-      })
-    });
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), OAUTH_REFRESH_TIMEOUT_MS);
+    let response: Response;
+    try {
+      response = await fetch(LINBIS_TOKEN_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'refresh_token',
+          client_id: LINBIS_CLIENT_ID,
+          refresh_token: linbisTokenCache.refresh_token,
+          scope: 'https://linbis.onmicrosoft.com/linbis-api/access_as_user openid profile offline_access'
+        }),
+        signal: controller.signal,
+      });
+    } catch (fetchError) {
+      clearTimeout(timer);
+      if (
+        (fetchError instanceof Error && fetchError.name === 'AbortError') ||
+        (typeof DOMException !== 'undefined' &&
+          fetchError instanceof DOMException &&
+          fetchError.name === 'AbortError')
+      ) {
+        return res.status(504).json({ error: 'Timed out refreshing Linbis access token' });
+      }
+      throw fetchError;
+    }
+    clearTimeout(timer);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -3028,8 +3054,9 @@ app.get('/api/linbis-token', async (req, res) => {
       refresh_token?: string;
     };
 
+    const expiresAt = now + (data.expires_in * 1000);
     linbisTokenCache.access_token = data.access_token;
-    linbisTokenCache.access_token_expiry = now + (data.expires_in * 1000);
+    linbisTokenCache.access_token_expiry = expiresAt;
 
     if (data.refresh_token) {
       console.log('[linbis-token] Updating refresh token in cache');
@@ -3037,7 +3064,11 @@ app.get('/api/linbis-token', async (req, res) => {
     }
 
     console.log('[linbis-token] Token refreshed successfully');
-    return res.json({ token: linbisTokenCache.access_token });
+    return res.json({
+      token: linbisTokenCache.access_token,
+      expiresAt,
+      expiresIn: data.expires_in,
+    });
 
   } catch (error) {
     console.error('[linbis-token] Error:', error);

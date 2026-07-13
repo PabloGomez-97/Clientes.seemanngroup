@@ -17,7 +17,8 @@ const isMobileViewport = () =>
 
 function ProveedorLayout() {
   const { user } = useAuth();
-  const { accessToken, refreshAccessToken } = useLinbisToken();
+  const { accessToken, refreshAccessToken, ensureFreshToken, getTokenAgeMs, error } =
+    useLinbisToken();
   const [isMobile, setIsMobile] = useState(isMobileViewport);
   const [hasUserPref, setHasUserPref] = useState<boolean>(() => {
     try {
@@ -77,6 +78,37 @@ function ProveedorLayout() {
     return <Navigate to="/proveedor/home" replace />;
   }
 
+  if (error) {
+    return (
+      <div className="container py-5">
+        <div className="row justify-content-center">
+          <div className="col-md-6">
+            <div
+              style={{
+                backgroundColor: "white",
+                borderRadius: "12px",
+                padding: "40px",
+                boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+                textAlign: "center",
+              }}
+            >
+              <h4 style={{ color: "#1f2937", marginBottom: "12px" }}>
+                Error de Conexión
+              </h4>
+              <p style={{ color: "#6b7280", marginBottom: "24px" }}>{error}</p>
+              <button
+                className="btn btn-primary"
+                onClick={() => window.location.reload()}
+              >
+                Reintentar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <ChatbotProvider>
       <div className="d-flex" style={{ height: "100vh", position: "relative" }}>
@@ -112,6 +144,8 @@ function ProveedorLayout() {
                 context={{
                   accessToken,
                   refreshAccessToken,
+                  ensureFreshToken,
+                  getTokenAgeMs,
                   onLogout: handleLogout,
                 }}
               />

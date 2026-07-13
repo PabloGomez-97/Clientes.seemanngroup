@@ -1,6 +1,19 @@
 import type { AirShipment } from "../types/shipments";
-import { linbisFetch } from "./linbisFetch";
+import {
+  anyAbortSignal,
+  createTimeoutSignal,
+  DEFAULT_LINBIS_FETCH_TIMEOUT_MS,
+  linbisFetch,
+} from "./linbisFetch";
 import { mergeAirShipmentRouteFromDetail } from "./linbisShipmentMappers";
+
+/** Per-page signal: caller abort + hard cap so a hung page never blocks forever. */
+function pageAbortSignal(callerSignal?: AbortSignal): AbortSignal {
+  return anyAbortSignal(
+    callerSignal,
+    createTimeoutSignal(DEFAULT_LINBIS_FETCH_TIMEOUT_MS),
+  );
+}
 
 /** Tamaño de página aceptado por la API Linbis (ItemsPerPage=100 devuelve 400). */
 export const LINBIS_PAGE_SIZE = 50;
@@ -55,6 +68,7 @@ export async function fetchAllLinbisByConsignee(
 
     const params = buildLinbisListParams(consigneeName, page);
     const url = `${baseUrl}?${params}`;
+    const pageSignal = pageAbortSignal(signal);
 
     const response = refreshAccessToken
       ? await linbisFetch(
@@ -65,7 +79,7 @@ export async function fetchAllLinbisByConsignee(
               Accept: "application/json",
               "Content-Type": "application/json",
             },
-            signal,
+            signal: pageSignal,
           },
           accessToken,
           refreshAccessToken,
@@ -77,7 +91,7 @@ export async function fetchAllLinbisByConsignee(
             Accept: "application/json",
             "Content-Type": "application/json",
           },
-          signal,
+          signal: pageSignal,
         });
 
     if (!response.ok) {
@@ -163,6 +177,7 @@ export async function fetchAirShipmentRouteDetail(
   if (!shipment.id || airShipmentHasRoute(shipment)) return fallback;
 
   const { accessToken, refreshAccessToken, signal } = options;
+  const pageSignal = pageAbortSignal(signal);
   const response = refreshAccessToken
     ? await linbisFetch(
         `https://api.linbis.com/air-shipments/details/${shipment.id}`,
@@ -172,7 +187,7 @@ export async function fetchAirShipmentRouteDetail(
             Accept: "application/json",
             "Content-Type": "application/json",
           },
-          signal,
+          signal: pageSignal,
         },
         accessToken,
         refreshAccessToken,
@@ -186,7 +201,7 @@ export async function fetchAirShipmentRouteDetail(
             Accept: "application/json",
             "Content-Type": "application/json",
           },
-          signal,
+          signal: pageSignal,
         },
       );
 
@@ -219,6 +234,7 @@ export async function fetchShippingOrderTrackingIndex(
       PageSize: pageSize.toString(),
     });
     const url = `https://api.linbis.com/api/shipping-orders?${params}`;
+    const pageSignal = pageAbortSignal(signal);
 
     const response = refreshAccessToken
       ? await linbisFetch(
@@ -229,7 +245,7 @@ export async function fetchShippingOrderTrackingIndex(
               Accept: "application/json",
               "Content-Type": "application/json",
             },
-            signal,
+            signal: pageSignal,
           },
           accessToken,
           refreshAccessToken,
@@ -241,7 +257,7 @@ export async function fetchShippingOrderTrackingIndex(
             Accept: "application/json",
             "Content-Type": "application/json",
           },
-          signal,
+          signal: pageSignal,
         });
 
     if (!response.ok) {

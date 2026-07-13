@@ -18,7 +18,8 @@ const isMobileViewport = () =>
 
 function UserLayout() {
   const { t } = useTranslation();
-  const { accessToken, loading, error, refreshAccessToken } = useLinbisToken();
+  const { accessToken, loading, error, refreshAccessToken, ensureFreshToken, getTokenAgeMs } =
+    useLinbisToken();
   const location = useLocation();
   const mainRef = useRef<HTMLDivElement>(null);
   const [isMobile, setIsMobile] = useState(isMobileViewport);
@@ -250,6 +251,8 @@ function UserLayout() {
                 context={{
                   accessToken,
                   refreshAccessToken,
+                  ensureFreshToken,
+                  getTokenAgeMs,
                   onLogout: handleLogout,
                 }}
               />
