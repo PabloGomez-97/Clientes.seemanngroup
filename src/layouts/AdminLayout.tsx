@@ -18,7 +18,14 @@ const isMobileViewport = () =>
 
 function AdminLayout() {
   const { user } = useAuth();
-  const { accessToken, loading, error, refreshAccessToken } = useLinbisToken();
+  const {
+    accessToken,
+    loading,
+    error,
+    refreshAccessToken,
+    ensureFreshToken,
+    getTokenAgeMs,
+  } = useLinbisToken();
   const [isMobile, setIsMobile] = useState(isMobileViewport);
   const [hasUserPref, setHasUserPref] = useState<boolean>(() => {
     try {
@@ -174,6 +181,8 @@ function AdminLayout() {
                 context={{
                   accessToken,
                   refreshAccessToken,
+                  ensureFreshToken,
+                  getTokenAgeMs,
                   onLogout: handleLogout,
                 }}
               />

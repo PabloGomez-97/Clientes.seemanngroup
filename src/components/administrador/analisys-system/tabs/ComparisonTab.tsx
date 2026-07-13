@@ -15,6 +15,7 @@ import type { AppliedComparisonSuggestion } from "../comparisonSuggestions";
 import {
   buildRepPeriodComparison,
   formatComparisonDelta,
+  type ComparisonReportsBundle,
 } from "../comparisonModeAnalytics";
 import {
   buildComparisonInsightData,
@@ -40,19 +41,25 @@ import {
 type Props = {
   report: CommissionAnalysisReport;
   comparisonSuggestion?: AppliedComparisonSuggestion | null;
+  comparisonBundle?: ComparisonReportsBundle | null;
 };
 
 const CHART_COLORS = [C.primary, "#3b82f6", "#8b5cf6", "#06b6d4", "#f59e0b", "#64748b"];
 
-export default function ComparisonTab({ report, comparisonSuggestion }: Props) {
+export default function ComparisonTab({
+  report,
+  comparisonSuggestion,
+  comparisonBundle,
+}: Props) {
   const { t } = useTranslation();
 
   const repPeriodRows = useMemo(
     () =>
-      comparisonSuggestion
+      comparisonBundle?.reps ??
+      (comparisonSuggestion
         ? buildRepPeriodComparison(report, comparisonSuggestion)
-        : [],
-    [report, comparisonSuggestion],
+        : []),
+    [comparisonBundle, report, comparisonSuggestion],
   );
 
   const comparisonChartData = useMemo(

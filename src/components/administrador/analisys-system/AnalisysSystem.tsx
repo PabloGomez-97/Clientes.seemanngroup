@@ -3,9 +3,12 @@ import { useTranslation } from "react-i18next";
 import { useOutletContext } from "react-router-dom";
 import {
   buildCommissionAnalysisReport,
+  classifyAnalysisError,
   clearCommissionAnalysisCache,
   filterCommissionAnalysisReport,
   formatReportDateRange,
+  prewarmCommissionCoreDataset,
+  type AnalysisBuildPhase,
 } from "./commissionAnalysisService";
 import type { AnalisysSectionId } from "./AnalisysSectionNav";
 import AnalisysSectionNav from "./AnalisysSectionNav";
@@ -21,6 +24,11 @@ import {
   buildComparisonSuggestions,
   findSuggestionById,
 } from "./comparisonSuggestions";
+import {
+  getComparisonReports,
+  type ComparisonReportsBundle,
+} from "./comparisonModeAnalytics";
+import { LINBIS_TOKEN_STALE_MS } from "@/hooks/useLinbisToken";
 import {
   AnalisysLoadingBanner,
   AnalisysSystemSkeleton,
@@ -40,12 +48,19 @@ import { getPeriodRange } from "@/components/administrador/reporteria/financiera
 interface OutletContext {
   accessToken: string;
   refreshAccessToken: () => Promise<string>;
+  ensureFreshToken: (force?: boolean) => Promise<string>;
+  getTokenAgeMs: () => number;
   onLogout: () => void;
 }
 
 export default function AnalisysSystem() {
   const { t, i18n } = useTranslation();
-  const { accessToken, refreshAccessToken } = useOutletContext<OutletContext>();
+  const {
+    accessToken,
+    refreshAccessToken,
+    ensureFreshToken,
+    getTokenAgeMs,
+  } = useOutletContext<OutletContext>();
 
   const defaultRange = useMemo(() => getPeriodRange("this-month"), []);
   const [startDate, setStartDate] = useState(defaultRange.startDate);
@@ -55,8 +70,11 @@ export default function AnalisysSystem() {
   const [baseReport, setBaseReport] = useState<CommissionAnalysisReport | null>(null);
   const [loading, setLoading] = useState(false);
   const [enriching, setEnriching] = useState(false);
-  const [loadingMessagePhase, setLoadingMessagePhase] = useState<0 | 1>(0);
+  const [buildPhase, setBuildPhase] = useState<AnalysisBuildPhase | null>(null);
+  const [heartbeatTick, setHeartbeatTick] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [partialEnrichError, setPartialEnrichError] = useState(false);
+  const [sessionNotice, setSessionNotice] = useState<string | null>(null);
   const [fetchedAt, setFetchedAt] = useState<number | null>(null);
   const [activeSection, setActiveSection] = useState<AnalisysSectionId>("summary");
   const [visitedSections, setVisitedSections] = useState<Set<AnalisysSectionId>>(
@@ -66,7 +84,10 @@ export default function AnalisysSystem() {
     useState<CommissionAnalysisOperation | null>(null);
   const [activeSuggestion, setActiveSuggestion] =
     useState<AppliedComparisonSuggestion | null>(null);
-  const pendingSuggestionRef = useRef<AppliedComparisonSuggestion | null>(null);
+
+  const generationIdRef = useRef(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const prewarmDoneRef = useRef(false);
 
   const sections = useMemo(
     () => [
@@ -112,21 +133,76 @@ export default function AnalisysSystem() {
 
   const comparisonSuggestion = isPeriodComparisonMode ? activeSuggestion : null;
 
+  const comparisonBundle: ComparisonReportsBundle | null = useMemo(() => {
+    if (!baseReport || !comparisonSuggestion) return null;
+    return getComparisonReports(baseReport, comparisonSuggestion);
+  }, [baseReport, comparisonSuggestion]);
+
   useEffect(() => {
-    if (!loading) {
-      setLoadingMessagePhase(0);
+    if (!loading && !enriching) {
+      setHeartbeatTick(0);
       return;
     }
+    const timer = window.setInterval(() => {
+      setHeartbeatTick((tick) => tick + 1);
+    }, 8000);
+    return () => window.clearInterval(timer);
+  }, [loading, enriching]);
 
-    setLoadingMessagePhase(0);
-    const timer = window.setTimeout(() => setLoadingMessagePhase(1), 2000);
-    return () => window.clearTimeout(timer);
-  }, [loading]);
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!accessToken || prewarmDoneRef.current) return;
+    prewarmDoneRef.current = true;
+    const controller = new AbortController();
+    void prewarmCommissionCoreDataset(accessToken, refreshAccessToken, controller.signal);
+    return () => controller.abort();
+  }, [accessToken, refreshAccessToken]);
+
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      if (!accessToken) return;
+      if (getTokenAgeMs() < LINBIS_TOKEN_STALE_MS) return;
+      void ensureFreshToken(true).catch(() => {});
+      if (!loading && !enriching) {
+        void prewarmCommissionCoreDataset(accessToken, refreshAccessToken);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [
+    accessToken,
+    refreshAccessToken,
+    ensureFreshToken,
+    getTokenAgeMs,
+    loading,
+    enriching,
+  ]);
+
+  const phaseMessage = useMemo(() => {
+    switch (buildPhase) {
+      case "loadingCore":
+        return t("analisysSystem.loading.loadingCore");
+      case "preview":
+        return t("analisysSystem.loading.previewReady");
+      case "loadingCharges":
+        return t("analisysSystem.loading.loadingCharges");
+      case "computing":
+        return t("analisysSystem.loading.computing");
+      default:
+        return t("analisysSystem.loading.initial");
+    }
+  }, [buildPhase, t]);
 
   const loadingMessage =
-    loadingMessagePhase === 0
-      ? t("analisysSystem.loading.initial")
-      : t("analisysSystem.loading.wait");
+    heartbeatTick > 0
+      ? `${phaseMessage} ${t("analisysSystem.loading.stillWorking")}`
+      : phaseMessage;
 
   const filteredReport = useMemo(() => {
     if (!baseReport) return null;
@@ -139,7 +215,6 @@ export default function AnalisysSystem() {
 
   const report = useMemo(() => {
     if (!baseReport) return null;
-    // Los filtros "Filtrar resultados" solo aplican al Resumen Operativo.
     if (activeSection !== "summary") return baseReport;
     return filteredReport;
   }, [baseReport, filteredReport, activeSection]);
@@ -170,11 +245,40 @@ export default function AnalisysSystem() {
     [i18n.language],
   );
 
+  const mapErrorMessage = (err: unknown): string => {
+    const classified = classifyAnalysisError(err);
+    switch (classified.code) {
+      case "timeout":
+        return t("analisysSystem.errors.timeout");
+      case "aborted":
+        return t("analisysSystem.errors.cancelled");
+      case "unauthorized":
+        return t("analisysSystem.errors.unauthorized");
+      case "invalidPayload":
+        return t("analisysSystem.errors.invalidPayload");
+      case "network":
+        return t("analisysSystem.errors.network");
+      default:
+        return classified.message || t("analisysSystem.errors.generic");
+    }
+  };
+
+  const cancelGenerate = () => {
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
+    generationIdRef.current += 1;
+    setLoading(false);
+    setEnriching(false);
+    setBuildPhase(null);
+    setError(t("analisysSystem.errors.cancelled"));
+  };
+
   const handleGenerate = async (
     forceRefresh = false,
     options?: {
       overrideRange?: { startDate: string; endDate: string };
       suggestion?: AppliedComparisonSuggestion;
+      enrichOnly?: boolean;
     },
   ) => {
     if (!accessToken) {
@@ -186,58 +290,98 @@ export default function AnalisysSystem() {
     const effectiveEnd = options?.overrideRange?.endDate ?? endDate;
     const suggestion = options?.suggestion ?? null;
 
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    const generationId = ++generationIdRef.current;
+
     if (suggestion) {
-      pendingSuggestionRef.current = suggestion;
       setActiveSuggestion(suggestion);
-    } else {
-      pendingSuggestionRef.current = null;
+    } else if (!options?.enrichOnly) {
       setActiveSuggestion(null);
     }
 
     setLoading(true);
     setEnriching(false);
+    setPartialEnrichError(false);
     setError(null);
+    setBuildPhase("loadingCore");
+    setSessionNotice(null);
 
-    const targetSection = suggestion?.targetSection ?? "summary";
-    setActiveSection(targetSection);
-    setVisitedSections(new Set([targetSection]));
+    const targetSection =
+      suggestion?.targetSection ??
+      (options?.enrichOnly ? activeSection : "summary");
+    if (!options?.enrichOnly) {
+      setActiveSection(targetSection);
+      setVisitedSections(new Set([targetSection]));
+    }
+
+    let sawPreview = Boolean(options?.enrichOnly && baseReport);
 
     try {
+      const wasStale = getTokenAgeMs() >= LINBIS_TOKEN_STALE_MS;
+      const freshToken = await ensureFreshToken(wasStale);
+      if (generationId !== generationIdRef.current) return;
+
+      if (wasStale) {
+        setSessionNotice(t("analisysSystem.notices.sessionRefreshed"));
+      }
+
       if (forceRefresh) clearCommissionAnalysisCache();
-      await buildCommissionAnalysisReport(accessToken, refreshAccessToken, {
+
+      await buildCommissionAnalysisReport(freshToken, refreshAccessToken, {
         startDate: effectiveStart,
         endDate: effectiveEnd,
         forceRefresh,
+        signal: controller.signal,
         onProgress: (nextReport, phase) => {
-          if (phase === "preview") {
+          if (generationId !== generationIdRef.current) return;
+          setBuildPhase(phase);
+          if (phase === "preview" && nextReport) {
+            sawPreview = true;
             setBaseReport(nextReport);
             setFetchedAt(Date.now());
             setLoading(false);
             setEnriching(true);
-          } else {
+          } else if (phase === "loadingCharges" || phase === "computing") {
+            setEnriching(true);
+            setLoading(false);
+          } else if (phase === "complete" && nextReport) {
             setBaseReport(nextReport);
             setEnriching(false);
+            setPartialEnrichError(false);
           }
         },
       });
+
+      if (generationId !== generationIdRef.current) return;
+
       setSalesRepFilter("");
       setConsigneeFilter("");
-      pendingSuggestionRef.current = null;
+      setSelectedOperation(null);
+      setBuildPhase("complete");
+      setPartialEnrichError(false);
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : t("analisysSystem.errors.generic");
-      setError(message);
-      setEnriching(false);
+      if (generationId !== generationIdRef.current) return;
+      const classified = classifyAnalysisError(err);
+      if (classified.code === "aborted") {
+        setError(t("analisysSystem.errors.cancelled"));
+        setPartialEnrichError(false);
+        return;
+      }
+
+      setError(mapErrorMessage(err));
+      setPartialEnrichError(sawPreview);
     } finally {
-      setLoading(false);
+      if (generationId === generationIdRef.current) {
+        setLoading(false);
+        setEnriching(false);
+        if (abortControllerRef.current === controller) {
+          abortControllerRef.current = null;
+        }
+      }
     }
   };
-
-  const printedRange = report
-    ? formatReportDateRange(report.startDate, report.endDate)
-    : "";
-
-  const analyticsReport = baseReport;
 
   const applySuggestion = (suggestionId: string) => {
     const suggestion = findSuggestionById(suggestionId, i18n.language);
@@ -258,6 +402,13 @@ export default function AnalisysSystem() {
       suggestion: applied,
     });
   };
+
+  const printedRange = report
+    ? formatReportDateRange(report.startDate, report.endDate)
+    : "";
+
+  const analyticsReport = baseReport;
+  const busy = loading || enriching;
 
   return (
     <div style={pageWrap}>
@@ -286,7 +437,7 @@ export default function AnalisysSystem() {
               value={startDate}
               onChange={(event) => setStartDate(event.target.value)}
               style={inputStyle}
-              disabled={loading || enriching}
+              disabled={busy}
             />
           </div>
           <div>
@@ -296,14 +447,14 @@ export default function AnalisysSystem() {
               value={endDate}
               onChange={(event) => setEndDate(event.target.value)}
               style={inputStyle}
-              disabled={loading || enriching}
+              disabled={busy}
             />
           </div>
 
           <button
             type="button"
             style={{ ...btnPrimary, opacity: loading ? 0.7 : 1 }}
-            disabled={loading || enriching}
+            disabled={busy}
             onClick={() => handleGenerate(false)}
           >
             {loading ? t("analisysSystem.actions.generating") : t("analisysSystem.actions.generate")}
@@ -311,22 +462,33 @@ export default function AnalisysSystem() {
           <button
             type="button"
             style={{ ...btnOutline, opacity: loading ? 0.7 : 1 }}
-            disabled={loading || enriching || !baseReport}
+            disabled={busy || !baseReport}
             onClick={() => {
               void handleGenerate(true, activeSuggestion ? { suggestion: activeSuggestion } : undefined);
             }}
           >
             {t("analisysSystem.actions.refresh")}
           </button>
+          {busy && (
+            <button type="button" style={btnOutline} onClick={cancelGenerate}>
+              {t("analisysSystem.actions.cancel")}
+            </button>
+          )}
         </div>
 
         <QuickSuggestionsPanel
           suggestions={comparisonSuggestions}
           activeSuggestion={activeSuggestion}
           onSelect={applySuggestion}
-          disabled={loading || enriching}
+          disabled={busy}
         />
       </CardSection>
+
+      {sessionNotice && (
+        <div style={{ marginTop: 12 }}>
+          <AnalisysLoadingBanner message={sessionNotice} />
+        </div>
+      )}
 
       {baseReport && !loading && activeSection === "summary" && !activeSuggestion && (
         <div style={{ marginTop: 16 }}>
@@ -407,6 +569,26 @@ export default function AnalisysSystem() {
       {error && (
         <div style={{ marginTop: 16 }}>
           <ErrorBanner message={error} />
+          {partialEnrichError && baseReport && (
+            <div style={{ marginTop: 8 }}>
+              <p style={{ ...base, fontSize: 13, color: C.textMuted, marginBottom: 8 }}>
+                {t("analisysSystem.errors.partialEnrich")}
+              </p>
+              <button
+                type="button"
+                style={btnOutline}
+                disabled={busy}
+                onClick={() => {
+                  void handleGenerate(false, {
+                    enrichOnly: true,
+                    suggestion: activeSuggestion ?? undefined,
+                  });
+                }}
+              >
+                {t("analisysSystem.actions.retryEnrich")}
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -425,7 +607,13 @@ export default function AnalisysSystem() {
           </p>
 
           {enriching && (
-            <AnalisysLoadingBanner message={t("analisysSystem.loading.enriching")} />
+            <AnalisysLoadingBanner
+              message={
+                heartbeatTick > 0
+                  ? `${t("analisysSystem.loading.enriching")} ${t("analisysSystem.loading.stillWorking")}`
+                  : t("analisysSystem.loading.enriching")
+              }
+            />
           )}
 
           {report.invoiceCount === 0 ? (
@@ -446,6 +634,8 @@ export default function AnalisysSystem() {
                     selectedOperation={selectedOperation}
                     onSelectOperation={setSelectedOperation}
                     comparisonSuggestion={comparisonSuggestion}
+                    comparisonBundle={comparisonBundle}
+                    existingReport={baseReport}
                   />
                 </div>
               )}
@@ -454,10 +644,11 @@ export default function AnalisysSystem() {
                 <div
                   style={{ display: activeSection === "periodComparison" ? "block" : "none" }}
                 >
-                  {comparisonSuggestion ? (
+                  {comparisonSuggestion && comparisonBundle ? (
                     <PeriodComparisonTab
                       report={analyticsReport}
                       suggestion={comparisonSuggestion}
+                      comparisonSummary={comparisonBundle.summary}
                     />
                   ) : (
                     <EmptyState
@@ -470,19 +661,30 @@ export default function AnalisysSystem() {
 
               {visitedSections.has("trends") && analyticsReport && (
                 <div style={{ display: activeSection === "trends" ? "block" : "none" }}>
-                  <TrendsTab report={analyticsReport} comparisonSuggestion={comparisonSuggestion} />
+                  <TrendsTab
+                    report={analyticsReport}
+                    comparisonSuggestion={comparisonSuggestion}
+                    comparisonBundle={comparisonBundle}
+                  />
                 </div>
               )}
 
               {visitedSections.has("comparison") && analyticsReport && (
                 <div style={{ display: activeSection === "comparison" ? "block" : "none" }}>
-                  <ComparisonTab report={analyticsReport} comparisonSuggestion={comparisonSuggestion} />
+                  <ComparisonTab
+                    report={analyticsReport}
+                    comparisonSuggestion={comparisonSuggestion}
+                    comparisonBundle={comparisonBundle}
+                  />
                 </div>
               )}
 
               {visitedSections.has("topCustomers") && analyticsReport && (
                 <div style={{ display: activeSection === "topCustomers" ? "block" : "none" }}>
-                  <TopCustomersTab report={analyticsReport} comparisonSuggestion={comparisonSuggestion} />
+                  <TopCustomersTab
+                    report={analyticsReport}
+                    comparisonSuggestion={comparisonSuggestion}
+                  />
                 </div>
               )}
             </>

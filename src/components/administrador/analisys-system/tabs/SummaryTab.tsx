@@ -8,6 +8,7 @@ import type { AppliedComparisonSuggestion } from "../comparisonSuggestions";
 import {
   formatComparisonDelta,
   getComparisonReports,
+  type ComparisonReportsBundle,
 } from "../comparisonModeAnalytics";
 import type { CommissionAnalysisOperation, CommissionAnalysisReport } from "../types";
 import OperationInvoiceModal from "../OperationInvoiceModal";
@@ -31,6 +32,8 @@ type Props = {
   selectedOperation: CommissionAnalysisOperation | null;
   onSelectOperation: (operation: CommissionAnalysisOperation | null) => void;
   comparisonSuggestion?: AppliedComparisonSuggestion | null;
+  comparisonBundle?: ComparisonReportsBundle | null;
+  existingReport?: CommissionAnalysisReport | null;
 };
 
 export default function SummaryTab({
@@ -40,13 +43,17 @@ export default function SummaryTab({
   selectedOperation,
   onSelectOperation,
   comparisonSuggestion,
+  comparisonBundle,
+  existingReport,
 }: Props) {
   const { t } = useTranslation();
   const [operationsPeriod, setOperationsPeriod] = useState<"A" | "B">("A");
 
   const comparisonData = useMemo(
-    () => (comparisonSuggestion ? getComparisonReports(report, comparisonSuggestion) : null),
-    [report, comparisonSuggestion],
+    () =>
+      comparisonBundle ??
+      (comparisonSuggestion ? getComparisonReports(report, comparisonSuggestion) : null),
+    [comparisonBundle, comparisonSuggestion, report],
   );
 
   const operationsSummary = useMemo(
@@ -418,6 +425,7 @@ export default function SummaryTab({
           endDate={activeReportForModal.endDate}
           accessToken={accessToken}
           refreshAccessToken={refreshAccessToken}
+          existingReport={existingReport ?? report}
           onClose={() => onSelectOperation(null)}
         />
       )}

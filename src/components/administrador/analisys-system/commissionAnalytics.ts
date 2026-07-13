@@ -47,6 +47,7 @@ export type TopCustomerRow = {
 
 const TOTAL_KEY = "__TOTAL__";
 
+const DERIVATIVES_CACHE_MAX = 40;
 const derivativesCache = new Map<string, unknown>();
 
 export function clearCommissionAnalyticsDerivatives(): void {
@@ -58,9 +59,20 @@ function reportFingerprint(report: CommissionAnalysisReport): string {
 }
 
 function getCached<T>(key: string, compute: () => T): T {
-  if (derivativesCache.has(key)) return derivativesCache.get(key) as T;
+  if (derivativesCache.has(key)) {
+    const value = derivativesCache.get(key) as T;
+    // Refresh LRU order
+    derivativesCache.delete(key);
+    derivativesCache.set(key, value);
+    return value;
+  }
   const value = compute();
   derivativesCache.set(key, value);
+  while (derivativesCache.size > DERIVATIVES_CACHE_MAX) {
+    const oldest = derivativesCache.keys().next().value;
+    if (oldest == null) break;
+    derivativesCache.delete(oldest);
+  }
   return value;
 }
 
@@ -540,7 +552,9 @@ export function buildTopCustomersByConsignee(
           profitSharePct:
             repProfit !== 0 ? round2((profit / repProfit) * 100) : 0,
         };
-      });
+      })
+      .sort((a, b) => b.invoiceCount - a.invoiceCount)
+      .slice(0, limit);
   });
 }
 

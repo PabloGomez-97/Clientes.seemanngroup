@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
+  classifyAnalysisError,
   fetchOperationInvoiceDetails,
   formatCommissionAmount,
 } from "./commissionAnalysisService";
-import type { CommissionAnalysisInvoiceRow, CommissionAnalysisOperation } from "./types";
+import type { CommissionAnalysisInvoiceRow, CommissionAnalysisOperation, CommissionAnalysisReport } from "./types";
 import {
   C,
   base,
@@ -18,6 +19,7 @@ type Props = {
   endDate: string;
   accessToken: string;
   refreshAccessToken: () => Promise<string>;
+  existingReport?: CommissionAnalysisReport | null;
   onClose: () => void;
 };
 
@@ -27,6 +29,7 @@ export default function OperationInvoiceModal({
   endDate,
   accessToken,
   refreshAccessToken,
+  existingReport,
   onClose,
 }: Props) {
   const { t } = useTranslation();
@@ -35,7 +38,7 @@ export default function OperationInvoiceModal({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let cancelled = false;
+    const controller = new AbortController();
 
     (async () => {
       setLoading(true);
@@ -49,22 +52,27 @@ export default function OperationInvoiceModal({
             moduleId: operation.moduleId,
             startDate,
             endDate,
+            existingReport,
+            signal: controller.signal,
           },
         );
-        if (!cancelled) setRows(details);
+        if (!controller.signal.aborted) setRows(details);
       } catch (err) {
-        if (!cancelled) {
-          setError(
-            err instanceof Error ? err.message : t("analisysSystem.errors.generic"),
-          );
-        }
+        if (controller.signal.aborted) return;
+        const classified = classifyAnalysisError(err);
+        if (classified.code === "aborted") return;
+        setError(
+          classified.code === "timeout"
+            ? t("analisysSystem.errors.timeout")
+            : classified.message || t("analisysSystem.errors.generic"),
+        );
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
     })();
 
     return () => {
-      cancelled = true;
+      controller.abort();
     };
   }, [
     accessToken,
@@ -73,6 +81,7 @@ export default function OperationInvoiceModal({
     operation.moduleId,
     startDate,
     endDate,
+    existingReport,
     t,
   ]);
 

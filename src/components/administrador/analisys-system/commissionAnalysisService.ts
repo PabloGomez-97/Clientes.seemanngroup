@@ -1,4 +1,8 @@
-import { linbisFetch } from "@/services/linbisFetch";
+import {
+  anyAbortSignal,
+  createTimeoutSignal,
+  linbisFetch,
+} from "@/services/linbisFetch";
 import { parseInputDate } from "@/components/administrador/reporteria/financiera/invoiceUtils";
 import {
   applyModuleSalesRepPropagation,
@@ -18,6 +22,15 @@ import type {
   LinbisShipmentRecord,
 } from "./types";
 
+/**
+ * Linbis API notes (Phase 3 investigation — client-side only today):
+ * - Analysis uses bulk ".../all" endpoints with NO date query params; date filtering is client-side.
+ * - Client reportería uses paginated GET /invoices?ConsigneeName&Page&ItemsPerPage (scoped to one consignee),
+ *   which is not a drop-in for whole-team commission analysis.
+ * - No codebase evidence that /shipments/allCharges accepts from/to filters.
+ * - Petition for Linbis: allCharges?from&to and/or charges-by-moduleId would cut payload size dramatically.
+ */
+
 const LINBIS_JSON_HEADERS = {
   Accept: "application/json",
   "Content-Type": "application/json",
@@ -30,6 +43,9 @@ const AIR_SHIPMENTS_URL = "https://api.linbis.com/air-shipments/all";
 const GROUND_SHIPMENTS_URL = "https://api.linbis.com/ground-shipments/all";
 const ACCOUNTS_LIST_URL = "https://api.linbis.com/accounts/list?take=10000";
 const SALESREPS_LIST_URL = "https://api.linbis.com/salesreps/list?take=100";
+
+export const CORE_FETCH_TIMEOUT_MS = 60_000;
+export const CHARGES_FETCH_TIMEOUT_MS = 120_000;
 
 type LinbisAccountListRecord = {
   id: number;
@@ -45,7 +61,8 @@ type LinbisSalesRepListRecord = {
 const PENDING_SALES_REP = "Pendiente de asignación";
 
 type DatasetCache = {
-  fetchedAt: number;
+  coreFetchedAt: number;
+  chargesFetchedAt: number | null;
   invoices: LinbisInvoiceRecord[];
   shipments: LinbisShipmentRecord[];
   airShipments: TransportShipmentRecord[];
@@ -61,8 +78,94 @@ type ModuleReconciliation = {
   isComplete: boolean;
 };
 
+export type AnalysisBuildPhase =
+  | "loadingCore"
+  | "preview"
+  | "loadingCharges"
+  | "computing"
+  | "complete";
+
+export type AnalysisFetchErrorCode =
+  | "timeout"
+  | "aborted"
+  | "unauthorized"
+  | "invalidPayload"
+  | "network"
+  | "generic";
+
+export class AnalysisFetchError extends Error {
+  readonly code: AnalysisFetchErrorCode;
+  readonly status?: number;
+
+  constructor(code: AnalysisFetchErrorCode, message: string, status?: number) {
+    super(message);
+    this.name = "AnalysisFetchError";
+    this.code = code;
+    this.status = status;
+  }
+}
+
 let datasetCache: DatasetCache | null = null;
 const CACHE_TTL_MS = 5 * 60 * 1000;
+let cacheGeneration = 0;
+
+let coreInflight: Promise<
+  Pick<
+    DatasetCache,
+    | "coreFetchedAt"
+    | "invoices"
+    | "shipments"
+    | "airShipments"
+    | "groundShipments"
+    | "accounts"
+    | "salesReps"
+  >
+> | null = null;
+let chargesInflight: Promise<LinbisChargeRecord[]> | null = null;
+
+function isAbortError(error: unknown): boolean {
+  return (
+    (error instanceof DOMException &&
+      (error.name === "AbortError" || error.name === "TimeoutError")) ||
+    (error instanceof Error &&
+      (error.name === "AbortError" || error.name === "TimeoutError"))
+  );
+}
+
+function throwIfAborted(signal?: AbortSignal): void {
+  if (signal?.aborted) {
+    throw new AnalysisFetchError("aborted", "Operación cancelada");
+  }
+}
+
+export function classifyAnalysisError(error: unknown): AnalysisFetchError {
+  if (error instanceof AnalysisFetchError) return error;
+  if (isAbortError(error)) {
+    const isTimeout =
+      (error instanceof DOMException && error.name === "TimeoutError") ||
+      (error instanceof Error &&
+        (error.name === "TimeoutError" ||
+          /timeout/i.test(error.message)));
+    return new AnalysisFetchError(
+      isTimeout ? "timeout" : "aborted",
+      isTimeout
+        ? "La solicitud excedió el tiempo límite"
+        : "Operación cancelada",
+    );
+  }
+  if (error instanceof TypeError) {
+    return new AnalysisFetchError("network", "Error de red al contactar Linbis");
+  }
+  if (error instanceof Error) {
+    const statusMatch = error.message.match(/\((\d{3})\)/);
+    const status = statusMatch ? Number(statusMatch[1]) : undefined;
+    if (status === 401 || status === 403) {
+      return new AnalysisFetchError("unauthorized", error.message, status);
+    }
+    return new AnalysisFetchError("generic", error.message, status);
+  }
+  return new AnalysisFetchError("generic", "Error desconocido");
+}
 
 function finalizeSalesRep(resolved: string): string {
   const rep = resolved.trim();
@@ -305,28 +408,52 @@ async function fetchJson<T>(
   url: string,
   accessToken: string,
   refreshAccessToken: () => Promise<string>,
+  signal?: AbortSignal,
 ): Promise<T[]> {
-  const response = await linbisFetch(
-    url,
-    { method: "GET", headers: LINBIS_JSON_HEADERS },
-    accessToken,
-    refreshAccessToken,
-  );
-  if (!response.ok) {
-    throw new Error(`Error al obtener datos (${response.status})`);
+  throwIfAborted(signal);
+  try {
+    const response = await linbisFetch(
+      url,
+      { method: "GET", headers: LINBIS_JSON_HEADERS, signal },
+      accessToken,
+      refreshAccessToken,
+    );
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) {
+        throw new AnalysisFetchError(
+          "unauthorized",
+          `Error de autenticación (${response.status})`,
+          response.status,
+        );
+      }
+      throw new AnalysisFetchError(
+        "generic",
+        `Error al obtener datos (${response.status})`,
+        response.status,
+      );
+    }
+    const payload = await response.json();
+    if (!Array.isArray(payload)) {
+      throw new AnalysisFetchError(
+        "invalidPayload",
+        "La API devolvió un formato de datos inesperado",
+      );
+    }
+    return payload as T[];
+  } catch (error) {
+    throw classifyAnalysisError(error);
   }
-  const payload = await response.json();
-  return Array.isArray(payload) ? payload : [];
 }
 
 async function fetchCoreDataset(
   accessToken: string,
   refreshAccessToken: () => Promise<string>,
   force = false,
+  signal?: AbortSignal,
 ): Promise<
   Pick<
     DatasetCache,
-    | "fetchedAt"
+    | "coreFetchedAt"
     | "invoices"
     | "shipments"
     | "airShipments"
@@ -336,9 +463,13 @@ async function fetchCoreDataset(
   >
 > {
   const now = Date.now();
-  if (!force && datasetCache && now - datasetCache.fetchedAt < CACHE_TTL_MS) {
+  if (
+    !force &&
+    datasetCache &&
+    now - datasetCache.coreFetchedAt < CACHE_TTL_MS
+  ) {
     return {
-      fetchedAt: datasetCache.fetchedAt,
+      coreFetchedAt: datasetCache.coreFetchedAt,
       invoices: datasetCache.invoices,
       shipments: datasetCache.shipments,
       airShipments: datasetCache.airShipments,
@@ -348,91 +479,186 @@ async function fetchCoreDataset(
     };
   }
 
-  const [invoices, shipments, airShipments, groundShipments, accounts, salesReps] =
-    await Promise.all([
-      fetchJson<LinbisInvoiceRecord>(INVOICES_URL, accessToken, refreshAccessToken),
-      fetchJson<LinbisShipmentRecord>(SHIPMENTS_URL, accessToken, refreshAccessToken),
-      fetchJson<TransportShipmentRecord>(AIR_SHIPMENTS_URL, accessToken, refreshAccessToken),
-      fetchJson<TransportShipmentRecord>(
-        GROUND_SHIPMENTS_URL,
-        accessToken,
-        refreshAccessToken,
-      ),
-      fetchJson<LinbisAccountListRecord>(ACCOUNTS_LIST_URL, accessToken, refreshAccessToken),
-      fetchJson<LinbisSalesRepListRecord>(SALESREPS_LIST_URL, accessToken, refreshAccessToken),
-    ]);
-
-  if (!datasetCache || force) {
-    datasetCache = {
-      fetchedAt: now,
-      invoices,
-      shipments,
-      airShipments,
-      groundShipments,
-      accounts,
-      salesReps,
-      charges: null,
-    };
-  } else {
-    datasetCache = {
-      ...datasetCache,
-      fetchedAt: now,
-      invoices,
-      shipments,
-      airShipments,
-      groundShipments,
-      accounts,
-      salesReps,
-    };
+  if (coreInflight && !force) {
+    return coreInflight;
   }
 
-  return {
-    fetchedAt: now,
-    invoices,
-    shipments,
-    airShipments,
-    groundShipments,
-    accounts,
-    salesReps,
-  };
+  const generation = cacheGeneration;
+  const run = (async () => {
+    throwIfAborted(signal);
+    const timeoutSignal = createTimeoutSignal(CORE_FETCH_TIMEOUT_MS);
+    const combined = anyAbortSignal(signal, timeoutSignal);
+
+    try {
+      const [invoices, shipments, airShipments, groundShipments, accounts, salesReps] =
+        await Promise.all([
+          fetchJson<LinbisInvoiceRecord>(
+            INVOICES_URL,
+            accessToken,
+            refreshAccessToken,
+            combined,
+          ),
+          fetchJson<LinbisShipmentRecord>(
+            SHIPMENTS_URL,
+            accessToken,
+            refreshAccessToken,
+            combined,
+          ),
+          fetchJson<TransportShipmentRecord>(
+            AIR_SHIPMENTS_URL,
+            accessToken,
+            refreshAccessToken,
+            combined,
+          ),
+          fetchJson<TransportShipmentRecord>(
+            GROUND_SHIPMENTS_URL,
+            accessToken,
+            refreshAccessToken,
+            combined,
+          ),
+          fetchJson<LinbisAccountListRecord>(
+            ACCOUNTS_LIST_URL,
+            accessToken,
+            refreshAccessToken,
+            combined,
+          ),
+          fetchJson<LinbisSalesRepListRecord>(
+            SALESREPS_LIST_URL,
+            accessToken,
+            refreshAccessToken,
+            combined,
+          ),
+        ]);
+
+      const fetchedAt = Date.now();
+      if (generation === cacheGeneration) {
+        datasetCache = {
+          coreFetchedAt: fetchedAt,
+          chargesFetchedAt: force ? null : (datasetCache?.chargesFetchedAt ?? null),
+          invoices,
+          shipments,
+          airShipments,
+          groundShipments,
+          accounts,
+          salesReps,
+          charges: force ? null : (datasetCache?.charges ?? null),
+        };
+      }
+
+      return {
+        coreFetchedAt: fetchedAt,
+        invoices,
+        shipments,
+        airShipments,
+        groundShipments,
+        accounts,
+        salesReps,
+      };
+    } catch (error) {
+      const classified = classifyAnalysisError(error);
+      if (classified.code === "aborted" && signal && !signal.aborted) {
+        throw new AnalysisFetchError(
+          "timeout",
+          "La carga de datos base excedió el tiempo límite",
+        );
+      }
+      throw classified;
+    } finally {
+      if (coreInflight === run) coreInflight = null;
+    }
+  })();
+
+  coreInflight = run;
+  return run;
 }
 
 async function ensureChargesLoaded(
   accessToken: string,
   refreshAccessToken: () => Promise<string>,
   force = false,
+  signal?: AbortSignal,
 ): Promise<LinbisChargeRecord[]> {
   const now = Date.now();
   if (
     !force &&
     datasetCache?.charges &&
-    now - datasetCache.fetchedAt < CACHE_TTL_MS
+    datasetCache.chargesFetchedAt != null &&
+    now - datasetCache.chargesFetchedAt < CACHE_TTL_MS
   ) {
     return datasetCache.charges;
   }
 
-  const charges = await fetchJson<LinbisChargeRecord>(
-    CHARGES_URL,
-    accessToken,
-    refreshAccessToken,
-  );
-
-  if (datasetCache) {
-    datasetCache = { ...datasetCache, fetchedAt: now, charges };
-  } else {
-    datasetCache = {
-      fetchedAt: now,
-      invoices: [],
-      shipments: [],
-      airShipments: [],
-      groundShipments: [],
-      accounts: [],
-      salesReps: [],
-      charges,
-    };
+  if (chargesInflight && !force) {
+    return chargesInflight;
   }
 
-  return charges;
+  const generation = cacheGeneration;
+  const run = (async () => {
+    throwIfAborted(signal);
+    const timeoutSignal = createTimeoutSignal(CHARGES_FETCH_TIMEOUT_MS);
+    const combined = anyAbortSignal(signal, timeoutSignal);
+
+    try {
+      const charges = await fetchJson<LinbisChargeRecord>(
+        CHARGES_URL,
+        accessToken,
+        refreshAccessToken,
+        combined,
+      );
+
+      const fetchedAt = Date.now();
+      if (generation === cacheGeneration) {
+        if (datasetCache) {
+          datasetCache = {
+            ...datasetCache,
+            chargesFetchedAt: fetchedAt,
+            charges,
+          };
+        } else {
+          datasetCache = {
+            coreFetchedAt: fetchedAt,
+            chargesFetchedAt: fetchedAt,
+            invoices: [],
+            shipments: [],
+            airShipments: [],
+            groundShipments: [],
+            accounts: [],
+            salesReps: [],
+            charges,
+          };
+        }
+      }
+
+      return charges;
+    } catch (error) {
+      const classified = classifyAnalysisError(error);
+      if (classified.code === "aborted" && signal && !signal.aborted) {
+        throw new AnalysisFetchError(
+          "timeout",
+          "La carga de cargos excedió el tiempo límite",
+        );
+      }
+      throw classified;
+    } finally {
+      if (chargesInflight === run) chargesInflight = null;
+    }
+  })();
+
+  chargesInflight = run;
+  return run;
+}
+
+/** Pre-warm core datasets in background (ignore failures). */
+export async function prewarmCommissionCoreDataset(
+  accessToken: string,
+  refreshAccessToken: () => Promise<string>,
+  signal?: AbortSignal,
+): Promise<void> {
+  try {
+    await fetchCoreDataset(accessToken, refreshAccessToken, false, signal);
+  } catch {
+    // Background warm — swallow errors
+  }
 }
 
 function buildPreviewRows(
@@ -681,6 +907,21 @@ function assembleReport(
   };
 }
 
+export function findInvoiceRowsInReport(
+  report: CommissionAnalysisReport,
+  invoiceNumbers: string[],
+): CommissionAnalysisInvoiceRow[] | null {
+  const wanted = new Set(invoiceNumbers);
+  const found: CommissionAnalysisInvoiceRow[] = [];
+  for (const group of report.groups) {
+    for (const row of group.rows) {
+      if (wanted.has(row.invoice)) found.push(row);
+    }
+  }
+  if (found.length !== wanted.size) return null;
+  return found.sort((a, b) => a.invoice.localeCompare(b.invoice, "es"));
+}
+
 export async function fetchOperationInvoiceDetails(
   accessToken: string,
   refreshAccessToken: () => Promise<string>,
@@ -689,23 +930,42 @@ export async function fetchOperationInvoiceDetails(
     moduleId: number | null;
     startDate: string;
     endDate: string;
+    existingReport?: CommissionAnalysisReport | null;
+    signal?: AbortSignal;
   },
 ): Promise<CommissionAnalysisInvoiceRow[]> {
-  const { invoiceNumbers, startDate, endDate } = options;
+  const { invoiceNumbers, moduleId, startDate, endDate, existingReport, signal } =
+    options;
+
+  if (existingReport) {
+    const fromReport = findInvoiceRowsInReport(existingReport, invoiceNumbers);
+    if (fromReport) return fromReport;
+  }
+
   const start = parseInputDate(startDate);
   const end = parseInputDate(endDate);
-  if (!start || !end) throw new Error("Rango de fechas inválido");
+  if (!start || !end) throw new AnalysisFetchError("generic", "Rango de fechas inválido");
 
   const endInclusive = new Date(end);
   endInclusive.setHours(23, 59, 59, 999);
 
   const filterSet = new Set(invoiceNumbers);
   const { invoices, shipments, airShipments, groundShipments, accounts, salesReps } =
-    await fetchCoreDataset(accessToken, refreshAccessToken);
-  const charges = await ensureChargesLoaded(accessToken, refreshAccessToken);
+    await fetchCoreDataset(accessToken, refreshAccessToken, false, signal);
+  const charges = await ensureChargesLoaded(
+    accessToken,
+    refreshAccessToken,
+    false,
+    signal,
+  );
+
+  let scopedCharges = charges;
+  if (moduleId != null) {
+    scopedCharges = charges.filter((charge) => charge.moduleId === moduleId);
+  }
 
   const rows = buildDetailedRows(
-    charges,
+    scopedCharges,
     invoices,
     shipments,
     airShipments,
@@ -720,27 +980,11 @@ export async function fetchOperationInvoiceDetails(
   return rows.sort((a, b) => a.invoice.localeCompare(b.invoice, "es"));
 }
 
-async function fetchDataset(
-  accessToken: string,
-  refreshAccessToken: () => Promise<string>,
-  force = false,
-): Promise<Required<DatasetCache>> {
-  const core = await fetchCoreDataset(accessToken, refreshAccessToken, force);
-  const charges = await ensureChargesLoaded(accessToken, refreshAccessToken, force);
-  return {
-    fetchedAt: core.fetchedAt,
-    invoices: core.invoices,
-    shipments: core.shipments,
-    airShipments: core.airShipments,
-    groundShipments: core.groundShipments,
-    accounts: core.accounts,
-    salesReps: core.salesReps,
-    charges,
-  };
-}
-
 export function clearCommissionAnalysisCache(): void {
+  cacheGeneration += 1;
   datasetCache = null;
+  coreInflight = null;
+  chargesInflight = null;
   clearCommissionAnalyticsDerivatives();
 }
 
@@ -971,21 +1215,33 @@ export async function buildCommissionAnalysisReport(
     startDate: string;
     endDate: string;
     forceRefresh?: boolean;
-    onProgress?: (report: CommissionAnalysisReport, phase: "preview" | "complete") => void;
+    signal?: AbortSignal;
+    onProgress?: (
+      report: CommissionAnalysisReport | null,
+      phase: AnalysisBuildPhase,
+    ) => void;
   },
 ): Promise<CommissionAnalysisReport> {
-  const { startDate, endDate, forceRefresh = false, onProgress } = options;
+  const { startDate, endDate, forceRefresh = false, signal, onProgress } = options;
   const start = parseInputDate(startDate);
   const end = parseInputDate(endDate);
 
   if (!start || !end) {
-    throw new Error("Rango de fechas inválido");
+    throw new AnalysisFetchError("generic", "Rango de fechas inválido");
   }
   const endInclusive = new Date(end);
   endInclusive.setHours(23, 59, 59, 999);
 
+  if (forceRefresh) {
+    clearCommissionAnalysisCache();
+  } else {
+    clearCommissionAnalyticsDerivatives();
+  }
+
+  onProgress?.(null, "loadingCore");
   const { invoices, shipments, airShipments, groundShipments, accounts, salesReps } =
-    await fetchCoreDataset(accessToken, refreshAccessToken, forceRefresh);
+    await fetchCoreDataset(accessToken, refreshAccessToken, forceRefresh, signal);
+  throwIfAborted(signal);
 
   const previewRows = buildPreviewRows(
     invoices,
@@ -1000,12 +1256,16 @@ export async function buildCommissionAnalysisReport(
   const previewReport = assembleReport(previewRows, startDate, endDate);
   onProgress?.(previewReport, "preview");
 
+  onProgress?.(previewReport, "loadingCharges");
   const charges = await ensureChargesLoaded(
     accessToken,
     refreshAccessToken,
     forceRefresh,
+    signal,
   );
+  throwIfAborted(signal);
 
+  onProgress?.(previewReport, "computing");
   const detailedRows = buildDetailedRows(
     charges,
     invoices,
@@ -1021,6 +1281,26 @@ export async function buildCommissionAnalysisReport(
   const report = assembleReport(detailedRows, startDate, endDate);
   onProgress?.(report, "complete");
   return report;
+}
+
+/** Retry only the charges enrich phase using cache for core data. */
+export async function enrichCommissionAnalysisReport(
+  accessToken: string,
+  refreshAccessToken: () => Promise<string>,
+  options: {
+    startDate: string;
+    endDate: string;
+    signal?: AbortSignal;
+    onProgress?: (
+      report: CommissionAnalysisReport | null,
+      phase: AnalysisBuildPhase,
+    ) => void;
+  },
+): Promise<CommissionAnalysisReport> {
+  return buildCommissionAnalysisReport(accessToken, refreshAccessToken, {
+    ...options,
+    forceRefresh: false,
+  });
 }
 
 export function formatCommissionAmount(value: number | null): string {

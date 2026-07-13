@@ -5,55 +5,82 @@ import { useState, useEffect, useRef, useCallback } from "react";
  * 1. Initial fetch on mount
  * 2. Periodic refresh every REFRESH_INTERVAL_MS (proactive, before expiry)
  * 3. Refresh on visibility change (user returns to tab after being away)
- * 4. Manual refresh function (reactive, for 401 retry)
+ * 4. Manual refresh function (reactive, for 401 retry) with shared in-flight promise
  */
 
 const REFRESH_INTERVAL_MS = 45 * 60 * 1000; // 45 minutes
-const STALE_THRESHOLD_MS = 30 * 60 * 1000; // 30 minutes — consider token stale after this
+export const LINBIS_TOKEN_STALE_MS = 30 * 60 * 1000; // 30 minutes — consider token stale after this
 
 export function useLinbisToken() {
   const [accessToken, setAccessToken] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const lastFetchedAt = useRef<number>(0);
-  const isFetching = useRef(false);
   const tokenRef = useRef("");
+  const inflightPromise = useRef<Promise<string> | null>(null);
 
   const fetchToken = useCallback(async (isInitial = false): Promise<string> => {
-    // Prevent concurrent fetches
-    if (isFetching.current && !isInitial) {
-      return tokenRef.current;
+    if (inflightPromise.current && !isInitial) {
+      return inflightPromise.current;
     }
-    isFetching.current = true;
 
-    try {
-      const response = await fetch("/api/linbis-token");
-      if (!response.ok) {
-        throw new Error("No se pudo obtener el token de Linbis");
+    const promise = (async () => {
+      try {
+        const response = await fetch("/api/linbis-token");
+        if (!response.ok) {
+          throw new Error("No se pudo obtener el token de Linbis");
+        }
+        const data = await response.json();
+        tokenRef.current = data.token;
+        setAccessToken(data.token);
+        setError(null);
+        lastFetchedAt.current = Date.now();
+        return data.token as string;
+      } catch (err) {
+        console.error("Error obteniendo token de Linbis:", err);
+        const message = err instanceof Error ? err.message : "Error desconocido";
+        setError(message);
+        throw err;
+      } finally {
+        inflightPromise.current = null;
       }
-      const data = await response.json();
-      tokenRef.current = data.token;
-      setAccessToken(data.token);
-      setError(null);
-      lastFetchedAt.current = Date.now();
-      return data.token;
-    } catch (err) {
-      console.error("Error obteniendo token de Linbis:", err);
-      const message = err instanceof Error ? err.message : "Error desconocido";
-      setError(message);
-      throw err;
-    } finally {
-      isFetching.current = false;
-    }
+    })();
+
+    inflightPromise.current = promise;
+    return promise;
   }, []);
 
   /**
    * Call this when a Linbis API call returns 401.
-   * It fetches a fresh token and returns it so the caller can retry.
+   * Concurrent callers share the same in-flight refresh promise.
    */
   const refreshAccessToken = useCallback(async (): Promise<string> => {
     return fetchToken(false);
   }, [fetchToken]);
+
+  /** Age of the current token in ms (Infinity if never fetched). */
+  const getTokenAgeMs = useCallback((): number => {
+    if (!lastFetchedAt.current) return Number.POSITIVE_INFINITY;
+    return Date.now() - lastFetchedAt.current;
+  }, []);
+
+  /**
+   * Ensure token is fresh before a long-running Linbis batch.
+   * Refreshes when stale or when force=true.
+   */
+  const ensureFreshToken = useCallback(
+    async (force = false): Promise<string> => {
+      if (
+        force ||
+        !tokenRef.current ||
+        getTokenAgeMs() >= LINBIS_TOKEN_STALE_MS
+      ) {
+        return fetchToken(false);
+      }
+      return tokenRef.current;
+    },
+    [fetchToken, getTokenAgeMs],
+  );
 
   // Initial fetch
   useEffect(() => {
@@ -87,7 +114,7 @@ export function useLinbisToken() {
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
         const elapsed = Date.now() - lastFetchedAt.current;
-        if (elapsed >= STALE_THRESHOLD_MS) {
+        if (elapsed >= LINBIS_TOKEN_STALE_MS) {
           console.log(
             `[useLinbisToken] Tab visible after ${Math.round(elapsed / 60000)}min — refreshing token`,
           );
@@ -101,5 +128,12 @@ export function useLinbisToken() {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, [fetchToken]);
 
-  return { accessToken, loading, error, refreshAccessToken };
+  return {
+    accessToken,
+    loading,
+    error,
+    refreshAccessToken,
+    ensureFreshToken,
+    getTokenAgeMs,
+  };
 }

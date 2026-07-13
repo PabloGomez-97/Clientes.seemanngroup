@@ -34,6 +34,7 @@ import {
 type Props = {
   report: CommissionAnalysisReport;
   suggestion: AppliedComparisonSuggestion;
+  comparisonSummary?: PeriodComparisonResult | null;
 };
 
 function formatDelta(value: number | null): string {
@@ -106,12 +107,16 @@ function PeriodColumn({
   );
 }
 
-export default function PeriodComparisonTab({ report, suggestion }: Props) {
+export default function PeriodComparisonTab({
+  report,
+  suggestion,
+  comparisonSummary,
+}: Props) {
   const { t } = useTranslation();
 
   const result = useMemo(
-    () => buildPeriodComparison(report, suggestion),
-    [report, suggestion],
+    () => comparisonSummary ?? buildPeriodComparison(report, suggestion),
+    [comparisonSummary, report, suggestion],
   );
 
   const chartData = useMemo(

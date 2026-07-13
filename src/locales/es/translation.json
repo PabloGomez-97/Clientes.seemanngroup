@@ -1982,7 +1982,9 @@
     "actions": {
       "generate": "Generar reporte",
       "generating": "Generando...",
-      "refresh": "Actualizar datos"
+      "refresh": "Actualizar datos",
+      "cancel": "Cancelar",
+      "retryEnrich": "Reintentar cargos"
     },
     "empty": {
       "title": "Sin reporte generado",
@@ -2201,7 +2203,15 @@
     "loading": {
       "initial": "Generando reporte…",
       "wait": "Mapeando datos, esto puede tardar unos minutos.",
-      "enriching": "Completando montos de expense y profit…"
+      "enriching": "Completando montos de expense y profit…",
+      "loadingCore": "Cargando facturas y embarques…",
+      "previewReady": "Vista previa lista…",
+      "loadingCharges": "Cargando cargos…",
+      "computing": "Calculando comisiones…",
+      "stillWorking": "Sigue en curso…"
+    },
+    "notices": {
+      "sessionRefreshed": "La sesión estuvo inactiva; se actualizó el token antes de generar el reporte."
     },
     "meta": {
       "printedOn": "Impreso",
@@ -2211,7 +2221,13 @@
     },
     "errors": {
       "noToken": "No hay sesión activa. Vuelve a iniciar sesión.",
-      "generic": "No se pudo generar el reporte."
+      "generic": "No se pudo generar el reporte.",
+      "timeout": "La solicitud excedió el tiempo límite. Intenta de nuevo o reduce el rango de fechas.",
+      "cancelled": "Generación cancelada.",
+      "unauthorized": "Sesión expirada o sin permiso. Vuelve a iniciar sesión e intenta otra vez.",
+      "invalidPayload": "Linbis devolvió un formato de datos inesperado.",
+      "network": "Error de red al contactar Linbis. Revisa tu conexión.",
+      "partialEnrich": "Se muestra la vista previa. No se pudieron completar expense/profit."
     },
     "modal": {
       "title": "Operación {{operation}}",

@@ -137,21 +137,26 @@ export function buildRepPeriodComparison(
   suggestion: AppliedComparisonSuggestion,
 ): RepPeriodComparisonRow[] {
   const rows = flattenRows(report);
-  const reps = [...new Set(rows.map((row) => row.salesRep))].sort((a, b) =>
-    a.localeCompare(b, "es"),
-  );
+  const byRep = new Map<string, CommissionAnalysisInvoiceRow[]>();
 
-  return reps.map((salesRep) => {
-    const repRows = rows.filter((row) => row.salesRep === salesRep);
-    const periodA = summarizeRowsForPeriod(repRows, suggestion.periodA);
-    const periodB = summarizeRowsForPeriod(repRows, suggestion.periodB);
-    return {
-      salesRep,
-      periodA,
-      periodB,
-      deltas: buildDeltas(periodA, periodB),
-    };
-  });
+  for (const row of rows) {
+    const list = byRep.get(row.salesRep);
+    if (list) list.push(row);
+    else byRep.set(row.salesRep, [row]);
+  }
+
+  return [...byRep.entries()]
+    .sort(([a], [b]) => a.localeCompare(b, "es"))
+    .map(([salesRep, repRows]) => {
+      const periodA = summarizeRowsForPeriod(repRows, suggestion.periodA);
+      const periodB = summarizeRowsForPeriod(repRows, suggestion.periodB);
+      return {
+        salesRep,
+        periodA,
+        periodB,
+        deltas: buildDeltas(periodA, periodB),
+      };
+    });
 }
 
 export function buildCustomerPeriodComparison(
@@ -159,16 +164,18 @@ export function buildCustomerPeriodComparison(
   salesRep: string,
   suggestion: AppliedComparisonSuggestion,
 ): CustomerPeriodComparisonRow[] {
-  const rows = flattenRows(report).filter((row) => row.salesRep === salesRep);
-  const consignees = new Set(
-    rows.map((row) => (row.consignee || "—").trim() || "—"),
-  );
+  const byConsignee = new Map<string, CommissionAnalysisInvoiceRow[]>();
 
-  return [...consignees]
-    .map((consignee) => {
-      const consigneeRows = rows.filter(
-        (row) => ((row.consignee || "—").trim() || "—") === consignee,
-      );
+  for (const row of flattenRows(report)) {
+    if (row.salesRep !== salesRep) continue;
+    const consignee = (row.consignee || "—").trim() || "—";
+    const list = byConsignee.get(consignee);
+    if (list) list.push(row);
+    else byConsignee.set(consignee, [row]);
+  }
+
+  return [...byConsignee.entries()]
+    .map(([consignee, consigneeRows]) => {
       const periodA = summarizeRowsForPeriod(consigneeRows, suggestion.periodA);
       const periodB = summarizeRowsForPeriod(consigneeRows, suggestion.periodB);
       return {
@@ -186,35 +193,27 @@ export function getComparisonReports(
   report: CommissionAnalysisReport,
   suggestion: AppliedComparisonSuggestion,
 ) {
+  const periodA = filterReportByIsoDateRange(
+    report,
+    suggestion.periodA.startDate,
+    suggestion.periodA.endDate,
+  );
+  const periodB = filterReportByIsoDateRange(
+    report,
+    suggestion.periodB.startDate,
+    suggestion.periodB.endDate,
+  );
   return {
-    periodA: filterReportByIsoDateRange(
-      report,
-      suggestion.periodA.startDate,
-      suggestion.periodA.endDate,
-    ),
-    periodB: filterReportByIsoDateRange(
-      report,
-      suggestion.periodB.startDate,
-      suggestion.periodB.endDate,
-    ),
+    periodA,
+    periodB,
     summary: buildPeriodComparison(report, suggestion),
-    operationsA: buildOperationsSummary(
-      filterReportByIsoDateRange(
-        report,
-        suggestion.periodA.startDate,
-        suggestion.periodA.endDate,
-      ),
-    ),
-    operationsB: buildOperationsSummary(
-      filterReportByIsoDateRange(
-        report,
-        suggestion.periodB.startDate,
-        suggestion.periodB.endDate,
-      ),
-    ),
+    operationsA: buildOperationsSummary(periodA),
+    operationsB: buildOperationsSummary(periodB),
     reps: buildRepPeriodComparison(report, suggestion),
   };
 }
+
+export type ComparisonReportsBundle = ReturnType<typeof getComparisonReports>;
 
 export function formatComparisonDelta(value: number | null): string {
   if (value == null) return "—";

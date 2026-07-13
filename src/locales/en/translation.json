@@ -1981,7 +1981,9 @@
     "actions": {
       "generate": "Generate report",
       "generating": "Generating...",
-      "refresh": "Refresh data"
+      "refresh": "Refresh data",
+      "cancel": "Cancel",
+      "retryEnrich": "Retry charges"
     },
     "empty": {
       "title": "No report generated",
@@ -2200,7 +2202,15 @@
     "loading": {
       "initial": "Generating report…",
       "wait": "Mapping data, this may take a few minutes.",
-      "enriching": "Completing expense and profit amounts…"
+      "enriching": "Completing expense and profit amounts…",
+      "loadingCore": "Loading invoices and shipments…",
+      "previewReady": "Preview ready…",
+      "loadingCharges": "Loading charges…",
+      "computing": "Computing commissions…",
+      "stillWorking": "Still working…"
+    },
+    "notices": {
+      "sessionRefreshed": "The session was idle; the token was refreshed before generating the report."
     },
     "meta": {
       "printedOn": "Printed on",
@@ -2210,7 +2220,13 @@
     },
     "errors": {
       "noToken": "No active session. Please sign in again.",
-      "generic": "Could not generate the report."
+      "generic": "Could not generate the report.",
+      "timeout": "The request timed out. Try again or narrow the date range.",
+      "cancelled": "Generation cancelled.",
+      "unauthorized": "Session expired or unauthorized. Sign in again and retry.",
+      "invalidPayload": "Linbis returned an unexpected data format.",
+      "network": "Network error contacting Linbis. Check your connection.",
+      "partialEnrich": "Showing preview data. Expense/profit could not be completed."
     },
     "modal": {
       "title": "Operation {{operation}}",

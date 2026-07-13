@@ -12,7 +12,11 @@ import {
   YAxis,
 } from "recharts";
 import type { AppliedComparisonSuggestion } from "../comparisonSuggestions";
-import { buildRepPeriodComparison, formatComparisonDelta } from "../comparisonModeAnalytics";
+import {
+  buildRepPeriodComparison,
+  formatComparisonDelta,
+  type ComparisonReportsBundle,
+} from "../comparisonModeAnalytics";
 import { buildPeriodComparison } from "../periodComparisonAnalytics";
 import { formatCommissionAmount, formatReportDateRange } from "../commissionAnalysisService";
 import {
@@ -46,6 +50,7 @@ import {
 type Props = {
   report: CommissionAnalysisReport;
   comparisonSuggestion?: AppliedComparisonSuggestion | null;
+  comparisonBundle?: ComparisonReportsBundle | null;
 };
 
 function formatDelta(value: number | null): string {
@@ -59,7 +64,11 @@ function deltaTone(value: number | null): "positive" | "negative" | "neutral" {
   return value > 0 ? "positive" : "negative";
 }
 
-export default function TrendsTab({ report, comparisonSuggestion }: Props) {
+export default function TrendsTab({
+  report,
+  comparisonSuggestion,
+  comparisonBundle,
+}: Props) {
   const { t, i18n } = useTranslation();
   const reps = useMemo(() => listSalesRepsFromReport(report), [report]);
   const [granularity, setGranularity] = useState<TimeGranularity>("month");
@@ -170,16 +179,19 @@ export default function TrendsTab({ report, comparisonSuggestion }: Props) {
   }, [summary, repLabel, granularityLabel, rangeLabel, t]);
 
   const periodComparison = useMemo(
-    () => (comparisonSuggestion ? buildPeriodComparison(report, comparisonSuggestion) : null),
-    [report, comparisonSuggestion],
+    () =>
+      comparisonBundle?.summary ??
+      (comparisonSuggestion ? buildPeriodComparison(report, comparisonSuggestion) : null),
+    [comparisonBundle, report, comparisonSuggestion],
   );
 
   const repPeriodRows = useMemo(
     () =>
-      comparisonSuggestion
+      comparisonBundle?.reps ??
+      (comparisonSuggestion
         ? buildRepPeriodComparison(report, comparisonSuggestion)
-        : [],
-    [report, comparisonSuggestion],
+        : []),
+    [comparisonBundle, report, comparisonSuggestion],
   );
 
   const comparisonChartData = useMemo(() => {
