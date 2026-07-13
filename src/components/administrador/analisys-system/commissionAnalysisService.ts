@@ -484,7 +484,19 @@ async function fetchCoreDataset(
   }
 
   const generation = cacheGeneration;
-  const run = (async () => {
+  let run!: Promise<
+    Pick<
+      DatasetCache,
+      | "coreFetchedAt"
+      | "invoices"
+      | "shipments"
+      | "airShipments"
+      | "groundShipments"
+      | "accounts"
+      | "salesReps"
+    >
+  >;
+  run = (async () => {
     throwIfAborted(signal);
     const timeoutSignal = createTimeoutSignal(CORE_FETCH_TIMEOUT_MS);
     const combined = anyAbortSignal(signal, timeoutSignal);
@@ -593,7 +605,8 @@ async function ensureChargesLoaded(
   }
 
   const generation = cacheGeneration;
-  const run = (async () => {
+  let run!: Promise<LinbisChargeRecord[]>;
+  run = (async () => {
     throwIfAborted(signal);
     const timeoutSignal = createTimeoutSignal(CHARGES_FETCH_TIMEOUT_MS);
     const combined = anyAbortSignal(signal, timeoutSignal);
