@@ -1977,7 +1977,14 @@
       "consigneePlaceholder": "Buscar consignee...",
       "all": "Todos",
       "resultsTitle": "Filtrar resultados",
-      "clear": "Limpiar filtros"
+      "clear": "Limpiar filtros",
+      "apply": "Aplicar",
+      "active": "activo",
+      "multipleSalesReps": "Multiple Sales Representatives",
+      "multipleSalesRepsHint": "Selecciona uno o más ejecutivos. Si no eliges ninguno, se muestran todos.",
+      "selectAll": "Seleccionar todos",
+      "clearReps": "Ninguno",
+      "selectedRepsCount": "{{count}} ejecutivos"
     },
     "actions": {
       "generate": "Generar reporte",
@@ -1988,7 +1995,7 @@
     },
     "empty": {
       "title": "Sin reporte generado",
-      "description": "Defina el rango de fechas y pulse Generar reporte, o seleccione una comparativa en Sugerencias rápidas.",
+      "description": "Defina el rango de fechas y pulse Generar reporte, o abra Sugerencias rápidas para una comparativa.",
       "noResultsTitle": "Sin resultados",
       "noResultsDescription": "Ninguna factura coincide con los filtros seleccionados. Prueba otro ejecutivo o consignee."
     },
@@ -2052,12 +2059,14 @@
         "semester": "Semestre",
         "year": "Año"
       },
-      "filtersSummaryOnly": "Los filtros de resultados aplican solo a la vista Resumen operativo.",
+      "filtersSummaryOnly": "Los filtros de resultados aplican a todas las vistas del reporte.",
+      "filtersScopeHint": "Los filtros de ejecutivos y consignee se aplican a Resumen, Tendencias, Comparativa de equipo, Cartera de clientes y a las sugerencias rápidas.",
+      "filtersActiveHint": "Filtros activos — Ejecutivos: {{reps}} · Consignee: {{consignee}}",
       "comparisonMode": {
         "summaryDescription": "Ejecutivos y operaciones comparados entre el período reciente y el de referencia.",
         "teamDescription": "Participación y eficiencia de cada ejecutivo en ambos períodos de la comparativa.",
         "trendsDescription": "Evolución del equipo entre los dos períodos seleccionados en la sugerencia rápida.",
-        "customersDescription": "Consignees de cada ejecutivo comparados entre ambos períodos.",
+        "customersDescription": "Consignees de los ejecutivos filtrados, comparados entre ambos períodos.",
         "opsA": "Ops {{period}}",
         "opsB": "Ops {{period}}",
         "delta": "Variación",
@@ -2099,6 +2108,7 @@
       },
       "trends": {
         "lead": "Muestra si el negocio crece o se contrae período a período. Las barras naranjas son venta facturada, las grises el costo asociado, y la línea verde el margen resultante.",
+        "filterHint": "La serie refleja el universo filtrado en Filtrar resultados (ejecutivos y consignee). Usa Multiple Sales Representatives para acotar el equipo.",
         "chartTitle": "Evolución — {{rep}}",
         "chartDescription": "Cada columna del eje horizontal es un período. Compara altura de barras (venta vs costo) y la trayectoria de la línea verde (margen).",
         "tableTitle": "Detalle por período — {{rep}}",
@@ -2128,6 +2138,7 @@
       "comparison": {
         "lead": "Permite ver quién lidera en volumen, quién es más eficiente en margen y si el resultado del equipo está concentrado en pocos ejecutivos.",
         "selectReps": "Ejecutivos a comparar",
+        "filterHint": "Los ejecutivos mostrados provienen del filtro Multiple Sales Representatives en Filtrar resultados. Si no hay filtro, se comparan todos.",
         "includeTotal": "Incluir fila de total del equipo",
         "incomeShare": "% venta",
         "profitShare": "% margen",
@@ -2146,13 +2157,14 @@
         }
       },
       "topCustomers": {
-        "lead": "Identifica qué consignees generan más operaciones y cuánto pesan en la cartera del ejecutivo. Ordena por cualquier columna; por defecto se muestran primero los de más facturas.",
+        "lead": "Identifica qué consignees generan más operaciones y cuánto pesan en la cartera del alcance filtrado. Ordena por cualquier columna; por defecto se muestran primero los de más facturas.",
+        "filterHint": "La cartera agrega consignees de los ejecutivos elegidos en Filtrar resultados (Multiple Sales Representatives). Sin filtro, incluye a todo el equipo.",
         "invoices": "N° facturas",
         "expand": "Clic para ver facturas",
         "chartTitle": "Top clientes por volumen de facturas",
-        "chartDescription": "Los 8 consignees con más facturas del ejecutivo. Más barras = más operaciones facturadas, no necesariamente mayor venta.",
+        "chartDescription": "Los 8 consignees con más facturas del alcance filtrado. Más barras = más operaciones facturadas, no necesariamente mayor venta.",
         "tableTitle": "Ranking de consignees",
-        "tableDescription": "Haz clic en una fila para ver los números de factura (INV). El % venta indica cuánto representa ese cliente del total del ejecutivo.",
+        "tableDescription": "Haz clic en una fila para ver los números de factura (INV). El % venta indica cuánto representa ese cliente del total del alcance filtrado.",
         "kpi": {
           "clients": "Clientes activos",
           "clientsHint": "Consignees distintos con facturas",
@@ -2160,11 +2172,11 @@
           "topClient": "Más operaciones",
           "topClientHint": "{{count}} facturas",
           "concentration": "Top 3 en venta",
-          "concentrationHint": "Participación acumulada en la venta del ejecutivo"
+          "concentrationHint": "Participación acumulada en la venta del alcance"
         },
         "insights": {
           "topInvoices": "En el período {{range}}, {{name}} concentra la mayor actividad operativa: {{count}} facturas.",
-          "topIncome": "En el período {{range}}, {{name}} es el cliente de mayor venta ({{amount}}, {{share}}% del ejecutivo).",
+          "topIncome": "En el período {{range}}, {{name}} es el cliente de mayor venta ({{amount}}, {{share}}% del alcance).",
           "concentration": "En el período {{range}}, los 3 principales clientes de {{rep}} representan el {{share}}% de su venta.",
           "portfolio": "En el período {{range}}, cartera de {{clients}} clientes con {{invoices}} facturas."
         }

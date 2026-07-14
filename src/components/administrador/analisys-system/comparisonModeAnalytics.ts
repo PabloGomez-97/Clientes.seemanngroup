@@ -146,7 +146,6 @@ export function buildRepPeriodComparison(
   }
 
   return [...byRep.entries()]
-    .sort(([a], [b]) => a.localeCompare(b, "es"))
     .map(([salesRep, repRows]) => {
       const periodA = summarizeRowsForPeriod(repRows, suggestion.periodA);
       const periodB = summarizeRowsForPeriod(repRows, suggestion.periodB);
@@ -156,18 +155,24 @@ export function buildRepPeriodComparison(
         periodB,
         deltas: buildDeltas(periodA, periodB),
       };
+    })
+    .sort((a, b) => {
+      const byOps = b.periodA.operationCount - a.periodA.operationCount;
+      if (byOps !== 0) return byOps;
+      return a.salesRep.localeCompare(b.salesRep, "es");
     });
 }
 
 export function buildCustomerPeriodComparison(
   report: CommissionAnalysisReport,
-  salesRep: string,
   suggestion: AppliedComparisonSuggestion,
+  salesRep?: string | null,
 ): CustomerPeriodComparisonRow[] {
   const byConsignee = new Map<string, CommissionAnalysisInvoiceRow[]>();
+  const salesRepFilter = salesRep?.trim() || "";
 
   for (const row of flattenRows(report)) {
-    if (row.salesRep !== salesRep) continue;
+    if (salesRepFilter && row.salesRep !== salesRepFilter) continue;
     const consignee = (row.consignee || "—").trim() || "—";
     const list = byConsignee.get(consignee);
     if (list) list.push(row);

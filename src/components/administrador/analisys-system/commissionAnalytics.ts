@@ -502,38 +502,44 @@ export function buildTopCustomerInsightData(rows: TopCustomerRow[]): TopCustomer
 
 export function buildTopCustomersByConsignee(
   report: CommissionAnalysisReport,
-  salesRep: string,
+  salesRep?: string | null,
   limit = 100,
 ): TopCustomerRow[] {
-  const cacheKey = `top|${reportFingerprint(report)}|${salesRep}|${limit}`;
+  const scopeKey = salesRep?.trim() || "*";
+  const cacheKey = `top|${reportFingerprint(report)}|${scopeKey}|${limit}`;
   return getCached(cacheKey, () => {
-    const group = report.groups.find((g) => g.salesRep === salesRep);
-    if (!group) return [];
+    const scopedGroups = salesRep?.trim()
+      ? report.groups.filter((group) => group.salesRep === salesRep.trim())
+      : report.groups;
+
+    if (scopedGroups.length === 0) return [];
 
     const byConsignee = new Map<
       string,
       { invoices: Set<string>; income: number; expenses: Array<number | null>; profits: Array<number | null> }
     >();
 
-    for (const row of group.rows) {
-      const consignee = (row.consignee || "—").trim() || "—";
-      if (!byConsignee.has(consignee)) {
-        byConsignee.set(consignee, {
-          invoices: new Set(),
-          income: 0,
-          expenses: [],
-          profits: [],
-        });
+    for (const group of scopedGroups) {
+      for (const row of group.rows) {
+        const consignee = (row.consignee || "—").trim() || "—";
+        if (!byConsignee.has(consignee)) {
+          byConsignee.set(consignee, {
+            invoices: new Set(),
+            income: 0,
+            expenses: [],
+            profits: [],
+          });
+        }
+        const bucket = byConsignee.get(consignee)!;
+        bucket.invoices.add(row.invoice);
+        bucket.income = round2(bucket.income + row.income);
+        bucket.expenses.push(row.expense);
+        bucket.profits.push(row.profit);
       }
-      const bucket = byConsignee.get(consignee)!;
-      bucket.invoices.add(row.invoice);
-      bucket.income = round2(bucket.income + row.income);
-      bucket.expenses.push(row.expense);
-      bucket.profits.push(row.profit);
     }
 
-    const repIncome = group.subtotal.income;
-    const repProfit = group.subtotal.profit;
+    const scopeIncome = scopedGroups.reduce((sum, group) => sum + group.subtotal.income, 0);
+    const scopeProfit = scopedGroups.reduce((sum, group) => sum + group.subtotal.profit, 0);
 
     return [...byConsignee.entries()]
       .map(([consignee, bucket]) => {
@@ -548,9 +554,9 @@ export function buildTopCustomersByConsignee(
           expense,
           profit,
           incomeSharePct:
-            repIncome > 0 ? round2((income / repIncome) * 100) : 0,
+            scopeIncome > 0 ? round2((income / scopeIncome) * 100) : 0,
           profitSharePct:
-            repProfit !== 0 ? round2((profit / repProfit) * 100) : 0,
+            scopeProfit !== 0 ? round2((profit / scopeProfit) * 100) : 0,
         };
       })
       .sort((a, b) => b.invoiceCount - a.invoiceCount)

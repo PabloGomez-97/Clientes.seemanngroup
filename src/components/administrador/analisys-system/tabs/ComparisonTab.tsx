@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Bar,
@@ -52,6 +52,7 @@ export default function ComparisonTab({
   comparisonBundle,
 }: Props) {
   const { t } = useTranslation();
+  const [includeTotal, setIncludeTotal] = useState(true);
 
   const repPeriodRows = useMemo(
     () =>
@@ -73,24 +74,14 @@ export default function ComparisonTab({
   );
 
   const allReps = useMemo(() => listSalesRepsFromReport(report), [report]);
-  const [selectedReps, setSelectedReps] = useState<string[]>([]);
-  const [includeTotal, setIncludeTotal] = useState(true);
   const rangeLabel = useMemo(
     () => formatReportDateRange(report.startDate, report.endDate),
     [report.startDate, report.endDate],
   );
 
-  useEffect(() => {
-    setSelectedReps((prev) => {
-      if (prev.length === 0) return allReps.slice(0, 3);
-      const valid = prev.filter((rep) => allReps.includes(rep));
-      return valid.length > 0 ? valid : allReps.slice(0, 3);
-    });
-  }, [allReps]);
-
   const rows = useMemo(
-    () => buildRepComparison(report, selectedReps, includeTotal),
-    [report, selectedReps, includeTotal],
+    () => buildRepComparison(report, allReps, includeTotal),
+    [report, allReps, includeTotal],
   );
 
   const repRows = useMemo(() => rows.filter((r) => !r.isTotal), [rows]);
@@ -150,14 +141,14 @@ export default function ComparisonTab({
       });
     }
 
-    if (selectedReps.length >= 2 && insightData.topThreeIncomeShare > 0) {
+    if (allReps.length >= 2 && insightData.topThreeIncomeShare > 0) {
       items.push({
         id: "concentration",
         tone: insightData.topThreeIncomeShare >= 70 ? "warning" : "neutral",
         text: t("analisysSystem.analytics.comparison.insights.concentration", {
           range: rangeLabel,
           share: insightData.topThreeIncomeShare.toFixed(1),
-          count: Math.min(3, selectedReps.length),
+          count: Math.min(3, allReps.length),
         }),
       });
     }
@@ -182,13 +173,7 @@ export default function ComparisonTab({
     }
 
     return items;
-  }, [insightData, selectedReps.length, rangeLabel, t]);
-
-  const toggleRep = (rep: string) => {
-    setSelectedReps((prev) =>
-      prev.includes(rep) ? prev.filter((r) => r !== rep) : [...prev, rep],
-    );
-  };
+  }, [insightData, allReps.length, rangeLabel, t]);
 
   if (comparisonSuggestion) {
     return (
@@ -300,31 +285,6 @@ export default function ComparisonTab({
       />
 
       <div style={{ ...styles.card, padding: 16, marginBottom: 16 }}>
-        <div style={{ ...styles.label, marginBottom: 8 }}>
-          {t("analisysSystem.analytics.comparison.selectReps")}
-        </div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
-          {allReps.map((rep) => (
-            <label
-              key={rep}
-              style={{
-                ...base,
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                fontSize: 13,
-                cursor: "pointer",
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={selectedReps.includes(rep)}
-                onChange={() => toggleRep(rep)}
-              />
-              {rep}
-            </label>
-          ))}
-        </div>
         <label
           style={{
             ...base,
@@ -332,7 +292,6 @@ export default function ComparisonTab({
             alignItems: "center",
             gap: 6,
             fontSize: 13,
-            marginTop: 12,
             cursor: "pointer",
           }}
         >
@@ -343,6 +302,9 @@ export default function ComparisonTab({
           />
           {t("analisysSystem.analytics.comparison.includeTotal")}
         </label>
+        <p style={{ ...base, fontSize: 12, color: C.textMuted, margin: "8px 0 0" }}>
+          {t("analisysSystem.analytics.comparison.filterHint")}
+        </p>
       </div>
 
       <InsightPanel title={t("analisysSystem.analytics.insightsTitle")} items={insights} />

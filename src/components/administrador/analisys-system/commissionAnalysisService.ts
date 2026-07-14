@@ -1,5 +1,4 @@
 import {
-  anyAbortSignal,
   createTimeoutSignal,
   linbisFetch,
 } from "@/services/linbisFetch";
@@ -44,8 +43,8 @@ const GROUND_SHIPMENTS_URL = "https://api.linbis.com/ground-shipments/all";
 const ACCOUNTS_LIST_URL = "https://api.linbis.com/accounts/list?take=10000";
 const SALESREPS_LIST_URL = "https://api.linbis.com/salesreps/list?take=100";
 
-export const CORE_FETCH_TIMEOUT_MS = 60_000;
-export const CHARGES_FETCH_TIMEOUT_MS = 120_000;
+export const CORE_FETCH_TIMEOUT_MS = 120_000;
+export const CHARGES_FETCH_TIMEOUT_MS = 180_000;
 
 type LinbisAccountListRecord = {
   id: number;
@@ -136,6 +135,49 @@ function throwIfAborted(signal?: AbortSignal): void {
   if (signal?.aborted) {
     throw new AnalysisFetchError("aborted", "Operación cancelada");
   }
+}
+
+/**
+ * Wait for a shared inflight without attaching the caller AbortSignal to the
+ * underlying network request. Caller cancel only rejects this waiter.
+ */
+async function awaitSharedInflight<T>(
+  inflight: Promise<T>,
+  signal?: AbortSignal,
+): Promise<T> {
+  throwIfAborted(signal);
+  if (!signal) return inflight;
+
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => {
+      reject(new AnalysisFetchError("aborted", "Operación cancelada"));
+    };
+
+    if (signal.aborted) {
+      onAbort();
+      return;
+    }
+
+    signal.addEventListener("abort", onAbort, { once: true });
+    inflight.then(
+      (value) => {
+        signal.removeEventListener("abort", onAbort);
+        if (signal.aborted) {
+          reject(new AnalysisFetchError("aborted", "Operación cancelada"));
+          return;
+        }
+        resolve(value);
+      },
+      (error) => {
+        signal.removeEventListener("abort", onAbort);
+        if (signal.aborted) {
+          reject(new AnalysisFetchError("aborted", "Operación cancelada"));
+          return;
+        }
+        reject(error);
+      },
+    );
+  });
 }
 
 export function classifyAnalysisError(error: unknown): AnalysisFetchError {
@@ -462,6 +504,8 @@ async function fetchCoreDataset(
     | "salesReps"
   >
 > {
+  throwIfAborted(signal);
+
   const now = Date.now();
   if (
     !force &&
@@ -480,7 +524,7 @@ async function fetchCoreDataset(
   }
 
   if (coreInflight && !force) {
-    return coreInflight;
+    return awaitSharedInflight(coreInflight, signal);
   }
 
   const generation = cacheGeneration;
@@ -497,9 +541,9 @@ async function fetchCoreDataset(
     >
   >;
   run = (async () => {
-    throwIfAborted(signal);
+    // Shared fetch uses only a timeout — never the caller's cancel signal —
+    // so prewarm abort / regenerate cancel cannot poison other waiters.
     const timeoutSignal = createTimeoutSignal(CORE_FETCH_TIMEOUT_MS);
-    const combined = anyAbortSignal(signal, timeoutSignal);
 
     try {
       const [invoices, shipments, airShipments, groundShipments, accounts, salesReps] =
@@ -508,37 +552,37 @@ async function fetchCoreDataset(
             INVOICES_URL,
             accessToken,
             refreshAccessToken,
-            combined,
+            timeoutSignal,
           ),
           fetchJson<LinbisShipmentRecord>(
             SHIPMENTS_URL,
             accessToken,
             refreshAccessToken,
-            combined,
+            timeoutSignal,
           ),
           fetchJson<TransportShipmentRecord>(
             AIR_SHIPMENTS_URL,
             accessToken,
             refreshAccessToken,
-            combined,
+            timeoutSignal,
           ),
           fetchJson<TransportShipmentRecord>(
             GROUND_SHIPMENTS_URL,
             accessToken,
             refreshAccessToken,
-            combined,
+            timeoutSignal,
           ),
           fetchJson<LinbisAccountListRecord>(
             ACCOUNTS_LIST_URL,
             accessToken,
             refreshAccessToken,
-            combined,
+            timeoutSignal,
           ),
           fetchJson<LinbisSalesRepListRecord>(
             SALESREPS_LIST_URL,
             accessToken,
             refreshAccessToken,
-            combined,
+            timeoutSignal,
           ),
         ]);
 
@@ -568,7 +612,11 @@ async function fetchCoreDataset(
       };
     } catch (error) {
       const classified = classifyAnalysisError(error);
-      if (classified.code === "aborted" && signal && !signal.aborted) {
+      if (
+        classified.code === "aborted" ||
+        classified.code === "timeout" ||
+        timeoutSignal.aborted
+      ) {
         throw new AnalysisFetchError(
           "timeout",
           "La carga de datos base excedió el tiempo límite",
@@ -581,7 +629,7 @@ async function fetchCoreDataset(
   })();
 
   coreInflight = run;
-  return run;
+  return awaitSharedInflight(run, signal);
 }
 
 async function ensureChargesLoaded(
@@ -590,6 +638,8 @@ async function ensureChargesLoaded(
   force = false,
   signal?: AbortSignal,
 ): Promise<LinbisChargeRecord[]> {
+  throwIfAborted(signal);
+
   const now = Date.now();
   if (
     !force &&
@@ -601,22 +651,20 @@ async function ensureChargesLoaded(
   }
 
   if (chargesInflight && !force) {
-    return chargesInflight;
+    return awaitSharedInflight(chargesInflight, signal);
   }
 
   const generation = cacheGeneration;
   let run!: Promise<LinbisChargeRecord[]>;
   run = (async () => {
-    throwIfAborted(signal);
     const timeoutSignal = createTimeoutSignal(CHARGES_FETCH_TIMEOUT_MS);
-    const combined = anyAbortSignal(signal, timeoutSignal);
 
     try {
       const charges = await fetchJson<LinbisChargeRecord>(
         CHARGES_URL,
         accessToken,
         refreshAccessToken,
-        combined,
+        timeoutSignal,
       );
 
       const fetchedAt = Date.now();
@@ -645,7 +693,11 @@ async function ensureChargesLoaded(
       return charges;
     } catch (error) {
       const classified = classifyAnalysisError(error);
-      if (classified.code === "aborted" && signal && !signal.aborted) {
+      if (
+        classified.code === "aborted" ||
+        classified.code === "timeout" ||
+        timeoutSignal.aborted
+      ) {
         throw new AnalysisFetchError(
           "timeout",
           "La carga de cargos excedió el tiempo límite",
@@ -658,7 +710,7 @@ async function ensureChargesLoaded(
   })();
 
   chargesInflight = run;
-  return run;
+  return awaitSharedInflight(run, signal);
 }
 
 /** Pre-warm core datasets in background (ignore failures). */
@@ -1062,9 +1114,7 @@ export function buildOperationsSummary(
 
   const result: CommissionAnalysisOperationsGroup[] = [];
 
-  for (const [salesRep, opsMap] of [...operationsByRep.entries()].sort((a, b) =>
-    a[0].localeCompare(b[0], "es"),
-  )) {
+  for (const [salesRep, opsMap] of operationsByRep.entries()) {
     const operations = [...opsMap.entries()]
       .map(([, invoiceRows]) => {
         const sortedInvoices = [...invoiceRows].sort((a, b) =>
@@ -1103,7 +1153,11 @@ export function buildOperationsSummary(
     });
   }
 
-  return result;
+  return result.sort((a, b) => {
+    const byOps = b.subtotal.operationCount - a.subtotal.operationCount;
+    if (byOps !== 0) return byOps;
+    return a.salesRep.localeCompare(b.salesRep, "es");
+  });
 }
 
 function rowIsoDate(row: CommissionAnalysisInvoiceRow): string | null {
@@ -1167,15 +1221,23 @@ export function filterReportByIsoDateRange(
 
 export function filterCommissionAnalysisReport(
   report: CommissionAnalysisReport,
-  filters: { salesRep?: string; consignee?: string },
+  filters: { salesRep?: string; salesReps?: string[]; consignee?: string },
 ): CommissionAnalysisReport {
-  const salesRepFilter = (filters.salesRep || "").trim();
+  const salesRepsSet = new Set(
+    (filters.salesReps ?? [])
+      .map((value) => value.trim())
+      .filter(Boolean),
+  );
+  if (filters.salesRep?.trim()) {
+    salesRepsSet.add(filters.salesRep.trim());
+  }
+  const hasSalesRepFilter = salesRepsSet.size > 0;
   const consigneeFilter = (filters.consignee || "").trim().toLowerCase();
 
   const filteredRows: CommissionAnalysisInvoiceRow[] = [];
 
   for (const group of report.groups) {
-    if (salesRepFilter && group.salesRep !== salesRepFilter) continue;
+    if (hasSalesRepFilter && !salesRepsSet.has(group.salesRep)) continue;
 
     for (const row of group.rows) {
       if (consigneeFilter && !row.consignee.toLowerCase().includes(consigneeFilter)) {

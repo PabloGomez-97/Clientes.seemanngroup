@@ -1976,7 +1976,14 @@
       "consigneePlaceholder": "Search consignee...",
       "all": "All",
       "resultsTitle": "Filter results",
-      "clear": "Clear filters"
+      "clear": "Clear filters",
+      "apply": "Apply",
+      "active": "active",
+      "multipleSalesReps": "Multiple Sales Representatives",
+      "multipleSalesRepsHint": "Select one or more executives. If none are selected, all are shown.",
+      "selectAll": "Select all",
+      "clearReps": "None",
+      "selectedRepsCount": "{{count}} executives"
     },
     "actions": {
       "generate": "Generate report",
@@ -1987,7 +1994,7 @@
     },
     "empty": {
       "title": "No report generated",
-      "description": "Set the date range and click Generate report, or select a comparison under Quick suggestions.",
+      "description": "Set the date range and click Generate report, or open Quick suggestions for a comparison.",
       "noResultsTitle": "No results",
       "noResultsDescription": "No invoices match the selected filters. Try another executive or consignee."
     },
@@ -2051,12 +2058,14 @@
         "semester": "Semester",
         "year": "Year"
       },
-      "filtersSummaryOnly": "Result filters apply only to the Operational summary view.",
+      "filtersSummaryOnly": "Result filters apply to every report view.",
+      "filtersScopeHint": "Executive and consignee filters apply to Summary, Trends, Team comparison, Customer portfolio and quick suggestions.",
+      "filtersActiveHint": "Active filters — Executives: {{reps}} · Consignee: {{consignee}}",
       "comparisonMode": {
         "summaryDescription": "Executives and operations compared between the recent period and the baseline.",
         "teamDescription": "Each executive's contribution and efficiency across both comparison periods.",
         "trendsDescription": "Team evolution between the two periods selected in the quick suggestion.",
-        "customersDescription": "Each executive's consignees compared across both periods.",
+        "customersDescription": "Consignees of the filtered executives compared across both periods.",
         "opsA": "Ops {{period}}",
         "opsB": "Ops {{period}}",
         "delta": "Change",
@@ -2098,6 +2107,7 @@
       },
       "trends": {
         "lead": "Shows whether the business is growing or contracting period over period. Orange bars are invoiced sales, gray bars are associated cost, and the green line is the resulting margin.",
+        "filterHint": "The series reflects the universe selected in Filter results (executives and consignee). Use Multiple Sales Representatives to narrow the team.",
         "chartTitle": "Evolution — {{rep}}",
         "chartDescription": "Each column on the horizontal axis is a period. Compare bar heights (sales vs cost) and the green line trajectory (margin).",
         "tableTitle": "Period detail — {{rep}}",
@@ -2127,6 +2137,7 @@
       "comparison": {
         "lead": "See who leads in volume, who is more efficient on margin, and whether team results are concentrated in a few executives.",
         "selectReps": "Executives to compare",
+        "filterHint": "Shown executives come from the Multiple Sales Representatives filter in Filter results. With no filter, everyone is compared.",
         "includeTotal": "Include team total row",
         "incomeShare": "% sales",
         "profitShare": "% margin",
@@ -2145,13 +2156,14 @@
         }
       },
       "topCustomers": {
-        "lead": "Identify which consignees generate the most operations and how much they weigh in the executive's portfolio. Sort by any column; by default those with the most invoices appear first.",
+        "lead": "Identify which consignees generate the most operations and how much they weigh in the filtered scope. Sort by any column; by default those with the most invoices appear first.",
+        "filterHint": "The portfolio aggregates consignees for executives selected in Filter results (Multiple Sales Representatives). With no filter, the whole team is included.",
         "invoices": "Invoices",
         "expand": "Click to view invoices",
         "chartTitle": "Top customers by invoice volume",
-        "chartDescription": "The 8 consignees with the most invoices for the executive. More bars = more invoiced operations, not necessarily higher sales.",
+        "chartDescription": "The 8 consignees with the most invoices in the filtered scope. More bars = more invoiced operations, not necessarily higher sales.",
         "tableTitle": "Consignee ranking",
-        "tableDescription": "Click a row to see invoice numbers (INV). % sales shows how much that customer represents of the executive's total.",
+        "tableDescription": "Click a row to see invoice numbers (INV). % sales shows how much that customer represents of the filtered scope total.",
         "kpi": {
           "clients": "Active clients",
           "clientsHint": "Distinct consignees with invoices",
@@ -2159,11 +2171,11 @@
           "topClient": "Most operations",
           "topClientHint": "{{count}} invoices",
           "concentration": "Top 3 by sales",
-          "concentrationHint": "Cumulative share of executive sales"
+          "concentrationHint": "Cumulative share of scoped sales"
         },
         "insights": {
           "topInvoices": "In the period {{range}}, {{name}} has the highest operational activity: {{count}} invoices.",
-          "topIncome": "In the period {{range}}, {{name}} is the highest-sales client ({{amount}}, {{share}}% of the executive).",
+          "topIncome": "In the period {{range}}, {{name}} is the highest-sales client ({{amount}}, {{share}}% of the scope).",
           "concentration": "In the period {{range}}, the top 3 clients of {{rep}} represent {{share}}% of their sales.",
           "portfolio": "In the period {{range}}, portfolio of {{clients}} clients with {{invoices}} invoices."
         }

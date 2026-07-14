@@ -12,6 +12,7 @@ import {
 } from "./commissionAnalysisService";
 import type { AnalisysSectionId } from "./AnalisysSectionNav";
 import AnalisysSectionNav from "./AnalisysSectionNav";
+import AnalisysSimpleModal from "./AnalisysSimpleModal";
 import QuickSuggestionsPanel from "./QuickSuggestionsPanel";
 import type { CommissionAnalysisOperation, CommissionAnalysisReport } from "./types";
 import ComparisonTab from "./tabs/ComparisonTab";
@@ -65,7 +66,7 @@ export default function AnalisysSystem() {
   const defaultRange = useMemo(() => getPeriodRange("this-month"), []);
   const [startDate, setStartDate] = useState(defaultRange.startDate);
   const [endDate, setEndDate] = useState(defaultRange.endDate);
-  const [salesRepFilter, setSalesRepFilter] = useState("");
+  const [salesRepsFilter, setSalesRepsFilter] = useState<string[]>([]);
   const [consigneeFilter, setConsigneeFilter] = useState("");
   const [baseReport, setBaseReport] = useState<CommissionAnalysisReport | null>(null);
   const [loading, setLoading] = useState(false);
@@ -84,6 +85,8 @@ export default function AnalisysSystem() {
     useState<CommissionAnalysisOperation | null>(null);
   const [activeSuggestion, setActiveSuggestion] =
     useState<AppliedComparisonSuggestion | null>(null);
+  const [suggestionsModalOpen, setSuggestionsModalOpen] = useState(false);
+  const [resultsFilterModalOpen, setResultsFilterModalOpen] = useState(false);
 
   const generationIdRef = useRef(0);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -133,11 +136,6 @@ export default function AnalisysSystem() {
 
   const comparisonSuggestion = isPeriodComparisonMode ? activeSuggestion : null;
 
-  const comparisonBundle: ComparisonReportsBundle | null = useMemo(() => {
-    if (!baseReport || !comparisonSuggestion) return null;
-    return getComparisonReports(baseReport, comparisonSuggestion);
-  }, [baseReport, comparisonSuggestion]);
-
   useEffect(() => {
     if (!loading && !enriching) {
       setHeartbeatTick(0);
@@ -158,9 +156,9 @@ export default function AnalisysSystem() {
   useEffect(() => {
     if (!accessToken || prewarmDoneRef.current) return;
     prewarmDoneRef.current = true;
-    const controller = new AbortController();
-    void prewarmCommissionCoreDataset(accessToken, refreshAccessToken, controller.signal);
-    return () => controller.abort();
+    // Do not abort on cleanup: aborting a shared warm request was being
+    // misread as a timeout by later generate calls that joined the same inflight.
+    void prewarmCommissionCoreDataset(accessToken, refreshAccessToken);
   }, [accessToken, refreshAccessToken]);
 
   useEffect(() => {
@@ -204,24 +202,27 @@ export default function AnalisysSystem() {
       ? `${phaseMessage} ${t("analisysSystem.loading.stillWorking")}`
       : phaseMessage;
 
-  const filteredReport = useMemo(() => {
+  const scopedReport = useMemo(() => {
     if (!baseReport) return null;
-    if (!salesRepFilter && !consigneeFilter.trim()) return baseReport;
+    if (salesRepsFilter.length === 0 && !consigneeFilter.trim()) return baseReport;
     return filterCommissionAnalysisReport(baseReport, {
-      salesRep: salesRepFilter || undefined,
+      salesReps: salesRepsFilter.length > 0 ? salesRepsFilter : undefined,
       consignee: consigneeFilter.trim() || undefined,
     });
-  }, [baseReport, salesRepFilter, consigneeFilter]);
+  }, [baseReport, salesRepsFilter, consigneeFilter]);
 
-  const report = useMemo(() => {
-    if (!baseReport) return null;
-    if (activeSection !== "summary") return baseReport;
-    return filteredReport;
-  }, [baseReport, filteredReport, activeSection]);
+  const report = scopedReport;
+
+  const comparisonBundle: ComparisonReportsBundle | null = useMemo(() => {
+    if (!scopedReport || !comparisonSuggestion) return null;
+    return getComparisonReports(scopedReport, comparisonSuggestion);
+  }, [scopedReport, comparisonSuggestion]);
 
   const salesRepOptions = useMemo(() => {
     if (!baseReport) return [];
-    return baseReport.groups.map((group) => group.salesRep);
+    return [...baseReport.groups.map((group) => group.salesRep)].sort((a, b) =>
+      a.localeCompare(b, "es"),
+    );
   }, [baseReport]);
 
   const consigneeOptions = useMemo(() => {
@@ -356,7 +357,7 @@ export default function AnalisysSystem() {
 
       if (generationId !== generationIdRef.current) return;
 
-      setSalesRepFilter("");
+      setSalesRepsFilter([]);
       setConsigneeFilter("");
       setSelectedOperation(null);
       setBuildPhase("complete");
@@ -387,6 +388,7 @@ export default function AnalisysSystem() {
     const suggestion = findSuggestionById(suggestionId, i18n.language);
     if (!suggestion) return;
 
+    setSuggestionsModalOpen(false);
     setStartDate(suggestion.loadRange.startDate);
     setEndDate(suggestion.loadRange.endDate);
 
@@ -403,12 +405,34 @@ export default function AnalisysSystem() {
     });
   };
 
+  const hasResultsFilters = Boolean(salesRepsFilter.length > 0 || consigneeFilter.trim());
+  const showResultsFilterButton = Boolean(baseReport) && !loading;
+
+  useEffect(() => {
+    if (!showResultsFilterButton) setResultsFilterModalOpen(false);
+  }, [showResultsFilterButton]);
+
+  useEffect(() => {
+    const available = new Set(salesRepOptions);
+    setSalesRepsFilter((prev) => {
+      if (prev.length === 0) return prev;
+      const next = prev.filter((rep) => available.has(rep));
+      return next.length === prev.length ? prev : next;
+    });
+  }, [salesRepOptions]);
+
   const printedRange = report
     ? formatReportDateRange(report.startDate, report.endDate)
     : "";
 
-  const analyticsReport = baseReport;
+  const analyticsReport = scopedReport;
   const busy = loading || enriching;
+
+  const toggleSalesRepFilter = (rep: string) => {
+    setSalesRepsFilter((prev) =>
+      prev.includes(rep) ? prev.filter((value) => value !== rep) : [...prev, rep],
+    );
+  };
 
   return (
     <div style={pageWrap}>
@@ -469,6 +493,34 @@ export default function AnalisysSystem() {
           >
             {t("analisysSystem.actions.refresh")}
           </button>
+          <button
+            type="button"
+            style={{
+              ...btnOutline,
+              borderColor: activeSuggestion ? C.primary : C.border,
+              color: activeSuggestion ? C.primary : undefined,
+            }}
+            disabled={busy}
+            onClick={() => setSuggestionsModalOpen(true)}
+          >
+            {t("analisysSystem.suggestions.title")}
+          </button>
+          {showResultsFilterButton && (
+            <button
+              type="button"
+              style={{
+                ...btnOutline,
+                borderColor: hasResultsFilters ? C.primary : C.border,
+                color: hasResultsFilters ? C.primary : undefined,
+              }}
+              onClick={() => setResultsFilterModalOpen(true)}
+            >
+              {t("analisysSystem.filters.resultsTitle")}
+              {hasResultsFilters
+                ? ` (${t("analisysSystem.filters.active")})`
+                : ""}
+            </button>
+          )}
           {busy && (
             <button type="button" style={btnOutline} onClick={cancelGenerate}>
               {t("analisysSystem.actions.cancel")}
@@ -476,12 +528,24 @@ export default function AnalisysSystem() {
           )}
         </div>
 
-        <QuickSuggestionsPanel
-          suggestions={comparisonSuggestions}
-          activeSuggestion={activeSuggestion}
-          onSelect={applySuggestion}
-          disabled={busy}
-        />
+        {activeSuggestion && (
+          <p style={{ ...base, fontSize: 12, color: C.textMuted, margin: "12px 0 0" }}>
+            {t("analisysSystem.analytics.periodComparison.activeSuggestion", {
+              label: t(activeSuggestion.labelKey),
+            })}
+          </p>
+        )}
+        {hasResultsFilters && (
+          <p style={{ ...base, fontSize: 12, color: C.textMuted, margin: "12px 0 0" }}>
+            {t("analisysSystem.analytics.filtersActiveHint", {
+              reps:
+                salesRepsFilter.length > 0
+                  ? salesRepsFilter.join(", ")
+                  : t("analisysSystem.filters.all"),
+              consignee: consigneeFilter.trim() || t("analisysSystem.filters.all"),
+            })}
+          </p>
+        )}
       </CardSection>
 
       {sessionNotice && (
@@ -490,69 +554,137 @@ export default function AnalisysSystem() {
         </div>
       )}
 
-      {baseReport && !loading && activeSection === "summary" && !activeSuggestion && (
-        <div style={{ marginTop: 16 }}>
-          <CardSection title={t("analisysSystem.filters.resultsTitle")}>
-            <div
-              style={{
-                display: "flex",
-                flexWrap: "wrap",
-                gap: 16,
-                alignItems: "flex-end",
-              }}
-            >
-              <div>
-                <label style={styles.label}>{t("analisysSystem.filters.salesRep")}</label>
-                <select
-                  value={salesRepFilter}
-                  onChange={(event) => setSalesRepFilter(event.target.value)}
-                  style={inputStyle}
-                >
-                  <option value="">{t("analisysSystem.filters.all")}</option>
-                  {salesRepOptions.map((value) => (
-                    <option key={value} value={value}>
-                      {value}
-                    </option>
-                  ))}
-                </select>
-              </div>
+      {suggestionsModalOpen && (
+        <AnalisysSimpleModal
+          title={t("analisysSystem.suggestions.title")}
+          onClose={() => setSuggestionsModalOpen(false)}
+        >
+          <QuickSuggestionsPanel
+            suggestions={comparisonSuggestions}
+            activeSuggestion={activeSuggestion}
+            onSelect={applySuggestion}
+            disabled={busy}
+          />
+        </AnalisysSimpleModal>
+      )}
 
-              <div>
-                <label style={styles.label}>{t("analisysSystem.filters.consignee")}</label>
-                <input
-                  list="analisys-consignee-options"
-                  value={consigneeFilter}
-                  onChange={(event) => setConsigneeFilter(event.target.value)}
-                  placeholder={t("analisysSystem.filters.consigneePlaceholder")}
-                  style={inputStyle}
-                />
-                <datalist id="analisys-consignee-options">
-                  {consigneeOptions.map((value) => (
-                    <option key={value} value={value} />
-                  ))}
-                </datalist>
+      {resultsFilterModalOpen && showResultsFilterButton && (
+        <AnalisysSimpleModal
+          title={t("analisysSystem.filters.resultsTitle")}
+          description={t("analisysSystem.analytics.filtersScopeHint")}
+          onClose={() => setResultsFilterModalOpen(false)}
+          maxWidth={720}
+        >
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 20,
+            }}
+          >
+            <div>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: 12,
+                  marginBottom: 8,
+                }}
+              >
+                <label style={{ ...styles.label, marginBottom: 0 }}>
+                  {t("analisysSystem.filters.multipleSalesReps")}
+                </label>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    type="button"
+                    style={{ ...btnOutline, padding: "4px 10px", fontSize: 12 }}
+                    onClick={() => setSalesRepsFilter([...salesRepOptions])}
+                  >
+                    {t("analisysSystem.filters.selectAll")}
+                  </button>
+                  <button
+                    type="button"
+                    style={{ ...btnOutline, padding: "4px 10px", fontSize: 12 }}
+                    onClick={() => setSalesRepsFilter([])}
+                  >
+                    {t("analisysSystem.filters.clearReps")}
+                  </button>
+                </div>
               </div>
+              <p style={{ ...base, fontSize: 12, color: C.textMuted, margin: "0 0 12px" }}>
+                {t("analisysSystem.filters.multipleSalesRepsHint")}
+              </p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                {salesRepOptions.map((rep) => {
+                  const checked = salesRepsFilter.includes(rep);
+                  return (
+                    <label
+                      key={rep}
+                      style={{
+                        ...base,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                        fontSize: 13,
+                        cursor: "pointer",
+                        padding: "6px 10px",
+                        borderRadius: 6,
+                        border: `1px solid ${checked ? C.primary : C.border}`,
+                        backgroundColor: checked ? C.primaryLight : C.white,
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggleSalesRepFilter(rep)}
+                      />
+                      {rep}
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
 
-              {(salesRepFilter || consigneeFilter.trim()) && (
+            <div>
+              <label style={styles.label}>{t("analisysSystem.filters.consignee")}</label>
+              <input
+                list="analisys-consignee-options"
+                value={consigneeFilter}
+                onChange={(event) => setConsigneeFilter(event.target.value)}
+                placeholder={t("analisysSystem.filters.consigneePlaceholder")}
+                style={{ ...inputStyle, width: "100%", maxWidth: "100%" }}
+              />
+              <datalist id="analisys-consignee-options">
+                {consigneeOptions.map((value) => (
+                  <option key={value} value={value} />
+                ))}
+              </datalist>
+            </div>
+
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {hasResultsFilters && (
                 <button
                   type="button"
                   style={btnOutline}
                   onClick={() => {
-                    setSalesRepFilter("");
+                    setSalesRepsFilter([]);
                     setConsigneeFilter("");
                   }}
                 >
                   {t("analisysSystem.filters.clear")}
                 </button>
               )}
+              <button
+                type="button"
+                style={btnPrimary}
+                onClick={() => setResultsFilterModalOpen(false)}
+              >
+                {t("analisysSystem.filters.apply")}
+              </button>
             </div>
-            {activeSection === "summary" && (salesRepFilter || consigneeFilter.trim()) && (
-              <p style={{ ...base, fontSize: 12, color: C.textMuted, margin: "12px 0 0" }}>
-                {t("analisysSystem.analytics.filtersSummaryOnly")}
-              </p>
-            )}
-          </CardSection>
-        </div>
+          </div>
+        </AnalisysSimpleModal>
       )}
 
       {!loading && fetchedAt && baseReport && report && analyticsReport && report.invoiceCount > 0 && (

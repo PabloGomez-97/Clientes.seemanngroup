@@ -21,11 +21,9 @@ import { buildPeriodComparison } from "../periodComparisonAnalytics";
 import { formatCommissionAmount, formatReportDateRange } from "../commissionAnalysisService";
 import {
   TOTAL_SERIES_KEY,
-  TIME_GRANULARITIES,
   buildTimeSeries,
   enrichSeriesWithDeltas,
   getCoherentGranularities,
-  listSalesRepsFromReport,
   pickDefaultTrendGranularity,
   summarizeTrendSeries,
   type TimeGranularity,
@@ -70,9 +68,7 @@ export default function TrendsTab({
   comparisonBundle,
 }: Props) {
   const { t, i18n } = useTranslation();
-  const reps = useMemo(() => listSalesRepsFromReport(report), [report]);
   const [granularity, setGranularity] = useState<TimeGranularity>("month");
-  const [selectedRep, setSelectedRep] = useState<string>(TOTAL_SERIES_KEY);
   const rangeLabel = useMemo(
     () => formatReportDateRange(report.startDate, report.endDate),
     [report.startDate, report.endDate],
@@ -96,8 +92,8 @@ export default function TrendsTab({
   );
 
   const activeSeries = useMemo(() => {
-    return seriesResult.byRep.get(selectedRep) ?? [];
-  }, [seriesResult, selectedRep]);
+    return seriesResult.byRep.get(TOTAL_SERIES_KEY) ?? [];
+  }, [seriesResult]);
 
   const enrichedSeries = useMemo(
     () => enrichSeriesWithDeltas(activeSeries),
@@ -117,10 +113,7 @@ export default function TrendsTab({
     [enrichedSeries],
   );
 
-  const repLabel =
-    selectedRep === TOTAL_SERIES_KEY
-      ? t("analisysSystem.analytics.total")
-      : selectedRep;
+  const repLabel = t("analisysSystem.analytics.total");
 
   const granularityLabel = t(`analisysSystem.analytics.granularityOptions.${granularity}`);
 
@@ -311,22 +304,11 @@ export default function TrendsTab({
             ))}
           </select>
         </div>
-        <div>
-          <label style={styles.label}>{t("analisysSystem.filters.salesRep")}</label>
-          <select
-            value={selectedRep}
-            onChange={(e) => setSelectedRep(e.target.value)}
-            style={{ ...inputStyle, minWidth: 220 }}
-          >
-            <option value={TOTAL_SERIES_KEY}>{t("analisysSystem.analytics.total")}</option>
-            {reps.map((rep) => (
-              <option key={rep} value={rep}>
-                {rep}
-              </option>
-            ))}
-          </select>
-        </div>
       </div>
+
+      <p style={{ ...base, fontSize: 12, color: C.textMuted, margin: "-8px 0 16px" }}>
+        {t("analisysSystem.analytics.trends.filterHint")}
+      </p>
 
       <KpiGrid>
         <KpiCard

@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Bar,
@@ -36,7 +36,6 @@ import {
 import {
   C,
   base,
-  inputStyle,
   styles,
 } from "@/components/administrador/reporteria/financiera/executiveReportingUi";
 
@@ -55,7 +54,6 @@ type SortDir = "asc" | "desc";
 export default function TopCustomersTab({ report, comparisonSuggestion }: Props) {
   const { t } = useTranslation();
   const reps = useMemo(() => listSalesRepsFromReport(report), [report]);
-  const [salesRep, setSalesRep] = useState(reps[0] ?? "");
   const [expandedConsignee, setExpandedConsignee] = useState<string | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>("invoiceCount");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
@@ -64,14 +62,16 @@ export default function TopCustomersTab({ report, comparisonSuggestion }: Props)
     [report.startDate, report.endDate],
   );
 
-  useEffect(() => {
-    if (!salesRep && reps[0]) setSalesRep(reps[0]);
-    if (salesRep && !reps.includes(salesRep) && reps[0]) setSalesRep(reps[0]);
-  }, [reps, salesRep]);
+  const scopeLabel = useMemo(() => {
+    if (reps.length === 0) return t("analisysSystem.analytics.total");
+    if (reps.length === 1) return reps[0];
+    if (reps.length <= 3) return reps.join(", ");
+    return t("analisysSystem.filters.selectedRepsCount", { count: reps.length });
+  }, [reps, t]);
 
   const rawRows = useMemo(
-    () => (salesRep ? buildTopCustomersByConsignee(report, salesRep, 100) : []),
-    [report, salesRep],
+    () => buildTopCustomersByConsignee(report, null, 100),
+    [report],
   );
 
   const rows = useMemo(
@@ -125,7 +125,7 @@ export default function TopCustomersTab({ report, comparisonSuggestion }: Props)
         text: t("analisysSystem.analytics.topCustomers.insights.concentration", {
           range: rangeLabel,
           share: insightData.topThreeIncomeShare.toFixed(1),
-          rep: salesRep,
+          rep: scopeLabel,
         }),
       });
     }
@@ -142,14 +142,14 @@ export default function TopCustomersTab({ report, comparisonSuggestion }: Props)
     }
 
     return items;
-  }, [insightData, salesRep, rangeLabel, t]);
+  }, [insightData, scopeLabel, rangeLabel, t]);
 
   const customerComparisonRows = useMemo(
     () =>
-      comparisonSuggestion && salesRep
-        ? buildCustomerPeriodComparison(report, salesRep, comparisonSuggestion)
+      comparisonSuggestion
+        ? buildCustomerPeriodComparison(report, comparisonSuggestion)
         : [],
-    [comparisonSuggestion, salesRep, report],
+    [comparisonSuggestion, report],
   );
 
   const handleSort = (key: SortKey) => {
@@ -161,7 +161,7 @@ export default function TopCustomersTab({ report, comparisonSuggestion }: Props)
     }
   };
 
-  if (!salesRep && reps.length === 0) return null;
+  if (reps.length === 0 && !comparisonSuggestion) return null;
 
   if (comparisonSuggestion) {
     return (
@@ -175,20 +175,9 @@ export default function TopCustomersTab({ report, comparisonSuggestion }: Props)
           periodALabel={comparisonSuggestion.periodA.label}
           periodBLabel={comparisonSuggestion.periodB.label}
         />
-        <div style={{ marginBottom: 16 }}>
-          <label style={styles.label}>{t("analisysSystem.filters.salesRep")}</label>
-          <select
-            value={salesRep}
-            onChange={(e) => setSalesRep(e.target.value)}
-            style={{ ...inputStyle, minWidth: 220 }}
-          >
-            {reps.map((rep) => (
-              <option key={rep} value={rep}>
-                {rep}
-              </option>
-            ))}
-          </select>
-        </div>
+        <p style={{ ...base, fontSize: 12, color: C.textMuted, margin: "0 0 16px" }}>
+          {t("analisysSystem.analytics.topCustomers.filterHint")}
+        </p>
         <div style={{ ...styles.card, overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 880 }}>
             <thead>
@@ -254,23 +243,9 @@ export default function TopCustomersTab({ report, comparisonSuggestion }: Props)
         description={t("analisysSystem.analytics.topCustomers.lead")}
       />
 
-      <div style={{ marginBottom: 16, maxWidth: 360 }}>
-        <label style={styles.label}>{t("analisysSystem.filters.salesRep")}</label>
-        <select
-          value={salesRep}
-          onChange={(e) => {
-            setSalesRep(e.target.value);
-            setExpandedConsignee(null);
-          }}
-          style={inputStyle}
-        >
-          {reps.map((rep) => (
-            <option key={rep} value={rep}>
-              {rep}
-            </option>
-          ))}
-        </select>
-      </div>
+      <p style={{ ...base, fontSize: 12, color: C.textMuted, margin: "0 0 16px" }}>
+        {t("analisysSystem.analytics.topCustomers.filterHint")}
+      </p>
 
       <KpiGrid>
         <KpiCard

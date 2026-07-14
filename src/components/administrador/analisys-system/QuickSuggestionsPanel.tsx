@@ -9,7 +9,6 @@ import {
   C,
   base,
   inputStyle,
-  styles,
 } from "@/components/administrador/reporteria/financiera/executiveReportingUi";
 
 type Props = {
@@ -28,10 +27,7 @@ export default function QuickSuggestionsPanel({
   const { t } = useTranslation();
 
   return (
-    <div style={{ marginTop: 20, paddingTop: 20, borderTop: `1px solid ${C.border}` }}>
-      <div style={{ ...styles.label, marginBottom: 8 }}>
-        {t("analisysSystem.suggestions.title")}
-      </div>
+    <div>
       <select
         value={activeSuggestion?.id ?? ""}
         onChange={(event) => {
@@ -56,7 +52,7 @@ export default function QuickSuggestionsPanel({
           );
         })}
       </select>
-      <p style={{ ...base, fontSize: 12, color: C.textMuted, margin: "8px 0 0", lineHeight: 1.5 }}>
+      <p style={{ ...base, fontSize: 12, color: C.textMuted, margin: "12px 0 0", lineHeight: 1.5 }}>
         {t("analisysSystem.suggestions.lead")}
       </p>
     </div>
