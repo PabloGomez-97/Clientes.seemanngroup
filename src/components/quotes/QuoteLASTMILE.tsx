@@ -28,20 +28,46 @@ import {
   type ClienteAsignadoLM,
   type QuoteLastMileProps,
   type PieceDataLM,
-  buildAduanaBreakdownFromResult,
-  buildAduanaLinbisCharges,
-  buildAduanaPdfCharges,
 } from "./Handlers/LASTMILE/HandlerQuoteLASTMILE";
+import {
+  LCL_DELIVERY_MAX_KG,
+  LCL_DELIVERY_MAX_M3,
+  findLclDeliveryBracket,
+  calcLclCostoTransporte,
+  buildLclOperationalLinbisCharges,
+  buildLclOperationalPdfCharges,
+  calculateLclDdpAduanaCharges,
+  buildLclDdpAduanaLinbisCharges,
+  buildLclDdpAduanaPdfCharges,
+  type LclDdpAduanaResult,
+} from "./Handlers/LASTMILE/LCL";
+import {
+  buildFclContainerLines,
+  totalFclContainers,
+  calcFclCostoTransporte,
+  buildFclOperationalLinbisCharges,
+  buildFclOperationalPdfCharges,
+  calculateFclDdpAduanaCharges,
+  buildFclDdpAduanaLinbisCharges,
+  buildFclDdpAduanaPdfCharges,
+  type FclContainerCode,
+  type FclDdpAduanaResult,
+} from "./Handlers/LASTMILE/FCL";
+import {
+  findAereoTtBracket,
+  calcAereoCostoTransporte,
+  buildAereoOperationalLinbisCharges,
+  buildAereoOperationalPdfCharges,
+  calculateAereoDdpAduanaCharges,
+  buildAereoDdpAduanaLinbisCharges,
+  buildAereoDdpAduanaPdfCharges,
+  type AereoDdpAduanaResult,
+} from "./Handlers/LASTMILE/AEREO";
 import { PieceAccordionLASTMILE } from "./Handlers/LASTMILE/PieceAccordionLASTMILE";
 import { packageTypeOptions } from "./PackageTypes/PiecestypesAIR";
 import { Modal, Button } from "react-bootstrap";
 import { linbisFetch } from "../../services/linbisFetch";
 import { useQuoteTracking } from "../../hooks/useQuoteTracking";
-import {
-  useAgenciaAduanas,
-  calculateAduanaCharges,
-  type SupportedCurrency,
-} from "../../hooks/useAgenciaAduanas";
 import {
   useGestionCotizador,
   getVespucioExtendedMultiplier,
@@ -61,128 +87,6 @@ interface OutletContext {
 
 const MAX_PIECES_LM = 10;
 const VALIDITY_DAYS = 5;
-
-// =============================================================================
-// TARIFAS LCL + DAP (Última Milla)
-// =============================================================================
-
-/**
- * Brackets para el cobro DELIVERY - TRUCKING (id 134724, code DELV).
- * Se aplica el bracket cuyo índice es el MAYOR entre el que cubre el
- * peso volumétrico (kg) y el que cubre el volumen total (m³).
- * El amount listado corresponde al INCOME en USD; el EXPENSE se calcula
- * como income / 1.10 (10% markup).
- */
-const LCL_DAP_DELIVERY_BRACKETS: Array<{
-  maxKg: number;
-  maxM3: number;
-  amount: number;
-}> = [
-    { maxKg: 500, maxM3: 2.5, amount: 183.26 },
-    { maxKg: 1000, maxM3: 5, amount: 202.9 },
-    { maxKg: 2000, maxM3: 8, amount: 248.71 },
-    { maxKg: 3000, maxM3: 11, amount: 274.89 },
-    { maxKg: 4000, maxM3: 15, amount: 294.53 },
-    { maxKg: 5000, maxM3: 20, amount: 314.16 },
-    { maxKg: 6000, maxM3: 25, amount: 353.43 },
-    { maxKg: 7000, maxM3: 30, amount: 392.7 },
-  ];
-
-const LCL_DAP_DELIVERY_MAX_KG = 7000;
-const LCL_DAP_DELIVERY_MAX_M3 = 30;
-
-// ============================================================================
-// AÉREO + DAP — Tarifa Transporte Terrestre (TT) por bracket de peso real (kg)
-// ============================================================================
-// El cobro es FIJO por bracket (no por kg), determinado por el peso real
-// total (suma de los kg de todas las piezas).
-const AEREO_DAP_TT_BRACKETS: Array<{ maxKg: number; amount: number }> = [
-  { maxKg: 300, amount: 85.09 },
-  { maxKg: 500, amount: 91.63 },
-  { maxKg: 1000, amount: 104.72 },
-  { maxKg: 1500, amount: 117.81 },
-  { maxKg: 2000, amount: 163.63 },
-];
-const AEREO_DAP_TT_MAX_KG = 2000;
-
-const findAereoTTBracket = (
-  realWeightKg: number,
-): { amount: number; bracketIndex: number; maxKg: number } | null => {
-  if (realWeightKg <= 0 || realWeightKg > AEREO_DAP_TT_MAX_KG) return null;
-  const idx = AEREO_DAP_TT_BRACKETS.findIndex((b) => realWeightKg <= b.maxKg);
-  if (idx < 0) return null;
-  return {
-    amount: AEREO_DAP_TT_BRACKETS[idx].amount,
-    bracketIndex: idx,
-    maxKg: AEREO_DAP_TT_BRACKETS[idx].maxKg,
-  };
-};
-
-interface DeliveryBracketResult {
-  amount: number;
-  unit: "kg" | "m3";
-  quantity: number;
-  bracketIndex: number;
-}
-
-/**
- * Determina el bracket DELIVERY a cobrar dado el peso real (kg)
- * y el volumen total (m³). Se elige el bracket más alto entre ambas
- * dimensiones (mayor índice = mayor costo). Retorna `null` si la
- * carga excede el máximo de la tabla.
- */
-const findDeliveryBracket = (
-  realWeightKg: number,
-  totalVolumeM3: number,
-): DeliveryBracketResult | null => {
-  if (
-    realWeightKg > LCL_DAP_DELIVERY_MAX_KG ||
-    totalVolumeM3 > LCL_DAP_DELIVERY_MAX_M3
-  ) {
-    return null;
-  }
-  // Índice del primer bracket que cubre el peso real
-  const kgIdx = LCL_DAP_DELIVERY_BRACKETS.findIndex(
-    (b) => realWeightKg <= b.maxKg,
-  );
-  // Índice del primer bracket que cubre el volumen
-  const m3Idx = LCL_DAP_DELIVERY_BRACKETS.findIndex(
-    (b) => totalVolumeM3 <= b.maxM3,
-  );
-  if (kgIdx < 0 && m3Idx < 0) return null;
-
-  // El bracket con índice más alto es el más caro y tiene prioridad.
-  // Si ambos son válidos, gana el mayor índice.
-  // Si uno de ellos es -1 (sin límite superior encontrado), usa el otro.
-  let chosenIdx: number;
-  let unit: "kg" | "m3";
-  let quantity: number;
-
-  const effectiveKgIdx = kgIdx >= 0 ? kgIdx : -1;
-  const effectiveM3Idx = m3Idx >= 0 ? m3Idx : -1;
-
-  if (effectiveKgIdx > effectiveM3Idx) {
-    chosenIdx = effectiveKgIdx;
-    unit = "kg";
-    quantity = realWeightKg;
-  } else if (effectiveM3Idx > effectiveKgIdx) {
-    chosenIdx = effectiveM3Idx;
-    unit = "m3";
-    quantity = totalVolumeM3;
-  } else {
-    // Empate de índice: prevalece el volumen (LCL es volumétrico)
-    chosenIdx = effectiveM3Idx;
-    unit = "m3";
-    quantity = totalVolumeM3;
-  }
-
-  return {
-    amount: LCL_DAP_DELIVERY_BRACKETS[chosenIdx].amount,
-    unit,
-    quantity,
-    bracketIndex: chosenIdx,
-  };
-};
 
 const createEmptyPieceLM = (id: string): PieceDataLM => ({
   id,
@@ -371,8 +275,7 @@ function QuoteLASTMILE({
   >(null);
   const [incotermSel, setIncotermSel] = useState<"DDP" | "DAP" | null>(null);
 
-  // Aduana / Nacionalización DDP (LCL, FCL y AÉREO)
-  const { config: aduanaConfig } = useAgenciaAduanas();
+  // Aduana / Nacionalización DDP (LCL, FCL y AÉREO — sistemas propios por modo)
   const { config: gestionCotizadorConfig } = useGestionCotizador();
   const fclTtFromDb = gestionCotizadorConfig.fcl;
   const vespucioExtendedMultiplier = useMemo(
@@ -712,73 +615,32 @@ function QuoteLASTMILE({
   useScrollToTopOnStepChange(currentStep, wizardRef);
 
   // ============================================================================
-  // EXTRAPORT EXPENSES (LCL + DDP y FCL + DDP)
+  // ADUANA LCL DDP (sistema propio — Handlers/LASTMILE/LCL)
   // ============================================================================
-  // Reutiliza la lógica de AduanaSection: CIF = valorMercadería + costoTransporte + seguro.
-  // costoTransporte =
-  //  - LCL+DDP: suma de TODOS los charges LCL DDP (Handling 75 + Banking 50 +
-  //    Gastos Locales 65 + DOC LCL (10 USD/m³) + Delivery (bracket por kg/m³)).
-  //  - FCL+DDP: suma de TODOS los charges FCL DAP (Handling 75 + Banking 50 +
-  //    BL 60 + TT por contenedor + DTHC por contenedor).
-  // Si el cliente no ingresa valor de seguro, se usa el seguro teórico:
-  //   ((valorMercadería + costoTransporte) * 1.1) * 0.02
-  const extraportData = useMemo(() => {
-    const empty = {
-      total: 0,
-      costoTransporte: 0,
-      seguroParaCIF: 0,
-      cif: 0,
-      breakdown: null as ReturnType<typeof buildAduanaBreakdownFromResult> | null,
-    };
+  // CIF = valorMercadería + costoTransporte + seguro
+  // costoTransporte = Handling 75 + Banking 50 + GL 65 + DOC (10 USD/m³) + DELV
+  // Extraport NO entra al CIF; va como cobro aparte.
+  const lclDdpAduanaData = useMemo((): LclDdpAduanaResult | null => {
+    if (servicioSel !== "LCL" || incotermSel !== "DDP") return null;
     const valorProd =
       parseFloat((valorMercaderiaDDP || "").replace(",", ".")) || 0;
-    if (valorProd <= 0) {
-      return empty;
-    }
+    if (valorProd <= 0) return null;
 
-    let costoTransporte = 0;
-
-    if (servicioSel === "LCL" && incotermSel === "DDP") {
-      const totalM3 = Number(cargoTotals.volume.toFixed(3));
-      const docAmount = Number((totalM3 * 10).toFixed(2));
-      const bracket = findDeliveryBracket(
-        cargoTotals.realWeight,
-        cargoTotals.volume,
-      );
-      const deliveryAmount = bracket
-        ? applyVespucioSurcharge(
-            Number(bracket.amount.toFixed(2)),
-            deliveryVespucioZone,
-          )
-        : 0;
-      costoTransporte = 75 + 50 + 65 + docAmount + deliveryAmount;
-    } else if (servicioSel === "FCL" && incotermSel === "DDP") {
-      const c20 = parseInt(contenedores20GP || "0", 10) || 0;
-      const c40HQ = parseInt(contenedores40HQ || "0", 10) || 0;
-      const c40NOR = parseInt(contenedores40NOR || "0", 10) || 0;
-      const ttTotal = applyVespucioSurcharge(
-        Number(
-          (
-            c20 * fclTtFromDb.ttRate20GP +
-            c40HQ * fclTtFromDb.ttRate40 +
-            c40NOR * fclTtFromDb.ttRate40
-          ).toFixed(2),
-        ),
-        deliveryVespucioZone,
-      );
-      const dthcTotal = c20 * 390.915 + c40HQ * 427.805 + c40NOR * 427.805;
-      costoTransporte = 75 + 50 + 60 + ttTotal + dthcTotal;
-    } else if (servicioSel === "AÉREO" && incotermSel === "DDP") {
-      // AÉREO+DDP: costoTransporte = Desconsolidación 190 + Handling 60 +
-      // Banking 50 + LAC 90 + TT (bracket por peso real total kg).
-      const ttBracket = findAereoTTBracket(cargoTotals.realWeight);
-      const ttAmount = ttBracket
-        ? applyVespucioSurcharge(ttBracket.amount, deliveryVespucioZone)
-        : 0;
-      costoTransporte = 190 + 60 + 50 + 90 + ttAmount;
-    } else {
-      return empty;
-    }
+    const bracket = findLclDeliveryBracket(
+      cargoTotals.realWeight,
+      cargoTotals.volume,
+    );
+    const deliveryAmount = bracket
+      ? applyVespucioSurcharge(
+          Number(bracket.amount.toFixed(2)),
+          deliveryVespucioZone,
+        )
+      : 0;
+    const costoTransporte = calcLclCostoTransporte({
+      volumeM3: cargoTotals.volume,
+      realWeightKg: cargoTotals.realWeight,
+      deliveryIncomeUsd: deliveryAmount,
+    });
 
     const seguroIngresado =
       parseFloat((valorSeguroDDP || "").replace(",", ".")) || 0;
@@ -787,20 +649,73 @@ function QuoteLASTMILE({
         ? seguroIngresado
         : (valorProd + costoTransporte) * 1.1 * 0.02;
 
-    const result = calculateAduanaCharges(
-      valorProd,
+    return calculateLclDdpAduanaCharges({
+      valorProducto: valorProd,
       costoTransporte,
-      seguroParaCIF,
-      "USD" as SupportedCurrency,
-      aduanaConfig,
-    );
-    return {
-      total: Number(result.total.toFixed(2)),
-      costoTransporte,
-      seguroParaCIF,
-      cif: Number(result.cif.toFixed(2)),
-      breakdown: buildAduanaBreakdownFromResult(result),
+      seguro: seguroParaCIF,
+      realWeightKg: cargoTotals.realWeight,
+      volumeM3: cargoTotals.volume,
+    });
+  }, [
+    servicioSel,
+    incotermSel,
+    valorMercaderiaDDP,
+    valorSeguroDDP,
+    cargoTotals.volume,
+    cargoTotals.realWeight,
+    deliveryVespucioZone,
+    vespucioExtendedMultiplier,
+  ]);
+
+  // ============================================================================
+  // ADUANA FCL DDP (sistema propio — Handlers/LASTMILE/FCL)
+  // ============================================================================
+  // CIF = valorMercadería + costoTransporte + seguro
+  // costoTransporte = Handling 75 + Banking 50 + BL 60 + TT + DTHC
+  // GATE IN y DOC PROCESS NO entran al CIF; van como cobros aparte.
+  const fclDdpAduanaData = useMemo((): FclDdpAduanaResult | null => {
+    if (servicioSel !== "FCL" || incotermSel !== "DDP") return null;
+    const valorProd =
+      parseFloat((valorMercaderiaDDP || "").replace(",", ".")) || 0;
+    if (valorProd <= 0) return null;
+
+    const qty = {
+      qty20GP: parseInt(contenedores20GP || "0", 10) || 0,
+      qty40HQ: parseInt(contenedores40HQ || "0", 10) || 0,
+      qty40NOR: parseInt(contenedores40NOR || "0", 10) || 0,
     };
+    const ttIncomeUsd = applyVespucioSurcharge(
+      Number(
+        (
+          qty.qty20GP * fclTtFromDb.ttRate20GP +
+          qty.qty40HQ * fclTtFromDb.ttRate40 +
+          qty.qty40NOR * fclTtFromDb.ttRate40
+        ).toFixed(2),
+      ),
+      deliveryVespucioZone,
+    );
+    const costoTransporte = calcFclCostoTransporte({
+      qty,
+      ttRates: {
+        ttRate20GP: fclTtFromDb.ttRate20GP,
+        ttRate40: fclTtFromDb.ttRate40,
+      },
+      ttIncomeUsd,
+    });
+
+    const seguroIngresado =
+      parseFloat((valorSeguroDDP || "").replace(",", ".")) || 0;
+    const seguroParaCIF =
+      seguroIngresado > 0
+        ? seguroIngresado
+        : (valorProd + costoTransporte) * 1.1 * 0.02;
+
+    return calculateFclDdpAduanaCharges({
+      valorProducto: valorProd,
+      costoTransporte,
+      seguro: seguroParaCIF,
+      totalContainers: totalFclContainers(qty),
+    });
   }, [
     servicioSel,
     incotermSel,
@@ -809,12 +724,91 @@ function QuoteLASTMILE({
     contenedores20GP,
     contenedores40HQ,
     contenedores40NOR,
-    cargoTotals.volume,
-    cargoTotals.realWeight,
-    aduanaConfig,
     deliveryVespucioZone,
     fclTtFromDb,
     vespucioExtendedMultiplier,
+  ]);
+
+  // ============================================================================
+  // ADUANA AÉREO DDP (sistema propio — Handlers/LASTMILE/AEREO)
+  // ============================================================================
+  // CIF = valorMercadería + costoTransporte + seguro
+  // costoTransporte = Desconsolidación 190 + Handling 60 + Banking 50 + TT
+  // LAC NO entra al CIF; va como cobro aparte.
+  const aereoDdpAduanaData = useMemo((): AereoDdpAduanaResult | null => {
+    if (servicioSel !== "AÉREO" || incotermSel !== "DDP") return null;
+    const valorProd =
+      parseFloat((valorMercaderiaDDP || "").replace(",", ".")) || 0;
+    if (valorProd <= 0) return null;
+
+    const ttBracket = findAereoTtBracket(cargoTotals.realWeight);
+    const ttIncomeUsd = ttBracket
+      ? applyVespucioSurcharge(ttBracket.amount, deliveryVespucioZone)
+      : 0;
+    const costoTransporte = calcAereoCostoTransporte(ttIncomeUsd);
+
+    const seguroIngresado =
+      parseFloat((valorSeguroDDP || "").replace(",", ".")) || 0;
+    const seguroParaCIF =
+      seguroIngresado > 0
+        ? seguroIngresado
+        : (valorProd + costoTransporte) * 1.1 * 0.02;
+
+    return calculateAereoDdpAduanaCharges({
+      valorProducto: valorProd,
+      costoTransporte,
+      seguro: seguroParaCIF,
+    });
+  }, [
+    servicioSel,
+    incotermSel,
+    valorMercaderiaDDP,
+    valorSeguroDDP,
+    cargoTotals.realWeight,
+    deliveryVespucioZone,
+    vespucioExtendedMultiplier,
+  ]);
+
+  /** Resumen unificado para UI de aduana (LCL / FCL / AÉREO sistemas propios). */
+  const aduanaDisplayData = useMemo(() => {
+    if (isLclDdp && lclDdpAduanaData) {
+      return {
+        costoTransporte: lclDdpAduanaData.costoTransporte,
+        seguroParaCIF: lclDdpAduanaData.seguroParaCIF,
+        cif: lclDdpAduanaData.cif,
+        total: lclDdpAduanaData.total,
+        pdfItems: buildLclDdpAduanaPdfCharges(lclDdpAduanaData.breakdown),
+      };
+    }
+    if (isFclDdp && fclDdpAduanaData) {
+      return {
+        costoTransporte: fclDdpAduanaData.costoTransporte,
+        seguroParaCIF: fclDdpAduanaData.seguroParaCIF,
+        cif: fclDdpAduanaData.cif,
+        total: fclDdpAduanaData.total,
+        pdfItems: buildFclDdpAduanaPdfCharges(
+          fclDdpAduanaData.breakdown,
+          fclDdpAduanaData.totalContainers,
+        ),
+      };
+    }
+    if (isAereoDdp && aereoDdpAduanaData) {
+      return {
+        costoTransporte: aereoDdpAduanaData.costoTransporte,
+        seguroParaCIF: aereoDdpAduanaData.seguroParaCIF,
+        cif: aereoDdpAduanaData.cif,
+        total: aereoDdpAduanaData.total,
+        pdfItems: buildAereoDdpAduanaPdfCharges(aereoDdpAduanaData.breakdown),
+      };
+    }
+    return null;
+  }, [
+    isLclDdp,
+    lclDdpAduanaData,
+    isFclDdp,
+    fclDdpAduanaData,
+    isAereoDdp,
+    aereoDdpAduanaData,
   ]);
 
   const cargoDescriptionPreview = useMemo(() => {
@@ -1049,36 +1043,20 @@ function QuoteLASTMILE({
 
     const validUntil = getValidityDate().toISOString();
 
-    // Helper para crear un cobro fijo (income only, expense currency).
-    // Estos cobros se cargan al cliente sin gasto (expense queda en 0).
-    const buildFixedCharge = (
-      serviceId: number,
-      serviceCode: string,
-      unit: string,
-      amount: number,
-      reference: string,
-      notes: string,
-    ) => ({
-      service: { id: serviceId, code: serviceCode },
-      income: {
-        quantity: 1,
-        unit,
-        rate: amount,
-        amount,
-        showamount: amount,
-        payment: "Collect",
-        billApplyTo: "Other",
-        billTo: { name: effectiveUsername },
-        currency: { abbr: "USD" as const },
-        reference,
-        showOnDocument: true,
-        notes,
-      },
-      expense: { currency: { abbr: "USD" as const } },
-    });
-
-    const buildAduanaContextNote = (servicioLabel: string) =>
-      `Aduana/Nacionalización ${servicioLabel}. Valor mercadería: ${valorMercaderiaDDPNum.toFixed(2)} USD; Transporte: ${extraportData.costoTransporte.toFixed(2)} USD; Seguro${parseFloat((valorSeguroDDP || "").replace(",", ".")) > 0 ? "" : " (teórico)"}: ${extraportData.seguroParaCIF.toFixed(2)} USD`;
+    const buildAduanaContextNote = (servicioLabel: string) => {
+      const src =
+        servicioLabel === "LCL DDP" && lclDdpAduanaData
+          ? lclDdpAduanaData
+          : servicioLabel === "FCL DDP" && fclDdpAduanaData
+            ? fclDdpAduanaData
+            : servicioLabel === "AÉREO DDP" && aereoDdpAduanaData
+              ? aereoDdpAduanaData
+              : null;
+      if (!src) {
+        return `Aduana/Nacionalización ${servicioLabel}. Valor mercadería: ${valorMercaderiaDDPNum.toFixed(2)} USD`;
+      }
+      return `Aduana/Nacionalización ${servicioLabel}. Valor mercadería: ${valorMercaderiaDDPNum.toFixed(2)} USD; Transporte: ${src.costoTransporte.toFixed(2)} USD; Seguro${parseFloat((valorSeguroDDP || "").replace(",", ".")) > 0 ? "" : " (teórico)"}: ${src.seguroParaCIF.toFixed(2)} USD`;
+    };
 
     const charges: any[] = [];
     const skipAutomatedPricing = deliveryVespucioZone === "outside";
@@ -1088,124 +1066,33 @@ function QuoteLASTMILE({
       servicioSel === "LCL" &&
       (incotermSel === "DAP" || incotermSel === "DDP")
     ) {
-      const incotermLabel = incotermSel; // "DAP" | "DDP"
-      // -----------------------------------------------------------------
-      // COBROS FIJOS (LCL + DAP / DDP)
-      // -----------------------------------------------------------------
-      charges.push(
-        buildFixedCharge(
-          134698,
-          "H",
-          "MIN",
-          75,
-          "Amount to Handling",
-          `Handling - LCL ${incotermLabel} (Última Milla)`,
-        ),
-      );
-      charges.push(
-        buildFixedCharge(
-          134703,
-          "BANK",
-          "MIN",
-          50,
-          "Amount to Banking Charge",
-          `Banking Charge - LCL ${incotermLabel} (Última Milla)`,
-        ),
-      );
-      charges.push(
-        buildFixedCharge(
-          134710,
-          "GL",
-          "MIN",
-          65,
-          "Amount to Gastos Locales",
-          `Gastos Locales - LCL ${incotermLabel} (Última Milla)`,
-        ),
-      );
-
-      // -----------------------------------------------------------------
-      // COBRO VARIABLE 1: DOCUMENTATION OCEAN - LCL (10 USD por m³)
-      // -----------------------------------------------------------------
-      const totalM3 = Number(cargoTotals.volume.toFixed(3));
-      const docRate = 10;
-      const docAmount = Number((totalM3 * docRate).toFixed(2));
-      charges.push({
-        service: { id: 134711, code: "DOC LCL" },
-        income: {
-          quantity: totalM3,
-          unit: "m3",
-          rate: docRate,
-          amount: docAmount,
-          showamount: docAmount,
-          payment: "Collect",
-          billApplyTo: "Other",
-          billTo: { name: effectiveUsername },
-          currency: { abbr: "USD" as const },
-          reference: "Amount to Documentation Ocean - LCL",
-          showOnDocument: true,
-          notes: `Documentation Ocean LCL - ${totalM3.toFixed(3)} m³ × ${docRate} USD/m³`,
-        },
-        expense: { currency: { abbr: "USD" as const } },
-      });
-
-      // -----------------------------------------------------------------
-      // COBRO VARIABLE 2: DELIVERY - TRUCKING (bracket por kg/m³)
-      // -----------------------------------------------------------------
-      const bracket = findDeliveryBracket(
+      const bracket = findLclDeliveryBracket(
         cargoTotals.realWeight,
         cargoTotals.volume,
       );
-      if (bracket) {
-        const incomeAmount = applyVespucioSurcharge(
-          Number(bracket.amount.toFixed(2)),
-          deliveryVespucioZone,
-        );
-        const expenseAmount = Number((incomeAmount / 1.1).toFixed(2));
-        const qty = Number(bracket.quantity.toFixed(3));
-        const incomeRate =
-          qty > 0 ? Number((incomeAmount / qty).toFixed(4)) : incomeAmount;
-        const expenseRate =
-          qty > 0 ? Number((expenseAmount / qty).toFixed(4)) : expenseAmount;
-        charges.push({
-          service: { id: 134724, code: "DELV" },
-          income: {
-            quantity: qty,
-            unit: bracket.unit,
-            rate: incomeRate,
-            amount: incomeAmount,
-            showamount: incomeAmount,
-            payment: "Collect",
-            billApplyTo: "Other",
-            billTo: { name: effectiveUsername },
-            currency: { abbr: "USD" as const },
-            reference: "Amount to Delivery - Trucking",
-            showOnDocument: true,
-            notes: `Delivery Trucking - bracket ${bracket.bracketIndex + 1} (≤${LCL_DAP_DELIVERY_BRACKETS[bracket.bracketIndex].maxKg}kg / ≤${LCL_DAP_DELIVERY_BRACKETS[bracket.bracketIndex].maxM3}m³) por ${bracket.unit === "m3" ? "volumen" : "peso volumétrico"}`,
-          },
-          expense: {
-            quantity: qty,
-            unit: bracket.unit,
-            rate: expenseRate,
-            amount: expenseAmount,
-            showamount: expenseAmount,
-            payment: "Collect",
-            billApplyTo: "Other",
-            billTo: { name: effectiveUsername },
-            currency: { abbr: "USD" as const },
-            reference: "Expense Delivery - Trucking",
-            showOnDocument: true,
-            notes: `Delivery Trucking expense - income / 1.10`,
-          },
-        });
-      }
+      const deliveryIncomeUsd = bracket
+        ? applyVespucioSurcharge(
+            Number(bracket.amount.toFixed(2)),
+            deliveryVespucioZone,
+          )
+        : 0;
 
-      // -----------------------------------------------------------------
-      // COBROS ADUANA (solo LCL + DDP): desglose por concepto Linbis
-      // -----------------------------------------------------------------
-      if (incotermSel === "DDP" && extraportData.breakdown) {
+      charges.push(
+        ...buildLclOperationalLinbisCharges({
+          volumeM3: cargoTotals.volume,
+          realWeightKg: cargoTotals.realWeight,
+          billToName: effectiveUsername,
+          incotermLabel: incotermSel,
+          deliveryIncomeUsd,
+          bracket,
+        }),
+      );
+
+      // Aduana LCL DDP — sistema propio (Handlers/LASTMILE/LCL)
+      if (incotermSel === "DDP" && lclDdpAduanaData) {
         charges.push(
-          ...buildAduanaLinbisCharges(
-            extraportData.breakdown,
+          ...buildLclDdpAduanaLinbisCharges(
+            lclDdpAduanaData.breakdown,
             effectiveUsername,
             buildAduanaContextNote("LCL DDP"),
           ),
@@ -1216,123 +1103,41 @@ function QuoteLASTMILE({
       servicioSel === "FCL" &&
       (incotermSel === "DAP" || incotermSel === "DDP")
     ) {
-      // -----------------------------------------------------------------
-      // FCL + DAP / FCL + DDP — Cobros fijos
-      // -----------------------------------------------------------------
-      // FCL+DDP usa exactamente los mismos cobros que FCL+DAP y agrega
-      // al final el desglose de Aduana / Nacionalización por concepto Linbis.
-      const fclLabel = `FCL ${incotermSel}`;
-      charges.push(
-        buildFixedCharge(
-          134698,
-          "H",
-          "MIN",
-          75,
-          "Amount to Handling",
-          `Handling - ${fclLabel} (Última Milla)`,
-        ),
-      );
-      charges.push(
-        buildFixedCharge(
-          134703,
-          "BANK",
-          "MIN",
-          50,
-          "Amount to Banking Charge",
-          `Banking Charge - ${fclLabel} (Última Milla)`,
-        ),
-      );
-      charges.push(
-        buildFixedCharge(
-          134795,
-          "B",
-          "MIN",
-          60,
-          "Amount to BL",
-          `BL - ${fclLabel} (Última Milla)`,
-        ),
-      );
-
-      // -----------------------------------------------------------------
-      // FCL + DAP — Cobros variables (TT y DTHC) por tipo de contenedor
-      // -----------------------------------------------------------------
-      // Tarifas por tipo de contenedor:
-      //   20GP  -> TT 690.20 USD/cont, DTHC 390.915 USD/cont
-      //   40HQ  -> TT 547.40 USD/cont, DTHC 427.805 USD/cont
-      //   40NOR -> TT 547.40 USD/cont, DTHC 427.805 USD/cont
-      // Se genera UNA línea por cada tipo de contenedor con qty > 0,
-      // tanto para TT (id 134796) como para DTHC (id 134807).
-      const containerTypes: Array<{
-        code: "20GP" | "40HQ" | "40NOR";
-        qty: number;
-        ttRate: number;
-        dthcRate: number;
-      }> = [
-          { code: "20GP", qty: cont20, ttRate: fclTtFromDb.ttRate20GP, dthcRate: 390.915 },
-          { code: "40HQ", qty: cont40HQ, ttRate: fclTtFromDb.ttRate40, dthcRate: 427.805 },
-          { code: "40NOR", qty: cont40NOR, ttRate: fclTtFromDb.ttRate40, dthcRate: 427.805 },
-        ];
-
-      for (const c of containerTypes) {
+      const qty = {
+        qty20GP: cont20,
+        qty40HQ: cont40HQ,
+        qty40NOR: cont40NOR,
+      };
+      const lines = buildFclContainerLines(qty, {
+        ttRate20GP: fclTtFromDb.ttRate20GP,
+        ttRate40: fclTtFromDb.ttRate40,
+      });
+      const ttIncomeByCode: Partial<Record<FclContainerCode, number>> = {};
+      for (const c of lines) {
         if (c.qty <= 0) continue;
-        const ttAmount = applyVespucioSurcharge(
+        ttIncomeByCode[c.code] = applyVespucioSurcharge(
           Number((c.ttRate * c.qty).toFixed(2)),
           deliveryVespucioZone,
         );
-        const ttRateEffective =
-          c.qty > 0 ? Number((ttAmount / c.qty).toFixed(2)) : ttAmount;
-        charges.push({
-          service: { id: 134796, code: "TT" },
-          income: {
-            quantity: c.qty,
-            unit: "CONTENEDOR",
-            rate: ttRateEffective,
-            amount: ttAmount,
-            showamount: ttAmount,
-            payment: "Collect",
-            billApplyTo: "Other",
-            billTo: { name: effectiveUsername },
-            currency: { abbr: "USD" as const },
-            reference: "Amount to Transporte Terrestre",
-            showOnDocument: true,
-            notes: `Transporte Terrestre - ${c.qty} contenedor${c.qty > 1 ? "es" : ""} ${c.code} × ${ttRateEffective} USD`,
-          },
-          expense: { currency: { abbr: "USD" as const } },
-        });
       }
 
-      for (const c of containerTypes) {
-        if (c.qty <= 0) continue;
-        const dthcAmount = Number((c.dthcRate * c.qty).toFixed(3));
-        charges.push({
-          service: { id: 134807, code: "D" },
-          income: {
-            quantity: c.qty,
-            unit: "CONTENEDOR",
-            rate: c.dthcRate,
-            amount: dthcAmount,
-            showamount: dthcAmount,
-            payment: "Collect",
-            billApplyTo: "Other",
-            billTo: { name: effectiveUsername },
-            currency: { abbr: "USD" as const },
-            reference: "Amount to DTHC",
-            showOnDocument: true,
-            notes: `DTHC - ${c.qty} contenedor${c.qty > 1 ? "es" : ""} ${c.code} × ${c.dthcRate} USD`,
-          },
-          expense: { currency: { abbr: "USD" as const } },
-        });
-      }
+      charges.push(
+        ...buildFclOperationalLinbisCharges({
+          lines,
+          ttIncomeByCode,
+          billToName: effectiveUsername,
+          incotermLabel: incotermSel,
+        }),
+      );
 
-      // -----------------------------------------------------------------
-      // FCL + DDP — Cobros aduana desglosados por concepto Linbis
-      // -----------------------------------------------------------------
-      if (incotermSel === "DDP" && extraportData.breakdown) {
+      // Aduana FCL DDP — sistema propio (Handlers/LASTMILE/FCL)
+      if (incotermSel === "DDP" && fclDdpAduanaData) {
         charges.push(
-          ...buildAduanaLinbisCharges(
-            extraportData.breakdown,
+          ...buildFclDdpAduanaLinbisCharges(
+            fclDdpAduanaData.breakdown,
             effectiveUsername,
             buildAduanaContextNote("FCL DDP"),
+            fclDdpAduanaData.totalContainers,
           ),
         );
       }
@@ -1341,102 +1146,31 @@ function QuoteLASTMILE({
       servicioSel === "AÉREO" &&
       (incotermSel === "DAP" || incotermSel === "DDP")
     ) {
-      // -----------------------------------------------------------------
-      // AÉREO + DAP / AÉREO + DDP — Cobros fijos
-      // -----------------------------------------------------------------
-      // AÉREO+DDP usa exactamente los mismos cobros que AÉREO+DAP y agrega
-      // LAC (90 USD) y el desglose de Aduana / Nacionalización por concepto.
-      const aereoLabel = `AÉREO ${incotermSel}`;
+      const ttBracket = findAereoTtBracket(cargoTotals.realWeight);
+      const ttIncomeUsd = ttBracket
+        ? applyVespucioSurcharge(ttBracket.amount, deliveryVespucioZone)
+        : 0;
+
       charges.push(
-        buildFixedCharge(
-          134954,
-          "D",
-          "Each",
-          190,
-          "Amount to Desconsolidación",
-          `Desconsolidación - ${aereoLabel} (Última Milla)`,
-        ),
-      );
-      charges.push(
-        buildFixedCharge(
-          134698,
-          "H",
-          "MIN",
-          60,
-          "Amount to Handling",
-          `Handling - ${aereoLabel} (Última Milla)`,
-        ),
-      );
-      charges.push(
-        buildFixedCharge(
-          134703,
-          "BANK",
-          "MIN",
-          50,
-          "Amount to Banking Charge",
-          `Banking Charge - ${aereoLabel} (Última Milla)`,
-        ),
+        ...buildAereoOperationalLinbisCharges({
+          billToName: effectiveUsername,
+          incotermLabel: incotermSel,
+          realWeightKg: cargoTotals.realWeight,
+          ttBracket,
+          ttIncomeUsd,
+        }),
       );
 
-      // -----------------------------------------------------------------
-      // AÉREO + DAP / DDP — Cobro variable Transporte Terrestre (TT)
-      // -----------------------------------------------------------------
-      // Tarifa fija por bracket de peso real total (kg) sumando todas las piezas:
-      //   1-300   -> 85.09 USD
-      //   301-500 -> 91.63 USD
-      //   501-1000 -> 104.72 USD
-      //   1001-1500 -> 117.81 USD
-      //   1501-2000 -> 163.63 USD
-      const ttBracket = findAereoTTBracket(cargoTotals.realWeight);
-      if (ttBracket) {
-        const ttAmount = applyVespucioSurcharge(
-          ttBracket.amount,
-          deliveryVespucioZone,
-        );
-        charges.push({
-          service: { id: 134796, code: "TT" },
-          income: {
-            quantity: 1,
-            unit: "Each",
-            rate: ttAmount,
-            amount: ttAmount,
-            showamount: ttAmount,
-            payment: "Collect",
-            billApplyTo: "Other",
-            billTo: { name: effectiveUsername },
-            currency: { abbr: "USD" as const },
-            reference: "Amount to Transporte Terrestre",
-            showOnDocument: true,
-            notes: `Transporte Terrestre - bracket ≤${ttBracket.maxKg}kg (peso real total: ${cargoTotals.realWeight.toFixed(2)} kg)`,
-          },
-          expense: { currency: { abbr: "USD" as const } },
-        });
-      }
-
-      // -----------------------------------------------------------------
-      // AÉREO + DDP — Cobros adicionales: LAC + desglose aduana
-      // -----------------------------------------------------------------
-      if (incotermSel === "DDP") {
-        // LOCAL AIRPORT CHARGES (LAC, id 134996) — fijo 90 USD
+      // Aduana AÉREO DDP — sistema propio (Handlers/LASTMILE/AEREO)
+      // Incluye LAC como cobro aparte (fuera del CIF).
+      if (incotermSel === "DDP" && aereoDdpAduanaData) {
         charges.push(
-          buildFixedCharge(
-            134996,
-            "LAC",
-            "Each",
-            90,
-            "Amount to Local Airport Charges",
-            "Local Airport Charges - AÉREO DDP (Última Milla)",
+          ...buildAereoDdpAduanaLinbisCharges(
+            aereoDdpAduanaData.breakdown,
+            effectiveUsername,
+            buildAduanaContextNote("AÉREO DDP"),
           ),
         );
-        if (extraportData.breakdown) {
-          charges.push(
-            ...buildAduanaLinbisCharges(
-              extraportData.breakdown,
-              effectiveUsername,
-              buildAduanaContextNote("AÉREO DDP"),
-            ),
-          );
-        }
       }
     } else if (!skipAutomatedPricing) {
       // Resto de combinaciones: placeholder pendiente de tarifa
@@ -1541,13 +1275,13 @@ function QuoteLASTMILE({
       servicioSel === "LCL" &&
       (incotermSel === "DAP" || incotermSel === "DDP")
     ) {
-      const bracket = findDeliveryBracket(
+      const bracket = findLclDeliveryBracket(
         cargoTotals.realWeight,
         cargoTotals.volume,
       );
       if (!bracket) {
         setError(
-          `La carga excede el rango disponible para LCL ${incotermSel} (máximo ${LCL_DAP_DELIVERY_MAX_KG} kg de peso real o ${LCL_DAP_DELIVERY_MAX_M3} m³ de volumen). Por favor contacta a un ejecutivo para una cotización personalizada.`,
+          `La carga excede el rango disponible para LCL ${incotermSel} (máximo ${LCL_DELIVERY_MAX_KG} kg de peso real o ${LCL_DELIVERY_MAX_M3} m³ de volumen). Por favor contacta a un ejecutivo para una cotización personalizada.`,
         );
         return;
       }
@@ -1710,76 +1444,27 @@ function QuoteLASTMILE({
         servicioSel === "LCL" &&
         (incotermSel === "DAP" || incotermSel === "DDP")
       ) {
-        // Cobros fijos
-        const fixedCharges: PDFCharge[] = [
-          {
-            code: "H",
-            description: "Handling",
-            quantity: 1,
-            unit: "MIN",
-            rate: 75,
-            amount: 75,
-          },
-          {
-            code: "BANK",
-            description: "Banking Charge",
-            quantity: 1,
-            unit: "MIN",
-            rate: 50,
-            amount: 50,
-          },
-          {
-            code: "GL",
-            description: "Gastos Locales",
-            quantity: 1,
-            unit: "MIN",
-            rate: 65,
-            amount: 65,
-          },
-        ];
-
-        // DOC LCL variable
-        const totalM3 = Number(cargoTotals.volume.toFixed(3));
-        const docRate = 10;
-        const docAmount = Number((totalM3 * docRate).toFixed(2));
-        const docCharge: PDFCharge = {
-          code: "DOC LCL",
-          description: "Documentation Ocean - LCL",
-          quantity: totalM3,
-          unit: "m3",
-          rate: docRate,
-          amount: docAmount,
-        };
-
-        // DELIVERY variable
-        const bracket = findDeliveryBracket(
+        const bracket = findLclDeliveryBracket(
           cargoTotals.realWeight,
           cargoTotals.volume,
         );
-        const deliveryCharges: PDFCharge[] = [];
-        if (bracket) {
-          const incomeAmount = applyVespucioSurcharge(
-            Number(bracket.amount.toFixed(2)),
-            deliveryVespucioZone,
+        const deliveryIncomeUsd = bracket
+          ? applyVespucioSurcharge(
+              Number(bracket.amount.toFixed(2)),
+              deliveryVespucioZone,
+            )
+          : 0;
+
+        pdfCharges = buildLclOperationalPdfCharges({
+          volumeM3: cargoTotals.volume,
+          bracket,
+          deliveryIncomeUsd,
+        });
+
+        if (incotermSel === "DDP" && lclDdpAduanaData) {
+          pdfCharges.push(
+            ...buildLclDdpAduanaPdfCharges(lclDdpAduanaData.breakdown),
           );
-          const qty = Number(bracket.quantity.toFixed(3));
-          const incomeRate =
-            qty > 0 ? Number((incomeAmount / qty).toFixed(4)) : incomeAmount;
-          deliveryCharges.push({
-            code: "DELV",
-            description: "Delivery - Trucking",
-            quantity: qty,
-            unit: bracket.unit,
-            rate: incomeRate,
-            amount: incomeAmount,
-          });
-        }
-
-        pdfCharges = [...fixedCharges, docCharge, ...deliveryCharges];
-
-        // Si es LCL + DDP añadimos el desglose de aduana
-        if (incotermSel === "DDP" && extraportData.breakdown) {
-          pdfCharges.push(...buildAduanaPdfCharges(extraportData.breakdown));
         }
 
         pdfTotalCharges = pdfCharges.reduce((sum, ch) => sum + ch.amount, 0);
@@ -1791,79 +1476,36 @@ function QuoteLASTMILE({
         servicioSel === "FCL" &&
         (incotermSel === "DAP" || incotermSel === "DDP")
       ) {
-        const fixedCharges: PDFCharge[] = [
-          {
-            code: "H",
-            description: "Handling",
-            quantity: 1,
-            unit: "MIN",
-            rate: 75,
-            amount: 75,
-          },
-          {
-            code: "BANK",
-            description: "Banking Charge",
-            quantity: 1,
-            unit: "MIN",
-            rate: 50,
-            amount: 50,
-          },
-          {
-            code: "B",
-            description: "BL",
-            quantity: 1,
-            unit: "MIN",
-            rate: 60,
-            amount: 60,
-          },
-        ];
+        const qty = {
+          qty20GP: cont20,
+          qty40HQ: cont40HQ,
+          qty40NOR: cont40NOR,
+        };
+        const lines = buildFclContainerLines(qty, {
+          ttRate20GP: fclTtFromDb.ttRate20GP,
+          ttRate40: fclTtFromDb.ttRate40,
+        });
+        const ttIncomeByCode: Partial<Record<FclContainerCode, number>> = {};
+        for (const c of lines) {
+          if (c.qty <= 0) continue;
+          ttIncomeByCode[c.code] = applyVespucioSurcharge(
+            Number((c.ttRate * c.qty).toFixed(2)),
+            deliveryVespucioZone,
+          );
+        }
 
-        const containerTypes: Array<{
-          code: "20GP" | "40HQ" | "40NOR";
-          qty: number;
-          ttRate: number;
-          dthcRate: number;
-        }> = [
-            { code: "20GP", qty: cont20, ttRate: fclTtFromDb.ttRate20GP, dthcRate: 390.915 },
-            { code: "40HQ", qty: cont40HQ, ttRate: fclTtFromDb.ttRate40, dthcRate: 427.805 },
-            { code: "40NOR", qty: cont40NOR, ttRate: fclTtFromDb.ttRate40, dthcRate: 427.805 },
-          ];
+        pdfCharges = buildFclOperationalPdfCharges({
+          lines,
+          ttIncomeByCode,
+        });
 
-        const ttCharges: PDFCharge[] = containerTypes
-          .filter((c) => c.qty > 0)
-          .map((c) => {
-            const amount = applyVespucioSurcharge(
-              Number((c.ttRate * c.qty).toFixed(2)),
-              deliveryVespucioZone,
-            );
-            const rate =
-              c.qty > 0 ? Number((amount / c.qty).toFixed(2)) : amount;
-            return {
-              code: "TT",
-              description: `Transporte Terrestre (${c.code})`,
-              quantity: c.qty,
-              unit: "CONTENEDOR",
-              rate,
-              amount,
-            };
-          });
-
-        const dthcCharges: PDFCharge[] = containerTypes
-          .filter((c) => c.qty > 0)
-          .map((c) => ({
-            code: "D",
-            description: `DTHC (${c.code})`,
-            quantity: c.qty,
-            unit: "CONTENEDOR",
-            rate: c.dthcRate,
-            amount: Number((c.dthcRate * c.qty).toFixed(3)),
-          }));
-
-        pdfCharges = [...fixedCharges, ...ttCharges, ...dthcCharges];
-
-        // FCL + DDP: agregar desglose aduana al PDF
-        if (incotermSel === "DDP" && extraportData.breakdown) {
-          pdfCharges.push(...buildAduanaPdfCharges(extraportData.breakdown));
+        if (incotermSel === "DDP" && fclDdpAduanaData) {
+          pdfCharges.push(
+            ...buildFclDdpAduanaPdfCharges(
+              fclDdpAduanaData.breakdown,
+              fclDdpAduanaData.totalContainers,
+            ),
+          );
         }
 
         pdfTotalCharges = pdfCharges.reduce((sum, ch) => sum + ch.amount, 0);
@@ -1875,64 +1517,20 @@ function QuoteLASTMILE({
         servicioSel === "AÉREO" &&
         (incotermSel === "DAP" || incotermSel === "DDP")
       ) {
-        const fixedCharges: PDFCharge[] = [
-          {
-            code: "D",
-            description: "Desconsolidación",
-            quantity: 1,
-            unit: "Each",
-            rate: 190,
-            amount: 190,
-          },
-          {
-            code: "H",
-            description: "Handling",
-            quantity: 1,
-            unit: "MIN",
-            rate: 60,
-            amount: 60,
-          },
-          {
-            code: "BANK",
-            description: "Banking Charge",
-            quantity: 1,
-            unit: "MIN",
-            rate: 50,
-            amount: 50,
-          },
-        ];
+        const ttBracket = findAereoTtBracket(cargoTotals.realWeight);
+        const ttIncomeUsd = ttBracket
+          ? applyVespucioSurcharge(ttBracket.amount, deliveryVespucioZone)
+          : 0;
 
-        pdfCharges = [...fixedCharges];
+        pdfCharges = buildAereoOperationalPdfCharges({
+          ttBracket,
+          ttIncomeUsd,
+        });
 
-        const ttBracket = findAereoTTBracket(cargoTotals.realWeight);
-        if (ttBracket) {
-          const ttAmount = applyVespucioSurcharge(
-            ttBracket.amount,
-            deliveryVespucioZone,
+        if (incotermSel === "DDP" && aereoDdpAduanaData) {
+          pdfCharges.push(
+            ...buildAereoDdpAduanaPdfCharges(aereoDdpAduanaData.breakdown),
           );
-          pdfCharges.push({
-            code: "TT",
-            description: `Transporte Terrestre (≤${ttBracket.maxKg}kg)`,
-            quantity: 1,
-            unit: "Each",
-            rate: ttAmount,
-            amount: ttAmount,
-          });
-        }
-
-        // AÉREO + DDP: agregar LAC + desglose aduana al PDF
-        if (incotermSel === "DDP") {
-          pdfCharges.push({
-            code: "LAC",
-            description: "Local Airport Charges",
-            quantity: 1,
-            unit: "Each",
-            rate: 90,
-            amount: 90,
-          });
-          if (extraportData.breakdown) {
-            pdfCharges.push(...buildAduanaPdfCharges(extraportData.breakdown));
-          }
         }
 
         pdfTotalCharges = pdfCharges.reduce((sum, ch) => sum + ch.amount, 0);
@@ -3079,8 +2677,8 @@ function QuoteLASTMILE({
                 </div>
               </div>
 
-              {/* Información de Aduana (LCL+DDP y FCL+DDP) */}
-              {needsAduanaCard && (
+              {/* Información de Aduana (LCL+DDP, FCL+DDP, AÉREO+DDP) */}
+              {needsAduanaCard && aduanaDisplayData && (
                 <div className="p-3 bg-light rounded border mb-3">
                   <h6 className="fw-bold mb-3">
                     <i className="bi bi-shield-check me-2"></i>
@@ -3097,7 +2695,7 @@ function QuoteLASTMILE({
                       Valor del transporte:
                     </div>
                     <div className="col-6 text-end fw-bold">
-                      USD {extraportData.costoTransporte.toFixed(2)}
+                      USD {aduanaDisplayData.costoTransporte.toFixed(2)}
                     </div>
                     <div className="col-6 text-muted">
                       Valor del seguro
@@ -3106,30 +2704,28 @@ function QuoteLASTMILE({
                         : " (teórico):"}
                     </div>
                     <div className="col-6 text-end fw-bold">
-                      USD {extraportData.seguroParaCIF.toFixed(2)}
+                      USD {aduanaDisplayData.seguroParaCIF.toFixed(2)}
                     </div>
                     <div className="col-6 text-muted">CIF:</div>
                     <div className="col-6 text-end fw-bold">
-                      USD {extraportData.cif.toFixed(2)}
+                      USD {aduanaDisplayData.cif.toFixed(2)}
                     </div>
-                    {extraportData.breakdown && (
+                    {aduanaDisplayData.pdfItems.length > 0 && (
                       <>
                         <div className="col-12 border-top my-2"></div>
                         <div className="col-12 text-muted fw-bold mb-1">
                           Desglose aduana / nacionalización:
                         </div>
-                        {buildAduanaPdfCharges(extraportData.breakdown).map(
-                          (item) => (
-                            <React.Fragment key={item.code}>
-                              <div className="col-6 text-muted ps-2">
-                                {item.description} ({item.code}):
-                              </div>
-                              <div className="col-6 text-end">
-                                USD {item.amount.toFixed(2)}
-                              </div>
-                            </React.Fragment>
-                          ),
-                        )}
+                        {aduanaDisplayData.pdfItems.map((item) => (
+                          <React.Fragment key={item.code}>
+                            <div className="col-6 text-muted ps-2">
+                              {item.description} ({item.code}):
+                            </div>
+                            <div className="col-6 text-end">
+                              USD {item.amount.toFixed(2)}
+                            </div>
+                          </React.Fragment>
+                        ))}
                       </>
                     )}
                     <div className="col-12 border-top my-2"></div>
@@ -3137,7 +2733,7 @@ function QuoteLASTMILE({
                       <strong>Total aduana:</strong>
                     </div>
                     <div className="col-6 text-end fw-bold">
-                      USD {extraportData.total.toFixed(2)}
+                      USD {aduanaDisplayData.total.toFixed(2)}
                     </div>
                   </div>
                 </div>
