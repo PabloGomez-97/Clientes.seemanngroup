@@ -202,22 +202,6 @@ export default function AnalisysSystem() {
       ? `${phaseMessage} ${t("analisysSystem.loading.stillWorking")}`
       : phaseMessage;
 
-  const scopedReport = useMemo(() => {
-    if (!baseReport) return null;
-    if (salesRepsFilter.length === 0 && !consigneeFilter.trim()) return baseReport;
-    return filterCommissionAnalysisReport(baseReport, {
-      salesReps: salesRepsFilter.length > 0 ? salesRepsFilter : undefined,
-      consignee: consigneeFilter.trim() || undefined,
-    });
-  }, [baseReport, salesRepsFilter, consigneeFilter]);
-
-  const report = scopedReport;
-
-  const comparisonBundle: ComparisonReportsBundle | null = useMemo(() => {
-    if (!scopedReport || !comparisonSuggestion) return null;
-    return getComparisonReports(scopedReport, comparisonSuggestion);
-  }, [scopedReport, comparisonSuggestion]);
-
   const salesRepOptions = useMemo(() => {
     if (!baseReport) return [];
     return [...baseReport.groups.map((group) => group.salesRep)].sort((a, b) =>
@@ -235,6 +219,32 @@ export default function AnalisysSystem() {
     }
     return [...set].sort((a, b) => a.localeCompare(b, "es"));
   }, [baseReport]);
+
+  const scopedReport = useMemo(() => {
+    if (!baseReport) return null;
+    const consignee = consigneeFilter.trim();
+    // Selecting every executive is equivalent to no sales-rep filter.
+    const effectiveSalesReps =
+      salesRepsFilter.length > 0 &&
+      salesRepOptions.length > 0 &&
+      salesRepsFilter.length >= salesRepOptions.length &&
+      salesRepOptions.every((rep) => salesRepsFilter.includes(rep))
+        ? []
+        : salesRepsFilter;
+
+    if (effectiveSalesReps.length === 0 && !consignee) return baseReport;
+    return filterCommissionAnalysisReport(baseReport, {
+      salesReps: effectiveSalesReps.length > 0 ? effectiveSalesReps : undefined,
+      consignee: consignee || undefined,
+    });
+  }, [baseReport, salesRepsFilter, salesRepOptions, consigneeFilter]);
+
+  const report = scopedReport;
+
+  const comparisonBundle: ComparisonReportsBundle | null = useMemo(() => {
+    if (!scopedReport || !comparisonSuggestion) return null;
+    return getComparisonReports(scopedReport, comparisonSuggestion);
+  }, [scopedReport, comparisonSuggestion]);
 
   const handleSectionChange = (section: AnalisysSectionId) => {
     setActiveSection(section);
@@ -302,6 +312,16 @@ export default function AnalisysSystem() {
       setActiveSuggestion(null);
     }
 
+    // Clear result filters only for a fresh generate/suggestion — not on enrich
+    // retry or force refresh (those should keep the user's current scope).
+    if (!options?.enrichOnly && !forceRefresh) {
+      setSalesRepsFilter([]);
+      setConsigneeFilter("");
+      setSelectedOperation(null);
+    } else if (!options?.enrichOnly) {
+      setSelectedOperation(null);
+    }
+
     setLoading(true);
     setEnriching(false);
     setPartialEnrichError(false);
@@ -357,9 +377,6 @@ export default function AnalisysSystem() {
 
       if (generationId !== generationIdRef.current) return;
 
-      setSalesRepsFilter([]);
-      setConsigneeFilter("");
-      setSelectedOperation(null);
       setBuildPhase("complete");
       setPartialEnrichError(false);
     } catch (err) {
@@ -405,7 +422,15 @@ export default function AnalisysSystem() {
     });
   };
 
-  const hasResultsFilters = Boolean(salesRepsFilter.length > 0 || consigneeFilter.trim());
+  const hasResultsFilters = Boolean(
+    (salesRepsFilter.length > 0 &&
+      !(
+        salesRepOptions.length > 0 &&
+        salesRepsFilter.length >= salesRepOptions.length &&
+        salesRepOptions.every((rep) => salesRepsFilter.includes(rep))
+      )) ||
+      consigneeFilter.trim(),
+  );
   const showResultsFilterButton = Boolean(baseReport) && !loading;
 
   useEffect(() => {
