@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -13,9 +13,10 @@ import {
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import * as SecureStore from "expo-secure-store";
 import { WebView } from "react-native-webview";
 import { useTranslation } from "react-i18next";
-import { useAuth } from "./AuthContext";
+import { LAST_LOGIN_EMAIL_KEY, useAuth } from "./AuthContext";
 import { brand, radii, spacing } from "../theme/brand";
 import { fonts } from "../theme/typography";
 
@@ -40,6 +41,21 @@ export default function Login() {
   const [captchaRequired, setCaptchaRequired] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const turnstileKeyRef = useRef(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const saved = await SecureStore.getItemAsync(LAST_LOGIN_EMAIL_KEY);
+        if (!cancelled && saved) setEmail(saved);
+      } catch {
+        // Sin correo guardado: el usuario lo ingresa normalmente.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const changeLanguage = (language: string) => {
     void i18n.changeLanguage(language);
@@ -205,8 +221,9 @@ export default function Login() {
                 autoCapitalize="none"
                 autoCorrect={false}
                 keyboardType="email-address"
-                textContentType="emailAddress"
-                autoComplete="email"
+                textContentType="username"
+                autoComplete="username"
+                importantForAutofill="yes"
                 returnKeyType="go"
                 enablesReturnKeyAutomatically
                 placeholder={t("home.login.emailPlaceholder", {
@@ -257,6 +274,17 @@ export default function Login() {
 
               {err ? <Text style={styles.errorText}>{err}</Text> : null}
 
+              {/* Campo oculto: ayuda a iOS a emparejar usuario + clave del Llavero. */}
+              <TextInput
+                value={email}
+                editable={false}
+                caretHidden
+                importantForAutofill="yes"
+                textContentType="username"
+                autoComplete="username"
+                style={styles.autofillAnchor}
+              />
+
               <TextInput
                 ref={passwordRef}
                 value={password}
@@ -264,6 +292,7 @@ export default function Login() {
                 secureTextEntry
                 textContentType="password"
                 autoComplete="password"
+                importantForAutofill="yes"
                 returnKeyType="go"
                 enablesReturnKeyAutomatically
                 placeholder={t("home.login.passwordPlaceholder")}
@@ -459,6 +488,13 @@ const styles = StyleSheet.create({
   },
   inputFocused: {
     borderColor: brand.primary,
+  },
+  autofillAnchor: {
+    position: "absolute",
+    width: 1,
+    height: 1,
+    opacity: 0,
+    zIndex: -1,
   },
   primaryButton: {
     backgroundColor: brand.primary,

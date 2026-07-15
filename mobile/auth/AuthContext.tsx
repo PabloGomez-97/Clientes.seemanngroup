@@ -31,6 +31,7 @@ type AuthCtx = {
 
 const TOKEN_KEY = "auth_token";
 const USERNAME_KEY = "active_username";
+export const LAST_LOGIN_EMAIL_KEY = "last_login_email";
 
 const AuthContext = createContext<AuthCtx | null>(null);
 
@@ -108,6 +109,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     );
     setToken(data.token);
     await SecureStore.setItemAsync(TOKEN_KEY, data.token);
+    await SecureStore.setItemAsync(LAST_LOGIN_EMAIL_KEY, email.trim());
     setUser(data.user);
     await setActiveUsername(data.user.usernames[0]);
     return data.user;
@@ -119,6 +121,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setActiveUsernameState("");
     await SecureStore.deleteItemAsync(TOKEN_KEY);
     await SecureStore.deleteItemAsync(USERNAME_KEY);
+    // Conservamos LAST_LOGIN_EMAIL_KEY para reutilizar el correo al volver a entrar.
   };
 
   return (
