@@ -113,7 +113,7 @@ export const privacyPolicyDocument: LegalDocument = {
             ],
             [
               "Datos de comunicaciones",
-              "Contenido de mensajes enviados a través de nuestro chatbot, formularios de contacto y correo electrónico",
+              "Contenido de mensajes enviados a través de formularios de contacto y correo electrónico",
               "Generados por el usuario",
             ],
           ],
@@ -164,7 +164,7 @@ export const privacyPolicyDocument: LegalDocument = {
             "Mejora del servicio y análisis: Análisis de uso de la plataforma (con datos anonimizados o seudonimizados), métricas de rendimiento y detección de anomalías.",
             "Cumplimiento legal y regulatorio: Comunicación a autoridades chilenas competentes, en especial el Servicio Nacional de Aduanas de Chile y el Servicio de Impuestos Internos (SII), así como cumplimiento de obligaciones de comercio exterior, control de exportaciones y prevención de delitos aplicables.",
             "Marketing y comunicaciones comerciales (solo con consentimiento): Envío de información sobre nuevas rutas, tarifas promocionales y actualizaciones del sector logístico.",
-            "Atención al cliente: Gestión de solicitudes, reclamos, consultas y soporte técnico a través del chatbot y canales convencionales.",
+            "Atención al cliente: Gestión de solicitudes, reclamos, consultas y soporte técnico a través de los canales convencionales de Seemann Group.",
           ],
         },
       ],
@@ -198,7 +198,7 @@ export const privacyPolicyDocument: LegalDocument = {
               "Obligación legal",
             ],
             [
-              "Proveedores tecnológicos (infraestructura cloud, almacenamiento, asistencia con IA)",
+              "Proveedores tecnológicos (infraestructura cloud y almacenamiento)",
               "Operación segura de la plataforma",
               "Contrato de encargo / interés legítimo compatible",
             ],

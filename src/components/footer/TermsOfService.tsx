@@ -188,9 +188,9 @@ function TermsOfService() {
                     <tr>
                       <td>Plataforma Digital</td>
                       <td>
-                        Portal web de gestión: cotizador en línea, tracking de
-                        envíos, gestión documental, reportería financiera y
-                        operacional, chatbot de asistencia con IA.
+                        Portal web y aplicación móvil de gestión: tracking de
+                        envíos, cotizaciones, gestión documental y reportería
+                        financiera y operacional.
                       </td>
                     </tr>
                     <tr>

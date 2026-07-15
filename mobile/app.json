@@ -18,7 +18,8 @@
       "buildNumber": "1",
       "infoPlist": {
         "CFBundleDisplayName": "Seemann Group",
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "LSApplicationQueriesSchemes": ["mailto", "tel"]
       },
       "privacyManifests": {
         "NSPrivacyAccessedAPITypes": [

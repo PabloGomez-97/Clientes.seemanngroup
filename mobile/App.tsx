@@ -13,7 +13,7 @@ import { AuthProvider, useAuth } from "./auth/AuthContext";
 import Login from "./auth/Login";
 import ClientTabs from "./navigation/ClientTabs";
 import { brand } from "./theme/brand";
-import { applyGlobalFonts, fonts } from "./theme/typography";
+import { applyGlobalFonts } from "./theme/typography";
 
 let globalFontsApplied = false;
 

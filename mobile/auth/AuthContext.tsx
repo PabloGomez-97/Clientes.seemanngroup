@@ -8,14 +8,9 @@ import {
 import * as SecureStore from "expo-secure-store";
 import {
   type AuthUser,
-  type Cliente,
-  type Ejecutivo,
-  ejecutivosRequest,
   loginRequest,
   meRequest,
-  misClientesRequest,
   MOBILE_API_BASE,
-  todosClientesRequest,
 } from "../../src/auth/authApi";
 
 export type User = AuthUser | null;
@@ -32,9 +27,6 @@ type AuthCtx = {
     turnstileToken?: string,
   ) => Promise<AuthUser>;
   logout: () => void;
-  getEjecutivos: () => Promise<Ejecutivo[]>;
-  getMisClientes: () => Promise<Cliente[]>;
-  getTodosClientes: () => Promise<Cliente[]>;
 };
 
 const TOKEN_KEY = "auth_token";
@@ -129,21 +121,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await SecureStore.deleteItemAsync(USERNAME_KEY);
   };
 
-  const getEjecutivos = async (): Promise<Ejecutivo[]> => {
-    if (!token) throw new Error("No hay sesión activa");
-    return ejecutivosRequest(MOBILE_API_BASE, token);
-  };
-
-  const getMisClientes = useCallback(async (): Promise<Cliente[]> => {
-    if (!token) throw new Error("No hay sesión activa");
-    return misClientesRequest(MOBILE_API_BASE, token);
-  }, [token]);
-
-  const getTodosClientes = useCallback(async (): Promise<Cliente[]> => {
-    if (!token) throw new Error("No hay sesión activa");
-    return todosClientesRequest(MOBILE_API_BASE, token);
-  }, [token]);
-
   return (
     <AuthContext.Provider
       value={{
@@ -156,9 +133,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         logout: () => {
           void logout();
         },
-        getEjecutivos,
-        getMisClientes,
-        getTodosClientes,
       }}
     >
       {children}

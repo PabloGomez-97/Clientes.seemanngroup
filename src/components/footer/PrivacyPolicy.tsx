@@ -247,8 +247,8 @@ function PrivacyPolicy() {
                     <tr>
                       <td>Datos de comunicaciones</td>
                       <td>
-                        Contenido de mensajes enviados a través de nuestro
-                        chatbot, formularios de contacto y correo electrónico
+                        Contenido de mensajes enviados a través de
+                        formularios de contacto y correo electrónico
                       </td>
                       <td>Generados por el usuario</td>
                     </tr>
@@ -386,8 +386,8 @@ function PrivacyPolicy() {
                 </li>
                 <li>
                   <strong>Atención al cliente:</strong> Gestión de solicitudes,
-                  reclamos, consultas y soporte técnico a través del chatbot y
-                  canales convencionales.
+                  reclamos, consultas y soporte técnico a través de los
+                  canales convencionales de Seemann Group.
                 </li>
               </ul>
             </div>
@@ -445,8 +445,8 @@ function PrivacyPolicy() {
                     </tr>
                     <tr>
                       <td>
-                        Proveedores tecnológicos (infraestructura cloud,
-                        almacenamiento, asistencia con IA)
+                        Proveedores tecnológicos (infraestructura cloud y
+                        almacenamiento)
                       </td>
                       <td>Operación segura de la plataforma</td>
                       <td>

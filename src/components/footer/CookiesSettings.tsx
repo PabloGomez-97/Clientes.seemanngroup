@@ -707,22 +707,6 @@ function CookiesSettings() {
                     </tr>
                     <tr>
                       <td>
-                        <strong>OpenAI</strong>
-                      </td>
-                      <td>Chatbot de asistencia con IA</td>
-                      <td>Funcional</td>
-                      <td>
-                        <a
-                          href="https://openai.com/policies/privacy-policy"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          openai.com/policies/privacy-policy
-                        </a>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td>
                         <strong>Meta (Facebook)</strong>
                       </td>
                       <td>Pixel de seguimiento publicitario</td>

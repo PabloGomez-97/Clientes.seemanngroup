@@ -15,7 +15,7 @@ export const termsOfServiceDocument: LegalDocument = {
       blocks: [
         {
           type: "para",
-          text: "El acceso y uso de la plataforma digital de Seemann Group (disponible en app.seemanngroup.com y sus subdominios) y la contratación de cualquiera de sus servicios logísticos implican la aceptación plena e incondicional de los presentes Términos de Servicio, así como de la Política de Privacidad y la Política de Cookies.",
+          text: "El acceso y uso de la plataforma digital de Seemann Group (disponible en portalclientes.seemanngroup.com, la aplicación móvil asociada y sus subdominios) y la contratación de cualquiera de sus servicios logísticos implican la aceptación plena e incondicional de los presentes Términos de Servicio, así como de la Política de Privacidad y la Política de Cookies.",
         },
         {
           type: "para",
@@ -62,7 +62,7 @@ export const termsOfServiceDocument: LegalDocument = {
             ],
             [
               "Plataforma Digital",
-              "Portal web de gestión: cotizador en línea, tracking de envíos, gestión documental, reportería financiera y operacional, chatbot de asistencia con IA.",
+              "Portal web y aplicación móvil de gestión: tracking de envíos, cotizaciones, gestión documental y reportería financiera y operacional.",
             ],
             [
               "Cotizaciones en Línea",
@@ -364,7 +364,7 @@ export const termsOfServiceDocument: LegalDocument = {
         },
         {
           type: "para",
-          text: "La versión vigente de estos Términos siempre estará disponible en app.seemanngroup.com/terms-of-service.",
+          text: "La versión vigente de estos Términos siempre estará disponible en portalclientes.seemanngroup.com/terms-of-service.",
         },
       ],
     },

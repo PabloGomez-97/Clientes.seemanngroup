@@ -118,7 +118,6 @@ export default function ConsultasGrid() {
 
   const openLauncher = (item: LauncherItem) => {
     if (item.kind === "tab") {
-      // Nested tab screens vary by stack; cast keeps navigation flexible.
       (navigation.navigate as (name: string, params?: object) => void)(
         item.tab,
         item.screen ? { screen: item.screen } : undefined,

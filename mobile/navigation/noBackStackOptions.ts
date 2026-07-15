@@ -1,7 +1,6 @@
 import type { NativeStackNavigationOptions } from "@react-navigation/native-stack";
 import { brand } from "../theme/brand";
 
-/** Stacks sin botón ni gesto de volver: salida solo por tab bar. */
 export const noBackStackOptions: NativeStackNavigationOptions = {
   headerStyle: { backgroundColor: brand.canvas },
   headerTintColor: brand.ink,
