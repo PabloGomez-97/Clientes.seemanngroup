@@ -183,7 +183,7 @@ export default function NewAirTrackingScreen() {
           <View style={styles.actions}>
             <Pressable
               style={styles.secondaryButton}
-              onPress={() => navigation.goBack()}
+              onPress={() => navigation.navigate("TrackeosList")}
               disabled={loading}
             >
               <Text style={styles.secondaryButtonText}>Cancelar</Text>

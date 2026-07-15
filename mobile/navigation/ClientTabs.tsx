@@ -2,7 +2,7 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import type { NavigatorScreenParams } from "@react-navigation/native";
 import { NavigationContainer } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
-import { Platform, StyleSheet } from "react-native";
+import { Platform, StyleSheet, Text } from "react-native";
 import DashboardScreen from "../screens/DashboardScreen";
 import CotizacionesStack from "./CotizacionesStack";
 import type { CotizacionesStackParamList } from "./CotizacionesStack";
@@ -13,6 +13,7 @@ import type { OperacionesStackParamList } from "./OperacionesStack";
 import TrackeosStack from "./TrackeosStack";
 import type { TrackeosStackParamList } from "./TrackeosStack";
 import { brand } from "../theme/brand";
+import { fonts } from "../theme/typography";
 
 export type ClientTabParamList = {
   Dashboard: undefined;
@@ -32,15 +33,15 @@ const TAB_ICON: Record<
   Trackeos: { outline: "navigate-outline", filled: "navigate" },
   Operaciones: { outline: "briefcase-outline", filled: "briefcase" },
   Cotizaciones: { outline: "document-text-outline", filled: "document-text" },
-  Menu: { outline: "menu-outline", filled: "menu" },
+  Menu: { outline: "ellipsis-horizontal-outline", filled: "ellipsis-horizontal" },
 };
 
 const TAB_LABEL: Record<keyof ClientTabParamList, string> = {
-  Dashboard: "Dashboard",
-  Trackeos: "Trackeos",
+  Dashboard: "Inicio",
+  Trackeos: "Seguimiento",
   Operaciones: "Operaciones",
   Cotizaciones: "Cotizaciones",
-  Menu: "Menú",
+  Menu: "Más",
 };
 
 export default function ClientTabs() {
@@ -49,32 +50,101 @@ export default function ClientTabs() {
       <Tab.Navigator
         screenOptions={({ route }) => ({
           headerShown: false,
-          tabBarActiveTintColor: brand.primary,
+          tabBarActiveTintColor: brand.navy,
           tabBarInactiveTintColor: brand.mutedLight,
           tabBarActiveBackgroundColor: "transparent",
           tabBarInactiveBackgroundColor: "transparent",
-          tabBarLabel: TAB_LABEL[route.name],
-          tabBarIcon: ({ color, size, focused }) => (
+          tabBarShowLabel: true,
+          tabBarLabel: ({ focused, color }) => (
+            <Text
+              style={[
+                styles.tabBarLabel,
+                { color },
+                focused && styles.tabBarLabelActive,
+              ]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.85}
+            >
+              {TAB_LABEL[route.name]}
+            </Text>
+          ),
+          tabBarIcon: ({ focused, color }) => (
             <Ionicons
               name={
                 focused
                   ? TAB_ICON[route.name].filled
                   : TAB_ICON[route.name].outline
               }
-              size={size}
+              size={22}
               color={color}
             />
           ),
           tabBarStyle: styles.tabBar,
-          tabBarLabelStyle: styles.tabBarLabel,
           tabBarItemStyle: styles.tabBarItem,
         })}
       >
         <Tab.Screen name="Dashboard" component={DashboardScreen} />
-        <Tab.Screen name="Trackeos" component={TrackeosStack} />
-        <Tab.Screen name="Operaciones" component={OperacionesStack} />
-        <Tab.Screen name="Cotizaciones" component={CotizacionesStack} />
-        <Tab.Screen name="Menu" component={MenuStack} />
+        <Tab.Screen
+          name="Trackeos"
+          component={TrackeosStack}
+          listeners={({ navigation }) => ({
+            tabPress: (e) => {
+              const state = navigation.getState();
+              const route = state.routes.find((r) => r.name === "Trackeos");
+              if (route?.state && route.state.index && route.state.index > 0) {
+                e.preventDefault();
+                navigation.navigate("Trackeos", { screen: "TrackeosList" });
+              }
+            },
+          })}
+        />
+        <Tab.Screen
+          name="Operaciones"
+          component={OperacionesStack}
+          listeners={({ navigation }) => ({
+            tabPress: (e) => {
+              const state = navigation.getState();
+              const route = state.routes.find((r) => r.name === "Operaciones");
+              if (route?.state && route.state.index && route.state.index > 0) {
+                e.preventDefault();
+                navigation.navigate("Operaciones", {
+                  screen: "OperacionesList",
+                });
+              }
+            },
+          })}
+        />
+        <Tab.Screen
+          name="Cotizaciones"
+          component={CotizacionesStack}
+          listeners={({ navigation }) => ({
+            tabPress: (e) => {
+              const state = navigation.getState();
+              const route = state.routes.find((r) => r.name === "Cotizaciones");
+              if (route?.state && route.state.index && route.state.index > 0) {
+                e.preventDefault();
+                navigation.navigate("Cotizaciones", {
+                  screen: "CotizacionesList",
+                });
+              }
+            },
+          })}
+        />
+        <Tab.Screen
+          name="Menu"
+          component={MenuStack}
+          listeners={({ navigation }) => ({
+            tabPress: (e) => {
+              const state = navigation.getState();
+              const route = state.routes.find((r) => r.name === "Menu");
+              if (route?.state && route.state.index && route.state.index > 0) {
+                e.preventDefault();
+                navigation.navigate("Menu", { screen: "MenuHome" });
+              }
+            },
+          })}
+        />
       </Tab.Navigator>
     </NavigationContainer>
   );
@@ -82,23 +152,27 @@ export default function ClientTabs() {
 
 const styles = StyleSheet.create({
   tabBar: {
-    backgroundColor: brand.surface,
-    borderTopWidth: 0,
-    height: Platform.OS === "ios" ? 84 : 68,
-    paddingTop: 8,
-    paddingBottom: Platform.OS === "ios" ? 24 : 10,
-    shadowColor: "#0f172a",
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 12,
-  },
-  tabBarLabel: {
-    fontSize: 10,
-    fontWeight: "600",
-    marginTop: 2,
+    backgroundColor: "#ffffff",
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "#d5dde8",
+    height: Platform.OS === "ios" ? 82 : 64,
+    paddingTop: 6,
+    paddingBottom: Platform.OS === "ios" ? 22 : 8,
+    elevation: 0,
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 0 },
   },
   tabBarItem: {
     paddingTop: 2,
+  },
+  tabBarLabel: {
+    fontSize: 10,
+    fontFamily: fonts.medium,
+    marginTop: 2,
+    letterSpacing: -0.2,
+  },
+  tabBarLabelActive: {
+    fontFamily: fonts.semiBold,
   },
 });

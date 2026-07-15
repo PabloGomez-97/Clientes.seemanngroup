@@ -58,7 +58,6 @@ export default function NovedadDetailScreen() {
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <ScreenHeader
         title={post?.title || title || "Novedad"}
-        onBack={() => navigation.goBack()}
       />
       {loading ? (
         <View style={styles.center}>

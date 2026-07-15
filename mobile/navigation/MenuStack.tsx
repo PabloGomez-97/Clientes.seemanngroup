@@ -10,7 +10,7 @@ import HistoricoPreciosScreen from "../screens/consultas/HistoricoPreciosScreen"
 import NovedadesScreen from "../screens/consultas/NovedadesScreen";
 import NovedadDetailScreen from "../screens/consultas/NovedadDetailScreen";
 import PromesasScreen from "../screens/consultas/PromesasScreen";
-import { brand } from "../theme/brand";
+import { noBackStackOptions } from "./noBackStackOptions";
 
 export type MenuStackParamList = {
   MenuHome: undefined;
@@ -30,14 +30,7 @@ const Stack = createNativeStackNavigator<MenuStackParamList>();
 
 export default function MenuStack() {
   return (
-    <Stack.Navigator
-      screenOptions={{
-        headerStyle: { backgroundColor: brand.canvas },
-        headerTintColor: brand.ink,
-        headerTitleStyle: { fontWeight: "600" },
-        contentStyle: { backgroundColor: brand.canvas },
-      }}
-    >
+    <Stack.Navigator screenOptions={noBackStackOptions}>
       <Stack.Screen
         name="MenuHome"
         component={MenuScreen}

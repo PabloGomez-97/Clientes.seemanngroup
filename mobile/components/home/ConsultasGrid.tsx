@@ -3,52 +3,112 @@ import { useNavigation } from "@react-navigation/native";
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
 import type { ClientTabParamList } from "../../navigation/ClientTabs";
-import { brand, radii, spacing } from "../../theme/brand";
+import type { MenuStackParamList } from "../../navigation/MenuStack";
+import { brand, spacing } from "../../theme/brand";
 import { fonts } from "../../theme/typography";
 
-type ConsultaScreen = "Tarifario" | "HistoricoPrecios" | "Novedades" | "Promesas";
+type LauncherItem =
+  | {
+      id: string;
+      title: string;
+      icon: keyof typeof Ionicons.glyphMap;
+      accent: "navy" | "orange";
+      kind: "tab";
+      tab: keyof ClientTabParamList;
+      screen?: string;
+    }
+  | {
+      id: string;
+      title: string;
+      icon: keyof typeof Ionicons.glyphMap;
+      accent: "navy" | "orange";
+      kind: "menu";
+      menu: keyof MenuStackParamList;
+    };
 
-type ConsultaItem = {
-  key: ConsultaScreen;
+const LAUNCHER: LauncherItem[] = [
+  {
+    id: "ops",
+    title: "Operaciones",
+    icon: "briefcase",
+    accent: "navy",
+    kind: "tab",
+    tab: "Operaciones",
+    screen: "OperacionesList",
+  },
+  {
+    id: "quotes",
+    title: "Cotizaciones",
+    icon: "reader",
+    accent: "navy",
+    kind: "tab",
+    tab: "Cotizaciones",
+    screen: "CotizacionesList",
+  },
+  {
+    id: "track",
+    title: "Trackeos",
+    icon: "navigate",
+    accent: "orange",
+    kind: "tab",
+    tab: "Trackeos",
+    screen: "TrackeosList",
+  },
+  {
+    id: "docs",
+    title: "Documentos",
+    icon: "folder-open",
+    accent: "orange",
+    kind: "menu",
+    menu: "MisDocumentos",
+  },
+  {
+    id: "rates",
+    title: "Tarifario",
+    icon: "pricetag",
+    accent: "navy",
+    kind: "menu",
+    menu: "Tarifario",
+  },
+  {
+    id: "hist",
+    title: "Histórico",
+    icon: "pulse",
+    accent: "navy",
+    kind: "menu",
+    menu: "HistoricoPrecios",
+  },
+];
+
+const INDEX: {
+  n: string;
   title: string;
   subtitle: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  tint: string;
-  bg: string;
-};
-
-const ITEMS: ConsultaItem[] = [
+  menu: keyof MenuStackParamList;
+}[] = [
   {
-    key: "Tarifario",
-    title: "Tarifario",
-    subtitle: "Aéreo · FCL · LCL",
-    icon: "pricetags-outline",
-    tint: brand.primary,
-    bg: brand.primaryMuted,
-  },
-  {
-    key: "HistoricoPrecios",
-    title: "Histórico de precios",
-    subtitle: "Evolución de rutas",
-    icon: "trending-up-outline",
-    tint: brand.navy,
-    bg: "rgba(30, 58, 95, 0.08)",
-  },
-  {
-    key: "Novedades",
+    n: "01",
     title: "Novedades",
-    subtitle: "Noticias del grupo",
-    icon: "newspaper-outline",
-    tint: "#0d9488",
-    bg: "rgba(13, 148, 136, 0.1)",
+    subtitle: "Comunicados y actualidad Seemann",
+    menu: "Novedades",
   },
   {
-    key: "Promesas",
+    n: "02",
     title: "Nuestras promesas",
-    subtitle: "Compromiso Seemann",
-    icon: "people-outline",
-    tint: "#7c3aed",
-    bg: "rgba(124, 58, 237, 0.1)",
+    subtitle: "Compromisos y modalidades de servicio",
+    menu: "Promesas",
+  },
+  {
+    n: "03",
+    title: "Reportería financiera",
+    subtitle: "Facturas y saldos de tu cuenta",
+    menu: "ReporteriaFinanciera",
+  },
+  {
+    n: "04",
+    title: "Reportería operacional",
+    subtitle: "Embarques y desempeño logístico",
+    menu: "ReporteriaOperacional",
   },
 ];
 
@@ -56,33 +116,84 @@ export default function ConsultasGrid() {
   const navigation =
     useNavigation<BottomTabNavigationProp<ClientTabParamList>>();
 
-  const open = (screen: "Tarifario" | "HistoricoPrecios" | "Novedades" | "Promesas") => {
-    navigation.navigate("Menu", { screen });
+  const openLauncher = (item: LauncherItem) => {
+    if (item.kind === "tab") {
+      // Nested tab screens vary by stack; cast keeps navigation flexible.
+      (navigation.navigate as (name: string, params?: object) => void)(
+        item.tab,
+        item.screen ? { screen: item.screen } : undefined,
+      );
+      return;
+    }
+    (navigation.navigate as (name: string, params?: object) => void)("Menu", {
+      screen: item.menu,
+    });
   };
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.sectionTitle}>Consultas</Text>
-      <Text style={styles.sectionSubtitle}>
-        Tarifas, histórico, novedades y promesas — solo consulta visual.
-      </Text>
-      <View style={styles.grid}>
-        {ITEMS.map((item) => (
+      <View style={styles.sectionHead}>
+        <Text style={styles.kicker}>Módulos</Text>
+        <Text style={styles.title}>Accesos directos</Text>
+      </View>
+
+      <View style={styles.launcher}>
+        {LAUNCHER.map((item) => {
+          const orange = item.accent === "orange";
+          return (
+            <Pressable
+              key={item.id}
+              style={({ pressed }) => [
+                styles.launchCell,
+                pressed && styles.launchPressed,
+              ]}
+              onPress={() => openLauncher(item)}
+            >
+              <View
+                style={[
+                  styles.launchIcon,
+                  orange ? styles.launchIconOrange : styles.launchIconNavy,
+                ]}
+              >
+                <Ionicons
+                  name={item.icon}
+                  size={18}
+                  color={orange ? brand.primary : brand.navy}
+                />
+              </View>
+              <Text style={styles.launchLabel}>{item.title}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
+      <View style={styles.sectionHead}>
+        <Text style={styles.kicker}>Consultas</Text>
+        <Text style={styles.title}>Información y reportes</Text>
+      </View>
+
+      <View style={styles.indexList}>
+        {INDEX.map((row, i) => (
           <Pressable
-            key={item.key}
+            key={row.n}
             style={({ pressed }) => [
-              styles.card,
-              pressed && styles.cardPressed,
+              styles.indexRow,
+              i < INDEX.length - 1 && styles.indexBorder,
+              pressed && styles.indexPressed,
             ]}
-            onPress={() => open(item.key)}
-            accessibilityRole="button"
-            accessibilityLabel={item.title}
+            onPress={() =>
+              (navigation.navigate as (name: string, params?: object) => void)(
+                "Menu",
+                { screen: row.menu },
+              )
+            }
           >
-            <View style={[styles.iconWrap, { backgroundColor: item.bg }]}>
-              <Ionicons name={item.icon} size={20} color={item.tint} />
+            <Text style={styles.indexNum}>{row.n}</Text>
+            <View style={styles.indexCopy}>
+              <Text style={styles.indexTitle}>{row.title}</Text>
+              <Text style={styles.indexSub}>{row.subtitle}</Text>
             </View>
-            <Text style={styles.cardTitle}>{item.title}</Text>
-            <Text style={styles.cardSubtitle}>{item.subtitle}</Text>
+            <Ionicons name="chevron-forward" size={16} color={brand.mutedLight} />
           </Pressable>
         ))}
       </View>
@@ -92,53 +203,104 @@ export default function ConsultasGrid() {
 
 const styles = StyleSheet.create({
   wrap: {
-    marginTop: spacing.lg,
+    marginTop: spacing.xl,
+    paddingHorizontal: spacing.lg,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontFamily: fonts.bold,
-    color: brand.ink,
+  sectionHead: {
+    marginBottom: 14,
+  },
+  kicker: {
+    fontSize: 11,
+    letterSpacing: 1.6,
+    textTransform: "uppercase",
+    color: brand.primary,
+    fontFamily: fonts.semiBold,
     marginBottom: 4,
   },
-  sectionSubtitle: {
-    fontSize: 13,
-    color: brand.muted,
-    marginBottom: spacing.md,
-    lineHeight: 18,
+  title: {
+    fontSize: 20,
+    fontFamily: fonts.bold,
+    color: brand.navy,
+    letterSpacing: -0.3,
   },
-  grid: {
+  launcher: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 12,
+    gap: 10,
+    marginBottom: spacing.xl + 4,
   },
-  card: {
-    width: "47.5%",
+  launchCell: {
+    width: "31.5%",
     flexGrow: 1,
-    backgroundColor: brand.surface,
-    borderRadius: radii.lg,
+    backgroundColor: "#fff",
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    alignItems: "center",
     borderWidth: 1,
-    borderColor: brand.border,
-    padding: spacing.md,
-    minHeight: 118,
+    borderColor: "#e4e9f0",
   },
-  cardPressed: {
-    backgroundColor: brand.canvasAlt,
+  launchPressed: {
+    borderColor: brand.primaryBorder,
+    backgroundColor: brand.primarySoft,
   },
-  iconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+  launchIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 10,
+    marginBottom: 8,
   },
-  cardTitle: {
-    fontSize: 14,
+  launchIconNavy: {
+    backgroundColor: "#eef2f7",
+  },
+  launchIconOrange: {
+    backgroundColor: brand.primarySoft,
+  },
+  launchLabel: {
+    fontSize: 11,
+    textAlign: "center",
     fontFamily: fonts.semiBold,
-    color: brand.ink,
-    marginBottom: 4,
+    color: brand.navy,
   },
-  cardSubtitle: {
+  indexList: {
+    backgroundColor: "#fff",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#e4e9f0",
+    overflow: "hidden",
+  },
+  indexRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+  },
+  indexBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: "#eef1f5",
+  },
+  indexPressed: {
+    backgroundColor: "#fafbfd",
+  },
+  indexNum: {
+    fontFamily: fonts.bold,
+    fontSize: 13,
+    color: brand.primary,
+    width: 28,
+  },
+  indexCopy: {
+    flex: 1,
+  },
+  indexTitle: {
+    fontFamily: fonts.semiBold,
+    fontSize: 14,
+    color: brand.navy,
+  },
+  indexSub: {
+    marginTop: 2,
     fontSize: 12,
     color: brand.muted,
     lineHeight: 16,

@@ -9,7 +9,7 @@ import AirTrackingDetailScreen from "../screens/tracking/AirTrackingDetailScreen
 import OceanTrackingDetailScreen from "../screens/tracking/OceanTrackingDetailScreen";
 import NewAirTrackingScreen from "../screens/tracking/NewAirTrackingScreen";
 import NewOceanTrackingScreen from "../screens/tracking/NewOceanTrackingScreen";
-import { brand } from "../theme/brand";
+import { noBackStackOptions } from "./noBackStackOptions";
 
 export type TrackeosStackParamList = {
   TrackeosList:
@@ -27,14 +27,7 @@ const Stack = createNativeStackNavigator<TrackeosStackParamList>();
 
 export default function TrackeosStack() {
   return (
-    <Stack.Navigator
-      screenOptions={{
-        headerStyle: { backgroundColor: brand.canvas },
-        headerTintColor: brand.ink,
-        headerTitleStyle: { fontWeight: "600" },
-        contentStyle: { backgroundColor: brand.canvas },
-      }}
-    >
+    <Stack.Navigator screenOptions={noBackStackOptions}>
       <Stack.Screen
         name="TrackeosList"
         component={TrackeosListScreen}

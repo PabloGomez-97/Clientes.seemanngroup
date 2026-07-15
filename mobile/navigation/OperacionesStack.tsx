@@ -6,7 +6,7 @@ import OperacionesListScreen from "../screens/operaciones/OperacionesListScreen"
 import AirOperacionDetailScreen from "../screens/operaciones/AirOperacionDetailScreen";
 import OceanOperacionDetailScreen from "../screens/operaciones/OceanOperacionDetailScreen";
 import GroundOperacionDetailScreen from "../screens/operaciones/GroundOperacionDetailScreen";
-import { brand } from "../theme/brand";
+import { noBackStackOptions } from "./noBackStackOptions";
 
 export type OperacionesStackParamList = {
   OperacionesList: undefined;
@@ -19,14 +19,7 @@ const Stack = createNativeStackNavigator<OperacionesStackParamList>();
 
 export default function OperacionesStack() {
   return (
-    <Stack.Navigator
-      screenOptions={{
-        headerStyle: { backgroundColor: brand.canvas },
-        headerTintColor: brand.ink,
-        headerTitleStyle: { fontWeight: "600" },
-        contentStyle: { backgroundColor: brand.canvas },
-      }}
-    >
+    <Stack.Navigator screenOptions={noBackStackOptions}>
       <Stack.Screen
         name="OperacionesList"
         component={OperacionesListScreen}

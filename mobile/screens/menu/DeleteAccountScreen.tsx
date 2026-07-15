@@ -86,7 +86,7 @@ export default function DeleteAccountScreen() {
             styles.secondaryBtn,
             pressed && styles.secondaryBtnPressed,
           ]}
-          onPress={() => navigation.goBack()}
+          onPress={() => navigation.navigate("MenuHome")}
           accessibilityRole="button"
         >
           <Text style={styles.secondaryText}>Cancelar</Text>

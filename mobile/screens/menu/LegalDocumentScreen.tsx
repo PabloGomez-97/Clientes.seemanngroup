@@ -1,9 +1,7 @@
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation, useRoute } from "@react-navigation/native";
-import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { useRoute } from "@react-navigation/native";
 import type { RouteProp } from "@react-navigation/native";
-import { Ionicons } from "@expo/vector-icons";
 import type {
   LegalBlock,
   LegalDocument,
@@ -14,7 +12,6 @@ import type { MenuStackParamList } from "../../navigation/MenuStack";
 import { brand, radii, spacing } from "../../theme/brand";
 import { fonts } from "../../theme/typography";
 
-type Nav = NativeStackNavigationProp<MenuStackParamList, "LegalDocument">;
 type Route = RouteProp<MenuStackParamList, "LegalDocument">;
 
 const DOCS: Record<"privacy" | "terms", LegalDocument> = {
@@ -109,28 +106,11 @@ function BlockView({ block }: { block: LegalBlock }) {
 }
 
 export default function LegalDocumentScreen() {
-  const navigation = useNavigation<Nav>();
   const route = useRoute<Route>();
   const doc = DOCS[route.params.doc];
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
-      <View style={styles.toolbar}>
-        <Pressable
-          onPress={() => navigation.goBack()}
-          hitSlop={12}
-          accessibilityRole="button"
-          accessibilityLabel="Volver"
-          style={({ pressed }) => [
-            styles.backBtn,
-            pressed && styles.backBtnPressed,
-          ]}
-        >
-          <Ionicons name="chevron-back" size={22} color={brand.primary} />
-          <Text style={styles.backText}>Volver</Text>
-        </Pressable>
-      </View>
-
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
@@ -168,29 +148,6 @@ const styles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: brand.canvas,
-  },
-  toolbar: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: brand.border,
-    backgroundColor: brand.surface,
-  },
-  backBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 2,
-    alignSelf: "flex-start",
-    paddingVertical: 6,
-    paddingRight: 8,
-  },
-  backBtnPressed: {
-    opacity: 0.7,
-  },
-  backText: {
-    fontSize: 16,
-    fontFamily: fonts.semiBold,
-    color: brand.primary,
   },
   content: {
     paddingHorizontal: spacing.lg,

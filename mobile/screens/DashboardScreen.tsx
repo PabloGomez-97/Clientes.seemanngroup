@@ -1,37 +1,65 @@
+import { useCallback, useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { StatusBar } from "expo-status-bar";
+import { useFocusEffect } from "@react-navigation/native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import WelcomeHeader from "../components/home/WelcomeHeader";
 import EjecutivoCard from "../components/home/EjecutivoCard";
 import ConsultasGrid from "../components/home/ConsultasGrid";
-import { brand, spacing } from "../theme/brand";
+import { spacing } from "../theme/brand";
+
+const STATUS_NAVY = "#152a45";
 
 export default function DashboardScreen() {
+  const insets = useSafeAreaInsets();
+  const [lightStatus, setLightStatus] = useState(true);
+
+  useFocusEffect(
+    useCallback(() => {
+      setLightStatus(true);
+      return () => setLightStatus(false);
+    }, []),
+  );
+
   return (
-    <SafeAreaView style={styles.safe} edges={["top"]}>
+    <View style={styles.root}>
+      {lightStatus ? <StatusBar style="light" /> : null}
+
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: spacing.xl + 20 + insets.bottom },
+        ]}
         showsVerticalScrollIndicator={false}
+        bounces
       >
-        <WelcomeHeader />
-        <View style={styles.body}>
-          <EjecutivoCard />
-          <ConsultasGrid />
-        </View>
+        <WelcomeHeader topInset={insets.top} />
+        <ConsultasGrid />
+        <EjecutivoCard />
       </ScrollView>
-    </SafeAreaView>
+
+      {/* Cubre Dynamic Island / status bar al hacer scroll */}
+      <View
+        pointerEvents="none"
+        style={[styles.statusCover, { height: insets.top, backgroundColor: STATUS_NAVY }]}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: {
+  root: {
     flex: 1,
-    backgroundColor: brand.canvas,
+    backgroundColor: "#edf1f6",
   },
   content: {
-    paddingBottom: spacing.xl,
+    flexGrow: 1,
   },
-  body: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
+  statusCover: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 20,
   },
 });

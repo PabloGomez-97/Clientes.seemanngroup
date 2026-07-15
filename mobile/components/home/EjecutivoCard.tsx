@@ -7,13 +7,12 @@ import {
   View,
 } from "react-native";
 import { useState } from "react";
-import { LinearGradient } from "expo-linear-gradient";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../auth/AuthContext";
 import { imgUrl } from "../../config/images";
-import SectionHeader from "../ui/SectionHeader";
-import { brand, radii, spacing } from "../../theme/brand";
+import { brand, spacing } from "../../theme/brand";
+import { fonts } from "../../theme/typography";
 
 export default function EjecutivoCard() {
   const { t } = useTranslation();
@@ -45,194 +44,156 @@ export default function EjecutivoCard() {
     : undefined;
 
   return (
-    <View style={styles.section}>
-      <SectionHeader title={t("home.ejecutivo.title")} />
-      <LinearGradient
-        colors={["#ffffff", "#fff8f3"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.card}
-      >
-        <View style={styles.cardInner}>
-          <View style={styles.avatar}>
-            {photo && !photoFailed ? (
-              <Image
-                source={{ uri: photo }}
-                style={styles.avatarImage}
-                resizeMode="cover"
-                onError={() => setPhotoFailed(true)}
-              />
-            ) : (
-              <LinearGradient
-                colors={[brand.primary, brand.primaryDark]}
-                style={styles.avatarFallback}
-              >
-                <Text style={styles.avatarInitials}>
-                  {getInitials(ejecutivo.nombre)}
-                </Text>
-              </LinearGradient>
-            )}
-          </View>
+    <View style={styles.wrap}>
+      <View style={styles.rule} />
+      <Text style={styles.kicker}>{t("home.ejecutivo.title")}</Text>
 
-          <View style={styles.info}>
-            <Text style={styles.name}>{ejecutivo.nombre}</Text>
-            <View style={styles.roleBadge}>
-              <Text style={styles.role}>{t("home.ejecutivo.role")}</Text>
-            </View>
-            {ejecutivo.email ? (
-              <View style={styles.contactRow}>
-                <Ionicons name="mail-outline" size={14} color={brand.muted} />
-                <Text style={styles.contact}>{ejecutivo.email}</Text>
-              </View>
-            ) : null}
-            {ejecutivo.telefono ? (
-              <View style={styles.contactRow}>
-                <Ionicons name="call-outline" size={14} color={brand.muted} />
-                <Text style={styles.contact}>{ejecutivo.telefono}</Text>
-              </View>
-            ) : null}
-          </View>
+      <View style={styles.row}>
+        <View style={styles.avatar}>
+          {photo && !photoFailed ? (
+            <Image
+              source={{ uri: photo }}
+              style={styles.avatarImage}
+              resizeMode="cover"
+              onError={() => setPhotoFailed(true)}
+            />
+          ) : (
+            <Text style={styles.initials}>{getInitials(ejecutivo.nombre)}</Text>
+          )}
         </View>
 
-        <View style={styles.actions}>
+        <View style={styles.info}>
+          <Text style={styles.name} numberOfLines={1}>
+            {ejecutivo.nombre}
+          </Text>
+          <Text style={styles.role}>{t("home.ejecutivo.role")}</Text>
           {ejecutivo.email ? (
-            <Pressable
-              style={styles.primaryButton}
-              onPress={() => void Linking.openURL(`mailto:${ejecutivo.email}`)}
-            >
-              <Ionicons name="mail" size={16} color="#fff" />
-              <Text style={styles.primaryButtonText}>
-                {t("home.ejecutivo.sendMessage")}
-              </Text>
-            </Pressable>
-          ) : null}
-          {telHref ? (
-            <Pressable
-              style={styles.secondaryButton}
-              onPress={() => void Linking.openURL(telHref)}
-            >
-              <Ionicons name="call" size={16} color={brand.primary} />
-              <Text style={styles.secondaryButtonText}>
-                {t("home.ejecutivo.call")}
-              </Text>
-            </Pressable>
+            <Text style={styles.email} numberOfLines={1}>
+              {ejecutivo.email}
+            </Text>
           ) : null}
         </View>
-      </LinearGradient>
+      </View>
+
+      <View style={styles.actions}>
+        {ejecutivo.email ? (
+          <Pressable
+            style={styles.btnPrimary}
+            onPress={() => void Linking.openURL(`mailto:${ejecutivo.email}`)}
+          >
+            <Ionicons name="mail-outline" size={15} color="#fff" />
+            <Text style={styles.btnPrimaryText}>Escribir</Text>
+          </Pressable>
+        ) : null}
+        {telHref ? (
+          <Pressable
+            style={styles.btnGhost}
+            onPress={() => void Linking.openURL(telHref)}
+          >
+            <Ionicons name="call-outline" size={15} color={brand.navy} />
+            <Text style={styles.btnGhostText}>Llamar</Text>
+          </Pressable>
+        ) : null}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  section: {
-    marginBottom: spacing.xl,
+  wrap: {
+    marginTop: spacing.xl,
+    marginHorizontal: spacing.lg,
+    paddingTop: spacing.md,
   },
-  card: {
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: brand.primaryBorder,
-    padding: spacing.lg,
-    shadowColor: brand.shadowOrange,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 1,
-    shadowRadius: 14,
-    elevation: 3,
-  },
-  cardInner: {
-    flexDirection: "row",
-    gap: 16,
+  rule: {
+    height: 1,
+    backgroundColor: "#dde3eb",
     marginBottom: spacing.md,
   },
+  kicker: {
+    fontSize: 11,
+    letterSpacing: 1.6,
+    textTransform: "uppercase",
+    color: brand.primary,
+    fontFamily: fonts.semiBold,
+    marginBottom: 12,
+  },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 14,
+  },
   avatar: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 52,
+    height: 52,
+    borderRadius: 8,
     overflow: "hidden",
-    borderWidth: 2,
-    borderColor: "#fff",
-  },
-  avatarImage: {
-    width: 72,
-    height: 72,
-  },
-  avatarFallback: {
-    width: 72,
-    height: 72,
+    backgroundColor: brand.navy,
     alignItems: "center",
     justifyContent: "center",
   },
-  avatarInitials: {
-    fontSize: 22,
-    fontWeight: "700",
+  avatarImage: {
+    width: 52,
+    height: 52,
+  },
+  initials: {
     color: "#fff",
+    fontFamily: fonts.bold,
+    fontSize: 16,
   },
   info: {
     flex: 1,
   },
   name: {
-    fontSize: 17,
-    fontWeight: "700",
-    color: brand.ink,
-    marginBottom: 6,
-  },
-  roleBadge: {
-    alignSelf: "flex-start",
-    backgroundColor: brand.primarySoft,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: radii.pill,
-    marginBottom: 10,
+    fontFamily: fonts.bold,
+    fontSize: 16,
+    color: brand.navy,
   },
   role: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: brand.primary,
+    marginTop: 2,
+    fontSize: 12,
+    color: brand.muted,
   },
-  contactRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginBottom: 4,
-  },
-  contact: {
-    fontSize: 13,
+  email: {
+    marginTop: 2,
+    fontSize: 12,
     color: brand.inkSecondary,
-    flex: 1,
   },
   actions: {
     flexDirection: "row",
-    gap: 10,
+    gap: 8,
   },
-  primaryButton: {
+  btnPrimary: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
-    backgroundColor: brand.primary,
-    borderRadius: radii.sm,
+    backgroundColor: brand.navy,
     paddingVertical: 12,
+    borderRadius: 8,
   },
-  primaryButtonText: {
+  btnPrimaryText: {
     color: "#fff",
-    fontWeight: "600",
+    fontFamily: fonts.semiBold,
     fontSize: 13,
   },
-  secondaryButton: {
+  btnGhost: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
     backgroundColor: "#fff",
-    borderRadius: radii.sm,
-    paddingVertical: 12,
     borderWidth: 1,
-    borderColor: brand.primaryBorder,
+    borderColor: "#d5dde8",
+    paddingVertical: 12,
+    borderRadius: 8,
   },
-  secondaryButtonText: {
-    color: brand.primary,
-    fontWeight: "600",
+  btnGhostText: {
+    color: brand.navy,
+    fontFamily: fonts.semiBold,
     fontSize: 13,
   },
 });

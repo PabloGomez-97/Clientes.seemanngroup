@@ -83,7 +83,6 @@ export default function ReporteriaOperacionalScreen() {
       <ScreenHeader
         title="Reportería operacional"
         subtitle={activeUsername || undefined}
-        onBack={() => navigation.goBack()}
         right={
           <Pressable style={styles.iconBtn} onPress={() => void refresh()}>
             <Ionicons name="refresh" size={18} color={brand.navy} />
