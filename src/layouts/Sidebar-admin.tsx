@@ -58,6 +58,9 @@ const colors = {
   accent: "#ff6200",
 };
 
+const SIDEBAR_FONT =
+  '"Manrope", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+
 function SidebarAdmin({
   isCollapsed,
   isMobile,
@@ -387,8 +390,7 @@ function SidebarAdmin({
           borderRight: `1px solid ${colors.border}`,
           overflowY: "auto",
           overflowX: "hidden",
-          fontFamily:
-            "Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+          fontFamily: SIDEBAR_FONT,
           transition:
             "width 0.22s ease, min-width 0.22s ease, transform 0.22s ease",
           transform: isMobile
@@ -458,13 +460,14 @@ function SidebarAdmin({
               {!isCollapsed && section.title ? (
                 <div
                   style={{
-                    padding: "20px 20px 8px",
-                    fontSize: "11px",
+                    padding: "14px 20px 6px",
+                    fontSize: "10.5px",
                     fontWeight: "600",
                     color: colors.textMuted,
                     textTransform: "uppercase",
-                    letterSpacing: "0.8px",
-                    marginTop: sectionIdx > 0 ? "8px" : "0",
+                    letterSpacing: "0.1em",
+                    marginTop: sectionIdx > 0 ? "4px" : "0",
+                    fontFamily: SIDEBAR_FONT,
                   }}
                 >
                   {section.title}
@@ -524,7 +527,7 @@ function SidebarAdmin({
                           display: "flex",
                           textDecoration: "none",
                           padding:
-                            isCollapsed && !isMobile ? "13px 0" : "11px 12px",
+                            isCollapsed && !isMobile ? "11px 0" : "9px 12px",
                           alignItems: "center",
                           justifyContent:
                             isCollapsed && !isMobile ? "center" : "flex-start",
@@ -534,23 +537,27 @@ function SidebarAdmin({
                             "color 0.18s ease, background-color 0.18s ease",
                           backgroundColor:
                             !hasSubItems && isItemActive
-                              ? "rgba(255, 255, 255, 0.08)"
+                              ? "rgba(255, 255, 255, 0.06)"
                               : isHovered
                                 ? colors.bgHover
                                 : "transparent",
-                          borderLeft: "none",
+                          borderLeft:
+                            !hasSubItems && isItemActive
+                              ? `2px solid ${colors.accent}`
+                              : "2px solid transparent",
                           color:
                             !hasSubItems && isItemActive
                               ? colors.text
                               : isHovered
                                 ? colors.text
                                 : colors.textMuted,
-                          fontSize: "14.5px",
+                          fontSize: "14px",
                           fontWeight:
-                            !hasSubItems && isItemActive ? "600" : "400",
+                            !hasSubItems && isItemActive ? "600" : "500",
+                          fontFamily: SIDEBAR_FONT,
                           margin:
-                            isCollapsed && !isMobile ? "4px 10px" : "2px 8px",
-                          borderRadius: "8px",
+                            isCollapsed && !isMobile ? "3px 10px" : "1px 8px",
+                          borderRadius: "6px",
                         }}
                       >
                         {/* Sección de iconos */}
@@ -562,7 +569,7 @@ function SidebarAdmin({
                             justifyContent: "center",
                             width: "20px",
                             height: "20px",
-                            fontSize: "14px",
+                            fontSize: "13px",
                             textAlign: "center",
                             flexShrink: 0,
                             transition: "color 0.18s ease",
@@ -574,10 +581,11 @@ function SidebarAdmin({
                             <span
                               style={{
                                 flex: 1,
-                                fontSize:
-                                  "13.5px" /* tamaño del texto del sidebar */,
+                                fontSize: "14px",
                                 fontWeight:
-                                  !hasSubItems && isItemActive ? "600" : "400",
+                                  !hasSubItems && isItemActive ? "600" : "500",
+                                fontFamily: SIDEBAR_FONT,
+                                letterSpacing: "0.01em",
                               }}
                             >
                               {item.name}
@@ -682,8 +690,9 @@ function SidebarAdmin({
                                           : isSubHovered
                                             ? colors.text
                                             : colors.textMuted,
-                                        fontSize: "13px",
-                                        fontWeight: isSubActive ? "600" : "400",
+                                        fontSize: "13.5px",
+                                        fontWeight: isSubActive ? "600" : "500",
+                                        fontFamily: SIDEBAR_FONT,
                                         textDecoration: "none",
                                         borderLeft: isSubActive
                                           ? `2px solid ${colors.accent}`
@@ -745,7 +754,8 @@ function SidebarAdmin({
               }
               style={{
                 width: "100%",
-                height: "34px",
+                height: "36px",
+                boxSizing: "border-box",
                 borderRadius: "6px",
                 border: `1px solid ${colors.border}`,
                 backgroundColor: "transparent",
@@ -753,12 +763,15 @@ function SidebarAdmin({
                 display: "flex",
                 alignItems: "center",
                 justifyContent: isCollapsed ? "center" : "flex-start",
-                gap: "10px",
-                padding: isCollapsed ? "0" : "0 12px",
+                gap: "8px",
+                padding: isCollapsed ? "0" : "0 10px",
                 cursor: "pointer",
                 transition: "background-color 0.18s ease, color 0.18s ease",
-                fontSize: "12px",
+                fontSize: "12.5px",
                 fontWeight: "500",
+                fontFamily: SIDEBAR_FONT,
+                overflow: "visible",
+                whiteSpace: "nowrap",
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.backgroundColor = colors.bgHover;
@@ -796,7 +809,14 @@ function SidebarAdmin({
                 />
               </svg>
               {(!isCollapsed || isMobile) && (
-                <span>
+                <span
+                  style={{
+                    overflow: "visible",
+                    textOverflow: "clip",
+                    whiteSpace: "nowrap",
+                    lineHeight: 1.2,
+                  }}
+                >
                   {isMobile
                     ? t("admin.sidebar.closeMenu")
                     : t("admin.sidebar.collapseMenu")}
@@ -807,6 +827,10 @@ function SidebarAdmin({
         )}
 
         <style>{`
+          .sidebar-admin-scroll {
+            background-image: none;
+          }
+
           .sidebar-admin-scroll::-webkit-scrollbar {
             width: 0;
           }
