@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "mobile",
+    "name": "Seemann Group",
     "slug": "seemanngrup",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -13,7 +13,33 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.seemanngroup.portalclientes",
+      "buildNumber": "1",
+      "infoPlist": {
+        "CFBundleDisplayName": "Seemann Group",
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "privacyManifests": {
+        "NSPrivacyAccessedAPITypes": [
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
+            "NSPrivacyAccessedAPITypeReasons": ["CA92.1"]
+          },
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryFileTimestamp",
+            "NSPrivacyAccessedAPITypeReasons": ["C617.1"]
+          },
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryDiskSpace",
+            "NSPrivacyAccessedAPITypeReasons": ["E174.1"]
+          },
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategorySystemBootTime",
+            "NSPrivacyAccessedAPITypeReasons": ["35F9.1"]
+          }
+        ]
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -21,7 +47,8 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.seemanngroup.portalclientes"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -29,7 +56,9 @@
     "extra": {
       "eas": {
         "projectId": "29844ab1-51d5-480d-a615-7c9ab77afc29"
-      }
+      },
+      "privacyPolicyUrl": "https://portalclientes.seemanngroup.com/privacy-policy",
+      "termsOfServiceUrl": "https://portalclientes.seemanngroup.com/terms-of-service"
     },
     "owner": "seemann-group",
     "plugins": [

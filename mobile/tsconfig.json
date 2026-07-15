@@ -7,5 +7,19 @@
       "@/*": ["../src/*"]
     }
   },
-  "include": ["**/*.ts", "**/*.tsx", "../src/auth/**/*.ts", "../src/locales/**/*.json"]
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "../src/auth/**/*.ts",
+    "../src/locales/**/*.json",
+    "../src/services/linbisFetch.ts",
+    "../src/services/cotizacionesLogic.ts",
+    "../src/services/operacionesPagination.ts",
+    "../src/services/operacionesFiltersLogic.ts",
+    "../src/services/shipsgoTrackingLogic.ts",
+    "../src/services/trackingEmailPreferences.ts",
+    "../src/services/linbisListFetch.ts",
+    "../src/services/linbisQuoteLookup.ts",
+    "../src/services/linbisShipmentMappers.ts"
+  ]
 }

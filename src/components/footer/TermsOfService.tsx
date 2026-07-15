@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { ArrowLeft, FileText } from "lucide-react";
 import "./legal.css";
 
-const LAST_UPDATED = "29 de abril de 2026";
+const LAST_UPDATED = "14 de julio de 2026";
 const EFFECTIVE_DATE = "1 de enero de 2024";
 
 const TOC_ITEMS = [
@@ -28,7 +28,6 @@ const TOC_ITEMS = [
 function TermsOfService() {
   return (
     <div className="legal-page">
-      {/* Header */}
       <header className="legal-header">
         <Link to="/" className="legal-header__brand">
           <img
@@ -46,7 +45,6 @@ function TermsOfService() {
         </Link>
       </header>
 
-      {/* Hero */}
       <section className="legal-hero">
         <span className="legal-hero__badge">
           <FileText size={12} style={{ display: "inline", marginRight: 4 }} />
@@ -59,9 +57,7 @@ function TermsOfService() {
         </p>
       </section>
 
-      {/* Body */}
       <main className="legal-body">
-        {/* TOC */}
         <aside className="legal-toc" aria-label="Tabla de contenidos">
           <p className="legal-toc__title">Contenido</p>
           <ul className="legal-toc__list">
@@ -75,9 +71,7 @@ function TermsOfService() {
           </ul>
         </aside>
 
-        {/* Article */}
         <article className="legal-article">
-          {/* Intro */}
           <div
             className="legal-infocard legal-infocard--blue"
             style={{ marginBottom: "2rem" }}
@@ -85,14 +79,15 @@ function TermsOfService() {
             <span className="legal-infocard__heading">
               Leer antes de utilizar la plataforma
             </span>
-            Los presentes Términos de Servicio (en adelante, los "Términos")
-            regulan el acceso y uso de la plataforma digital y los servicios
-            logísticos ofrecidos por <strong>Seemann Group S.A.</strong> Al
-            registrarse en la plataforma o utilizar cualquiera de nuestros
-            servicios, usted declara haber leído, comprendido y aceptado estos
-            Términos en su totalidad. Si actúa en nombre de una empresa, declara
-            tener autoridad legal para vincular a dicha empresa con estos
-            Términos.
+            Los presentes Términos de Servicio (en adelante, los
+            &quot;Términos&quot;) regulan el acceso y uso de la plataforma
+            digital y los servicios logísticos ofrecidos por{" "}
+            <strong>Seemann Group S.A.</strong>, sociedad domiciliada en Av.
+            Libertad #1405, of. 1203, Viña del Mar, Chile. Al registrarse en la
+            plataforma o utilizar cualquiera de nuestros servicios, usted
+            declara haber leído, comprendido y aceptado estos Términos en su
+            totalidad. Si actúa en nombre de una empresa, declara tener
+            autoridad legal para vincular a dicha empresa con estos Términos.
           </div>
 
           {/* S1 */}
@@ -148,30 +143,23 @@ function TermsOfService() {
                   </thead>
                   <tbody>
                     <tr>
-                      <td>
-                        <strong>Flete Aéreo (AIR)</strong>
-                      </td>
+                      <td>Flete Aéreo (AIR)</td>
                       <td>
                         Coordinación de embarques aéreos internacionales,
                         gestión de AWB (Air Waybill), consolidación de carga,
-                        seguimiento en tiempo real y desconsolidación en
-                        destino.
+                        seguimiento y desconsolidación en destino.
                       </td>
                     </tr>
                     <tr>
-                      <td>
-                        <strong>Flete Marítimo FCL</strong>
-                      </td>
+                      <td>Flete Marítimo FCL</td>
                       <td>
                         Reserva de contenedores completos (Full Container Load)
-                        en navieras líderes globales, emisión de Bill of Lading,
-                        gestión de manifiestos y coordinación de puertos.
+                        en navieras, emisión de Bill of Lading, gestión de
+                        manifiestos y coordinación de puertos.
                       </td>
                     </tr>
                     <tr>
-                      <td>
-                        <strong>Flete Marítimo LCL</strong>
-                      </td>
+                      <td>Flete Marítimo LCL</td>
                       <td>
                         Consolidación de carga en contenedores compartidos (Less
                         than Container Load), optimización de espacio y
@@ -179,30 +167,26 @@ function TermsOfService() {
                       </td>
                     </tr>
                     <tr>
-                      <td>
-                        <strong>Transporte Terrestre Last-Mile</strong>
-                      </td>
+                      <td>Transporte Terrestre Last-Mile</td>
                       <td>
                         Coordinación de la última milla desde puertos y
                         aeropuertos hacia el domicilio del importador,
-                        incluyendo entrega con liftgate y residencial.
+                        incluyendo entrega con liftgate y residencial cuando
+                        corresponda.
                       </td>
                     </tr>
                     <tr>
-                      <td>
-                        <strong>Agencia Aduanal</strong>
-                      </td>
+                      <td>Agencia Aduanal</td>
                       <td>
                         Preparación y presentación de declaraciones aduaneras,
                         clasificación arancelaria, gestión de licencias de
-                        importación/exportación y coordinación con autoridades
-                        aduaneras.
+                        importación/exportación y coordinación con el Servicio
+                        Nacional de Aduanas de Chile y autoridades extranjeras
+                        cuando el servicio lo requiera.
                       </td>
                     </tr>
                     <tr>
-                      <td>
-                        <strong>Plataforma Digital</strong>
-                      </td>
+                      <td>Plataforma Digital</td>
                       <td>
                         Portal web de gestión: cotizador en línea, tracking de
                         envíos, gestión documental, reportería financiera y
@@ -210,19 +194,15 @@ function TermsOfService() {
                       </td>
                     </tr>
                     <tr>
+                      <td>Cotizaciones en Línea</td>
                       <td>
-                        <strong>Cotizaciones en Línea</strong>
-                      </td>
-                      <td>
-                        Generación de cotizaciones instantáneas para flete
-                        aéreo, FCL, LCL y combinadas, con envío automático de
-                        documentos PDF al correo electrónico.
+                        Generación de cotizaciones para flete aéreo, FCL, LCL y
+                        combinadas, con envío de documentos PDF al correo
+                        electrónico.
                       </td>
                     </tr>
                     <tr>
-                      <td>
-                        <strong>Notificaciones y Alertas</strong>
-                      </td>
+                      <td>Notificaciones y Alertas</td>
                       <td>
                         Alertas automáticas sobre cambios de tarifas,
                         vencimiento de embarques, actualización de estatus y
@@ -234,12 +214,24 @@ function TermsOfService() {
               </div>
 
               <p>
-                Seemann Group actúa como <strong>agente intermediario</strong>{" "}
-                entre el cliente y los proveedores de transporte (navieras,
-                aerolíneas, transportistas terrestres), salvo que expresamente
-                se acuerde por escrito que actúa como transportista principal.
-                Las condiciones específicas de los transportistas se incorporan
-                por referencia a los documentos de transporte emitidos.
+                Seemann Group actúa como agente intermediario entre el cliente y
+                los proveedores de transporte (navieras, aerolíneas,
+                transportistas terrestres), salvo que expresamente se acuerde
+                por escrito que actúa como transportista principal. Las
+                condiciones específicas de los transportistas se incorporan por
+                referencia a los documentos de transporte emitidos.
+              </p>
+              <p>
+                Las relaciones mercantiles B2B de freight forwarding se rigen
+                principalmente por el <strong>Código Civil</strong> y el{" "}
+                <strong>Código de Comercio</strong> de Chile, además de los
+                convenios internacionales de transporte aplicables a cada modo.
+                Cuando el cliente sea una persona natural que actúe como
+                consumidor en los términos de la{" "}
+                <strong>Ley Nº 19.496</strong>, se aplicarán además las normas
+                de protección al consumidor que resulten pertinentes, sin que
+                ello implique que todos los usuarios de la plataforma sean
+                calificados como consumidores.
               </p>
             </div>
           </section>
@@ -254,8 +246,7 @@ function TermsOfService() {
               <p>
                 Para acceder a la plataforma digital de Seemann Group es
                 necesario crear una cuenta de usuario mediante el proceso de
-                registro habilitado por Seemann Group. Al hacerlo, el usuario se
-                obliga a:
+                registro habilitado. Al hacerlo, el usuario se obliga a:
               </p>
               <ul>
                 <li>
@@ -272,10 +263,14 @@ function TermsOfService() {
                 </li>
                 <li>
                   Notificar a Seemann Group de forma inmediata ante cualquier
-                  uso no autorizado de su cuenta o cualquier brecha de seguridad
-                  en{" "}
-                  <a href="mailto:seguridad@seemanngroup.com">
-                    seguridad@seemanngroup.com
+                  uso no autorizado de su cuenta o cualquier brecha de
+                  seguridad en{" "}
+                  <a href="mailto:contacto@seemanngroup.com">
+                    contacto@seemanngroup.com
+                  </a>{" "}
+                  o{" "}
+                  <a href="mailto:privacidad@seemanngroup.com">
+                    privacidad@seemanngroup.com
                   </a>
                   .
                 </li>
@@ -293,14 +288,12 @@ function TermsOfService() {
               </p>
               <div className="legal-infocard">
                 <span className="legal-infocard__heading">Tipos de cuenta</span>
-                La plataforma gestiona diferentes roles de usuario:{" "}
-                <strong>Cliente</strong> (acceso a cotizador, tracking y
-                reportería), <strong>Ejecutivo</strong> (gestión comercial),{" "}
-                <strong>Operaciones</strong> (gestión operativa),
-                <strong>Proveedor</strong> (subida de tarifas) y{" "}
-                <strong>Administrador</strong> (gestión global). Los permisos de
-                cada rol son asignados por Seemann Group conforme al contrato de
-                servicio.
+                La plataforma gestiona diferentes roles de usuario: Cliente
+                (acceso a cotizador, tracking y reportería), Ejecutivo (gestión
+                comercial), Operaciones (gestión operativa), Proveedor (subida
+                de tarifas) y Administrador (gestión global). Los permisos de
+                cada rol son asignados por Seemann Group conforme al contrato
+                de servicio.
               </div>
             </div>
           </section>
@@ -321,7 +314,7 @@ function TermsOfService() {
                   cotización. Transcurrido dicho período, la cotización pierde
                   su vigencia y los precios están sujetos a modificación sin
                   previo aviso, en función de las tarifas vigentes de navieras,
-                  aerolíneas, tasas de cambio y recargos aplicables.
+                  aerolíneas, tipos de cambio y recargos aplicables.
                 </li>
                 <li>
                   <strong>Naturaleza estimativa:</strong> Las cotizaciones son
@@ -335,10 +328,9 @@ function TermsOfService() {
                   <strong>Cargos adicionales:</strong> Las cotizaciones pueden
                   no incluir cargos adicionales que surjan durante el tránsito,
                   como demoras (demurrage y detention), cargos de inspección
-                  aduanera, almacenaje portuario, recargos por temporada alta
-                  (Peak Season Surcharge), Emergency Bunker Surcharge (EBS), War
-                  Risk Surcharge u otros impuestos locales no previsibles en el
-                  momento de cotizar.
+                  aduanera, almacenaje portuario, recargos por temporada alta,
+                  bunker, war risk u otros impuestos o tasas locales no
+                  previsibles en el momento de cotizar.
                 </li>
                 <li>
                   <strong>Tipos de cambio:</strong> Las cotizaciones expresadas
@@ -350,16 +342,16 @@ function TermsOfService() {
                   <strong>Confirmación:</strong> Una cotización se convierte en
                   servicio confirmado únicamente cuando Seemann Group emite una
                   confirmación escrita (orden de servicio o booking
-                  confirmation). El cliente deberá confirmar la aceptación de la
-                  cotización dentro del período de validez.
+                  confirmation). El cliente deberá confirmar la aceptación de
+                  la cotización dentro del período de validez.
                 </li>
                 <li>
                   <strong>Tarifas preferenciales:</strong> Las tarifas
                   negociadas con navieras y aerolíneas pueden ser modificadas
                   unilateralmente por dichos transportistas, lo que podría
                   impactar las cotizaciones en curso. Seemann Group notificará
-                  al cliente ante cambios significativos con la mayor antelación
-                  posible.
+                  al cliente ante cambios significativos con la mayor
+                  antelación posible.
                 </li>
               </ul>
             </div>
@@ -381,23 +373,24 @@ function TermsOfService() {
                   <strong>Instrucciones de embarque:</strong> El cliente deberá
                   proporcionar instrucciones de embarque completas, precisas y
                   oportunas. Seemann Group no será responsable de demoras o
-                  sobrecostos derivados de instrucciones incompletas, erróneas o
-                  tardías.
+                  sobrecostos derivados de instrucciones incompletas, erróneas
+                  o tardías.
                 </li>
                 <li>
                   <strong>Mercancías prohibidas y restringidas:</strong> Queda
                   terminantemente prohibido el envío de mercancías ilegales,
-                  peligrosas no declaradas (según IATA, IMDG o ADR), artículos
-                  sujetos a sanciones internacionales (OFAC, UE) y productos que
-                  infrinjan derechos de propiedad intelectual. Seemann Group
-                  podrá rechazar, detener o restituir cualquier envío que
-                  incumpla estas condiciones, sin responsabilidad por los costos
-                  que ello genere.
+                  peligrosas no declaradas (según IATA, IMDG u otras normas
+                  aplicables), artículos sujetos a sanciones o embargos
+                  internacionales vigentes, y productos que infrinjan derechos
+                  de propiedad intelectual. Seemann Group podrá rechazar,
+                  detener o restituir cualquier envío que incumpla estas
+                  condiciones, sin responsabilidad por los costos que ello
+                  genere.
                 </li>
                 <li>
                   <strong>Mercancías peligrosas declaradas:</strong> El
-                  transporte de mercancías peligrosas debidamente declaradas (DG
-                  - Dangerous Goods) requiere notificación anticipada,
+                  transporte de mercancías peligrosas debidamente declaradas
+                  (Dangerous Goods) requiere notificación anticipada,
                   documentación específica (MSDS/SDS, DGD) y está sujeto a
                   aceptación previa por parte de Seemann Group y del
                   transportista involucrado.
@@ -406,30 +399,33 @@ function TermsOfService() {
                   <strong>Embalaje y marcado:</strong> El cliente es responsable
                   de que la mercancía sea embalada y marcada adecuadamente para
                   resistir las condiciones normales del transporte
-                  internacional, de conformidad con las regulaciones IATA/IMDG y
-                  estándares de la industria.
+                  internacional, de conformidad con las regulaciones IATA/IMDG
+                  y estándares de la industria.
                 </li>
                 <li>
                   <strong>Seguro de carga:</strong> Seemann Group ofrecerá
                   opciones de seguro de carga como servicio adicional. En
                   ausencia de contratación expresa de seguro, la responsabilidad
-                  por pérdida o daño se limitará a lo establecido en la Cláusula
-                  7. Se recomienda encarecidamente contratar seguro de carga
-                  para embarques de valor.
+                  por pérdida o daño se limitará a lo establecido en la
+                  Cláusula 7. Se recomienda contratar seguro de carga para
+                  embarques de valor.
                 </li>
                 <li>
                   <strong>Tránsitos y conexiones:</strong> Los tiempos de
                   tránsito indicados son estimativos y no constituyen garantía
                   de entrega. Los retrasos atribuibles a las navieras,
-                  aerolíneas, autoridades aduaneras o causas de fuerza mayor no
+                  aerolíneas, al Servicio Nacional de Aduanas u otras
+                  autoridades competentes, o a causas de fuerza mayor, no
                   generan responsabilidad para Seemann Group.
                 </li>
                 <li>
                   <strong>Documentación aduanera:</strong> El cliente es el
                   importador/exportador de registro y es responsable de la
-                  exactitud de la clasificación arancelaria, valoración aduanera
-                  y cumplimiento de las regulaciones de comercio exterior del
-                  país de origen y destino.
+                  exactitud de la clasificación arancelaria, valoración
+                  aduanera y cumplimiento de las regulaciones de comercio
+                  exterior del país de origen y destino, incluyendo las
+                  exigencias del Servicio Nacional de Aduanas de Chile cuando
+                  corresponda.
                 </li>
               </ul>
             </div>
@@ -449,10 +445,12 @@ function TermsOfService() {
                   mercancía a transportar.
                 </li>
                 <li>
-                  Cumplir con toda la normativa aplicable en materia de comercio
-                  exterior, control de exportaciones, sanciones económicas
-                  internacionales y regulaciones aduaneras de los países
-                  involucrados.
+                  Cumplir con toda la normativa aplicable en materia de
+                  comercio exterior, control de exportaciones, sanciones
+                  económicas internacionales y regulaciones aduaneras de los
+                  países involucrados, incluyendo las del Servicio Nacional de
+                  Aduanas de Chile y las obligaciones tributarias ante el
+                  Servicio de Impuestos Internos (SII) cuando correspondan.
                 </li>
                 <li>
                   Obtener y mantener vigentes todas las licencias, permisos y
@@ -466,8 +464,8 @@ function TermsOfService() {
                 <li>
                   Revisar y confirmar la exactitud de todos los documentos de
                   transporte emitidos (BL, AWB, Packing List, etc.) dentro de
-                  las 24 horas siguientes a su recepción. Pasado dicho plazo, se
-                  presumirá la conformidad del cliente.
+                  las <strong>24 horas</strong> siguientes a su recepción.
+                  Pasado dicho plazo, se presumirá la conformidad del cliente.
                 </li>
                 <li>
                   Notificar a Seemann Group de cualquier circunstancia especial
@@ -495,7 +493,6 @@ function TermsOfService() {
                 La responsabilidad de Seemann Group en la prestación de sus
                 servicios se rige por los siguientes principios y limitaciones:
               </p>
-
               <p>
                 <strong>7.1 Responsabilidad como agente de carga</strong>
               </p>
@@ -503,25 +500,25 @@ function TermsOfService() {
                 En su calidad de freight forwarder (agente de carga
                 internacional), Seemann Group actúa como intermediario entre el
                 cliente y los transportistas. La responsabilidad directa por
-                pérdida, daño o demora de la mercancía recae sobre el
-                transportista efectivo. Las condiciones de responsabilidad de
-                los transportistas se rigen por:
+                pérdida, daño o demora de la mercancía recae, por regla
+                general, sobre el transportista efectivo. Las condiciones de
+                responsabilidad de los transportistas se rigen por:
               </p>
               <ul>
                 <li>
-                  <strong>Transporte aéreo:</strong> Convenio de Montreal (1999)
-                  — USD 22 por kilogramo
+                  <strong>Transporte aéreo:</strong> Convenio de Montreal
+                  (1999), en los montos de limitación allí previstos
                 </li>
                 <li>
-                  <strong>Transporte marítimo:</strong> Reglas de la Haya-Visby
-                  — USD 500 por bulto o 2 DEG/kg
+                  <strong>Transporte marítimo:</strong> Reglas de la
+                  Haya-Visby u otros regímenes que resulten aplicables al
+                  conocimiento de embarque
                 </li>
                 <li>
                   <strong>Transporte terrestre:</strong> Conforme a la
-                  legislación nacional aplicable
+                  legislación chilena y/o del país del trayecto aplicable
                 </li>
               </ul>
-
               <p>
                 <strong>7.2 Limitación de responsabilidad propia</strong>
               </p>
@@ -530,10 +527,12 @@ function TermsOfService() {
                 responsable por error u omisión en la prestación de sus
                 servicios de agencia, su responsabilidad total acumulada en
                 ningún caso excederá el importe de los honorarios de agencia
-                facturados al cliente por el servicio afectado, o{" "}
-                <strong>USD 5,000</strong>, la cantidad que sea menor.
+                facturados al cliente por el servicio afectado, o el equivalente
+                a <strong>USD 5.000</strong>, la cantidad que sea menor, sin
+                perjuicio de las normas imperativas de orden público chileno
+                —incluida, cuando proceda, la Ley Nº 19.496— que no admitan
+                exclusión o limitación.
               </p>
-
               <p>
                 <strong>7.3 Exclusiones de responsabilidad</strong>
               </p>
@@ -544,9 +543,12 @@ function TermsOfService() {
                   cliente
                 </li>
                 <li>Embalaje inadecuado de la mercancía</li>
-                <li>Causas de fuerza mayor (ver Cláusula 8)</li>
                 <li>
-                  Decisiones o demoras de autoridades aduaneras o portuarias
+                  Causas de fuerza mayor o caso fortuito (ver Cláusula 8)
+                </li>
+                <li>
+                  Decisiones o demoras del Servicio Nacional de Aduanas, del
+                  SII u otras autoridades competentes
                 </li>
                 <li>
                   Huelgas, conflictos laborales o interrupciones en
@@ -558,26 +560,25 @@ function TermsOfService() {
                 </li>
                 <li>
                   Daños indirectos, consecuenciales, lucro cesante o pérdida de
-                  negocio
+                  negocio, en la medida en que la ley chilena lo permita
                 </li>
                 <li>
                   Interrupciones en el servicio de la plataforma digital por
-                  mantenimiento programado o causas ajenas al control de Seemann
-                  Group
+                  mantenimiento programado o causas ajenas al control de
+                  Seemann Group
                 </li>
                 <li>
                   Incumplimiento de normativa aplicable por parte del cliente
                 </li>
               </ul>
-
               <div className="legal-infocard">
                 <span className="legal-infocard__heading">
                   Recomendación importante
                 </span>
                 Para protección completa del valor de su carga, Seemann Group
                 ofrece la contratación de seguro de carga All-Risk y Named
-                Perils a través de aseguradoras de primera línea. Consulte a su
-                ejecutivo de cuenta para más información.
+                Perils a través de aseguradoras de primera línea. Consulte a
+                su ejecutivo de cuenta para más información.
               </div>
             </div>
           </section>
@@ -586,29 +587,31 @@ function TermsOfService() {
           <section className="legal-section" id="s8">
             <span className="legal-section__number">Cláusula 08</span>
             <h2 className="legal-section__title">
-              Fuerza Mayor (Force Majeure)
+              Fuerza Mayor y Caso Fortuito
             </h2>
             <div className="legal-section__body">
               <p>
                 Seemann Group no será responsable por el incumplimiento o
                 retraso en la ejecución de sus obligaciones cuando dichas
-                circunstancias sean consecuencia de eventos de fuerza mayor o
-                caso fortuito, entendidos como eventos imprevisibles e
-                irresistibles que escapan al control razonable de Seemann Group,
-                incluyendo sin limitación:
+                circunstancias sean consecuencia de fuerza mayor o caso
+                fortuito, en los términos del{" "}
+                <strong>Código Civil de Chile</strong>, esto es, eventos
+                imprevisibles e irresistibles que escapan al control razonable
+                de Seemann Group, incluyendo sin limitación:
               </p>
               <ul>
                 <li>
-                  Desastres naturales: terremotos, huracanes, inundaciones,
-                  tsunamis, erupciones volcánicas
+                  Desastres naturales: terremotos, maremotos, inundaciones,
+                  erupciones volcánicas, incendios forestales u otros fenómenos
+                  de la naturaleza
                 </li>
                 <li>
                   Epidemias, pandemias o emergencias sanitarias declaradas por
                   autoridades competentes
                 </li>
                 <li>
-                  Conflictos bélicos, guerras, actos de terrorismo, insurrección
-                  o disturbios civiles
+                  Conflictos bélicos, guerras, actos de terrorismo,
+                  insurrección o disturbios civiles
                 </li>
                 <li>
                   Ataques cibernéticos de gran escala que afecten
@@ -636,13 +639,13 @@ function TermsOfService() {
                 </li>
               </ul>
               <p>
-                En caso de fuerza mayor, Seemann Group: (a) notificará al
-                cliente en el menor tiempo posible; (b) adoptará las medidas
-                razonables para minimizar el impacto; (c) reanudará la
-                prestación del servicio tan pronto como la situación lo permita.
-                Si el evento de fuerza mayor persiste por más de{" "}
+                En caso de fuerza mayor o caso fortuito, Seemann Group: (a)
+                notificará al cliente en el menor tiempo posible; (b) adoptará
+                las medidas razonables para minimizar el impacto; (c) reanudará
+                la prestación del servicio tan pronto como la situación lo
+                permita. Si el evento persiste por más de{" "}
                 <strong>60 días consecutivos</strong>, cualquiera de las partes
-                podrá resolver el contrato sin penalización, con derecho a
+                podrá poner término al contrato sin penalización, con derecho a
                 reembolso prorrateado de los servicios no prestados.
               </p>
             </div>
@@ -659,10 +662,11 @@ function TermsOfService() {
               </p>
               <ul>
                 <li>
-                  <strong>Moneda:</strong> Las facturas se emiten en Dólares
-                  Estadounidenses (USD) o en la moneda acordada en el contrato
-                  de servicio. Los pagos en otras monedas se realizarán al tipo
-                  de cambio de compra del día de pago.
+                  <strong>Moneda:</strong> Las facturas se emiten en pesos
+                  chilenos (CLP), dólares estadounidenses (USD) o en la moneda
+                  acordada en el contrato de servicio. Los pagos en monedas
+                  distintas se realizarán al tipo de cambio aplicable en la
+                  fecha de pago, salvo pacto distinto.
                 </li>
                 <li>
                   <strong>Plazos de pago:</strong> El plazo estándar de pago es
@@ -672,36 +676,41 @@ function TermsOfService() {
                   garantías adicionales.
                 </li>
                 <li>
-                  <strong>Mora:</strong> Los saldos vencidos devengarán un
-                  interés moratorio mensual equivalente a la tasa legal máxima
-                  permitida en la República de Panamá, sin necesidad de
-                  requerimiento previo.
+                  <strong>Mora:</strong> Los saldos vencidos devengarán el
+                  interés máximo convencional conforme a la{" "}
+                  <strong>Ley Nº 18.010</strong>, sobre operaciones de crédito
+                  de dinero, de la República de Chile, sin perjuicio de otros
+                  derechos y acciones que asistan a Seemann Group.
                 </li>
                 <li>
                   <strong>Retención de documentos:</strong> Seemann Group se
                   reserva el derecho de retener documentos de transporte (OBL,
                   AWB) o instrucciones de entrega (Delivery Order) hasta la
-                  liquidación completa de las facturas vencidas.
+                  liquidación completa de las facturas vencidas, en la medida
+                  en que la ley lo permita.
                 </li>
                 <li>
                   <strong>Impuestos y aranceles:</strong> Los precios no
                   incluyen impuestos aduaneros, aranceles de
-                  importación/exportación, IVA, ITBMS u otros tributos
-                  aplicables en el país de destino, salvo indicación expresa en
-                  la cotización.
+                  importación/exportación, IVA u otros tributos aplicables en
+                  Chile o en el país de destino, salvo indicación expresa en la
+                  cotización. El cliente es responsable del cumplimiento
+                  tributario ante el SII cuando corresponda.
                 </li>
                 <li>
                   <strong>Disputas de factura:</strong> Cualquier objeción a una
                   factura deberá ser comunicada por escrito dentro de los{" "}
                   <strong>10 días hábiles</strong> siguientes a su recepción,
                   indicando los rubros objetados y sus motivos. Pasado dicho
-                  plazo, la factura se considerará aceptada.
+                  plazo, la factura se considerará aceptada, sin perjuicio de
+                  las normas imperativas aplicables a consumidores bajo la Ley
+                  Nº 19.496.
                 </li>
                 <li>
                   <strong>Gastos de cobranza:</strong> En caso de
-                  incumplimiento, el cliente asumirá todos los costos y
-                  honorarios razonables de cobranza extrajudicial y judicial en
-                  que incurra Seemann Group.
+                  incumplimiento, el cliente asumirá los costos y honorarios
+                  razonables de cobranza extrajudicial y judicial en que
+                  incurra Seemann Group, conforme a la legislación chilena.
                 </li>
               </ul>
             </div>
@@ -718,7 +727,8 @@ function TermsOfService() {
                 algoritmos, bases de datos, interfaces, logotipos, marcas,
                 denominaciones, contenidos y documentación— son propiedad
                 exclusiva de Seemann Group S.A. o de sus licenciantes, y están
-                protegidos por las leyes de propiedad intelectual aplicables.
+                protegidos por la legislación chilena en materia de propiedad
+                intelectual e industrial.
               </p>
               <p>
                 El acceso a la plataforma otorga al cliente una{" "}
@@ -758,8 +768,8 @@ function TermsOfService() {
                 Los datos e información generados por el cliente en la
                 plataforma (cotizaciones, documentos de envío, datos de
                 tracking) son propiedad del cliente. Seemann Group los utiliza
-                únicamente para la prestación del servicio conforme a la{" "}
-                <Link to="/privacy-policy">Política de Privacidad</Link>.
+                únicamente para la prestación del servicio conforme a la
+                Política de Privacidad.
               </p>
             </div>
           </section>
@@ -776,20 +786,23 @@ function TermsOfService() {
                 prestación de los servicios de Seemann Group se rige por la{" "}
                 <Link to="/privacy-policy">Política de Privacidad</Link> de
                 Seemann Group, que forma parte integrante de estos Términos de
-                Servicio.
+                Servicio, y por la normativa chilena aplicable: artículo 19 Nº 4
+                de la Constitución Política de la República, Ley Nº 19.628 y, a
+                medida que entre en vigor, Ley Nº 21.719 y regulación de la
+                Agencia de Protección de Datos Personales.
               </p>
               <p>
                 En los casos en que el cliente proporcione a Seemann Group datos
                 personales de terceros (empleados, consignatarios, contactos de
-                entrega), el cliente declara y garantiza que cuenta con la base
-                legal adecuada para dicha transferencia y que ha informado a los
-                titulares sobre el tratamiento de sus datos por parte de Seemann
-                Group para los fines del servicio contratado.
+                entrega), el cliente declara y garantiza que cuenta con el
+                fundamento jurídico adecuado para dicha comunicación y que ha
+                informado a los titulares sobre el tratamiento de sus datos por
+                parte de Seemann Group para los fines del servicio contratado.
               </p>
               <p>
-                Las partes podrán suscribir un Acuerdo de Tratamiento de Datos
-                (ATD/DPA) separado cuando la naturaleza o volumen de los datos
-                compartidos así lo requiera conforme a la normativa aplicable.
+                Las partes podrán suscribir un acuerdo de tratamiento de datos
+                separado cuando la naturaleza o volumen de los datos compartidos
+                así lo requiera conforme a la normativa chilena aplicable.
               </p>
             </div>
           </section>
@@ -804,8 +817,8 @@ function TermsOfService() {
               <p>
                 Seemann Group se reserva el derecho de modificar, ampliar,
                 reducir, suspender temporalmente o interrumpir definitivamente
-                cualquier aspecto de la plataforma o de los servicios ofrecidos,
-                siempre que:
+                cualquier aspecto de la plataforma o de los servicios
+                ofrecidos, siempre que:
               </p>
               <ul>
                 <li>
@@ -816,8 +829,8 @@ function TermsOfService() {
                 </li>
                 <li>
                   Las modificaciones de mantenimiento programado sean
-                  comunicadas con <strong>48 horas de anticipación</strong> como
-                  mínimo, salvo emergencias técnicas.
+                  comunicadas con <strong>48 horas</strong> de anticipación
+                  como mínimo, salvo emergencias técnicas.
                 </li>
                 <li>
                   Las modificaciones legalmente exigidas o de seguridad urgente
@@ -827,11 +840,7 @@ function TermsOfService() {
               </ul>
               <p>
                 La versión vigente de estos Términos siempre estará disponible
-                en{" "}
-                <Link to="/terms-of-service">
-                  app.seemanngroup.com/terms-of-service
-                </Link>
-                .
+                en app.seemanngroup.com/terms-of-service.
               </p>
             </div>
           </section>
@@ -854,8 +863,7 @@ function TermsOfService() {
                   Términos
                 </li>
                 <li>
-                  Falta de pago de facturas vencidas por más de{" "}
-                  <strong>30 días</strong>
+                  Falta de pago de facturas vencidas por más de 30 días
                 </li>
                 <li>
                   Uso de la plataforma para actividades fraudulentas o ilegales
@@ -877,16 +885,19 @@ function TermsOfService() {
                 La terminación de la cuenta no extingue las obligaciones
                 económicas pendientes del cliente, ni los derechos de Seemann
                 Group a reclamar daños y perjuicios. El cliente podrá solicitar
-                la exportación de sus datos durante los <strong>30 días</strong>{" "}
-                posteriores a la notificación de terminación.
+                la exportación de sus datos durante los 30 días posteriores a la
+                notificación de terminación, sin perjuicio de los derechos
+                previstos en la Política de Privacidad y en la legislación
+                chilena de protección de datos.
               </p>
               <p>
                 El cliente podrá cerrar su cuenta en cualquier momento mediante
                 solicitud escrita a{" "}
-                <a href="mailto:soporte@seemanngroup.com">
-                  soporte@seemanngroup.com
+                <a href="mailto:contacto@seemanngroup.com">
+                  contacto@seemanngroup.com
                 </a>
-                , siempre que no tenga operaciones activas ni saldos pendientes.
+                , siempre que no tenga operaciones activas ni saldos
+                pendientes.
               </p>
             </div>
           </section>
@@ -900,48 +911,46 @@ function TermsOfService() {
             <div className="legal-section__body">
               <p>
                 Los presentes Términos de Servicio se rigen e interpretan
-                conforme a las leyes de la <strong>República de Panamá</strong>,
-                sin perjuicio de las normas de derecho internacional privado que
-                pudieran resultar aplicables.
+                conforme a las leyes de la{" "}
+                <strong>República de Chile</strong>.
               </p>
               <p>
                 Para la resolución de controversias derivadas o relacionadas con
                 estos Términos, las partes acuerdan el siguiente procedimiento
                 escalonado:
               </p>
-              <ol>
+              <ul>
                 <li>
                   <strong>Negociación directa (30 días):</strong> Las partes
                   intentarán resolver amistosamente la controversia mediante
                   negociación directa entre sus representantes autorizados.
                 </li>
                 <li>
-                  <strong>Mediación (30 días adicionales):</strong> Si la
-                  negociación fracasa, las partes someterán la controversia a
-                  mediación ante el Centro de Conciliación y Arbitraje de Panamá
-                  (CECAP).
+                  <strong>Mediación:</strong> Si la negociación fracasa, las
+                  partes someterán de preferencia la controversia a mediación
+                  ante el{" "}
+                  <strong>
+                    Centro de Arbitraje y Mediación de la Cámara de Comercio de
+                    Santiago (CAM Santiago)
+                  </strong>
+                  .
                 </li>
                 <li>
-                  <strong>Arbitraje vinculante:</strong> Si la mediación no
-                  prospera, la controversia será resuelta definitivamente
-                  mediante arbitraje de derecho administrado por el CECAP, con
-                  un tribunal de un árbitro (para disputas inferiores a USD
-                  100,000) o tres árbitros (para disputas superiores). El laudo
-                  arbitral será definitivo y vinculante para ambas partes.
+                  <strong>Tribunales ordinarios:</strong> De no prosperar la
+                  mediación, o si las partes no acuerdan someterse a ella, la
+                  controversia será conocida por los{" "}
+                  <strong>
+                    Tribunales Ordinarios de Justicia con competencia en Viña
+                    del Mar, Región de Valparaíso
+                  </strong>
+                  , República de Chile.
                 </li>
-              </ol>
+              </ul>
               <p>
-                Para clientes con domicilio en la Unión Europea, la plataforma
-                de resolución de litigios en línea de la Comisión Europea está
-                disponible en{" "}
-                <a
-                  href="https://ec.europa.eu/consumers/odr"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  ec.europa.eu/consumers/odr
-                </a>
-                .
+                Lo anterior se entiende sin perjuicio de las normas imperativas
+                de protección al consumidor de la Ley Nº 19.496 que resulten
+                aplicables cuando el cliente sea una persona natural que
+                califique como consumidor conforme a dicha ley.
               </p>
             </div>
           </section>
@@ -963,8 +972,8 @@ function TermsOfService() {
                 <li>
                   <strong>Divisibilidad:</strong> Si alguna disposición de estos
                   Términos fuera declarada inválida o inaplicable por cualquier
-                  tribunal o árbitro competente, las restantes disposiciones
-                  continuarán en pleno vigor y efecto.
+                  tribunal competente, las restantes disposiciones continuarán
+                  en pleno vigor y efecto.
                 </li>
                 <li>
                   <strong>No renuncia:</strong> El hecho de que Seemann Group no
@@ -973,11 +982,11 @@ function TermsOfService() {
                 </li>
                 <li>
                   <strong>Cesión:</strong> El cliente no podrá ceder ni
-                  transferir sus derechos u obligaciones bajo estos Términos sin
-                  consentimiento previo y por escrito de Seemann Group. Seemann
-                  Group podrá ceder sus derechos en el contexto de una fusión,
-                  adquisición o venta de activos, notificando al cliente con
-                  antelación.
+                  transferir sus derechos u obligaciones bajo estos Términos
+                  sin consentimiento previo y por escrito de Seemann Group.
+                  Seemann Group podrá ceder sus derechos en el contexto de una
+                  fusión, adquisición o venta de activos, notificando al cliente
+                  con antelación.
                 </li>
                 <li>
                   <strong>Comunicaciones:</strong> Las comunicaciones oficiales
@@ -1009,18 +1018,26 @@ function TermsOfService() {
                     Soporte General
                   </span>
                   <span className="legal-contact-item__value">
-                    <a href="mailto:soporte@seemanngroup.com">
+                    <a href="mailto:contacto@seemanngroup.com">
                       contacto@seemanngroup.com
                     </a>
                   </span>
                 </div>
                 <div className="legal-contact-item">
+                  <span className="legal-contact-item__label">Privacidad</span>
+                  <span className="legal-contact-item__value">
+                    <a href="mailto:privacidad@seemanngroup.com">
+                      privacidad@seemanngroup.com
+                    </a>
+                  </span>
+                </div>
+                <div className="legal-contact-item">
                   <span className="legal-contact-item__label">
-                    Asuntos Legales
+                    Asuntos de protección de datos
                   </span>
                   <span className="legal-contact-item__value">
-                    <a href="mailto:legal@seemanngroup.com">
-                      contacto@seemanngroup.com
+                    <a href="mailto:pablo@sphereglobal.io">
+                      pablo@sphereglobal.io
                     </a>
                   </span>
                 </div>
@@ -1043,15 +1060,6 @@ function TermsOfService() {
           </section>
         </article>
       </main>
-
-      {/* Footer */}
-      <footer className="legal-footer">
-        <p>
-          © {new Date().getFullYear()} Seemann Group S.A. · Todos los derechos
-          reservados · <Link to="/privacy-policy">Política de Privacidad</Link>{" "}
-          · <Link to="/cookie-settings">Configuración de Cookies</Link>
-        </p>
-      </footer>
     </div>
   );
 }

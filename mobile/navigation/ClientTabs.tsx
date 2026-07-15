@@ -4,9 +4,10 @@ import { NavigationContainer } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { Platform, StyleSheet } from "react-native";
 import DashboardScreen from "../screens/DashboardScreen";
-import MenuScreen from "../screens/MenuScreen";
 import CotizacionesStack from "./CotizacionesStack";
 import type { CotizacionesStackParamList } from "./CotizacionesStack";
+import MenuStack from "./MenuStack";
+import type { MenuStackParamList } from "./MenuStack";
 import OperacionesStack from "./OperacionesStack";
 import type { OperacionesStackParamList } from "./OperacionesStack";
 import TrackeosStack from "./TrackeosStack";
@@ -18,7 +19,7 @@ export type ClientTabParamList = {
   Trackeos: NavigatorScreenParams<TrackeosStackParamList> | undefined;
   Operaciones: NavigatorScreenParams<OperacionesStackParamList> | undefined;
   Cotizaciones: NavigatorScreenParams<CotizacionesStackParamList> | undefined;
-  Menu: undefined;
+  Menu: NavigatorScreenParams<MenuStackParamList> | undefined;
 };
 
 const Tab = createBottomTabNavigator<ClientTabParamList>();
@@ -73,7 +74,7 @@ export default function ClientTabs() {
         <Tab.Screen name="Trackeos" component={TrackeosStack} />
         <Tab.Screen name="Operaciones" component={OperacionesStack} />
         <Tab.Screen name="Cotizaciones" component={CotizacionesStack} />
-        <Tab.Screen name="Menu" component={MenuScreen} />
+        <Tab.Screen name="Menu" component={MenuStack} />
       </Tab.Navigator>
     </NavigationContainer>
   );

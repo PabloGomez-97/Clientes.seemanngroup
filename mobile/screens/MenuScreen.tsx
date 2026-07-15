@@ -1,13 +1,27 @@
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../auth/AuthContext";
+import type { MenuStackParamList } from "../navigation/MenuStack";
 import { brand, radii, spacing } from "../theme/brand";
 import { fonts } from "../theme/typography";
 
+type Nav = NativeStackNavigationProp<MenuStackParamList, "MenuHome">;
+
+type MenuLink = {
+  key: string;
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  onPress: () => void;
+  destructive?: boolean;
+};
+
 export default function MenuScreen() {
   const { t } = useTranslation();
+  const navigation = useNavigation<Nav>();
   const { user, activeUsername, logout } = useAuth();
 
   const displayName =
@@ -28,6 +42,28 @@ export default function MenuScreen() {
       ],
     );
   };
+
+  const links: MenuLink[] = [
+    {
+      key: "privacy",
+      label: "Política de Privacidad",
+      icon: "shield-checkmark-outline",
+      onPress: () => navigation.navigate("LegalDocument", { doc: "privacy" }),
+    },
+    {
+      key: "terms",
+      label: "Términos de Servicio",
+      icon: "document-text-outline",
+      onPress: () => navigation.navigate("LegalDocument", { doc: "terms" }),
+    },
+    {
+      key: "delete",
+      label: "Eliminar cuenta",
+      icon: "trash-outline",
+      onPress: () => navigation.navigate("DeleteAccount"),
+      destructive: true,
+    },
+  ];
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -62,6 +98,43 @@ export default function MenuScreen() {
               </View>
             ) : null}
           </View>
+        </View>
+
+        <View style={styles.linksCard}>
+          {links.map((link, index) => (
+            <Pressable
+              key={link.key}
+              style={({ pressed }) => [
+                styles.linkRow,
+                index < links.length - 1 && styles.linkRowBorder,
+                pressed && styles.linkRowPressed,
+              ]}
+              onPress={link.onPress}
+              accessibilityRole="button"
+              accessibilityLabel={link.label}
+            >
+              <View style={styles.linkLeft}>
+                <Ionicons
+                  name={link.icon}
+                  size={20}
+                  color={link.destructive ? "#b91c1c" : brand.primary}
+                />
+                <Text
+                  style={[
+                    styles.linkLabel,
+                    link.destructive && styles.linkLabelDestructive,
+                  ]}
+                >
+                  {link.label}
+                </Text>
+              </View>
+              <Ionicons
+                name="chevron-forward"
+                size={16}
+                color={brand.mutedLight}
+              />
+            </Pressable>
+          ))}
         </View>
 
         <Pressable
@@ -147,6 +220,42 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: brand.inkSecondary,
     flexShrink: 1,
+  },
+  linksCard: {
+    backgroundColor: brand.surface,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: brand.border,
+    marginBottom: spacing.lg,
+    overflow: "hidden",
+  },
+  linkRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 14,
+    paddingHorizontal: spacing.md,
+  },
+  linkRowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: brand.border,
+  },
+  linkRowPressed: {
+    backgroundColor: brand.canvasAlt,
+  },
+  linkLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    flex: 1,
+  },
+  linkLabel: {
+    fontSize: 15,
+    fontFamily: fonts.semiBold,
+    color: brand.ink,
+  },
+  linkLabelDestructive: {
+    color: "#b91c1c",
   },
   logoutButton: {
     flexDirection: "row",

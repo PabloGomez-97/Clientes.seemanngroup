@@ -49,6 +49,7 @@ export function useOperaciones() {
   const [airHasMore, setAirHasMore] = useState(false);
   const [airLoading, setAirLoading] = useState(true);
   const [airError, setAirError] = useState<string | null>(null);
+  const airLoadedRef = useRef(false);
 
   const [oceanCatalog, setOceanCatalog] = useState<OceanListItem[] | null>(
     null,
@@ -121,6 +122,7 @@ export function useOperaciones() {
         setAirPageItems([]);
         setAirHasMore(false);
         setAirLoading(false);
+        airLoadedRef.current = false;
         return;
       }
 
@@ -136,9 +138,11 @@ export function useOperaciones() {
         setAirPage(page);
         setAirPageItems(result.items);
         setAirHasMore(result.hasMore);
+        airLoadedRef.current = true;
       } catch (error) {
         setAirPageItems([]);
         setAirHasMore(false);
+        airLoadedRef.current = true;
         setAirError(
           error instanceof Error
             ? error.message
@@ -214,7 +218,7 @@ export function useOperaciones() {
       if (!accessToken || !activeUsername || tokenLoading) return;
 
       if (tab === "air") {
-        if (!airPageItems.length && !airLoading) {
+        if (!airLoadedRef.current && !airLoading) {
           void loadAirPage(1);
         }
         return;
@@ -233,7 +237,6 @@ export function useOperaciones() {
       accessToken,
       activeUsername,
       airLoading,
-      airPageItems.length,
       groundLoading,
       loadAirPage,
       loadGroundCatalog,
@@ -245,6 +248,7 @@ export function useOperaciones() {
 
   const refreshActiveTab = useCallback(async () => {
     if (activeTab === "air") {
+      airLoadedRef.current = false;
       await loadAirPage(airPage);
       return;
     }
@@ -260,6 +264,7 @@ export function useOperaciones() {
   }, [activeTab, airPage, loadAirPage, loadGroundCatalog, loadOceanCatalog]);
 
   const refreshAll = useCallback(async () => {
+    airLoadedRef.current = false;
     oceanLoadedRef.current = false;
     groundLoadedRef.current = false;
     setOceanPage(1);
@@ -279,8 +284,10 @@ export function useOperaciones() {
     if (tokenLoading) return;
     if (!accessToken || !activeUsername) {
       setAirLoading(false);
+      airLoadedRef.current = false;
       return;
     }
+    airLoadedRef.current = false;
     void loadAirPage(1);
     void loadTrackingData();
   }, [accessToken, activeUsername, loadAirPage, loadTrackingData, tokenLoading]);
@@ -290,6 +297,7 @@ export function useOperaciones() {
   }, [activeTab, ensureTabData]);
 
   useEffect(() => {
+    airLoadedRef.current = false;
     oceanLoadedRef.current = false;
     groundLoadedRef.current = false;
     setAirPage(1);

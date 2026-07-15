@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import CotizadorAereo from "@/components/quotes/QuoteAIR";
 import CotizadorFCL from "@/components/quotes/QuoteFCL";
 import CotizadorLCL from "@/components/quotes/QuoteLCL";
+import CotizadorLastMile from "@/components/quotes/QuoteLASTMILE";
 import ActivityBar from "./ActivityBar";
 import {
   AirCotizadorSidebarProvider,
@@ -34,16 +35,16 @@ function CotizadorFormLayout({ children }: { children: React.ReactNode }) {
   );
 }
 
-type TipoCotizacion = "AEREO" | "FCL" | "LCL" | null;
+type TipoCotizacion = "AEREO" | "FCL" | "LCL" | "LASTMILE" | null;
 
 interface ServiceType {
-  key: "AEREO" | "FCL" | "LCL";
+  key: "AEREO" | "FCL" | "LCL" | "LASTMILE";
   icon: string;
   inDevelopment?: boolean;
 }
 
 interface ItineraryState {
-  tipoEnvio: "AEREO" | "FCL" | "LCL";
+  tipoEnvio: "AEREO" | "FCL" | "LCL" | "LASTMILE";
   origin: { value: string; label: string };
   destination: { value: string; label: string };
   fecha?: string;
@@ -53,6 +54,7 @@ const serviceTypes: ServiceType[] = [
   { key: "AEREO", icon: "fa fa-plane" },
   { key: "FCL", icon: "fa fa-ship" },
   { key: "LCL", icon: "fa fa-cubes" },
+  { key: "LASTMILE", icon: "fa fa-truck" },
 ];
 
 const Cotizador: React.FC = () => {
@@ -75,11 +77,11 @@ const Cotizador: React.FC = () => {
     }
   }, [location.state, navigate, location.pathname]);
 
-  // Auto-seleccionar tipo desde query param (?tipo=AEREO|FCL|LCL)
+  // Auto-seleccionar tipo desde query param (?tipo=AEREO|FCL|LCL|LASTMILE)
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const tipo = params.get("tipo")?.toUpperCase();
-    const valid = ["AEREO", "FCL", "LCL"] as const;
+    const valid = ["AEREO", "FCL", "LCL", "LASTMILE"] as const;
     if (valid.includes(tipo as (typeof valid)[number])) {
       setTipoCotizacion(tipo as Exclude<TipoCotizacion, null>);
       navigate(location.pathname, { replace: true });
@@ -198,6 +200,14 @@ const Cotizador: React.FC = () => {
                 abandonRef={quoteAbandonRef}
                 preselectedPOL={preselectedData?.origin}
                 preselectedPOD={preselectedData?.destination}
+              />
+            )}
+            {tipoCotizacion === "LASTMILE" && (
+              <CotizadorLastMile
+                key="lastmile"
+                abandonRef={quoteAbandonRef}
+                preselectedOrigin={preselectedData?.origin}
+                preselectedDestination={preselectedData?.destination}
               />
             )}
           </CotizadorFormLayout>

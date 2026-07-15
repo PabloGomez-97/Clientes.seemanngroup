@@ -3,13 +3,13 @@ import { Link } from "react-router-dom";
 import { ArrowLeft, ShieldCheck } from "lucide-react";
 import "./legal.css";
 
-const LAST_UPDATED = "29 de abril de 2026";
+const LAST_UPDATED = "14 de julio de 2026";
 const EFFECTIVE_DATE = "1 de enero de 2024";
 
 const TOC_ITEMS = [
   { id: "s1", label: "1. Responsable del Tratamiento" },
   { id: "s2", label: "2. Datos que Recopilamos" },
-  { id: "s3", label: "3. Base Legal del Tratamiento" },
+  { id: "s3", label: "3. Fundamentos del Tratamiento" },
   { id: "s4", label: "4. Cómo Usamos sus Datos" },
   { id: "s5", label: "5. Compartición de Datos" },
   { id: "s6", label: "6. Transferencias Internacionales" },
@@ -25,7 +25,6 @@ const TOC_ITEMS = [
 function PrivacyPolicy() {
   return (
     <div className="legal-page">
-      {/* Header */}
       <header className="legal-header">
         <Link to="/" className="legal-header__brand">
           <img
@@ -43,7 +42,6 @@ function PrivacyPolicy() {
         </Link>
       </header>
 
-      {/* Hero */}
       <section className="legal-hero">
         <span className="legal-hero__badge">
           <ShieldCheck
@@ -59,9 +57,7 @@ function PrivacyPolicy() {
         </p>
       </section>
 
-      {/* Body */}
       <main className="legal-body">
-        {/* TOC */}
         <aside className="legal-toc" aria-label="Tabla de contenidos">
           <p className="legal-toc__title">Contenido</p>
           <ul className="legal-toc__list">
@@ -75,19 +71,18 @@ function PrivacyPolicy() {
           </ul>
         </aside>
 
-        {/* Article */}
         <article className="legal-article">
-          {/* Intro */}
           <div
             className="legal-infocard legal-infocard--blue"
             style={{ marginBottom: "2rem" }}
           >
             <span className="legal-infocard__heading">Resumen ejecutivo</span>
             En <strong>Seemann Group S.A.</strong> tratamos sus datos personales
-            con la máxima responsabilidad. Esta Política explica qué datos
-            recabamos, con qué finalidad, qué derechos le asisten y cómo puede
-            ejercerlos. Le recomendamos leerla íntegramente antes de utilizar
-            nuestros servicios.
+            con la máxima responsabilidad, de conformidad con el ordenamiento
+            jurídico de la República de Chile. Esta Política explica qué datos
+            recabamos, con qué finalidad, bajo qué supuestos jurídicos, qué
+            derechos le asisten y cómo puede ejercerlos. Le recomendamos leerla
+            íntegramente antes de utilizar nuestros servicios.
           </div>
 
           {/* S1 */}
@@ -114,7 +109,7 @@ function PrivacyPolicy() {
                   <span className="legal-contact-item__value">
                     Av. Libertad #1405, of. 1203
                     <br />
-                    Viña del Mar, Chile 2520000
+                    Viña del Mar, Chile
                   </span>
                 </div>
                 <div className="legal-contact-item">
@@ -127,6 +122,16 @@ function PrivacyPolicy() {
                   </span>
                   <span className="legal-contact-item__value">
                     <a href="mailto:privacidad@seemanngroup.com">
+                      privacidad@seemanngroup.com
+                    </a>
+                  </span>
+                </div>
+                <div className="legal-contact-item">
+                  <span className="legal-contact-item__label">
+                    Correo general
+                  </span>
+                  <span className="legal-contact-item__value">
+                    <a href="mailto:contacto@seemanngroup.com">
                       contacto@seemanngroup.com
                     </a>
                   </span>
@@ -139,15 +144,30 @@ function PrivacyPolicy() {
                 </div>
                 <div className="legal-contact-item">
                   <span className="legal-contact-item__label">
-                    Delegado de Protección (DPO)
+                    Contacto de protección de datos
                   </span>
                   <span className="legal-contact-item__value">
-                    <a href="mailto:dpo@seemanngroup.com">
+                    <a href="mailto:pablo@sphereglobal.io">
                       pablo@sphereglobal.io
                     </a>
                   </span>
                 </div>
               </div>
+              <p>
+                Esta Política se rige por la Constitución Política de la
+                República de Chile, en particular el{" "}
+                <strong>artículo 19 Nº 4</strong> (protección de la vida privada
+                y de los datos personales), y por la{" "}
+                <strong>Ley Nº 19.628</strong>, sobre protección de la vida
+                privada, en su texto vigente. Asimismo, Seemann Group reconoce
+                la <strong>Ley Nº 21.719</strong> (publicada el 13 de diciembre
+                de 2024), que reforma de manera integral la Ley Nº 19.628 y crea
+                la Agencia de Protección de Datos Personales (APDP), cuya entrada
+                en vigor plena está fijada para el{" "}
+                <strong>1 de diciembre de 2026</strong>. La Compañía ya prepara
+                el cumplimiento del marco reformado y aplicará las nuevas
+                obligaciones a medida que entren en vigor.
+              </p>
             </div>
           </section>
 
@@ -162,7 +182,6 @@ function PrivacyPolicy() {
                 Recopilamos distintas categorías de datos personales según el
                 tipo de interacción que usted mantiene con nosotros:
               </p>
-
               <div className="legal-table-wrapper">
                 <table className="legal-table">
                   <thead>
@@ -174,40 +193,32 @@ function PrivacyPolicy() {
                   </thead>
                   <tbody>
                     <tr>
+                      <td>Datos de identificación</td>
                       <td>
-                        <strong>Datos de Identificación</strong>
-                      </td>
-                      <td>
-                        Nombre completo, número de identificación, pasaporte,
-                        RUC/NIT, número de empresa
+                        Nombre completo, cédula de identidad, pasaporte, RUT u
+                        otro identificador empresarial o personal
                       </td>
                       <td>Proporcionados por el usuario</td>
                     </tr>
                     <tr>
+                      <td>Datos de contacto</td>
                       <td>
-                        <strong>Datos de Contacto</strong>
-                      </td>
-                      <td>
-                        Correo electrónico, número de teléfono, dirección
-                        postal, dirección fiscal
+                        Correo electrónico, número de teléfono, domicilio,
+                        dirección fiscal o de despacho
                       </td>
                       <td>Proporcionados por el usuario</td>
                     </tr>
                     <tr>
-                      <td>
-                        <strong>Datos de Envío</strong>
-                      </td>
+                      <td>Datos de envío y operación</td>
                       <td>
                         Origen, destino, tipo de mercancía, peso/volumen,
-                        documentos aduaneros (BL, AWB, DIM), número de
-                        contenedor
+                        documentos aduaneros (BL, AWB, DUS/DIN u equivalentes),
+                        número de contenedor
                       </td>
                       <td>Proporcionados y generados en el sistema</td>
                     </tr>
                     <tr>
-                      <td>
-                        <strong>Datos de Cuenta</strong>
-                      </td>
+                      <td>Datos de cuenta</td>
                       <td>
                         Nombre de usuario, contraseña cifrada, rol, historial de
                         accesos, preferencias
@@ -215,9 +226,7 @@ function PrivacyPolicy() {
                       <td>Creados por el usuario y el sistema</td>
                     </tr>
                     <tr>
-                      <td>
-                        <strong>Datos de Navegación</strong>
-                      </td>
+                      <td>Datos de navegación</td>
                       <td>
                         Dirección IP, tipo de navegador, sistema operativo,
                         páginas visitadas, duración de sesión, cookies
@@ -225,20 +234,18 @@ function PrivacyPolicy() {
                       <td>Recabados automáticamente</td>
                     </tr>
                     <tr>
-                      <td>
-                        <strong>Datos Financieros</strong>
-                      </td>
+                      <td>Datos financieros</td>
                       <td>
                         Información de facturación, referencias de pago,
                         historial de transacciones (no se almacenan datos
                         completos de tarjeta)
                       </td>
-                      <td>Proporcionados por el usuario / pasarela de pago</td>
+                      <td>
+                        Proporcionados por el usuario / pasarela de pago
+                      </td>
                     </tr>
                     <tr>
-                      <td>
-                        <strong>Datos de Comunicaciones</strong>
-                      </td>
+                      <td>Datos de comunicaciones</td>
                       <td>
                         Contenido de mensajes enviados a través de nuestro
                         chatbot, formularios de contacto y correo electrónico
@@ -251,11 +258,14 @@ function PrivacyPolicy() {
 
               <div className="legal-infocard">
                 <span className="legal-infocard__heading">Datos sensibles</span>
-                Seemann Group no recaba intencionalmente datos sensibles (origen
-                étnico, salud, religión, orientación sexual, datos biométricos).
-                Si en alguna comunicación usted los proporciona voluntariamente,
-                los trataremos con las garantías reforzadas previstas en la Ley
-                81 de 2019 de la República de Panamá y el RGPD.
+                Seemann Group no recaba intencionalmente datos sensibles, en el
+                sentido de la legislación chilena sobre protección de datos
+                (por ejemplo, datos relativos a la salud, origen racial o
+                étnico, vida sexual, creencias o afiliaciones). Si en alguna
+                comunicación usted los proporciona voluntariamente, serán
+                tratados con las reservas, limitaciones y medidas de seguridad
+                reforzadas que impone la Ley Nº 19.628 y, a partir de su
+                vigencia plena, el marco de la Ley Nº 21.719.
               </div>
             </div>
           </section>
@@ -263,42 +273,53 @@ function PrivacyPolicy() {
           {/* S3 */}
           <section className="legal-section" id="s3">
             <span className="legal-section__number">Artículo 03</span>
-            <h2 className="legal-section__title">Base Legal del Tratamiento</h2>
+            <h2 className="legal-section__title">
+              Fundamentos del Tratamiento
+            </h2>
             <div className="legal-section__body">
               <p>
-                El tratamiento de sus datos personales se sustenta en las
-                siguientes bases legales, de conformidad con el Reglamento
-                General de Protección de Datos (RGPD - UE 2016/679), la Ley 81
-                de 2019 de Panamá y la California Consumer Privacy Act (CCPA):
+                El tratamiento de sus datos personales se sustenta en los
+                siguientes fundamentos, conforme a la Ley Nº 19.628 y, en la
+                medida en que resulten aplicables a medida que entren en vigor,
+                a las reglas de la Ley Nº 21.719:
               </p>
               <ul>
                 <li>
-                  <strong>Ejecución de contrato (Art. 6.1.b RGPD):</strong>{" "}
-                  Cuando el tratamiento es necesario para la prestación de los
-                  servicios logísticos contratados, incluyendo la emisión de
-                  documentos, gestión de embarques, facturación y tracking.
+                  <strong>Consentimiento del titular:</strong> Cuando usted
+                  autoriza el tratamiento para finalidades específicas, tales
+                  como comunicaciones comerciales, boletines, notificaciones de
+                  tarifas no operativas o uso de cookies no esenciales. Puede
+                  revocar su consentimiento en cualquier momento, sin efecto
+                  retroactivo sobre tratamientos ya realizados lícitamente.
                 </li>
                 <li>
-                  <strong>Consentimiento (Art. 6.1.a RGPD):</strong> Para el
-                  envío de comunicaciones comerciales, boletines informativos,
-                  notificaciones de tarifas y uso de cookies no esenciales.
-                  Puede retirar su consentimiento en cualquier momento.
+                  <strong>
+                    Ejecución de la relación contractual o de servicios:
+                  </strong>{" "}
+                  Cuando el tratamiento es necesario para prestar los servicios
+                  logísticos y de plataforma contratados, incluyendo
+                  cotizaciones, emisión de documentos, gestión de embarques,
+                  facturación, tracking y atención operacional.
                 </li>
                 <li>
-                  <strong>Obligación legal (Art. 6.1.c RGPD):</strong> Para
-                  cumplir con obligaciones aduaneras, tributarias, de lavado de
-                  activos (AML), FATF y regulaciones portuarias internacionales.
+                  <strong>Cumplimiento de obligaciones legales:</strong> Cuando
+                  la ley chilena u otras normas aplicables exijan el
+                  tratamiento, en especial obligaciones aduaneras ante el{" "}
+                  <strong>Servicio Nacional de Aduanas de Chile</strong>,
+                  obligaciones tributarias ante el{" "}
+                  <strong>Servicio de Impuestos Internos (SII)</strong>,
+                  prevención de delitos, preservación de información contable y
+                  otras exigencias de autoridad competente.
                 </li>
                 <li>
-                  <strong>Interés legítimo (Art. 6.1.f RGPD):</strong> Para
-                  mejorar nuestros servicios, prevenir fraudes, garantizar la
-                  seguridad de la plataforma y realizar análisis estadísticos
-                  agregados del negocio.
-                </li>
-                <li>
-                  <strong>Interés vital (Art. 6.1.d RGPD):</strong> En
-                  situaciones excepcionales donde sea necesario proteger la
-                  integridad física de personas involucradas en los envíos.
+                  <strong>
+                    Interés legítimo del responsable, en cuanto sea compatible
+                    con la Ley Nº 19.628 y con el marco de la Ley Nº 21.719:
+                  </strong>{" "}
+                  Para mejorar la seguridad de la plataforma, prevenir fraudes,
+                  mantener la continuidad operacional y realizar análisis
+                  estadísticos agregados o seudonimizados, siempre que no
+                  prevalezcan los derechos e intereses del titular.
                 </li>
               </ul>
             </div>
@@ -322,14 +343,14 @@ function PrivacyPolicy() {
                   </strong>{" "}
                   Coordinación de envíos aéreos, marítimos (FCL/LCL) y
                   terrestres; preparación de documentos de transporte (Bill of
-                  Lading, AWB, Packing List, Certificados de Origen); gestión
+                  Lading, AWB, Packing List, certificados de origen); gestión
                   aduanera y coordinación con agencias de aduana.
                 </li>
                 <li>
                   <strong>Prestación de la plataforma digital:</strong>{" "}
                   Autenticación de usuarios, generación y visualización de
-                  cotizaciones, tracking en tiempo real de envíos, acceso a
-                  documentación y reportes.
+                  cotizaciones, tracking de envíos, acceso a documentación y
+                  reportes.
                 </li>
                 <li>
                   <strong>Comunicaciones operativas:</strong> Notificaciones
@@ -343,23 +364,25 @@ function PrivacyPolicy() {
                 </li>
                 <li>
                   <strong>Mejora del servicio y análisis:</strong> Análisis de
-                  comportamiento dentro de la plataforma (con datos anonimizados
-                  o seudonimizados), métricas de rendimiento del servicio y
-                  detección de anomalías.
+                  uso de la plataforma (con datos anonimizados o
+                  seudonimizados), métricas de rendimiento y detección de
+                  anomalías.
                 </li>
                 <li>
-                  <strong>Cumplimiento legal y regulatorio:</strong> Reporte a
-                  autoridades aduaneras (ANA Panamá, CBP EE.UU., AEAT España,
-                  etc.), cumplimiento de sanciones internacionales (OFAC, EU
-                  Sanctions) y normativa IATA.
+                  <strong>Cumplimiento legal y regulatorio:</strong>{" "}
+                  Comunicación a autoridades chilenas competentes, en especial
+                  el Servicio Nacional de Aduanas de Chile y el Servicio de
+                  Impuestos Internos (SII), así como cumplimiento de
+                  obligaciones de comercio exterior, control de exportaciones y
+                  prevención de delitos aplicables.
                 </li>
                 <li>
                   <strong>
                     Marketing y comunicaciones comerciales (solo con
                     consentimiento):
-                  </strong>
-                  Envío de newsletter, información sobre nuevas rutas, tarifas
-                  promocionales y actualizaciones del sector logístico.
+                  </strong>{" "}
+                  Envío de información sobre nuevas rutas, tarifas promocionales
+                  y actualizaciones del sector logístico.
                 </li>
                 <li>
                   <strong>Atención al cliente:</strong> Gestión de solicitudes,
@@ -378,38 +401,31 @@ function PrivacyPolicy() {
             </h2>
             <div className="legal-section__body">
               <p>
-                Seemann Group no vende ni alquila sus datos personales a
+                Seemann Group no vende ni arrienda sus datos personales a
                 terceros. Solo compartimos sus datos en las circunstancias
                 descritas a continuación, aplicando en todo caso los mecanismos
                 contractuales y técnicos apropiados:
               </p>
-
               <div className="legal-table-wrapper">
                 <table className="legal-table">
                   <thead>
                     <tr>
                       <th>Destinatario</th>
                       <th>Finalidad</th>
-                      <th>Base legal</th>
+                      <th>Fundamento</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr>
-                      <td>
-                        <strong>Navieras y aerolíneas</strong>
-                        <br />
-                        (MSC, Hapag-Lloyd, Maersk, Lufthansa Cargo, etc.)
-                      </td>
+                      <td>Navieras y aerolíneas</td>
                       <td>
                         Reserva de espacio, emisión de B/L y AWB, coordinación
                         de rutas
                       </td>
-                      <td>Ejecución de contrato</td>
+                      <td>Ejecución de contrato / servicios</td>
                     </tr>
                     <tr>
-                      <td>
-                        <strong>Agentes de aduana</strong>
-                      </td>
+                      <td>Agentes de aduana</td>
                       <td>
                         Despacho aduanero, presentación de declaraciones y
                         manifiestos
@@ -418,41 +434,32 @@ function PrivacyPolicy() {
                     </tr>
                     <tr>
                       <td>
-                        <strong>Autoridades gubernamentales</strong>
-                        <br />
-                        (ANA, ANAN, OFAC, CBP, etc.)
+                        Autoridades chilenas (Servicio Nacional de Aduanas, SII
+                        y otras competentes)
                       </td>
                       <td>
-                        Cumplimiento de obligaciones legales, aduaneras y de
-                        seguridad
+                        Cumplimiento de obligaciones legales, aduaneras,
+                        tributarias y de seguridad
                       </td>
                       <td>Obligación legal</td>
                     </tr>
                     <tr>
                       <td>
-                        <strong>Proveedores tecnológicos</strong>
-                        <br />
-                        (Vercel, Cloudflare R2, Supabase/PostgreSQL, OpenAI)
+                        Proveedores tecnológicos (infraestructura cloud,
+                        almacenamiento, asistencia con IA)
                       </td>
+                      <td>Operación segura de la plataforma</td>
                       <td>
-                        Infraestructura de la plataforma, almacenamiento seguro,
-                        IA asistida
+                        Contrato de encargo / interés legítimo compatible
                       </td>
-                      <td>Interés legítimo / Contrato de encargo</td>
                     </tr>
                     <tr>
-                      <td>
-                        <strong>Proveedores de transporte last-mile</strong>
-                      </td>
+                      <td>Proveedores de transporte last-mile</td>
                       <td>Entrega de mercancía en destino final</td>
-                      <td>Ejecución de contrato</td>
+                      <td>Ejecución de contrato / servicios</td>
                     </tr>
                     <tr>
-                      <td>
-                        <strong>Servicios de correo electrónico</strong>
-                        <br />
-                        (Resend)
-                      </td>
+                      <td>Servicios de correo electrónico</td>
                       <td>
                         Envío de notificaciones operativas, cotizaciones y
                         alertas
@@ -460,23 +467,23 @@ function PrivacyPolicy() {
                       <td>Ejecución de contrato / Consentimiento</td>
                     </tr>
                     <tr>
+                      <td>Plataformas de análisis de rendimiento</td>
                       <td>
-                        <strong>Plataformas de análisis</strong>
-                        <br />
-                        (Vercel Analytics/Speed Insights)
+                        Monitoreo técnico (datos anonimizados o seudonimizados
+                        en la medida de lo posible)
                       </td>
-                      <td>Monitoreo de rendimiento (datos anonimizados)</td>
-                      <td>Interés legítimo</td>
+                      <td>
+                        Interés legítimo compatible / Consentimiento cuando
+                        corresponda
+                      </td>
                     </tr>
                   </tbody>
                 </table>
               </div>
-
               <p>
-                Todos los terceros que actúan como encargados del tratamiento
-                están sujetos a Acuerdos de Tratamiento de Datos (ATD/DPA) que
-                los obligan a implementar medidas de seguridad adecuadas y a no
-                tratar los datos para finalidades propias.
+                Los terceros que traten datos por cuenta de Seemann Group quedan
+                sujetos a obligaciones contractuales de confidencialidad,
+                seguridad y uso limitado a las finalidades encargadas.
               </p>
             </div>
           </section>
@@ -489,51 +496,44 @@ function PrivacyPolicy() {
             </h2>
             <div className="legal-section__body">
               <p>
-                Dado el carácter global de los servicios de transporte
-                internacional que ofrecemos, sus datos pueden ser transferidos y
-                procesados en países distintos al de su residencia. Seemann
-                Group aplica los siguientes mecanismos de garantía para dichas
-                transferencias:
+                Dado el carácter internacional de los servicios de transporte
+                que ofrecemos, sus datos pueden ser transferidos y tratados
+                fuera de Chile cuando ello resulte necesario para la prestación
+                del servicio (por ejemplo, coordinación con transportistas,
+                agentes en destino o proveedores cloud). Seemann Group aplica
+                las siguientes salvaguardas:
               </p>
               <ul>
                 <li>
-                  <strong>
-                    Cláusulas Contractuales Tipo (CCT/SCC) de la Comisión
-                    Europea:
-                  </strong>
-                  Para transferencias hacia países sin decisión de adecuación
-                  reconocida por la UE.
+                  Transferencias sustentadas en la ejecución de la relación
+                  contractual o de servicios logísticos internacionalmente
+                  contratados.
                 </li>
                 <li>
-                  <strong>Decisiones de adecuación:</strong> Cuando los datos
-                  son transferidos a países que gozan de un nivel de protección
-                  reconocido como adecuado por la Comisión Europea (p. ej.,
-                  Reino Unido, Canadá, Japón, Suiza).
+                  Contratos y cláusulas de confidencialidad y protección de
+                  datos con destinatarios y encargados en el extranjero.
                 </li>
                 <li>
-                  <strong>
-                    Obligaciones contractuales con transportistas:
-                  </strong>{" "}
-                  Los convenios internacionales de transporte (Convenio de
-                  Montreal, Reglas de la Haya-Visby, Incoterms ICC) establecen
-                  obligaciones de confidencialidad sobre la información de
-                  carga.
+                  Medidas técnicas razonables de seguridad (cifrado en tránsito,
+                  controles de acceso y minimización).
                 </li>
                 <li>
-                  <strong>Cumplimiento de Ley 81 de Panamá:</strong> Toda
-                  transferencia internacional cumple con los requisitos
-                  establecidos en el Capítulo V de la Ley 81 de 2019.
+                  Ajuste progresivo a los requisitos de transferencias
+                  internacionales que establezca la Ley Nº 21.719 y la Agencia
+                  de Protección de Datos Personales una vez se encuentren
+                  plenamente vigentes y operativos.
                 </li>
               </ul>
-              <div className="legal-infocard legal-infocard--blue">
+              <div className="legal-infocard">
                 <span className="legal-infocard__heading">
                   Países destinatarios principales
                 </span>
-                Estados Unidos, Unión Europea, China, Japón, Corea del Sur,
-                Emiratos Árabes Unidos, México, Colombia, Chile, Brasil y demás
-                destinos de nuestras rutas logísticas activas. Para cada uno
-                aplicamos el mecanismo de garantía apropiado conforme a la
-                normativa vigente.
+                Estados Unidos, países de la Unión Europea, China, Japón, Corea
+                del Sur, Emiratos Árabes Unidos, México, Colombia, Brasil y
+                demás destinos de nuestras rutas logísticas activas. Para cada
+                transferencia aplicamos el mecanismo de garantía apropiado
+                conforme a la normativa chilena vigente al momento del
+                tratamiento.
               </div>
             </div>
           </section>
@@ -545,11 +545,10 @@ function PrivacyPolicy() {
             <div className="legal-section__body">
               <p>
                 Conservamos sus datos personales únicamente durante el tiempo
-                necesario para cumplir con las finalidades para las que fueron
-                recabados, o mientras existan obligaciones legales que lo
-                exijan:
+                necesario para cumplir las finalidades para las que fueron
+                recabados, o mientras existan obligaciones legales o
+                contractuales que lo exijan:
               </p>
-
               <div className="legal-table-wrapper">
                 <table className="legal-table">
                   <thead>
@@ -565,29 +564,35 @@ function PrivacyPolicy() {
                       <td>
                         Mientras la cuenta esté activa + 6 meses tras el cierre
                       </td>
-                      <td>Ejecución de contrato</td>
+                      <td>Ejecución de contrato / servicios</td>
                     </tr>
                     <tr>
                       <td>
                         Documentos de envío y aduaneros (BL, AWB, Packing List,
-                        CI)
+                        declaraciones)
                       </td>
-                      <td>10 años</td>
+                      <td>Hasta 10 años, según regulación aplicable</td>
                       <td>
-                        Obligación fiscal y aduanera (Código Fiscal de Panamá)
+                        Obligaciones aduaneras y tributarias (Servicio Nacional
+                        de Aduanas / SII)
                       </td>
                     </tr>
                     <tr>
                       <td>Registros de facturación y contables</td>
-                      <td>10 años</td>
-                      <td>Ley 57 de 2008, Código Fiscal de Panamá</td>
+                      <td>
+                        Hasta 6 a 10 años, según tipo de obligación
+                      </td>
+                      <td>
+                        Código Tributario y normativa del SII / contabilidad
+                        comercial
+                      </td>
                     </tr>
                     <tr>
                       <td>Cotizaciones y comunicaciones comerciales</td>
                       <td>5 años</td>
                       <td>
-                        Posibles reclamaciones contractuales (Código de
-                        Comercio)
+                        Posibles reclamaciones contractuales (Código Civil y
+                        Código de Comercio)
                       </td>
                     </tr>
                     <tr>
@@ -600,7 +605,9 @@ function PrivacyPolicy() {
                     <tr>
                       <td>Datos de cookies y análisis web</td>
                       <td>13 meses máximo</td>
-                      <td>Consentimiento / Interés legítimo</td>
+                      <td>
+                        Consentimiento / interés legítimo compatible
+                      </td>
                     </tr>
                     <tr>
                       <td>
@@ -612,11 +619,10 @@ function PrivacyPolicy() {
                   </tbody>
                 </table>
               </div>
-
               <p>
                 Transcurridos los períodos indicados, sus datos serán eliminados
-                de forma segura o anonimizados de manera irreversible para su
-                uso estadístico.
+                de forma segura o anonimizados de manera irreversible para usos
+                estadísticos.
               </p>
             </div>
           </section>
@@ -629,9 +635,9 @@ function PrivacyPolicy() {
             </h2>
             <div className="legal-section__body">
               <p>
-                De conformidad con la Ley 81 de 2019 de la República de Panamá,
-                el RGPD europeo (cuando resulte aplicable) y la CCPA
-                californiana, usted dispone de los siguientes derechos:
+                Conforme a la Ley Nº 19.628 y al artículo 19 Nº 4 de la
+                Constitución Política de la República, usted dispone, en
+                términos generales, de los siguientes derechos:
               </p>
               <ul>
                 <li>
@@ -641,46 +647,35 @@ function PrivacyPolicy() {
                 </li>
                 <li>
                   <strong>Derecho de rectificación:</strong> Solicitar la
-                  corrección de datos inexactos o incompletos.
+                  corrección de datos inexactos, incompletos o desactualizados.
                 </li>
                 <li>
-                  <strong>Derecho de supresión ("derecho al olvido"):</strong>{" "}
-                  Solicitar la eliminación de sus datos cuando ya no sean
-                  necesarios, cuando retire el consentimiento o cuando se hayan
-                  tratado ilícitamente. Este derecho puede estar limitado por
-                  obligaciones legales de conservación.
+                  <strong>Derecho de cancelación:</strong> Solicitar la
+                  eliminación de sus datos cuando ya no sean necesarios para la
+                  finalidad del tratamiento o cuando éste carezca de fundamento
+                  jurídico; este derecho puede estar limitado por obligaciones
+                  legales de conservación.
                 </li>
                 <li>
-                  <strong>Derecho de oposición:</strong> Oponerse al tratamiento
-                  de sus datos para finalidades de marketing directo o cuando se
-                  base en el interés legítimo.
+                  <strong>Derecho de oposición y/o bloqueo:</strong> Oponerse
+                  al tratamiento o solicitar el bloqueo de sus datos cuando
+                  resulte procedente conforme a la ley.
                 </li>
                 <li>
-                  <strong>Derecho a la limitación del tratamiento:</strong>{" "}
-                  Solicitar la suspensión temporal del tratamiento mientras se
-                  resuelve una impugnación o reclamación.
+                  <strong>Revocación del consentimiento:</strong> Cuando el
+                  tratamiento se sustente en su consentimiento, podrá
+                  revocarlo en cualquier momento.
                 </li>
                 <li>
-                  <strong>Derecho a la portabilidad:</strong> Recibir sus datos
-                  en un formato estructurado, de uso común y legible por
-                  máquina, y transferirlos a otro responsable del tratamiento.
-                </li>
-                <li>
-                  <strong>
-                    Derecho a no ser objeto de decisiones automatizadas:
-                  </strong>{" "}
-                  No ser sujeto de decisiones basadas exclusivamente en el
-                  tratamiento automatizado de datos que le produzcan efectos
-                  jurídicos o le afecten de modo significativo.
-                </li>
-                <li>
-                  <strong>Derecho a retirar el consentimiento:</strong> En
-                  cualquier momento, sin que ello afecte a la licitud del
-                  tratamiento previo.
+                  <strong>Derechos adicionales bajo la Ley Nº 21.719:</strong> A
+                  partir de la entrada en vigor plena del marco reformado, se
+                  reconocerán asimismo derechos de portabilidad y demás
+                  facultades del esquema ARCOP (u otras denominaciones legales
+                  equivalentes) en la medida en que resulten exigibles conforme
+                  a dicha ley y a la regulación de la APDP.
                 </li>
               </ul>
-
-              <div className="legal-infocard legal-infocard--green">
+              <div className="legal-infocard">
                 <span className="legal-infocard__heading">
                   ¿Cómo ejercer sus derechos?
                 </span>
@@ -688,14 +683,21 @@ function PrivacyPolicy() {
                 <a href="mailto:privacidad@seemanngroup.com">
                   privacidad@seemanngroup.com
                 </a>{" "}
-                indicando: su nombre completo, documento de identidad, derecho
-                que desea ejercer y, si aplica, dirección de respuesta.
-                Responderemos en un plazo máximo de{" "}
-                <strong>30 días hábiles</strong>. Si considera que su solicitud
-                no ha sido atendida adecuadamente, puede presentar una
-                reclamación ante la Autoridad Nacional para la Transparencia y
-                Acceso a la Información (ANTAI) de Panamá, o ante la autoridad
-                de protección de datos competente de su país.
+                o a{" "}
+                <a href="mailto:pablo@sphereglobal.io">pablo@sphereglobal.io</a>
+                , indicando: nombre completo, documento de identidad, derecho
+                que desea ejercer y, si aplica, medio de respuesta. Bajo la
+                práctica vigente de la Ley Nº 19.628, responderemos dentro de
+                los plazos legales aplicables a cada derecho. Una vez plenamente
+                vigente la Ley Nº 21.719, el plazo típico de respuesta a estas
+                solicitudes será de <strong>30 días</strong> contados desde la
+                recepción de la solicitud, sin perjuicio de prórrogas o
+                excepciones que la ley o la APDP establezcan. Si estima que su
+                solicitud no ha sido atendida adecuadamente, podrá reclamar ante
+                los <strong>tribunales ordinarios de justicia de Chile</strong>{" "}
+                y, a partir de la vigencia operativa de la Ley Nº 21.719,
+                también ante la{" "}
+                <strong>Agencia de Protección de Datos Personales</strong>.
               </div>
             </div>
           </section>
@@ -715,19 +717,17 @@ function PrivacyPolicy() {
               </p>
               <ul>
                 <li>
-                  <strong>Cifrado en tránsito:</strong> Todas las comunicaciones
-                  entre su navegador y nuestra plataforma utilizan protocolos
-                  TLS 1.2 / TLS 1.3 (HTTPS).
+                  <strong>Cifrado en tránsito:</strong> Comunicaciones entre su
+                  navegador y nuestra plataforma mediante protocolos TLS 1.2 /
+                  TLS 1.3 (HTTPS).
                 </li>
                 <li>
-                  <strong>Cifrado en reposo:</strong> Los datos almacenados en
-                  bases de datos y sistemas de archivos están cifrados con
-                  AES-256 o equivalente.
+                  <strong>Cifrado en reposo:</strong> Datos almacenados en bases
+                  de datos y sistemas de archivos con AES-256 o equivalente.
                 </li>
                 <li>
-                  <strong>Contraseñas:</strong> Las contraseñas de usuarios se
-                  almacenan exclusivamente como hashes criptográficos (bcrypt
-                  con salt), nunca en texto plano.
+                  <strong>Contraseñas:</strong> Almacenadas exclusivamente como
+                  hashes criptográficos (bcrypt con salt), nunca en texto plano.
                 </li>
                 <li>
                   <strong>Control de acceso:</strong> Acceso basado en roles
@@ -736,32 +736,36 @@ function PrivacyPolicy() {
                 </li>
                 <li>
                   <strong>Auditoría y monitoreo:</strong> Registros de acceso y
-                  actividad, monitoreo de anomalías, alertas automáticas ante
-                  intentos de acceso sospechoso.
+                  actividad, monitoreo de anomalías y alertas ante intentos
+                  sospechosos.
                 </li>
                 <li>
                   <strong>Infraestructura:</strong> Alojada en proveedores cloud
-                  de nivel enterprise (Vercel/Cloudflare) con certificaciones
-                  SOC 2 Type II e ISO 27001.
+                  de nivel empresarial, con controles de seguridad y
+                  certificaciones de mercado cuando corresponda.
                 </li>
                 <li>
                   <strong>Gestión de incidentes:</strong> Procedimiento
-                  documentado de respuesta ante brechas de seguridad. En caso de
-                  brecha que afecte sus derechos y libertades, le notificaremos
-                  en un plazo máximo de 72 horas.
+                  documentado de respuesta ante brechas. Cuando una brecha
+                  afecte de manera relevante sus derechos, le notificaremos
+                  conforme a la normativa chilena aplicable y a los plazos que
+                  ésta determine.
                 </li>
                 <li>
-                  <strong>Evaluaciones periódicas:</strong> Realizamos
-                  revisiones de seguridad, pruebas de penetración y análisis de
-                  vulnerabilidades de forma regular.
+                  <strong>Evaluaciones periódicas:</strong> Revisiones de
+                  seguridad y análisis de vulnerabilidades de forma regular.
                 </li>
               </ul>
               <p>
                 Ningún sistema de transmisión de datos por Internet puede
                 garantizar una seguridad absoluta. Si sospecha que su cuenta ha
                 sido comprometida, contáctenos de inmediato en{" "}
-                <a href="mailto:seguridad@seemanngroup.com">
-                  seguridad@seemanngroup.com
+                <a href="mailto:privacidad@seemanngroup.com">
+                  privacidad@seemanngroup.com
+                </a>{" "}
+                o{" "}
+                <a href="mailto:contacto@seemanngroup.com">
+                  contacto@seemanngroup.com
                 </a>
                 .
               </p>
@@ -782,10 +786,10 @@ function PrivacyPolicy() {
               </p>
               <p>
                 Si tenemos conocimiento de haber recabado datos de un menor sin
-                el consentimiento parental verificable requerido, procederemos a
-                eliminar dicha información de forma inmediata. Si usted es
-                padre, madre o tutor legal y cree que un menor a su cargo nos ha
-                proporcionado datos personales, contáctenos en{" "}
+                la autorización o consentimiento legalmente exigido,
+                procederemos a eliminar dicha información de forma inmediata. Si
+                usted es padre, madre o representante legal y cree que un menor
+                a su cargo nos ha proporcionado datos personales, contáctenos en{" "}
                 <a href="mailto:privacidad@seemanngroup.com">
                   privacidad@seemanngroup.com
                 </a>
@@ -804,10 +808,10 @@ function PrivacyPolicy() {
               <p>
                 Nuestra plataforma utiliza cookies y tecnologías similares para
                 garantizar el funcionamiento correcto del sitio, analizar el uso
-                de la plataforma y, con su consentimiento, ofrecer contenido
-                personalizado. Para información detallada sobre los tipos de
-                cookies que utilizamos, su duración, proveedores y cómo
-                gestionar sus preferencias, consulte nuestra{" "}
+                de la plataforma y, con su consentimiento cuando corresponda,
+                ofrecer contenido personalizado. Para información detallada
+                sobre los tipos de cookies que utilizamos, su duración,
+                proveedores y cómo gestionar sus preferencias, consulte nuestra{" "}
                 <Link to="/cookie-settings">Política de Cookies</Link>.
               </p>
               <p>
@@ -828,8 +832,9 @@ function PrivacyPolicy() {
               <p>
                 Seemann Group se reserva el derecho de modificar esta Política
                 de Privacidad en cualquier momento para reflejar cambios en
-                nuestras prácticas, servicios, normativa aplicable o
-                requerimientos regulatorios.
+                nuestras prácticas, servicios, normativa chilena aplicable
+                —incluida la gradual entrada en vigor de la Ley Nº 21.719— o
+                requerimientos de autoridad.
               </p>
               <p>
                 Cuando realicemos cambios materiales, le notificaremos con al
@@ -840,12 +845,13 @@ function PrivacyPolicy() {
                 plataforma.
               </p>
               <p>
-                La fecha de la "Última actualización" al inicio de este
-                documento refleja cuándo se realizó la revisión más reciente. El
-                uso continuado de la plataforma tras la entrada en vigor de los
-                cambios constituirá su aceptación de la nueva versión. Si no
-                está de acuerdo con los cambios, deberá cesar el uso de la
-                plataforma y puede solicitar la eliminación de su cuenta.
+                La fecha de la &quot;Última actualización&quot; al inicio de
+                este documento refleja cuándo se realizó la revisión más
+                reciente. El uso continuado de la plataforma tras la entrada en
+                vigor de los cambios constituirá su aceptación de la nueva
+                versión. Si no está de acuerdo con los cambios, deberá cesar el
+                uso de la plataforma y puede solicitar la eliminación de su
+                cuenta.
               </p>
               <p>
                 Conservamos las versiones anteriores de esta Política accesibles
@@ -878,18 +884,28 @@ function PrivacyPolicy() {
                 </div>
                 <div className="legal-contact-item">
                   <span className="legal-contact-item__label">
-                    Delegado de Protección (DPO)
+                    Email general
                   </span>
                   <span className="legal-contact-item__value">
-                    <a href="mailto:dpo@seemanngroup.com">
-                      dpo@seemanngroup.com
+                    <a href="mailto:contacto@seemanngroup.com">
+                      contacto@seemanngroup.com
+                    </a>
+                  </span>
+                </div>
+                <div className="legal-contact-item">
+                  <span className="legal-contact-item__label">
+                    Contacto de protección de datos
+                  </span>
+                  <span className="legal-contact-item__value">
+                    <a href="mailto:pablo@sphereglobal.io">
+                      pablo@sphereglobal.io
                     </a>
                   </span>
                 </div>
                 <div className="legal-contact-item">
                   <span className="legal-contact-item__label">Teléfono</span>
                   <span className="legal-contact-item__value">
-                    +507 300-0000
+                    +56 2 2604 8386
                   </span>
                 </div>
                 <div className="legal-contact-item">
@@ -899,35 +915,29 @@ function PrivacyPolicy() {
                   <span className="legal-contact-item__value">
                     Av. Libertad #1405, of. 1203
                     <br />
-                    Viña del Mar, Chile 2520000
-                    <br />
-                    Chile
+                    Viña del Mar, Chile
                   </span>
                 </div>
               </div>
-              <div className="legal-infocard" style={{ marginTop: "1.5rem" }}>
+              <div className="legal-infocard">
                 <span className="legal-infocard__heading">
-                  Autoridad supervisora
+                  Autoridad y vías de reclamo
                 </span>
-                Si reside en la Unión Europea y considera que el tratamiento de
-                sus datos infringe el RGPD, tiene derecho a presentar una
-                reclamación ante la autoridad de control de su Estado miembro.
-                En Panamá, la autoridad competente es la Autoridad Nacional para
-                la Transparencia y Acceso a la Información (ANTAI).
+                Hasta que la Agencia de Protección de Datos Personales se
+                encuentre plenamente operativa conforme a la Ley Nº 21.719,
+                usted conserva el derecho a reclamar ante los{" "}
+                <strong>
+                  tribunales ordinarios de justicia de la República de Chile
+                </strong>
+                . A partir de la vigencia plena de dicha ley y de la puesta en
+                marcha de la APDP, podrá además presentar reclamaciones ante la{" "}
+                <strong>Agencia de Protección de Datos Personales</strong>, sin
+                perjuicio de las acciones judiciales que le correspondan.
               </div>
             </div>
           </section>
         </article>
       </main>
-
-      {/* Footer */}
-      <footer className="legal-footer">
-        <p>
-          © {new Date().getFullYear()} Seemann Group S.A. · Todos los derechos
-          reservados · <Link to="/terms-of-service">Términos de Servicio</Link>{" "}
-          · <Link to="/cookie-settings">Configuración de Cookies</Link>
-        </p>
-      </footer>
     </div>
   );
 }

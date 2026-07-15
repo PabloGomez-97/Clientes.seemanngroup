@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ClientQuote } from "../../src/services/cotizacionesLogic";
 import {
   OPERACIONES_PAGE_SIZE,
@@ -24,18 +24,21 @@ export function useCotizaciones() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const linbisOptions = useMemo(
-    () => ({
-      accessToken: accessToken ?? "",
-      refreshAccessToken,
-    }),
-    [accessToken, refreshAccessToken],
-  );
+  const catalogRef = useRef<ClientQuote[] | null>(null);
+  const requestIdRef = useRef(0);
+
+  useEffect(() => {
+    catalogRef.current = catalog;
+  }, [catalog]);
 
   const loadPage = useCallback(
-    async (targetPage: number, options?: { showLoading?: boolean }) => {
+    async (
+      targetPage: number,
+      options?: { showLoading?: boolean; force?: boolean },
+    ) => {
       if (!accessToken || !activeUsername) {
         setCatalog(null);
+        catalogRef.current = null;
         setServerItems([]);
         setServerHasMore(false);
         setPage(1);
@@ -43,12 +46,14 @@ export function useCotizaciones() {
         return;
       }
 
-      if (catalog) {
+      if (!options?.force && catalogRef.current) {
         setPage(targetPage);
+        setLoading(false);
         return;
       }
 
       const showLoading = options?.showLoading ?? targetPage === 1;
+      const requestId = ++requestIdRef.current;
       if (showLoading) setLoading(true);
       setError(null);
 
@@ -56,10 +61,16 @@ export function useCotizaciones() {
         const result = await fetchCotizacionesPage(
           activeUsername,
           targetPage,
-          linbisOptions,
+          {
+            accessToken,
+            refreshAccessToken,
+          },
         );
 
+        if (requestId !== requestIdRef.current) return;
+
         if (result.mode === "client" && result.catalog) {
+          catalogRef.current = result.catalog;
           setCatalog(result.catalog);
           setServerItems([]);
           setServerHasMore(false);
@@ -67,11 +78,14 @@ export function useCotizaciones() {
           return;
         }
 
+        catalogRef.current = null;
         setCatalog(null);
         setPage(result.page);
         setServerItems(result.items);
         setServerHasMore(result.hasMore);
       } catch (err) {
+        if (requestId !== requestIdRef.current) return;
+        catalogRef.current = null;
         setCatalog(null);
         setServerItems([]);
         setServerHasMore(false);
@@ -82,10 +96,12 @@ export function useCotizaciones() {
             : "No se pudieron cargar las cotizaciones.",
         );
       } finally {
-        if (showLoading) setLoading(false);
+        if (requestId === requestIdRef.current && showLoading) {
+          setLoading(false);
+        }
       }
     },
-    [accessToken, activeUsername, catalog, linbisOptions],
+    [accessToken, activeUsername, refreshAccessToken],
   );
 
   useEffect(() => {
@@ -94,15 +110,13 @@ export function useCotizaciones() {
       setLoading(false);
       return;
     }
-    void loadPage(1);
-  }, [accessToken, activeUsername, loadPage, tokenLoading]);
-
-  useEffect(() => {
-    setPage(1);
+    catalogRef.current = null;
     setCatalog(null);
     setServerItems([]);
     setServerHasMore(false);
-  }, [activeUsername]);
+    setPage(1);
+    void loadPage(1, { force: true, showLoading: true });
+  }, [accessToken, activeUsername, loadPage, tokenLoading]);
 
   const paginated = useMemo(() => {
     if (catalog) {
@@ -120,26 +134,27 @@ export function useCotizaciones() {
 
   const goToNextPage = useCallback(() => {
     if (!paginated.hasNext || loading) return;
-    if (catalog) {
+    if (catalogRef.current) {
       setPage((current) => current + 1);
       return;
     }
     void loadPage(page + 1, { showLoading: false });
-  }, [catalog, loadPage, loading, page, paginated.hasNext]);
+  }, [loadPage, loading, page, paginated.hasNext]);
 
   const goToPreviousPage = useCallback(() => {
     if (!paginated.hasPrevious || loading) return;
-    if (catalog) {
+    if (catalogRef.current) {
       setPage((current) => current - 1);
       return;
     }
     void loadPage(page - 1, { showLoading: false });
-  }, [catalog, loadPage, loading, page, paginated.hasPrevious]);
+  }, [loadPage, loading, page, paginated.hasPrevious]);
 
   const refresh = useCallback(async () => {
+    catalogRef.current = null;
     setCatalog(null);
     setPage(1);
-    await loadPage(1);
+    await loadPage(1, { force: true, showLoading: true });
   }, [loadPage]);
 
   return {

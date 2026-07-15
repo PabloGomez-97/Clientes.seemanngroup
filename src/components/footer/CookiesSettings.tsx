@@ -886,11 +886,13 @@ function CookiesSettings() {
 
               <div className="legal-infocard legal-infocard--blue">
                 <span className="legal-infocard__heading">
-                  Derechos bajo el RGPD y la Ley 81 de Panamá
+                  Derechos bajo la normativa chilena de protección de datos
                 </span>
-                Tiene derecho a acceder, rectificar y suprimir los datos
-                recabados mediante cookies, así como a retirar su consentimiento
-                en cualquier momento, sin que ello afecte a la licitud del
+                Tiene derecho a acceder, rectificar, cancelar u oponerse al
+                tratamiento de los datos recabados mediante cookies, conforme a
+                la Ley Nº 19.628 y, a partir de su vigencia plena, al marco de
+                la Ley Nº 21.719, así como a retirar su consentimiento en
+                cualquier momento, sin que ello afecte a la licitud del
                 tratamiento basado en el consentimiento previo a su retirada.
                 Para ejercer estos derechos, contacte con{" "}
                 <a href="mailto:privacidad@seemanngroup.com">
