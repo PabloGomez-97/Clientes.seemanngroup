@@ -1,16 +1,20 @@
 import {
   ActivityIndicator,
   Image,
+  Pressable,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
+import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
 import { useHomeShipments } from "../../hooks/useHomeShipments";
 import { useHomeDocumentsCount } from "../../hooks/useHomeDocumentsCount";
+import type { ClientTabParamList } from "../../navigation/ClientTabs";
 import { brand, radii, spacing } from "../../theme/brand";
 import { fonts } from "../../theme/typography";
 
@@ -29,6 +33,8 @@ const KPI_META = {
 
 export default function WelcomeHeader() {
   const { t } = useTranslation();
+  const navigation =
+    useNavigation<BottomTabNavigationProp<ClientTabParamList>>();
   const { user, activeUsername } = useAuth();
   const { activeCount, loading: shipmentsLoading } =
     useHomeShipments(activeUsername);
@@ -44,12 +50,15 @@ export default function WelcomeHeader() {
       label: t("home.welcome.kpiShipments"),
       value: activeCount,
       loading: shipmentsLoading,
+      onPress: () =>
+        navigation.navigate("Trackeos", { screen: "TrackeosList" }),
     },
     {
       key: "documents" as const,
       label: t("home.welcome.kpiDocuments"),
       value: docsCount,
       loading: docsLoading,
+      onPress: () => navigation.navigate("Menu", { screen: "MisDocumentos" }),
     },
   ];
 
@@ -92,7 +101,16 @@ export default function WelcomeHeader() {
         {kpis.map((kpi) => {
           const meta = KPI_META[kpi.key];
           return (
-            <View key={kpi.key} style={styles.kpiCard}>
+            <Pressable
+              key={kpi.key}
+              style={({ pressed }) => [
+                styles.kpiCard,
+                pressed && styles.kpiCardPressed,
+              ]}
+              onPress={kpi.onPress}
+              accessibilityRole="button"
+              accessibilityLabel={kpi.label}
+            >
               <View style={[styles.kpiIconWrap, { backgroundColor: meta.bg }]}>
                 <Ionicons name={meta.icon} size={18} color={meta.tint} />
               </View>
@@ -102,7 +120,7 @@ export default function WelcomeHeader() {
                 <Text style={styles.kpiValue}>{kpi.value}</Text>
               )}
               <Text style={styles.kpiLabel}>{kpi.label}</Text>
-            </View>
+            </Pressable>
           );
         })}
       </View>
@@ -214,6 +232,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 1,
     shadowRadius: 12,
     elevation: 3,
+  },
+  kpiCardPressed: {
+    backgroundColor: brand.canvasAlt,
   },
   kpiIconWrap: {
     width: 34,

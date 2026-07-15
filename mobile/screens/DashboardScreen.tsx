@@ -2,6 +2,7 @@ import { ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import WelcomeHeader from "../components/home/WelcomeHeader";
 import EjecutivoCard from "../components/home/EjecutivoCard";
+import ConsultasGrid from "../components/home/ConsultasGrid";
 import { brand, spacing } from "../theme/brand";
 
 export default function DashboardScreen() {
@@ -14,6 +15,7 @@ export default function DashboardScreen() {
         <WelcomeHeader />
         <View style={styles.body}>
           <EjecutivoCard />
+          <ConsultasGrid />
         </View>
       </ScrollView>
     </SafeAreaView>

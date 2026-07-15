@@ -1,4 +1,4 @@
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -17,6 +17,11 @@ type MenuLink = {
   icon: keyof typeof Ionicons.glyphMap;
   onPress: () => void;
   destructive?: boolean;
+};
+
+type MenuSection = {
+  title: string;
+  links: MenuLink[];
 };
 
 export default function MenuScreen() {
@@ -43,35 +48,101 @@ export default function MenuScreen() {
     );
   };
 
-  const links: MenuLink[] = [
+  const sections: MenuSection[] = [
     {
-      key: "privacy",
-      label: "Política de Privacidad",
-      icon: "shield-checkmark-outline",
-      onPress: () => navigation.navigate("LegalDocument", { doc: "privacy" }),
+      title: "Reportería",
+      links: [
+        {
+          key: "fin",
+          label: "Reportería financiera",
+          icon: "cash-outline",
+          onPress: () => navigation.navigate("ReporteriaFinanciera"),
+        },
+        {
+          key: "ops",
+          label: "Reportería operacional",
+          icon: "stats-chart-outline",
+          onPress: () => navigation.navigate("ReporteriaOperacional"),
+        },
+      ],
     },
     {
-      key: "terms",
-      label: "Términos de Servicio",
-      icon: "document-text-outline",
-      onPress: () => navigation.navigate("LegalDocument", { doc: "terms" }),
+      title: "Documentos",
+      links: [
+        {
+          key: "docs",
+          label: "Mis Documentos",
+          icon: "folder-open-outline",
+          onPress: () => navigation.navigate("MisDocumentos"),
+        },
+      ],
     },
     {
-      key: "delete",
-      label: "Eliminar cuenta",
-      icon: "trash-outline",
-      onPress: () => navigation.navigate("DeleteAccount"),
-      destructive: true,
+      title: "Consultas",
+      links: [
+        {
+          key: "tarifario",
+          label: "Tarifario",
+          icon: "pricetags-outline",
+          onPress: () => navigation.navigate("Tarifario"),
+        },
+        {
+          key: "historico",
+          label: "Histórico de precios",
+          icon: "trending-up-outline",
+          onPress: () => navigation.navigate("HistoricoPrecios"),
+        },
+        {
+          key: "novedades",
+          label: "Novedades",
+          icon: "newspaper-outline",
+          onPress: () => navigation.navigate("Novedades"),
+        },
+        {
+          key: "promesas",
+          label: "Nuestras promesas",
+          icon: "people-outline",
+          onPress: () => navigation.navigate("Promesas"),
+        },
+      ],
+    },
+    {
+      title: "Cuenta y legal",
+      links: [
+        {
+          key: "privacy",
+          label: "Política de Privacidad",
+          icon: "shield-checkmark-outline",
+          onPress: () =>
+            navigation.navigate("LegalDocument", { doc: "privacy" }),
+        },
+        {
+          key: "terms",
+          label: "Términos de Servicio",
+          icon: "document-text-outline",
+          onPress: () => navigation.navigate("LegalDocument", { doc: "terms" }),
+        },
+        {
+          key: "delete",
+          label: "Eliminar cuenta",
+          icon: "trash-outline",
+          onPress: () => navigation.navigate("DeleteAccount"),
+          destructive: true,
+        },
+      ],
     },
   ];
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Menú</Text>
-      </View>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.header}>
+          <Text style={styles.title}>Menú</Text>
+        </View>
 
-      <View style={styles.content}>
         <View style={styles.profileCard}>
           <View style={styles.avatar}>
             <Ionicons name="person" size={28} color={brand.primary} />
@@ -100,42 +171,47 @@ export default function MenuScreen() {
           </View>
         </View>
 
-        <View style={styles.linksCard}>
-          {links.map((link, index) => (
-            <Pressable
-              key={link.key}
-              style={({ pressed }) => [
-                styles.linkRow,
-                index < links.length - 1 && styles.linkRowBorder,
-                pressed && styles.linkRowPressed,
-              ]}
-              onPress={link.onPress}
-              accessibilityRole="button"
-              accessibilityLabel={link.label}
-            >
-              <View style={styles.linkLeft}>
-                <Ionicons
-                  name={link.icon}
-                  size={20}
-                  color={link.destructive ? "#b91c1c" : brand.primary}
-                />
-                <Text
-                  style={[
-                    styles.linkLabel,
-                    link.destructive && styles.linkLabelDestructive,
+        {sections.map((section) => (
+          <View key={section.title} style={styles.section}>
+            <Text style={styles.sectionTitle}>{section.title}</Text>
+            <View style={styles.linksCard}>
+              {section.links.map((link, index) => (
+                <Pressable
+                  key={link.key}
+                  style={({ pressed }) => [
+                    styles.linkRow,
+                    index < section.links.length - 1 && styles.linkRowBorder,
+                    pressed && styles.linkRowPressed,
                   ]}
+                  onPress={link.onPress}
+                  accessibilityRole="button"
+                  accessibilityLabel={link.label}
                 >
-                  {link.label}
-                </Text>
-              </View>
-              <Ionicons
-                name="chevron-forward"
-                size={16}
-                color={brand.mutedLight}
-              />
-            </Pressable>
-          ))}
-        </View>
+                  <View style={styles.linkLeft}>
+                    <Ionicons
+                      name={link.icon}
+                      size={20}
+                      color={link.destructive ? "#b91c1c" : brand.primary}
+                    />
+                    <Text
+                      style={[
+                        styles.linkLabel,
+                        link.destructive && styles.linkLabelDestructive,
+                      ]}
+                    >
+                      {link.label}
+                    </Text>
+                  </View>
+                  <Ionicons
+                    name="chevron-forward"
+                    size={16}
+                    color={brand.mutedLight}
+                  />
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        ))}
 
         <Pressable
           style={({ pressed }) => [
@@ -151,7 +227,7 @@ export default function MenuScreen() {
             {t("home.navbar.profile.logout")}
           </Text>
         </Pressable>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -161,8 +237,11 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: brand.canvas,
   },
-  header: {
+  scroll: {
     paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.xl,
+  },
+  header: {
     paddingTop: spacing.sm,
     paddingBottom: spacing.md,
   },
@@ -171,11 +250,6 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bold,
     color: brand.ink,
     letterSpacing: -0.5,
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
   },
   profileCard: {
     flexDirection: "row",
@@ -221,12 +295,23 @@ const styles = StyleSheet.create({
     color: brand.inkSecondary,
     flexShrink: 1,
   },
+  section: {
+    marginBottom: spacing.lg,
+  },
+  sectionTitle: {
+    fontSize: 12,
+    fontFamily: fonts.semiBold,
+    color: brand.muted,
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+    marginBottom: 8,
+    paddingHorizontal: 4,
+  },
   linksCard: {
     backgroundColor: brand.surface,
     borderRadius: radii.lg,
     borderWidth: 1,
     borderColor: brand.border,
-    marginBottom: spacing.lg,
     overflow: "hidden",
   },
   linkRow: {
@@ -266,6 +351,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
     paddingVertical: 14,
     paddingHorizontal: spacing.lg,
+    marginTop: spacing.sm,
   },
   logoutButtonPressed: {
     backgroundColor: brand.primaryDark,
