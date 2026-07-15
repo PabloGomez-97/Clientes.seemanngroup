@@ -28,8 +28,6 @@ import HomeServicesGrid from "./HomeServicesGrid";
 
 import HomeCarriersCarousel from "./HomeCarriersCarousel";
 
-import EjecutivoCard from "./EjecutivoCard";
-
 import { useAuth } from "@/auth/AuthContext";
 
 import { useHomeShipments } from "@/hooks/useHomeShipments";
@@ -279,8 +277,6 @@ const Home: React.FC = () => {
                   : null}
             </div>
           </section>
-
-          <EjecutivoCard />
 
         </div>
 

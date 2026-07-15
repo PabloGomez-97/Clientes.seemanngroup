@@ -124,7 +124,7 @@
       }
     },
     "carriers": {
-      "label": "Carriers & Airlines we work with"
+      "label": "Carriers & airlines"
     },
     "testimonials": {
       "label": "Our Clients",
@@ -159,7 +159,7 @@
     },
     "servicesSection": {
       "eyebrow": "Quoting",
-      "title": "Quote by modality"
+      "title": "Modalities"
     },
     "quickActions": {
       "title": "Quick actions",

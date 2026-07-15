@@ -183,34 +183,27 @@ function Navbar({
           <button
             type="button"
             onClick={toggleChat}
-            aria-label="Abrir AI Chat"
-            title="AI Chat"
-            className="ai-chat-glow-btn"
+            aria-label="Abrir asistente"
+            title="Asistente"
+            className="ai-chat-nav-btn"
             style={{
-              background:
-                "linear-gradient(260deg, rgba(66, 133, 244, 0.22) 8.57%, rgba(231, 10, 62, 0.22) 101.84%)",
-              border: "1.5px solid rgba(162, 45, 125, 1)",
+              backgroundColor: "transparent",
+              border: `1px solid ${colors.border}`,
               borderRadius: "4px",
               padding: "8px 12px",
+              height: "36px",
               display: "inline-flex",
               alignItems: "center",
               cursor: "pointer",
               flexShrink: 0,
-              boxShadow:
-                "0 0 10px rgba(162, 45, 125, 0.45), inset 0 1px 0 rgba(255,255,255,0.06)",
-              transition: "box-shadow 0.2s ease, background 0.2s ease",
+              color: colors.text,
+              transition: "background-color 0.15s ease",
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.boxShadow =
-                "0 0 18px rgba(162, 45, 125, 0.75), 0 0 0 3px rgba(162, 45, 125, 0.25), inset 0 1px 0 rgba(255,255,255,0.06)";
-              e.currentTarget.style.background =
-                "linear-gradient(260deg, rgba(66, 133, 244, 0.32) 8.57%, rgba(231, 10, 62, 0.32) 101.84%)";
+              e.currentTarget.style.backgroundColor = colors.bgHover;
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.boxShadow =
-                "0 0 10px rgba(162, 45, 125, 0.45), inset 0 1px 0 rgba(255,255,255,0.06)";
-              e.currentTarget.style.background =
-                "linear-gradient(260deg, rgba(66, 133, 244, 0.22) 8.57%, rgba(231, 10, 62, 0.22) 101.84%)";
+              e.currentTarget.style.backgroundColor = "transparent";
             }}
           >
             <svg
@@ -219,46 +212,32 @@ function Navbar({
               viewBox="0 0 24 24"
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
+              aria-hidden
             >
-              <defs>
-                <linearGradient
-                  id="aiNavIconGrad"
-                  x1="0%"
-                  y1="100%"
-                  x2="100%"
-                  y2="0%"
-                >
-                  <stop offset="0%" stopColor="#E70A3E" />
-                  <stop offset="100%" stopColor="#1C6EF2" />
-                </linearGradient>
-              </defs>
               <path
                 d="M12 2L13.5 8.5L20 10L13.5 11.5L12 18L10.5 11.5L4 10L10.5 8.5L12 2Z"
-                fill="url(#aiNavIconGrad)"
+                fill="currentColor"
               />
               <path
                 d="M19 16L19.75 18.25L22 19L19.75 19.75L19 22L18.25 19.75L16 19L18.25 18.25L19 16Z"
-                fill="url(#aiNavIconGrad)"
+                fill="currentColor"
               />
               <path
                 d="M5 4L5.5 5.5L7 6L5.5 6.5L5 8L4.5 6.5L3 6L4.5 5.5L5 4Z"
-                fill="url(#aiNavIconGrad)"
+                fill="currentColor"
               />
             </svg>
             <span
               style={{
                 marginLeft: "6px",
-                background: "linear-gradient(223deg, #1C6EF2 0%, #E70A3E 100%)",
-                backgroundClip: "text",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-                fontWeight: 600,
+                fontWeight: 500,
                 fontSize: "0.875rem",
                 lineHeight: 1.3,
                 whiteSpace: "nowrap",
+                color: colors.text,
               }}
             >
-              AI Chat
+              Asistente
             </span>
           </button>
 
@@ -365,7 +344,13 @@ function Navbar({
                 }
               }}
             >
-              <span>{i18n.language === "es" ? "ES" : "EN"}</span>
+              <span>
+                {(i18n.resolvedLanguage || i18n.language || "es")
+                  .toLowerCase()
+                  .startsWith("es")
+                  ? "ES"
+                  : "EN"}
+              </span>
               <svg
                 width="12"
                 height="12"
@@ -1156,19 +1141,6 @@ function Navbar({
 
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-
-        @keyframes aiChatPulse {
-          0%, 100% { box-shadow: 0 0 10px rgba(162, 45, 125, 0.45), inset 0 1px 0 rgba(255,255,255,0.06); }
-          50%       { box-shadow: 0 0 18px rgba(162, 45, 125, 0.75), 0 0 0 3px rgba(162, 45, 125, 0.18), inset 0 1px 0 rgba(255,255,255,0.06); }
-        }
-
-        .ai-chat-glow-btn {
-          animation: aiChatPulse 2.8s ease-in-out infinite;
-        }
-
-        .ai-chat-glow-btn:hover {
-          animation: none;
-        }
 
         .main-navbar-shell {
           box-shadow: 0 1px 0 #e4e7ec;

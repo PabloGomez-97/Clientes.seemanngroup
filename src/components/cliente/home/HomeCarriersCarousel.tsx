@@ -24,34 +24,22 @@ function carrierLogoUrl(name: string): string {
 
 const HomeCarriersCarousel: React.FC = () => {
   const { t } = useTranslation();
-  const items = [...CARRIER_LOGOS, ...CARRIER_LOGOS];
 
   return (
-    <div className="hal-carriers-strip hal-page-container-content">
+    <div className="hal-carriers-strip">
       <p className="hal-carriers-label">{t("home.carriers.label")}</p>
-      <div
-        className="hm-carriers-carousel"
-        aria-label={t("home.carriers.label")}
-      >
-        <div className="hm-carriers-carousel__viewport">
-          <div className="hm-carriers-carousel__track">
-            {items.map((name, index) => (
-              <div
-                key={`${name}-${index}`}
-                className="hm-carriers-carousel__slide"
-                title={name}
-              >
-                <img
-                  src={carrierLogoUrl(name)}
-                  alt={name}
-                  loading="lazy"
-                  draggable={false}
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+      <ul className="hm-carriers-grid" aria-label={t("home.carriers.label")}>
+        {CARRIER_LOGOS.map((name) => (
+          <li key={name} className="hm-carriers-grid__item" title={name}>
+            <img
+              src={carrierLogoUrl(name)}
+              alt={name}
+              loading="lazy"
+              draggable={false}
+            />
+          </li>
+        ))}
+      </ul>
     </div>
   );
 };

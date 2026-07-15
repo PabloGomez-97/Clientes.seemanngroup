@@ -333,7 +333,13 @@ function NavbarAdmin({
                 e.currentTarget.style.backgroundColor = "transparent";
             }}
           >
-            <span>{i18n.language === "es" ? "ES" : "EN"}</span>
+            <span>
+              {(i18n.resolvedLanguage || i18n.language || "es")
+                .toLowerCase()
+                .startsWith("es")
+                ? "ES"
+                : "EN"}
+            </span>
             <svg
               width="12"
               height="12"

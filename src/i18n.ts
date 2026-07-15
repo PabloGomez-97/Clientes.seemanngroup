@@ -14,10 +14,12 @@ i18n
     fallbackLng: 'es',
     supportedLngs: ['es', 'en'],
     nonExplicitSupportedLngs: true,
+    load: 'languageOnly',
     debug: false,
     detection: {
       order: ['localStorage', 'navigator', 'htmlTag'],
       caches: ['localStorage'],
+      convertDetectedLanguage: (lng: string) => lng.split('-')[0],
     },
     interpolation: {
       escapeValue: false,

@@ -124,7 +124,7 @@
       }
     },
     "carriers": {
-      "label": "Carriers & Aerolíneas con quienes trabajamos"
+      "label": "Carriers & aerolíneas"
     },
     "testimonials": {
       "label": "Nuestros Clientes",
@@ -159,7 +159,7 @@
     },
     "servicesSection": {
       "eyebrow": "Cotizaciones",
-      "title": "Cotiza por modalidad"
+      "title": "Modalidades"
     },
     "quickActions": {
       "title": "Acciones rápidas",
