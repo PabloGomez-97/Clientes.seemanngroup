@@ -18,8 +18,6 @@ import "../styles/Home.css";
 
 import ActivityBar from "../cotizaciones/ActivityBar";
 
-import WelcomeHeader from "./WelcomeHeader";
-
 import HomeHeroCarousel, {
 
   type HeroSlide,
@@ -60,18 +58,6 @@ const FALLBACK_SLIDES = (t: (k: string) => string): HeroSlide[] => [
     subtitle: t("home.slide1.subtitle"),
 
     button: { text: t("home.slide1.button"), link: "/promesas" },
-
-  },
-
-  {
-
-    image: imgUrl("/insights2.png"),
-
-    title: t("home.slide2.title"),
-
-    subtitle: t("home.slide2.subtitle"),
-
-    button: { text: t("home.slide2.button"), link: "/new-tracking" },
 
   },
 
@@ -141,31 +127,37 @@ const Home: React.FC = () => {
 
       }
 
-      const mapped: HeroSlide[] = cmsSlides.map((s, index) => ({
+      const primary = cmsSlides[0];
 
-        image: resolveHeroSlideImage(s.imageUrl, index),
+      const mapped: HeroSlide[] = [
 
-        title: s.title,
+        {
 
-        subtitle: s.subtitle,
+          image: resolveHeroSlideImage(primary.imageUrl, 0),
 
-        button: { text: s.buttonText, link: s.buttonLink },
+          title: primary.title,
 
-      }));
+          subtitle: primary.subtitle,
 
-      mapped.push({
+          button: { text: primary.buttonText, link: primary.buttonLink },
 
-        image: imgUrl("/insights3.png"),
+        },
 
-        title: "",
+        {
 
-        subtitle: "",
+          image: imgUrl("/insights3.png"),
 
-        button: { text: "", link: "/trackings" },
+          title: "",
 
-        dynamic: true,
+          subtitle: "",
 
-      });
+          button: { text: "", link: "/trackings" },
+
+          dynamic: true,
+
+        },
+
+      ];
 
       setHeroSlides(mapped);
 
@@ -188,10 +180,6 @@ const Home: React.FC = () => {
     <div className="hm-home-shell">
 
       <ActivityBar />
-
-      <WelcomeHeader />
-
-
 
       <div className="hal-page-container">
 
