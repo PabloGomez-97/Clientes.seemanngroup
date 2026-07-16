@@ -61,7 +61,7 @@ export default function WelcomeHeader({ topInset = 0 }: Props) {
             <View style={styles.accountPill}>
               <View style={styles.liveDot} />
               <Text style={styles.accountPillText} numberOfLines={1}>
-                {activeUsername}
+                En línea
               </Text>
             </View>
           ) : null}
