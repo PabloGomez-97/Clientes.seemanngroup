@@ -4,7 +4,6 @@ import {
   Animated,
   Image,
   KeyboardAvoidingView,
-  Modal,
   Platform,
   Pressable,
   StyleSheet,
@@ -30,7 +29,7 @@ type Step = "email" | "password";
 export default function Login() {
   const insets = useSafeAreaInsets();
   const { login, logout } = useAuth();
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const emailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
   const fade = useRef(new Animated.Value(1)).current;
@@ -42,7 +41,6 @@ export default function Login() {
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [focused, setFocused] = useState(false);
-  const [recoverVisible, setRecoverVisible] = useState(false);
   const [captchaRequired, setCaptchaRequired] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const turnstileKeyRef = useRef(0);
@@ -74,10 +72,6 @@ export default function Login() {
         useNativeDriver: true,
       }).start();
     });
-  };
-
-  const changeLanguage = (language: string) => {
-    void i18n.changeLanguage(language);
   };
 
   const resetCaptcha = () => {
@@ -216,28 +210,6 @@ export default function Login() {
           ) : (
             <View style={styles.topSpacer} />
           )}
-
-          <View style={styles.languageRow}>
-            {(["es", "en"] as const).map((lang) => {
-              const active = i18n.language?.startsWith(lang);
-              return (
-                <Pressable
-                  key={lang}
-                  onPress={() => changeLanguage(lang)}
-                  style={[styles.langChip, active && styles.langChipActive]}
-                >
-                  <Text
-                    style={[
-                      styles.langChipText,
-                      active && styles.langChipTextActive,
-                    ]}
-                  >
-                    {lang.toUpperCase()}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
         </View>
 
         <KeyboardAvoidingView
@@ -315,18 +287,6 @@ export default function Login() {
                     <Text style={styles.primaryButtonText}>
                       {t("home.login.continueButton", {
                         defaultValue: "Continuar",
-                      })}
-                    </Text>
-                  </Pressable>
-
-                  <Pressable
-                    onPress={() => setRecoverVisible(true)}
-                    hitSlop={10}
-                    style={styles.recoverLink}
-                  >
-                    <Text style={styles.recoverLinkText}>
-                      {t("home.login.recoverPassword", {
-                        defaultValue: "Recuperar clave",
                       })}
                     </Text>
                   </Pressable>
@@ -456,44 +416,6 @@ export default function Login() {
           })}
         </Text>
       </View>
-
-      <Modal
-        visible={recoverVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setRecoverVisible(false)}
-      >
-        <View style={styles.modalBackdrop}>
-          <Pressable
-            style={StyleSheet.absoluteFill}
-            onPress={() => setRecoverVisible(false)}
-          />
-          <View style={styles.modalCard}>
-            <View style={styles.modalAccent} />
-            <Text style={styles.modalTitle}>
-              {t("home.login.recoverPassword", {
-                defaultValue: "Recuperar clave",
-              })}
-            </Text>
-            <Text style={styles.modalBody}>
-              {t("home.login.recoverPasswordMessage", {
-                defaultValue:
-                  "Debes contactarte con tu ejecutivo de ventas para recuperar tu cuenta/contraseña",
-              })}
-            </Text>
-            <Pressable
-              onPress={() => setRecoverVisible(false)}
-              style={styles.modalButton}
-            >
-              <Text style={styles.primaryButtonText}>
-                {t("home.login.recoverPasswordClose", {
-                  defaultValue: "Entendido",
-                })}
-              </Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }
@@ -547,32 +469,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: brand.navy,
     fontFamily: fonts.medium,
-  },
-  languageRow: {
-    flexDirection: "row",
-    gap: 6,
-    marginLeft: "auto",
-  },
-  langChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 10,
-    backgroundColor: "rgba(255,255,255,0.7)",
-    borderWidth: 1,
-    borderColor: "rgba(30, 58, 95, 0.08)",
-  },
-  langChipActive: {
-    backgroundColor: brand.primarySoft,
-    borderColor: brand.primaryBorder,
-  },
-  langChipText: {
-    fontSize: 12,
-    color: brand.muted,
-    fontFamily: fonts.semiBold,
-    letterSpacing: 0.4,
-  },
-  langChipTextActive: {
-    color: brand.primary,
   },
   body: {
     flex: 1,
@@ -709,17 +605,6 @@ const styles = StyleSheet.create({
     fontFamily: fonts.semiBold,
     letterSpacing: 0.2,
   },
-  recoverLink: {
-    marginTop: 22,
-    alignSelf: "center",
-    paddingVertical: 4,
-  },
-  recoverLinkText: {
-    fontSize: 14,
-    color: brand.navy,
-    fontFamily: fonts.semiBold,
-    textAlign: "center",
-  },
   footer: {
     textAlign: "center",
     color: brand.mutedLight,
@@ -727,49 +612,6 @@ const styles = StyleSheet.create({
     fontFamily: fonts.medium,
     paddingBottom: 10,
     paddingHorizontal: 24,
-  },
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: "rgba(15, 23, 42, 0.45)",
-    justifyContent: "center",
-    paddingHorizontal: 28,
-  },
-  modalCard: {
-    backgroundColor: "#fff",
-    borderRadius: 20,
-    paddingHorizontal: 22,
-    paddingTop: 22,
-    paddingBottom: 20,
-    zIndex: 1,
-  },
-  modalAccent: {
-    alignSelf: "center",
-    width: 36,
-    height: 3,
-    borderRadius: 2,
-    backgroundColor: brand.primary,
-    marginBottom: 14,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontFamily: fonts.bold,
-    color: brand.navy,
-    textAlign: "center",
-    marginBottom: 12,
-  },
-  modalBody: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: brand.muted,
-    textAlign: "center",
-    marginBottom: 22,
-    fontFamily: fonts.regular,
-  },
-  modalButton: {
-    backgroundColor: brand.primary,
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: "center",
   },
   loadingRow: {
     flexDirection: "row",
