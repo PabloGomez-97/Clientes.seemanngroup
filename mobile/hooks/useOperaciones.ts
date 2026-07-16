@@ -247,6 +247,11 @@ export function useOperaciones() {
   );
 
   const refreshActiveTab = useCallback(async () => {
+    try {
+      await refreshAccessToken();
+    } catch {
+      return;
+    }
     if (activeTab === "air") {
       airLoadedRef.current = false;
       await loadAirPage(airPage);
@@ -261,9 +266,21 @@ export function useOperaciones() {
     groundLoadedRef.current = false;
     setGroundPage(1);
     await loadGroundCatalog();
-  }, [activeTab, airPage, loadAirPage, loadGroundCatalog, loadOceanCatalog]);
+  }, [
+    activeTab,
+    airPage,
+    loadAirPage,
+    loadGroundCatalog,
+    loadOceanCatalog,
+    refreshAccessToken,
+  ]);
 
   const refreshAll = useCallback(async () => {
+    try {
+      await refreshAccessToken();
+    } catch {
+      return;
+    }
     airLoadedRef.current = false;
     oceanLoadedRef.current = false;
     groundLoadedRef.current = false;
@@ -278,6 +295,7 @@ export function useOperaciones() {
     loadGroundCatalog,
     loadOceanCatalog,
     loadTrackingData,
+    refreshAccessToken,
   ]);
 
   useEffect(() => {

@@ -154,8 +154,16 @@ export function useCotizaciones() {
     catalogRef.current = null;
     setCatalog(null);
     setPage(1);
+    setError(null);
+    setLoading(true);
+    try {
+      await refreshAccessToken();
+    } catch {
+      setLoading(false);
+      return;
+    }
     await loadPage(1, { force: true, showLoading: true });
-  }, [loadPage]);
+  }, [loadPage, refreshAccessToken]);
 
   return {
     activeUsername,

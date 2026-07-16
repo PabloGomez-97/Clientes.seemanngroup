@@ -85,7 +85,14 @@ export function useReporteriaFinanciera() {
     loadingMore,
     error,
     hasMore,
-    refresh: () => load(1, false),
+    refresh: async () => {
+      try {
+        await refreshAccessToken();
+        await load(1, false);
+      } catch {
+        // token error already set in context
+      }
+    },
     loadMore: () => {
       if (!loadingMore && hasMore) void load(page + 1, true);
     },
@@ -165,6 +172,13 @@ export function useReporteriaOperacional() {
     sampleSize,
     loading: loading || tokenLoading,
     error,
-    refresh: () => load(),
+    refresh: async () => {
+      try {
+        await refreshAccessToken();
+        await load();
+      } catch {
+        // token error already set in context
+      }
+    },
   };
 }

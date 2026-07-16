@@ -6,8 +6,34 @@ type NotificationsModule = typeof import("expo-notifications");
 
 let notificationsMod: NotificationsModule | null | undefined;
 
+function apiUrl(path: string): string {
+  return `${MOBILE_API_BASE.replace(/\/$/, "")}${path}`;
+}
+
+function hasPushNativeModule(): boolean {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { requireOptionalNativeModule } = require("expo-modules-core");
+    return requireOptionalNativeModule("ExpoPushTokenManager") != null;
+  } catch {
+    return false;
+  }
+}
+
+function canRegisterPush(): boolean {
+  if (Platform.OS === "web") return false;
+  if (Constants.appOwnership === "expo") return false;
+  if (Constants.executionEnvironment === "storeClient") return false;
+  return hasPushNativeModule();
+}
+
 async function getNotifications(): Promise<NotificationsModule | null> {
   if (notificationsMod !== undefined) return notificationsMod;
+  if (!canRegisterPush()) {
+    notificationsMod = null;
+    return null;
+  }
+
   try {
     const mod = await import("expo-notifications");
     mod.setNotificationHandler({
@@ -25,16 +51,6 @@ async function getNotifications(): Promise<NotificationsModule | null> {
     notificationsMod = null;
     return null;
   }
-}
-
-function apiUrl(path: string): string {
-  return `${MOBILE_API_BASE.replace(/\/$/, "")}${path}`;
-}
-
-function canUsePushHardware(): boolean {
-  if (Platform.OS === "web") return false;
-  if (Constants.isDevice === false) return false;
-  return true;
 }
 
 export async function getNotificationPreferences(
@@ -69,8 +85,6 @@ export async function setNotificationPreferences(
 export async function registerPushToken(
   authToken: string,
 ): Promise<string | null> {
-  if (!canUsePushHardware()) return null;
-
   const Notifications = await getNotifications();
   if (!Notifications) return null;
 

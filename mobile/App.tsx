@@ -11,6 +11,7 @@ import {
 import "./i18n";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 import Login from "./auth/Login";
+import { LinbisTokenProvider } from "./hooks/useLinbisToken";
 import { usePushNotifications } from "./hooks/usePushNotifications";
 import ClientTabs from "./navigation/ClientTabs";
 import { brand } from "./theme/brand";
@@ -20,7 +21,11 @@ let globalFontsApplied = false;
 
 function AuthenticatedApp() {
   usePushNotifications();
-  return <ClientTabs />;
+  return (
+    <LinbisTokenProvider>
+      <ClientTabs />
+    </LinbisTokenProvider>
+  );
 }
 
 function RootApp() {

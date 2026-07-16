@@ -1,4 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { MOBILE_API_BASE } from "../../src/auth/authApi";
 
 const REFRESH_INTERVAL_MS = 45 * 60 * 1000;
@@ -11,6 +20,15 @@ type LinbisTokenResponse = {
   expiresIn?: number;
 };
 
+type LinbisTokenContextValue = {
+  accessToken: string;
+  loading: boolean;
+  error: string | null;
+  refreshAccessToken: () => Promise<string>;
+};
+
+const LinbisTokenContext = createContext<LinbisTokenContextValue | null>(null);
+
 function createTimeoutSignal(timeoutMs: number): AbortSignal {
   if (typeof AbortSignal !== "undefined" && "timeout" in AbortSignal) {
     return AbortSignal.timeout(timeoutMs);
@@ -20,7 +38,7 @@ function createTimeoutSignal(timeoutMs: number): AbortSignal {
   return controller.signal;
 }
 
-export function useLinbisToken() {
+export function LinbisTokenProvider({ children }: { children: ReactNode }) {
   const [accessToken, setAccessToken] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +58,9 @@ export function useLinbisToken() {
           signal: createTimeoutSignal(TOKEN_ENDPOINT_TIMEOUT_MS),
         });
         if (!response.ok) {
-          throw new Error("No se pudo obtener el token de Linbis");
+          throw new Error(
+            `No se pudo obtener el token de Linbis (${response.status})`,
+          );
         }
         const data = (await response.json()) as LinbisTokenResponse;
         if (!data.token) {
@@ -127,5 +147,22 @@ export function useLinbisToken() {
     };
   }, [fetchToken, accessToken]);
 
-  return { accessToken, loading, error, refreshAccessToken };
+  const value = useMemo(
+    () => ({ accessToken, loading, error, refreshAccessToken }),
+    [accessToken, loading, error, refreshAccessToken],
+  );
+
+  return (
+    <LinbisTokenContext.Provider value={value}>
+      {children}
+    </LinbisTokenContext.Provider>
+  );
+}
+
+export function useLinbisToken() {
+  const ctx = useContext(LinbisTokenContext);
+  if (!ctx) {
+    throw new Error("useLinbisToken debe usarse dentro de LinbisTokenProvider");
+  }
+  return ctx;
 }
