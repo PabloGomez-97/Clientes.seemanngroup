@@ -41,6 +41,10 @@ import {
   formatBehaviorClientStats,
 } from '../lib/behavior-tracking-stats.js';
 import { shouldResetNotificationRead } from '../lib/portal-notifications.js';
+import {
+  getDevicePushTokenModel,
+  sendTrackingPushToClient,
+} from '../lib/expo-push.js';
 
 /** =========================
  *  Entorno + JWT
@@ -61,9 +65,22 @@ interface AuthPayload extends jwt.JwtPayload {
   username: string;
 }
 
-function signToken(payload: AuthPayload | object): string {
+function signToken(
+  payload: AuthPayload | object,
+  options?: { persistent?: boolean },
+): string {
+  if (options?.persistent) {
+    return jwt.sign(payload as object, JWT_SECRET);
+  }
   const opts: jwt.SignOptions = { expiresIn: TOKEN_TTL };
   return jwt.sign(payload as object, JWT_SECRET, opts);
+}
+
+function isMobileClient(req: VercelRequest, body?: unknown): boolean {
+  const header = String(req.headers['x-client'] || '').toLowerCase();
+  if (header === 'mobile') return true;
+  const client = (body as { client?: unknown } | undefined)?.client;
+  return String(client || '').toLowerCase() === 'mobile';
 }
 
 function verifyToken(token: string): AuthPayload {
@@ -235,6 +252,7 @@ interface IUser {
   ejecutivoId?: mongoose.Types.ObjectId;
   loginFailCount?: number;
   loginCaptchaRequired?: boolean;
+  mobilePushEnabled?: boolean;
 }
 
 interface IUserDoc extends IUser, mongoose.Document {
@@ -254,6 +272,7 @@ const UserSchema = new mongoose.Schema<IUserDoc>(
     ejecutivoId: { type: mongoose.Schema.Types.ObjectId, ref: 'Ejecutivo' },
     loginFailCount: { type: Number, default: 0 },
     loginCaptchaRequired: { type: Boolean, default: false },
+    mobilePushEnabled: { type: Boolean, default: true },
   },
   { timestamps: true }
 );
@@ -1438,6 +1457,19 @@ async function emitTrackingNotification(opts: {
           containerNumber: opts.containerNumber,
         },
       });
+
+      void sendTrackingPushToClient({
+        email: clientUser.email,
+        mobilePushEnabled: (clientUser as any).mobilePushEnabled,
+        type: opts.type,
+        shipmentMode: opts.shipmentMode,
+        shipmentId: String(opts.shipmentId),
+        awbNumber: opts.awbNumber,
+        containerNumber: opts.containerNumber,
+        reference,
+        oldStatus: opts.oldStatus,
+        newStatus: opts.newStatus,
+      });
     }
 
     // EJECUTIVO → owner of the client
@@ -1995,6 +2027,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // POST /api/login
     if (path === '/api/login' && method === 'POST') {
       const { email, password, turnstileToken } = (req.body as any) || {};
+      const persistent = isMobileClient(req, req.body);
 
       if (!email || !password) {
         return res.status(400).json({ error: 'Faltan campos' });
@@ -2054,7 +2087,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
       }
 
-      const token = signToken({ sub: user.email, username: user.username });
+      const token = signToken(
+        { sub: user.email, username: user.username },
+        { persistent },
+      );
 
       // Login exitoso: reiniciar contador de fallos
       await User.updateOne(
@@ -2192,10 +2228,165 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               telefono: ejecutivo.telefono
             } : null,
             roles,
-          }
+            mobilePushEnabled: user.mobilePushEnabled !== false,
+          },
+          ...(isMobileClient(req)
+            ? {
+                token: signToken(
+                  { sub: user.email, username: user.username },
+                  { persistent: true },
+                ),
+              }
+            : {}),
         });
       } catch {
         return res.status(401).json({ error: 'Invalid token' });
+      }
+    }
+
+    if (path === '/api/mobile/notification-preferences' && method === 'GET') {
+      try {
+        const currentUser = requireAuth(req);
+        const user = await User.findOne({ email: currentUser.sub }).select(
+          'mobilePushEnabled',
+        );
+        if (!user) {
+          return res.status(404).json({ error: 'Usuario no encontrado' });
+        }
+        return res.json({
+          success: true,
+          enabled: user.mobilePushEnabled !== false,
+        });
+      } catch (error: unknown) {
+        if (
+          error instanceof Error &&
+          (error.message === 'No auth token' || error.message === 'Invalid token')
+        ) {
+          return res.status(401).json({ error: error.message });
+        }
+        console.error('[mobile-notification-preferences:get]', error);
+        return res.status(500).json({ error: 'Error interno' });
+      }
+    }
+
+    if (path === '/api/mobile/notification-preferences' && method === 'PUT') {
+      try {
+        const currentUser = requireAuth(req);
+        const enabled = Boolean((req.body as { enabled?: unknown })?.enabled);
+        const user = await User.findOneAndUpdate(
+          { email: currentUser.sub },
+          { $set: { mobilePushEnabled: enabled } },
+          { new: true },
+        ).select('mobilePushEnabled');
+        if (!user) {
+          return res.status(404).json({ error: 'Usuario no encontrado' });
+        }
+
+        const DevicePushToken = getDevicePushTokenModel();
+        if (!enabled) {
+          await DevicePushToken.updateMany(
+            { email: currentUser.sub },
+            { $set: { enabled: false } },
+          );
+        } else {
+          await DevicePushToken.updateMany(
+            { email: currentUser.sub },
+            { $set: { enabled: true } },
+          );
+        }
+
+        return res.json({
+          success: true,
+          enabled: user.mobilePushEnabled !== false,
+        });
+      } catch (error: unknown) {
+        if (
+          error instanceof Error &&
+          (error.message === 'No auth token' || error.message === 'Invalid token')
+        ) {
+          return res.status(401).json({ error: error.message });
+        }
+        console.error('[mobile-notification-preferences:put]', error);
+        return res.status(500).json({ error: 'Error interno' });
+      }
+    }
+
+    if (path === '/api/mobile/push-token' && method === 'PUT') {
+      try {
+        const currentUser = requireAuth(req);
+        const body = (req.body || {}) as {
+          token?: unknown;
+          platform?: unknown;
+        };
+        const pushToken = String(body.token || '').trim();
+        const platform = String(body.platform || '').trim() || undefined;
+
+        if (!pushToken || !pushToken.startsWith('ExponentPushToken')) {
+          return res.status(400).json({ error: 'token de push inválido' });
+        }
+
+        const user = await User.findOne({ email: currentUser.sub }).select(
+          'mobilePushEnabled',
+        );
+        if (!user) {
+          return res.status(404).json({ error: 'Usuario no encontrado' });
+        }
+
+        const DevicePushToken = getDevicePushTokenModel();
+        await DevicePushToken.findOneAndUpdate(
+          { token: pushToken },
+          {
+            $set: {
+              email: currentUser.sub,
+              token: pushToken,
+              platform,
+              enabled: user.mobilePushEnabled !== false,
+              updatedAt: new Date(),
+            },
+            $setOnInsert: { createdAt: new Date() },
+          },
+          { upsert: true },
+        );
+
+        return res.json({ success: true });
+      } catch (error: unknown) {
+        if (
+          error instanceof Error &&
+          (error.message === 'No auth token' || error.message === 'Invalid token')
+        ) {
+          return res.status(401).json({ error: error.message });
+        }
+        console.error('[mobile-push-token:put]', error);
+        return res.status(500).json({ error: 'Error interno' });
+      }
+    }
+
+    if (path === '/api/mobile/push-token' && method === 'DELETE') {
+      try {
+        const currentUser = requireAuth(req);
+        const body = (req.body || {}) as { token?: unknown };
+        const pushToken = String(body.token || '').trim();
+        const DevicePushToken = getDevicePushTokenModel();
+
+        if (pushToken) {
+          await DevicePushToken.deleteOne({
+            email: currentUser.sub,
+            token: pushToken,
+          });
+        } else {
+          await DevicePushToken.deleteMany({ email: currentUser.sub });
+        }
+
+        return res.json({ success: true });
+      } catch (error: unknown) {
+        if (
+          error instanceof Error &&
+          (error.message === 'No auth token' || error.message === 'Invalid token')
+        ) {
+          return res.status(401).json({ error: error.message });
+        }
+        console.error('[mobile-push-token:delete]', error);
+        return res.status(500).json({ error: 'Error interno' });
       }
     }
 

@@ -10,6 +10,7 @@ import HistoricoPreciosScreen from "../screens/consultas/HistoricoPreciosScreen"
 import NovedadesScreen from "../screens/consultas/NovedadesScreen";
 import NovedadDetailScreen from "../screens/consultas/NovedadDetailScreen";
 import PromesasScreen from "../screens/consultas/PromesasScreen";
+import NotificacionesScreen from "../screens/menu/NotificacionesScreen";
 import { noBackStackOptions } from "./noBackStackOptions";
 
 export type MenuStackParamList = {
@@ -22,6 +23,7 @@ export type MenuStackParamList = {
   Novedades: undefined;
   NovedadDetail: { slug: string; title?: string };
   Promesas: undefined;
+  Notificaciones: undefined;
   LegalDocument: { doc: "privacy" | "terms" };
   DeleteAccount: undefined;
 };
@@ -74,6 +76,11 @@ export default function MenuStack() {
       <Stack.Screen
         name="Promesas"
         component={PromesasScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="Notificaciones"
+        component={NotificacionesScreen}
         options={{ headerShown: false }}
       />
       <Stack.Screen

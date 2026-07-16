@@ -43,6 +43,10 @@ import {
   formatBehaviorClientStats,
 } from '../lib/behavior-tracking-stats.ts';
 import { shouldResetNotificationRead } from '../lib/portal-notifications.ts';
+import {
+  getDevicePushTokenModel,
+  sendTrackingPushToClient,
+} from '../lib/expo-push.ts';
 
 /** =========================
  *  Entorno + JWT
@@ -63,9 +67,22 @@ interface AuthPayload extends jwt.JwtPayload {
   username: string;
 }
 
-function signToken(payload: AuthPayload | object): string {
+function signToken(
+  payload: AuthPayload | object,
+  options?: { persistent?: boolean },
+): string {
+  if (options?.persistent) {
+    return jwt.sign(payload as object, JWT_SECRET);
+  }
   const opts: jwt.SignOptions = { expiresIn: TOKEN_TTL };
   return jwt.sign(payload as object, JWT_SECRET, opts);
+}
+
+function isMobileClient(req: express.Request, body?: unknown): boolean {
+  const header = String(req.headers['x-client'] || '').toLowerCase();
+  if (header === 'mobile') return true;
+  const client = (body as { client?: unknown } | undefined)?.client;
+  return String(client || '').toLowerCase() === 'mobile';
 }
 
 function verifyToken(token: string): AuthPayload {
@@ -247,6 +264,7 @@ interface IUser {
   ejecutivoId?: mongoose.Types.ObjectId;  // Referencia al ejecutivo
   loginFailCount?: number;
   loginCaptchaRequired?: boolean;
+  mobilePushEnabled?: boolean;
 }
 
 interface IUserDoc extends IUser, mongoose.Document {
@@ -266,6 +284,7 @@ const UserSchema = new mongoose.Schema<IUserDoc>(
     ejecutivoId: { type: mongoose.Schema.Types.ObjectId, ref: 'Ejecutivo' },
     loginFailCount: { type: Number, default: 0 },
     loginCaptchaRequired: { type: Boolean, default: false },
+    mobilePushEnabled: { type: Boolean, default: true },
   },
   { timestamps: true }
 );
@@ -1417,6 +1436,19 @@ async function emitTrackingNotification(opts: {
           containerNumber: opts.containerNumber,
         },
       });
+
+      void sendTrackingPushToClient({
+        email: clientUser.email,
+        mobilePushEnabled: (clientUser as any).mobilePushEnabled,
+        type: opts.type,
+        shipmentMode: opts.shipmentMode,
+        shipmentId: String(opts.shipmentId),
+        awbNumber: opts.awbNumber,
+        containerNumber: opts.containerNumber,
+        reference,
+        oldStatus: opts.oldStatus,
+        newStatus: opts.newStatus,
+      });
     }
 
     if (clientUser?.ejecutivoId) {
@@ -1897,7 +1929,8 @@ const auth: express.RequestHandler = (req, res, next) => {
 // Login
 app.post('/api/login', async (req, res) => {
   try {
-    const { email, password, turnstileToken } = (req.body as any) || {};
+  const { email, password, turnstileToken } = (req.body as any) || {};
+  const persistent = isMobileClient(req, req.body);
     if (!email || !password) {
       return res.status(400).json({ error: 'Faltan campos' });
     }
@@ -1956,7 +1989,10 @@ app.post('/api/login', async (req, res) => {
       });
     }
 
-    const token = signToken({ sub: user.email, username: user.username });
+    const token = signToken(
+      { sub: user.email, username: user.username },
+      { persistent },
+    );
 
     // Login exitoso: reiniciar contador de fallos
     await User.updateOne(
@@ -2095,10 +2131,129 @@ app.get('/api/me', auth, async (req, res) => {
           telefono: ejecutivo.telefono
         } : null,
         roles,
-      }
+        mobilePushEnabled: user.mobilePushEnabled !== false,
+      },
+      ...(isMobileClient(req)
+        ? {
+            token: signToken(
+              { sub: user.email, username: user.username },
+              { persistent: true },
+            ),
+          }
+        : {}),
     });
   } catch (e) {
     console.error('[me] error:', e);
+    return res.status(500).json({ error: 'Error interno' });
+  }
+});
+
+app.get('/api/mobile/notification-preferences', auth, async (req, res) => {
+  try {
+    const currentUser = (req as any).user as AuthPayload;
+    const user = await User.findOne({ email: currentUser.sub }).select(
+      'mobilePushEnabled',
+    );
+    if (!user) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+    return res.json({
+      success: true,
+      enabled: user.mobilePushEnabled !== false,
+    });
+  } catch (e) {
+    console.error('[mobile-notification-preferences:get]', e);
+    return res.status(500).json({ error: 'Error interno' });
+  }
+});
+
+app.put('/api/mobile/notification-preferences', auth, async (req, res) => {
+  try {
+    const currentUser = (req as any).user as AuthPayload;
+    const enabled = Boolean((req.body as { enabled?: unknown })?.enabled);
+    const user = await User.findOneAndUpdate(
+      { email: currentUser.sub },
+      { $set: { mobilePushEnabled: enabled } },
+      { new: true },
+    ).select('mobilePushEnabled');
+    if (!user) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    const DevicePushToken = getDevicePushTokenModel();
+    await DevicePushToken.updateMany(
+      { email: currentUser.sub },
+      { $set: { enabled } },
+    );
+
+    return res.json({
+      success: true,
+      enabled: user.mobilePushEnabled !== false,
+    });
+  } catch (e) {
+    console.error('[mobile-notification-preferences:put]', e);
+    return res.status(500).json({ error: 'Error interno' });
+  }
+});
+
+app.put('/api/mobile/push-token', auth, async (req, res) => {
+  try {
+    const currentUser = (req as any).user as AuthPayload;
+    const pushToken = String((req.body as any)?.token || '').trim();
+    const platform = String((req.body as any)?.platform || '').trim() || undefined;
+
+    if (!pushToken || !pushToken.startsWith('ExponentPushToken')) {
+      return res.status(400).json({ error: 'token de push inválido' });
+    }
+
+    const user = await User.findOne({ email: currentUser.sub }).select(
+      'mobilePushEnabled',
+    );
+    if (!user) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    const DevicePushToken = getDevicePushTokenModel();
+    await DevicePushToken.findOneAndUpdate(
+      { token: pushToken },
+      {
+        $set: {
+          email: currentUser.sub,
+          token: pushToken,
+          platform,
+          enabled: user.mobilePushEnabled !== false,
+          updatedAt: new Date(),
+        },
+        $setOnInsert: { createdAt: new Date() },
+      },
+      { upsert: true },
+    );
+
+    return res.json({ success: true });
+  } catch (e) {
+    console.error('[mobile-push-token:put]', e);
+    return res.status(500).json({ error: 'Error interno' });
+  }
+});
+
+app.delete('/api/mobile/push-token', auth, async (req, res) => {
+  try {
+    const currentUser = (req as any).user as AuthPayload;
+    const pushToken = String((req.body as any)?.token || '').trim();
+    const DevicePushToken = getDevicePushTokenModel();
+
+    if (pushToken) {
+      await DevicePushToken.deleteOne({
+        email: currentUser.sub,
+        token: pushToken,
+      });
+    } else {
+      await DevicePushToken.deleteMany({ email: currentUser.sub });
+    }
+
+    return res.json({ success: true });
+  } catch (e) {
+    console.error('[mobile-push-token:delete]', e);
     return res.status(500).json({ error: 'Error interno' });
   }
 });

@@ -19,7 +19,6 @@ export type CotizacionesFetchMode = "client" | "server";
 
 export type CotizacionesPageResult = {
   mode: CotizacionesFetchMode;
-  /** Lista completa cuando la API ignora la paginación y devuelve todo de una vez. */
   catalog: ClientQuote[] | null;
   items: ClientQuote[];
   page: number;
@@ -77,7 +76,6 @@ export async function fetchCotizacionesPage(
     records.map((record) => normalizeClientQuote(record as ClientQuote)),
   );
 
-  // La API de Quotes suele ignorar ItemsPerPage y devolver el catálogo completo.
   if (page === 1 && mapped.length > pageSize) {
     return {
       mode: "client",

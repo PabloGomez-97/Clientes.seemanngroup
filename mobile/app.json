@@ -19,7 +19,8 @@
       "infoPlist": {
         "CFBundleDisplayName": "Seemann Group",
         "ITSAppUsesNonExemptEncryption": false,
-        "LSApplicationQueriesSchemes": ["mailto", "tel"]
+        "LSApplicationQueriesSchemes": ["mailto", "tel"],
+        "UIBackgroundModes": ["remote-notification"]
       },
       "privacyManifests": {
         "NSPrivacyAccessedAPITypes": [
@@ -65,7 +66,16 @@
     "plugins": [
       "expo-secure-store",
       "expo-asset",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#ff6200",
+          "sounds": [],
+          "defaultChannel": "seguimientos"
+        }
+      ]
     ]
   }
 }

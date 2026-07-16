@@ -5,6 +5,7 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import mongoose from 'mongoose';
+import { sendTrackingPushToClient } from '../../lib/expo-push.js';
 
 export const config = {
   maxDuration: 300,
@@ -45,6 +46,7 @@ const UserSchema = new mongoose.Schema({
   usernames: [String],
   nombreuser: String,
   ejecutivoId: { type: mongoose.Schema.Types.ObjectId, ref: 'Ejecutivo' },
+  mobilePushEnabled: { type: Boolean, default: true },
 });
 const User =
   (mongoose.models.User as mongoose.Model<any>) ||
@@ -195,6 +197,19 @@ async function fanOut(opts: {
         recipientEmail: clientUser.email,
         recipientUsername: clientUser.username,
         payload: { route: '/shipsgo', shipmentMode: opts.shipmentMode, shipmentId: opts.shipmentId },
+      });
+
+      void sendTrackingPushToClient({
+        email: clientUser.email,
+        mobilePushEnabled: clientUser.mobilePushEnabled,
+        type: opts.type,
+        shipmentMode: opts.shipmentMode,
+        shipmentId: opts.shipmentId,
+        awbNumber: opts.awbNumber,
+        containerNumber: opts.containerNumber,
+        reference,
+        oldStatus: opts.oldStatus,
+        newStatus: opts.newStatus,
       });
     }
 

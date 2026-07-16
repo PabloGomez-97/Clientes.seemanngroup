@@ -12,6 +12,7 @@ import {
   meRequest,
   MOBILE_API_BASE,
 } from "../../src/auth/authApi";
+import { unregisterPushToken } from "../services/pushNotifications";
 
 export type User = AuthUser | null;
 
@@ -70,8 +71,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setActiveUsernameState(stored.activeUsername);
 
       try {
-        const userData = await meRequest(MOBILE_API_BASE, stored.token);
+        const { user: userData, token: refreshed } = await meRequest(
+          MOBILE_API_BASE,
+          stored.token,
+          { client: "mobile" },
+        );
         if (cancelled) return;
+
+        if (refreshed && refreshed !== stored.token) {
+          setToken(refreshed);
+          await SecureStore.setItemAsync(TOKEN_KEY, refreshed);
+        }
 
         setUser(userData);
         if (
@@ -106,6 +116,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       email,
       password,
       turnstileToken,
+      { client: "mobile" },
     );
     setToken(data.token);
     await SecureStore.setItemAsync(TOKEN_KEY, data.token);
@@ -116,12 +127,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = async () => {
+    const currentToken = token;
+    if (currentToken) {
+      await unregisterPushToken(currentToken).catch(() => undefined);
+    }
     setUser(null);
     setToken(null);
     setActiveUsernameState("");
     await SecureStore.deleteItemAsync(TOKEN_KEY);
     await SecureStore.deleteItemAsync(USERNAME_KEY);
-    // Conservamos LAST_LOGIN_EMAIL_KEY para reutilizar el correo al volver a entrar.
   };
 
   return (

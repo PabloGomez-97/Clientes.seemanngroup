@@ -47,7 +47,6 @@ export const FCL_TIER_ORDER: { tierKey: string; tierLabel: string }[] = [
   { tierKey: "nor40", tierLabel: "40NOR" },
 ];
 
-/** Colores por línea del gráfico (índice 0 = más económico). */
 export const EXPLORER_ENTITY_COLORS = [
   "#FF6200",
   "#111827",

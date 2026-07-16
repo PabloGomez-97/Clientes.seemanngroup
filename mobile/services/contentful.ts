@@ -80,7 +80,6 @@ export async function fetchBlogPostBySlug(
   );
 }
 
-/** Extrae texto plano aproximado del documento rich text de Contentful. */
 export function richTextToPlain(content: Record<string, unknown> | null): string {
   if (!content || typeof content !== "object") return "";
   const chunks: string[] = [];

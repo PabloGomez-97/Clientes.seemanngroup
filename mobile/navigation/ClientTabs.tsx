@@ -51,7 +51,7 @@ const TAB_ICON: Record<
 
 const TAB_LABEL: Record<keyof ClientTabParamList, string> = {
   Dashboard: "Inicio",
-  Trackeos: "Seguimiento",
+  Trackeos: "Seguimientos",
   Operaciones: "Operaciones",
   Cotizaciones: "Cotizaciones",
   Menu: "Más",

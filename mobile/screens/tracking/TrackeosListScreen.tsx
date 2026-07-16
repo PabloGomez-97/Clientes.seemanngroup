@@ -168,7 +168,7 @@ export default function TrackeosListScreen() {
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <View style={styles.headerText}>
-            <Text style={styles.title}>Seguimiento</Text>
+            <Text style={styles.title}>Seguimientos</Text>
             <Text style={styles.subtitle}>{activeUsername}</Text>
           </View>
           <Pressable style={styles.iconButton} onPress={() => void refreshAll()}>

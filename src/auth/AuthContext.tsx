@@ -62,7 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     setLoading(true);
     meRequest("", token)
-      .then((userData) => {
+      .then(({ user: userData }) => {
         setUser(userData);
 
         const stored = localStorage.getItem("active_username");

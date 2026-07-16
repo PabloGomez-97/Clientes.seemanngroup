@@ -32,7 +32,6 @@ function parsePlace(location?: string | null): Place {
     return { code: raw.toUpperCase(), name: "" };
   }
 
-  // Ciudad / texto libre: primer token como ancla visual.
   const words = raw.split(/\s+/).filter(Boolean);
   const first = words[0] || raw;
   const code =

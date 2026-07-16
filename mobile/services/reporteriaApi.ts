@@ -230,7 +230,6 @@ function modePerf(
   };
 }
 
-/** Agrega KPIs de reportería operacional (sin listado). */
 export function computeOperationalDashboard(
   shipments: ShipmentRow[],
 ): OperationalDashboard {
@@ -384,7 +383,6 @@ export function computeOperationalDashboard(
   };
 }
 
-/** Carga páginas de embarques para KPIs (tope de seguridad). */
 export async function fetchAllClientShipments(
   consigneeName: string,
   opts: LinbisOpts,

@@ -25,7 +25,6 @@ const EMBED_TOKEN =
   process.env.VITE_SHIPSGO_EMBED_TOKEN?.trim() ||
   "";
 
-/** Carga el iframe con origen del portal (ya whitelisteado en ShipsGo). */
 function buildPortalOriginHtml(embedUrl: string): string {
   const safeUrl = embedUrl
     .replace(/&/g, "&amp;")
@@ -80,7 +79,6 @@ export default function TrackingEmbed({
         title: "Mapa de seguimiento",
       });
     } catch {
-      // Usuario canceló o share no disponible.
     }
   };
 

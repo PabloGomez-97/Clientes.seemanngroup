@@ -109,6 +109,12 @@ export default function MenuScreen() {
       title: "Cuenta y legal",
       links: [
         {
+          key: "notificaciones",
+          label: "Notificaciones",
+          icon: "notifications-outline",
+          onPress: () => navigation.navigate("Notificaciones"),
+        },
+        {
           key: "privacy",
           label: "Política de Privacidad",
           icon: "shield-checkmark-outline",

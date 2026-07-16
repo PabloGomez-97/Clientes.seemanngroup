@@ -54,7 +54,6 @@ export default function Login() {
         const saved = await SecureStore.getItemAsync(LAST_LOGIN_EMAIL_KEY);
         if (!cancelled && saved) setEmail(saved);
       } catch {
-        // Sin correo guardado.
       }
     })();
     return () => {

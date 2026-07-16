@@ -43,9 +43,11 @@ export async function loginRequest(
   email: string,
   password: string,
   turnstileToken?: string,
+  options?: { client?: "mobile" | "web" },
 ): Promise<{ token: string; user: AuthUser }> {
   const body: Record<string, unknown> = { email, password };
   if (turnstileToken) body.turnstileToken = turnstileToken;
+  if (options?.client) body.client = options.client;
 
   const r = await fetch(apiUrl(apiBase, "/api/login"), {
     method: "POST",
@@ -82,10 +84,16 @@ export async function loginRequest(
 export async function meRequest(
   apiBase: string,
   token: string,
-): Promise<AuthUser> {
-  const r = await fetch(apiUrl(apiBase, "/api/me"), {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  options?: { client?: "mobile" | "web" },
+): Promise<{ user: AuthUser; token?: string }> {
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${token}`,
+  };
+  if (options?.client === "mobile") {
+    headers["X-Client"] = "mobile";
+  }
+
+  const r = await fetch(apiUrl(apiBase, "/api/me"), { headers });
 
   if (!r.ok) throw new Error("Sesión inválida");
 
@@ -96,12 +104,15 @@ export async function meRequest(
       : [d.user.username];
 
   return {
-    email: d.user.sub,
-    username: d.user.username,
-    usernames,
-    nombreuser: d.user.nombreuser,
-    ejecutivo: d.user.ejecutivo || null,
-    roles: d.user.roles || null,
+    user: {
+      email: d.user.sub,
+      username: d.user.username,
+      usernames,
+      nombreuser: d.user.nombreuser,
+      ejecutivo: d.user.ejecutivo || null,
+      roles: d.user.roles || null,
+    },
+    token: typeof d.token === "string" ? d.token : undefined,
   };
 }
 

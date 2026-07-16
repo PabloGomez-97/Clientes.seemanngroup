@@ -22,7 +22,6 @@ type Props = {
   topInset?: number;
 };
 
-/** Identidad y resumen de cuenta. */
 export default function WelcomeHeader({ topInset = 0 }: Props) {
   const navigation =
     useNavigation<BottomTabNavigationProp<ClientTabParamList>>();

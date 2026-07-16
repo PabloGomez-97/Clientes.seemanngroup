@@ -46,7 +46,6 @@ type HistoryItem = {
 
 type FilterOption = { value: string; label: string };
 
-/** Variantes EN/ES frecuentes en planillas de rutas. */
 const CITY_ALIASES: Record<string, string> = {
   amsterdam: "amsterdam",
   johannesburg: "johannesburg",
@@ -90,7 +89,6 @@ function foldCityText(value: string): string {
     .replace(/\s+/g, " ");
 }
 
-/** Clave estable para agrupar la misma ciudad pese a tildes o alias. */
 function cityIdentityKey(label: string): string {
   const folded = foldCityText(label);
   if (!folded) return "";
@@ -102,7 +100,6 @@ function preferCityLabel(current: string, candidate: string): string {
   const candidateAccented = candidate !== stripDiacritics(candidate);
   if (currentAccented && !candidateAccented) return candidate;
   if (!currentAccented && candidateAccented) return current;
-  // Preferir forma más corta cuando son alias (Johannesburg vs Johannesburgo)
   if (current.length !== candidate.length) {
     return current.length <= candidate.length ? current : candidate;
   }

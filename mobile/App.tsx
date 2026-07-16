@@ -11,11 +11,17 @@ import {
 import "./i18n";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 import Login from "./auth/Login";
+import { usePushNotifications } from "./hooks/usePushNotifications";
 import ClientTabs from "./navigation/ClientTabs";
 import { brand } from "./theme/brand";
 import { applyGlobalFonts } from "./theme/typography";
 
 let globalFontsApplied = false;
+
+function AuthenticatedApp() {
+  usePushNotifications();
+  return <ClientTabs />;
+}
 
 function RootApp() {
   const { user, loading } = useAuth();
@@ -29,7 +35,7 @@ function RootApp() {
   }
 
   if (user && user.username !== "Ejecutivo") {
-    return <ClientTabs />;
+    return <AuthenticatedApp />;
   }
 
   return <Login />;
