@@ -1,4 +1,6 @@
+import { Pressable } from "react-native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { Ionicons } from "@expo/vector-icons";
 import type {
   AirShipment,
   OceanShipment,
@@ -10,6 +12,7 @@ import OceanTrackingDetailScreen from "../screens/tracking/OceanTrackingDetailSc
 import NewAirTrackingScreen from "../screens/tracking/NewAirTrackingScreen";
 import NewOceanTrackingScreen from "../screens/tracking/NewOceanTrackingScreen";
 import { noBackStackOptions } from "./noBackStackOptions";
+import { brand } from "../theme/brand";
 
 export type TrackeosStackParamList = {
   TrackeosList:
@@ -25,6 +28,30 @@ export type TrackeosStackParamList = {
 
 const Stack = createNativeStackNavigator<TrackeosStackParamList>();
 
+function withBack(
+  navigation: { goBack: () => void },
+  title: string,
+) {
+  return {
+    title,
+    headerBackVisible: false,
+    gestureEnabled: true,
+    fullScreenGestureEnabled: true,
+    headerTintColor: brand.navy,
+    headerLeft: () => (
+      <Pressable
+        onPress={() => navigation.goBack()}
+        hitSlop={12}
+        accessibilityRole="button"
+        accessibilityLabel="Volver"
+        style={{ paddingHorizontal: 4, marginRight: 4 }}
+      >
+        <Ionicons name="chevron-back" size={28} color={brand.navy} />
+      </Pressable>
+    ),
+  };
+}
+
 export default function TrackeosStack() {
   return (
     <Stack.Navigator screenOptions={noBackStackOptions}>
@@ -36,22 +63,28 @@ export default function TrackeosStack() {
       <Stack.Screen
         name="AirDetail"
         component={AirTrackingDetailScreen}
-        options={{ title: "Tracking aéreo" }}
+        options={({ navigation }) => withBack(navigation, "Seguimiento aéreo")}
       />
       <Stack.Screen
         name="OceanDetail"
         component={OceanTrackingDetailScreen}
-        options={{ title: "Tracking marítimo" }}
+        options={({ navigation }) =>
+          withBack(navigation, "Seguimiento marítimo")
+        }
       />
       <Stack.Screen
         name="NewAirTracking"
         component={NewAirTrackingScreen}
-        options={{ title: "Nuevo seguimiento aéreo" }}
+        options={({ navigation }) =>
+          withBack(navigation, "Nuevo seguimiento aéreo")
+        }
       />
       <Stack.Screen
         name="NewOceanTracking"
         component={NewOceanTrackingScreen}
-        options={{ title: "Nuevo seguimiento marítimo" }}
+        options={({ navigation }) =>
+          withBack(navigation, "Nuevo seguimiento marítimo")
+        }
       />
     </Stack.Navigator>
   );

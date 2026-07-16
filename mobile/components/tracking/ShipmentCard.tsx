@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import {
   AIR_STATUS_LABELS,
   OCEAN_STATUS_LABELS,
@@ -13,7 +14,8 @@ import {
   isAirDelayed,
   isOceanDelayed,
 } from "../../../src/services/shipsgoTrackingLogic";
-import { brand, radii } from "../../theme/brand";
+import { brand } from "../../theme/brand";
+import { fonts } from "../../theme/typography";
 
 type ShipmentCardProps =
   | {
@@ -36,7 +38,7 @@ export default function ShipmentCard({ mode, shipment }: ShipmentCardProps) {
   const title =
     mode === "air" ? shipment.awb_number : getOceanTrackingLabel(shipment);
 
-  const subtitle =
+  const carrier =
     mode === "air"
       ? shipment.airline?.name || "Sin aerolínea"
       : shipment.carrier?.name || "Sin naviera";
@@ -52,114 +54,178 @@ export default function ShipmentCard({ mode, shipment }: ShipmentCardProps) {
       : shipment.route?.port_of_discharge.location.code;
 
   const progress =
-    mode === "air"
-      ? shipment.route?.transit_percentage
-      : shipment.route?.transit_percentage;
+    typeof shipment.route?.transit_percentage === "number"
+      ? Math.min(Math.max(shipment.route.transit_percentage, 0), 100)
+      : null;
+
+  const routeIcon = mode === "air" ? "airplane" : "boat";
 
   return (
-    <View style={[styles.card, delayed && styles.cardDelayed]}>
-      {delayed ? (
-        <Text style={styles.delayBanner}>Posible retraso</Text>
-      ) : null}
-      <View style={styles.headerRow}>
-        <View style={styles.titleWrap}>
-          <Text style={styles.title}>{title}</Text>
-          <Text style={styles.subtitle}>{subtitle}</Text>
-        </View>
-        <View style={styles.statusBadge}>
-          <Text style={styles.statusText}>{statusLabel}</Text>
-        </View>
-      </View>
+    <View style={[styles.row, delayed && styles.rowDelayed]}>
+      <View style={[styles.accent, delayed && styles.accentDelayed]} />
 
-      <View style={styles.routeRow}>
-        <Text style={styles.routeCode}>{origin || "—"}</Text>
-        <Text style={styles.routeArrow}>→</Text>
-        <Text style={styles.routeCode}>{destination || "—"}</Text>
-      </View>
-
-      {typeof progress === "number" ? (
-        <View style={styles.progressWrap}>
-          <View style={styles.progressTrack}>
-            <View
-              style={[
-                styles.progressFill,
-                { width: `${Math.min(progress, 100)}%` },
-              ]}
-            />
+      <View style={styles.content}>
+        <View style={styles.topRow}>
+          <Text style={styles.number} numberOfLines={1}>
+            {title}
+          </Text>
+          <View style={styles.statusChip}>
+            {delayed ? <View style={styles.delayDot} /> : null}
+            <Text style={styles.statusText} numberOfLines={1}>
+              {delayed ? "Demorado" : statusLabel}
+            </Text>
           </View>
-          <Text style={styles.progressText}>{progress}%</Text>
         </View>
-      ) : null}
 
-      <Text style={styles.date}>Creado {formatDate(shipment.created_at)}</Text>
+        <View style={styles.routeRow}>
+          <View style={styles.place}>
+            <Text style={styles.code} numberOfLines={1}>
+              {origin || "—"}
+            </Text>
+            <Text style={styles.placeMeta}>Origen</Text>
+          </View>
+
+          <View style={styles.routeMid}>
+            <View style={styles.routeLine} />
+            <View style={styles.routeArrow}>
+              <Ionicons name={routeIcon} size={12} color={brand.primary} />
+            </View>
+            <View style={styles.routeLine} />
+          </View>
+
+          <View style={[styles.place, styles.placeEnd]}>
+            <Text style={styles.code} numberOfLines={1}>
+              {destination || "—"}
+            </Text>
+            <Text style={styles.placeMeta}>Destino</Text>
+          </View>
+        </View>
+
+        {progress != null ? (
+          <View style={styles.progressWrap}>
+            <View style={styles.progressTrack}>
+              <View style={[styles.progressFill, { width: `${progress}%` }]} />
+            </View>
+            <Text style={styles.progressText}>{progress}%</Text>
+          </View>
+        ) : null}
+
+        <View style={styles.footerRow}>
+          <Text style={styles.carrier} numberOfLines={1}>
+            {carrier}
+          </Text>
+          <Text style={styles.date}>Creado {formatDate(shipment.created_at)}</Text>
+        </View>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: brand.surface,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: brand.border,
-    padding: 16,
-    marginBottom: 12,
-  },
-  cardDelayed: {
-    borderColor: "#fecaca",
-    backgroundColor: "#fffafa",
-  },
-  delayBanner: {
-    color: "#b91c1c",
-    fontSize: 11,
-    fontWeight: "700",
-    marginBottom: 8,
-    textTransform: "uppercase",
-  },
-  headerRow: {
+  row: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    gap: 12,
+    backgroundColor: brand.surface,
+    borderRadius: 14,
     marginBottom: 10,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(30, 58, 95, 0.08)",
   },
-  titleWrap: {
+  rowDelayed: {
+    borderColor: "#fecaca",
+  },
+  accent: {
+    width: 3,
+    backgroundColor: brand.navy,
+  },
+  accentDelayed: {
+    backgroundColor: "#dc2626",
+  },
+  content: {
     flex: 1,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
   },
-  title: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: brand.ink,
+  topRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
+    gap: 8,
   },
-  subtitle: {
+  number: {
+    flexShrink: 1,
     fontSize: 12,
+    letterSpacing: 0.6,
     color: brand.muted,
-    marginTop: 2,
+    fontFamily: fonts.semiBold,
   },
-  statusBadge: {
-    backgroundColor: brand.primarySoft,
-    borderRadius: radii.pill,
-    paddingHorizontal: 10,
+  statusChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 8,
     paddingVertical: 4,
-    alignSelf: "flex-start",
+    borderRadius: 8,
+    backgroundColor: brand.primarySoft,
+  },
+  delayDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#dc2626",
   },
   statusText: {
     fontSize: 11,
-    fontWeight: "600",
     color: brand.primary,
+    fontFamily: fonts.semiBold,
   },
   routeRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    marginBottom: 12,
+    marginBottom: 10,
   },
-  routeCode: {
-    fontSize: 15,
-    fontWeight: "700",
+  place: {
+    flex: 1,
+    minWidth: 0,
+  },
+  placeEnd: {
+    alignItems: "flex-end",
+  },
+  code: {
+    fontSize: 26,
+    lineHeight: 30,
+    letterSpacing: -0.6,
     color: brand.navy,
+    fontFamily: fonts.bold,
+  },
+  placeMeta: {
+    marginTop: 2,
+    fontSize: 10,
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+    color: brand.mutedLight,
+    fontFamily: fonts.medium,
+  },
+  routeMid: {
+    width: 72,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 6,
+  },
+  routeLine: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: "rgba(30, 58, 95, 0.25)",
   },
   routeArrow: {
-    color: brand.mutedLight,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: brand.primarySoft,
+    alignItems: "center",
+    justifyContent: "center",
+    marginHorizontal: 4,
   },
   progressWrap: {
     flexDirection: "row",
@@ -169,24 +235,38 @@ const styles = StyleSheet.create({
   },
   progressTrack: {
     flex: 1,
-    height: 8,
-    borderRadius: 4,
+    height: 4,
+    borderRadius: 2,
     backgroundColor: "#eef2f7",
     overflow: "hidden",
   },
   progressFill: {
-    height: 8,
-    borderRadius: 4,
+    height: 4,
+    borderRadius: 2,
     backgroundColor: brand.primary,
   },
   progressText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: brand.inkSecondary,
+    fontSize: 11,
+    fontFamily: fonts.semiBold,
+    color: brand.muted,
     minWidth: 34,
+    textAlign: "right",
+  },
+  footerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+  carrier: {
+    flex: 1,
+    fontSize: 12,
+    color: brand.mutedLight,
+    fontFamily: fonts.regular,
   },
   date: {
     fontSize: 11,
-    color: brand.muted,
+    color: brand.mutedLight,
+    fontFamily: fonts.medium,
   },
 });

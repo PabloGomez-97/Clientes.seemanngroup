@@ -104,6 +104,7 @@ export default function NovedadesScreen() {
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <ScreenHeader
         title="Novedades"
+        onBack={() => navigation.goBack()}
         right={
           <Pressable style={styles.iconBtn} onPress={() => void load()}>
             <Ionicons name="refresh" size={18} color={brand.navy} />

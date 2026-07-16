@@ -1,11 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { RouteProp, useRoute } from "@react-navigation/native";
 import {
@@ -15,10 +9,18 @@ import {
 } from "../../../src/components/cliente/tracking/shipsgo/types";
 import type { OceanShipmentDetail } from "../../../src/components/cliente/tracking/shipsgo/types";
 import TrackingEmbed from "../../components/tracking/TrackingEmbed";
+import {
+  MovementsTimeline,
+  RouteTimelineCard,
+} from "../../components/tracking/TrackingDetailBlocks";
 import { fetchOceanShipmentDetail } from "../../services/shipsgoApi";
-import { getOceanEmbedQuery, getOceanTrackingLabel } from "../../../src/services/shipsgoTrackingLogic";
+import {
+  getOceanEmbedQuery,
+  getOceanTrackingLabel,
+} from "../../../src/services/shipsgoTrackingLogic";
 import type { TrackeosStackParamList } from "../../navigation/TrackeosStack";
-import { brand, radii, spacing } from "../../theme/brand";
+import { brand, spacing } from "../../theme/brand";
+import { fonts } from "../../theme/typography";
 
 type RouteProps = RouteProp<TrackeosStackParamList, "OceanDetail">;
 
@@ -43,69 +45,55 @@ export default function OceanTrackingDetailScreen() {
   const shipment = detail || params.shipment;
   const movements =
     detail?.containers?.flatMap((container) => container.movements) || [];
+  const status = OCEAN_STATUS_LABELS[shipment.status] || shipment.status;
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top"]}>
+    <SafeAreaView style={styles.safe} edges={["bottom"]}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.title}>{getOceanTrackingLabel(shipment)}</Text>
-        <Text style={styles.subtitle}>
-          {shipment.carrier?.name || "Sin naviera"}
-        </Text>
-
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>
-            {OCEAN_STATUS_LABELS[shipment.status] || shipment.status}
+        <View style={styles.hero}>
+          <Text style={styles.kicker}>Contenedor / Booking</Text>
+          <Text style={styles.title}>{getOceanTrackingLabel(shipment)}</Text>
+          <Text style={styles.subtitle}>
+            {shipment.carrier?.name || "Sin naviera"}
           </Text>
+          <View style={styles.statusChip}>
+            <View style={styles.statusDot} />
+            <Text style={styles.statusText}>{status}</Text>
+          </View>
         </View>
 
         {shipment.route ? (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Ruta</Text>
-            <Text style={styles.routeText}>
-              {shipment.route.port_of_loading.location.code} →{" "}
-              {shipment.route.port_of_discharge.location.code}
-            </Text>
-            <Text style={styles.meta}>
-              Progreso {shipment.route.transit_percentage}%
-            </Text>
-            <Text style={styles.meta}>
-              Carga {formatDateTime(shipment.route.port_of_loading.date_of_loading)}
-            </Text>
-            <Text style={styles.meta}>
-              Descarga estimada{" "}
-              {formatDateTime(
-                shipment.route.port_of_discharge.date_of_discharge,
-              )}
-            </Text>
-          </View>
+          <RouteTimelineCard
+            mode="ocean"
+            origin={shipment.route.port_of_loading.location.code}
+            destination={shipment.route.port_of_discharge.location.code}
+            progress={shipment.route.transit_percentage}
+            departureLabel="Carga"
+            departureValue={formatDateTime(
+              shipment.route.port_of_loading.date_of_loading,
+            )}
+            arrivalLabel="Descarga est."
+            arrivalValue={formatDateTime(
+              shipment.route.port_of_discharge.date_of_discharge,
+            )}
+          />
         ) : null}
 
         <TrackingEmbed
           transport="ocean"
           query={getOceanEmbedQuery(shipment)}
+          height={340}
         />
 
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Movimientos</Text>
-          {loading ? (
-            <ActivityIndicator color={brand.primary} />
-          ) : movements.length === 0 ? (
-            <Text style={styles.meta}>Sin movimientos registrados aún.</Text>
-          ) : (
-            movements.map((movement, index) => (
-              <View key={`${movement.timestamp}-${index}`} style={styles.movement}>
-                <Text style={styles.movementEvent}>
-                  {OCEAN_MOVEMENT_EVENT_LABELS[movement.event] ||
-                    movement.event}
-                </Text>
-                <Text style={styles.meta}>
-                  {movement.location.code} ·{" "}
-                  {formatDateTime(movement.timestamp)}
-                </Text>
-              </View>
-            ))
-          )}
-        </View>
+        <MovementsTimeline
+          loading={loading}
+          items={movements.map((movement, index) => ({
+            key: `${movement.timestamp}-${index}`,
+            title:
+              OCEAN_MOVEMENT_EVENT_LABELS[movement.event] || movement.event,
+            meta: `${movement.location.code} · ${formatDateTime(movement.timestamp)}`,
+          }))}
+        />
       </ScrollView>
     </SafeAreaView>
   );
@@ -115,61 +103,50 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: brand.canvas },
   content: {
     padding: spacing.lg,
-    gap: 16,
+    gap: 14,
     paddingBottom: spacing.xl,
+  },
+  hero: {
+    gap: 4,
+  },
+  kicker: {
+    fontSize: 11,
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+    color: brand.mutedLight,
+    fontFamily: fonts.semiBold,
   },
   title: {
     fontSize: 24,
-    fontWeight: "700",
-    color: brand.ink,
+    letterSpacing: -0.4,
+    color: brand.navy,
+    fontFamily: fonts.bold,
   },
   subtitle: {
-    fontSize: 14,
-    color: brand.muted,
-  },
-  badge: {
-    alignSelf: "flex-start",
-    backgroundColor: brand.primarySoft,
-    borderRadius: radii.pill,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  badgeText: {
-    color: brand.primary,
-    fontWeight: "700",
-    fontSize: 12,
-  },
-  card: {
-    backgroundColor: brand.surface,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: brand.border,
-    padding: 16,
-    gap: 8,
-  },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: brand.ink,
-    marginBottom: 4,
-  },
-  routeText: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: brand.navy,
-  },
-  meta: {
     fontSize: 13,
     color: brand.muted,
+    fontFamily: fonts.medium,
+    marginBottom: 8,
   },
-  movement: {
-    paddingVertical: 8,
-    borderTopWidth: 1,
-    borderTopColor: brand.borderLight,
+  statusChip: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: brand.primarySoft,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
   },
-  movementEvent: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: brand.ink,
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: brand.primary,
+  },
+  statusText: {
+    color: brand.primary,
+    fontFamily: fonts.semiBold,
+    fontSize: 12,
   },
 });

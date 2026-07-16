@@ -3,12 +3,9 @@ import { Ionicons } from "@expo/vector-icons";
 import type { AirShipment } from "../../../src/components/cliente/embarques/Handlers/HandlerAirShipments";
 import type { GroundShipment } from "../../../src/components/cliente/embarques/Handlers/HandlerGroundShipments";
 import type { OceanListItem } from "../../../src/services/linbisShipmentMappers";
-import {
-  formatLocationName,
-  formatOperacionDate,
-} from "../../../src/services/operacionesFiltersLogic";
+import { formatOperacionDate } from "../../../src/services/operacionesFiltersLogic";
 import type { OperacionTrackingStatus } from "../../../src/services/operacionesTrackingLink";
-import { brand, radii, spacing } from "../../theme/brand";
+import { brand } from "../../theme/brand";
 import { fonts } from "../../theme/typography";
 
 type OperationCardProps =
@@ -29,25 +26,62 @@ type OperationCardProps =
       shipment: GroundShipment;
     };
 
-const MODE_META = {
-  air: { icon: "airplane-outline" as const, label: "Aéreo" },
-  ocean: { icon: "boat-outline" as const, label: "Marítimo" },
-  ground: { icon: "bus-outline" as const, label: "Terrestre" },
-};
+type Place = { code: string; name: string };
+
+function parsePlace(
+  location?: { code?: string; name?: string } | string | null,
+): Place {
+  if (!location) return { code: "—", name: "" };
+  if (typeof location === "string") {
+    const raw = location.trim();
+    if (!raw) return { code: "—", name: "" };
+    const match = raw.match(/\(([A-Z0-9]{2,5})\)\s*$/i);
+    if (match) {
+      return {
+        code: match[1].toUpperCase(),
+        name: raw.replace(match[0], "").trim(),
+      };
+    }
+    if (/^[A-Z0-9]{2,5}$/i.test(raw)) {
+      return { code: raw.toUpperCase(), name: "" };
+    }
+    const words = raw.split(/\s+/);
+    const short =
+      words.length === 1
+        ? raw.slice(0, 12)
+        : words
+            .slice(0, 2)
+            .map((w) => w[0])
+            .join("")
+            .toUpperCase();
+    return { code: short.slice(0, 6) || "—", name: raw };
+  }
+  const code = location.code?.trim().toUpperCase();
+  const name = location.name?.trim() || "";
+  if (code) return { code, name };
+  if (name) return parsePlace(name);
+  return { code: "—", name: "" };
+}
 
 export default function OperationCard(props: OperationCardProps) {
-  const meta = MODE_META[props.mode];
   const number =
     props.mode === "ground"
       ? props.shipment.number
-      : props.shipment.number || "-";
+      : props.shipment.number || "—";
 
-  const routeLabel =
+  const from: Place =
     props.mode === "air"
-      ? `${formatLocationName(props.shipment.executedAt ?? props.shipment.origin)} → ${formatLocationName(props.shipment.destination)}`
+      ? parsePlace(props.shipment.executedAt ?? props.shipment.origin)
       : props.mode === "ocean"
-        ? `${formatLocationName(props.shipment.executedAt)} → ${formatLocationName(props.shipment.destination)}`
-        : `${props.shipment.from || "-"} → ${props.shipment.to || "-"}`;
+        ? parsePlace(props.shipment.executedAt)
+        : parsePlace(props.shipment.from);
+
+  const to: Place =
+    props.mode === "air"
+      ? parsePlace(props.shipment.destination)
+      : props.mode === "ocean"
+        ? parsePlace(props.shipment.destination)
+        : parsePlace(props.shipment.to);
 
   const departure =
     props.mode === "air"
@@ -68,55 +102,81 @@ export default function OperationCard(props: OperationCardProps) {
       ? props.shipment.carrier?.name
       : props.shipment.carrier;
 
-  const reference =
-    props.mode === "ground"
-      ? props.shipment.customerReference
-      : props.shipment.customerReference;
-
   const trackingStatus =
     props.mode === "ground" ? undefined : props.trackingStatus;
 
+  const routeIcon =
+    props.mode === "air"
+      ? ("airplane" as const)
+      : props.mode === "ocean"
+        ? ("boat" as const)
+        : ("bus" as const);
+
+  const routeHint =
+    [from.name, to.name].filter(Boolean).join(" → ") || null;
+
   return (
-    <View style={styles.card}>
-      <View style={styles.headerRow}>
-        <View style={styles.modeBadge}>
-          <Ionicons name={meta.icon} size={14} color={brand.navy} />
-          <Text style={styles.modeText}>{meta.label}</Text>
+    <View style={styles.row}>
+      <View style={styles.accent} />
+
+      <View style={styles.content}>
+        <View style={styles.topRow}>
+          <Text style={styles.number}>{number}</Text>
+          {trackingStatus?.isTracked ? (
+            <Pressable
+              onPress={
+                props.mode !== "ground" ? props.onOpenTracking : undefined
+              }
+              hitSlop={8}
+              style={styles.trackChip}
+            >
+              <View style={styles.trackDot} />
+              <Text style={styles.trackText}>Seguimiento</Text>
+            </Pressable>
+          ) : (
+            <Ionicons name="chevron-forward" size={16} color={brand.mutedLight} />
+          )}
         </View>
-        {trackingStatus?.isTracked ? (
-          <Pressable
-            style={styles.trackingBadge}
-            onPress={props.mode !== "ground" ? props.onOpenTracking : undefined}
-          >
-            <Ionicons name="navigate" size={12} color="#fff" />
-            <Text style={styles.trackingBadgeText}>Seguimiento activo</Text>
-          </Pressable>
+
+        <View style={styles.routeRow}>
+          <View style={styles.place}>
+            <Text style={styles.code} numberOfLines={1}>
+              {from.code}
+            </Text>
+            <Text style={styles.placeMeta}>Origen</Text>
+          </View>
+
+          <View style={styles.routeMid}>
+            <View style={styles.routeLine} />
+            <View style={styles.routeArrow}>
+              <Ionicons name={routeIcon} size={12} color={brand.primary} />
+            </View>
+            <View style={styles.routeLine} />
+          </View>
+
+          <View style={[styles.place, styles.placeEnd]}>
+            <Text style={styles.code} numberOfLines={1}>
+              {to.code}
+            </Text>
+            <Text style={styles.placeMeta}>Destino</Text>
+          </View>
+        </View>
+
+        {routeHint ? (
+          <Text style={styles.routeHint} numberOfLines={1}>
+            {routeHint}
+          </Text>
         ) : null}
-      </View>
 
-      <Text style={styles.number}>{number}</Text>
-      <Text style={styles.route} numberOfLines={2}>
-        {routeLabel}
-      </Text>
-
-      <View style={styles.metaRow}>
-        <View style={styles.metaItem}>
-          <Text style={styles.metaLabel}>Salida</Text>
-          <Text style={styles.metaValue}>{departure}</Text>
-        </View>
-        <View style={styles.metaItem}>
-          <Text style={styles.metaLabel}>Llegada</Text>
-          <Text style={styles.metaValue}>{arrival}</Text>
-        </View>
-      </View>
-
-      <View style={styles.footerRow}>
-        <Text style={styles.footerText} numberOfLines={1}>
-          {carrier || "Sin transportista"}
+        <Text style={styles.dates}>
+          {departure}
+          <Text style={styles.datesSep}>  ·  </Text>
+          {arrival}
         </Text>
-        {reference ? (
-          <Text style={styles.refText} numberOfLines={1}>
-            Ref: {reference}
+
+        {carrier ? (
+          <Text style={styles.carrier} numberOfLines={1}>
+            {carrier}
           </Text>
         ) : null}
       </View>
@@ -125,99 +185,123 @@ export default function OperationCard(props: OperationCardProps) {
 }
 
 const styles = StyleSheet.create({
-  card: {
+  row: {
+    flexDirection: "row",
     backgroundColor: brand.surface,
-    borderRadius: radii.lg,
+    borderRadius: 14,
+    marginBottom: 10,
+    overflow: "hidden",
     borderWidth: 1,
-    borderColor: brand.border,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
-    shadowColor: brand.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 1,
-    shadowRadius: 8,
-    elevation: 2,
+    borderColor: "rgba(30, 58, 95, 0.08)",
   },
-  headerRow: {
+  accent: {
+    width: 3,
+    backgroundColor: brand.navy,
+  },
+  content: {
+    flex: 1,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+  },
+  topRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: spacing.sm,
-    gap: spacing.sm,
+    marginBottom: 12,
   },
-  modeBadge: {
+  number: {
+    fontSize: 12,
+    letterSpacing: 0.8,
+    color: brand.muted,
+    fontFamily: fonts.semiBold,
+    textTransform: "uppercase",
+  },
+  trackChip: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "rgba(30, 58, 95, 0.08)",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: radii.pill,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: brand.primarySoft,
   },
-  modeText: {
+  trackDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: brand.primary,
+  },
+  trackText: {
     fontSize: 11,
-    fontWeight: "600",
-    color: brand.navy,
+    color: brand.primary,
+    fontFamily: fonts.semiBold,
   },
-  trackingBadge: {
+  routeRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
-    backgroundColor: brand.primary,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: radii.pill,
+    marginBottom: 8,
   },
-  trackingBadgeText: {
-    color: "#fff",
-    fontSize: 11,
-    fontWeight: "700",
-  },
-  number: {
-    fontSize: 18,
-    fontFamily: fonts.bold,
-    color: brand.ink,
-    marginBottom: 4,
-  },
-  route: {
-    fontSize: 14,
-    color: brand.inkSecondary,
-    marginBottom: spacing.sm,
-    lineHeight: 20,
-  },
-  metaRow: {
-    flexDirection: "row",
-    gap: spacing.md,
-    marginBottom: spacing.sm,
-  },
-  metaItem: {
+  place: {
     flex: 1,
+    minWidth: 0,
   },
-  metaLabel: {
+  placeEnd: {
+    alignItems: "flex-end",
+  },
+  code: {
+    fontSize: 26,
+    lineHeight: 30,
+    letterSpacing: -0.6,
+    color: brand.navy,
+    fontFamily: fonts.bold,
+  },
+  placeMeta: {
+    marginTop: 2,
     fontSize: 10,
-    fontWeight: "600",
-    color: brand.muted,
+    letterSpacing: 0.8,
     textTransform: "uppercase",
-    marginBottom: 2,
+    color: brand.mutedLight,
+    fontFamily: fonts.medium,
   },
-  metaValue: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: brand.ink,
+  routeMid: {
+    width: 72,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 6,
   },
-  footerRow: {
-    borderTopWidth: 1,
-    borderTopColor: brand.borderLight,
-    paddingTop: spacing.sm,
-    gap: 2,
+  routeLine: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: "rgba(30, 58, 95, 0.25)",
   },
-  footerText: {
+  routeArrow: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: brand.primarySoft,
+    alignItems: "center",
+    justifyContent: "center",
+    marginHorizontal: 4,
+  },
+  routeHint: {
     fontSize: 12,
     color: brand.muted,
+    fontFamily: fonts.regular,
+    marginBottom: 10,
   },
-  refText: {
-    fontSize: 12,
+  dates: {
+    fontSize: 13,
     color: brand.inkSecondary,
-    fontWeight: "600",
+    fontFamily: fonts.medium,
+  },
+  datesSep: {
+    color: brand.mutedLight,
+    fontFamily: fonts.regular,
+  },
+  carrier: {
+    marginTop: 6,
+    fontSize: 12,
+    color: brand.mutedLight,
+    fontFamily: fonts.regular,
   },
 });

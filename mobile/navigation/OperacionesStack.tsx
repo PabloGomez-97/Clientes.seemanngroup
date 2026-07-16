@@ -1,4 +1,6 @@
+import { Pressable } from "react-native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { Ionicons } from "@expo/vector-icons";
 import type { AirShipment } from "../../src/components/cliente/embarques/Handlers/HandlerAirShipments";
 import type { GroundShipment } from "../../src/components/cliente/embarques/Handlers/HandlerGroundShipments";
 import type { OceanListItem } from "../../src/services/linbisShipmentMappers";
@@ -7,6 +9,7 @@ import AirOperacionDetailScreen from "../screens/operaciones/AirOperacionDetailS
 import OceanOperacionDetailScreen from "../screens/operaciones/OceanOperacionDetailScreen";
 import GroundOperacionDetailScreen from "../screens/operaciones/GroundOperacionDetailScreen";
 import { noBackStackOptions } from "./noBackStackOptions";
+import { brand } from "../theme/brand";
 
 export type OperacionesStackParamList = {
   OperacionesList: undefined;
@@ -16,6 +19,33 @@ export type OperacionesStackParamList = {
 };
 
 const Stack = createNativeStackNavigator<OperacionesStackParamList>();
+
+function detailOptions({
+  navigation,
+  title,
+}: {
+  navigation: { goBack: () => void };
+  title: string;
+}) {
+  return {
+    title,
+    headerBackVisible: false,
+    gestureEnabled: true,
+    fullScreenGestureEnabled: true,
+    headerTintColor: brand.navy,
+    headerLeft: () => (
+      <Pressable
+        onPress={() => navigation.goBack()}
+        hitSlop={12}
+        accessibilityRole="button"
+        accessibilityLabel="Volver a operaciones"
+        style={{ paddingHorizontal: 4, marginRight: 4 }}
+      >
+        <Ionicons name="chevron-back" size={28} color={brand.navy} />
+      </Pressable>
+    ),
+  };
+}
 
 export default function OperacionesStack() {
   return (
@@ -28,17 +58,23 @@ export default function OperacionesStack() {
       <Stack.Screen
         name="AirOperacionDetail"
         component={AirOperacionDetailScreen}
-        options={{ title: "Operación aérea" }}
+        options={({ navigation }) =>
+          detailOptions({ navigation, title: "Operación aérea" })
+        }
       />
       <Stack.Screen
         name="OceanOperacionDetail"
         component={OceanOperacionDetailScreen}
-        options={{ title: "Operación marítima" }}
+        options={({ navigation }) =>
+          detailOptions({ navigation, title: "Operación marítima" })
+        }
       />
       <Stack.Screen
         name="GroundOperacionDetail"
         component={GroundOperacionDetailScreen}
-        options={{ title: "Operación terrestre" }}
+        options={({ navigation }) =>
+          detailOptions({ navigation, title: "Operación terrestre" })
+        }
       />
     </Stack.Navigator>
   );

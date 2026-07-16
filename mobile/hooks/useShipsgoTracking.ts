@@ -14,7 +14,9 @@ import {
   filterShipmentsByUsername,
   matchesAirFilter,
   matchesOceanFilter,
-  sortShipmentsByCreatedAt,
+  sortShipmentsActiveFirst,
+  isAirTrackingComplete,
+  isOceanTrackingComplete,
 } from "../../src/services/shipsgoTrackingLogic";
 import {
   deleteAirShipment,
@@ -43,16 +45,18 @@ export function useShipsgoTracking() {
 
   const userAir = useMemo(
     () =>
-      sortShipmentsByCreatedAt(
+      sortShipmentsActiveFirst(
         filterShipmentsByUsername(allAirShipments, activeUsername),
+        isAirTrackingComplete,
       ),
     [allAirShipments, activeUsername],
   );
 
   const userOcean = useMemo(
     () =>
-      sortShipmentsByCreatedAt(
+      sortShipmentsActiveFirst(
         filterShipmentsByUsername(allOceanShipments, activeUsername),
+        isOceanTrackingComplete,
       ),
     [allOceanShipments, activeUsername],
   );

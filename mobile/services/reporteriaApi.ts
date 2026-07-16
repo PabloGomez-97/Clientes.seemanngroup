@@ -11,6 +11,7 @@ export type InvoiceRow = {
   totalAmount?: { value?: number; userString?: string };
   balanceDue?: { value?: number; userString?: string };
   amount?: { value?: number; userString?: string };
+  taxAmount?: { value?: number; userString?: string };
   shipment?: {
     number?: string;
     customerReference?: string;
@@ -30,6 +31,10 @@ export type ShipmentRow = {
   currentFlow?: string;
   lastEvent?: string;
   createdOn?: string;
+  shipper?: string;
+  totalCargo_Pieces?: number;
+  totalCargo_WeightValue?: number;
+  totalCargo_VolumeWeightValue?: number;
   [key: string]: unknown;
 };
 
@@ -136,4 +141,260 @@ export function formatShortDate(value?: string): string {
   } catch {
     return value;
   }
+}
+
+function shortenLocation(value: string): string {
+  const raw = value.trim();
+  if (!raw) return "—";
+  const paren = raw.match(/\(([A-Z0-9]{2,5})\)\s*$/i);
+  if (paren) return paren[1].toUpperCase();
+  if (raw.length <= 18) return raw;
+  return `${raw.slice(0, 16)}…`;
+}
+
+export type OperationalModeStats = {
+  count: number;
+  pct: number;
+  avgTransitDays: number;
+  avgWeightKg: number;
+};
+
+export type OperationalDashboard = {
+  total: number;
+  air: number;
+  sea: number;
+  ground: number;
+  pieces: number;
+  weightKg: number;
+  volumeM3: number;
+  avgTransitDays: number;
+  year: {
+    current: number;
+    previous: number;
+    growthPct: number;
+    currentYear: number;
+    previousYear: number;
+  };
+  modeShare: Array<{
+    key: "air" | "sea" | "ground";
+    label: string;
+    count: number;
+    pct: number;
+  }>;
+  perfByMode: Array<{
+    key: "air" | "sea" | "ground";
+    label: string;
+    stats: OperationalModeStats;
+  }>;
+  topRoutes: Array<{ route: string; count: number; pct: number }>;
+  topDestinations: Array<{ destination: string; count: number; pct: number }>;
+  monthly: Array<{
+    key: string;
+    label: string;
+    total: number;
+    air: number;
+    sea: number;
+    ground: number;
+  }>;
+};
+
+function modePerf(
+  shipments: ShipmentRow[],
+  mode: "air" | "sea" | "ground",
+  total: number,
+): OperationalModeStats {
+  const list = shipments.filter(
+    (s) => classifyMode(s.modeOfTransportation) === mode,
+  );
+  const count = list.length;
+  let transitSum = 0;
+  let transitN = 0;
+  let weightSum = 0;
+  for (const s of list) {
+    weightSum += s.totalCargo_WeightValue || 0;
+    if (s.departure && s.arrival) {
+      const days =
+        (new Date(s.arrival).getTime() - new Date(s.departure).getTime()) /
+        86400000;
+      if (days > 0) {
+        transitSum += days;
+        transitN += 1;
+      }
+    }
+  }
+  return {
+    count,
+    pct: total > 0 ? (count / total) * 100 : 0,
+    avgTransitDays: transitN > 0 ? transitSum / transitN : 0,
+    avgWeightKg: count > 0 ? weightSum / count : 0,
+  };
+}
+
+/** Agrega KPIs de reportería operacional (sin listado). */
+export function computeOperationalDashboard(
+  shipments: ShipmentRow[],
+): OperationalDashboard {
+  const total = shipments.length;
+  let air = 0;
+  let sea = 0;
+  let ground = 0;
+  let pieces = 0;
+  let weightKg = 0;
+  let volumeM3 = 0;
+  let transitSum = 0;
+  let transitCount = 0;
+
+  const cy = new Date().getFullYear();
+  const py = cy - 1;
+  let yearCurr = 0;
+  let yearPrev = 0;
+
+  const routeMap = new Map<string, number>();
+  const destMap = new Map<string, number>();
+  const monthMap = new Map<
+    string,
+    { air: number; sea: number; ground: number }
+  >();
+
+  for (const s of shipments) {
+    const mode = classifyMode(s.modeOfTransportation);
+    if (mode === "air") air += 1;
+    else if (mode === "sea") sea += 1;
+    else if (mode === "ground") ground += 1;
+
+    pieces += s.totalCargo_Pieces || 0;
+    weightKg += s.totalCargo_WeightValue || 0;
+    volumeM3 += s.totalCargo_VolumeWeightValue || 0;
+
+    if (s.departure && s.arrival) {
+      const days =
+        (new Date(s.arrival).getTime() - new Date(s.departure).getTime()) /
+        86400000;
+      if (days > 0) {
+        transitSum += days;
+        transitCount += 1;
+      }
+    }
+
+    const created = s.createdOn ? new Date(s.createdOn) : null;
+    if (created && !Number.isNaN(created.getTime())) {
+      const y = created.getFullYear();
+      if (y === cy) yearCurr += 1;
+      else if (y === py) yearPrev += 1;
+
+      const mk = `${created.getFullYear()}-${String(created.getMonth() + 1).padStart(2, "0")}`;
+      if (!monthMap.has(mk)) monthMap.set(mk, { air: 0, sea: 0, ground: 0 });
+      const bucket = monthMap.get(mk)!;
+      if (mode === "air") bucket.air += 1;
+      else if (mode === "sea") bucket.sea += 1;
+      else if (mode === "ground") bucket.ground += 1;
+    }
+
+    if (s.origin && s.destination) {
+      const route = `${s.origin} → ${s.destination}`;
+      routeMap.set(route, (routeMap.get(route) || 0) + 1);
+    }
+    if (s.destination) {
+      destMap.set(s.destination, (destMap.get(s.destination) || 0) + 1);
+    }
+  }
+
+  const modeShare = (
+    [
+      ["air", "Aéreo", air],
+      ["sea", "Marítimo", sea],
+      ["ground", "Terrestre", ground],
+    ] as const
+  ).map(([key, label, count]) => ({
+    key,
+    label,
+    count,
+    pct: total > 0 ? (count / total) * 100 : 0,
+  }));
+
+  const perfByMode = (
+    [
+      ["air", "Aéreo"],
+      ["sea", "Marítimo"],
+      ["ground", "Terrestre"],
+    ] as const
+  ).map(([key, label]) => ({
+    key,
+    label,
+    stats: modePerf(shipments, key, total),
+  }));
+
+  const topRoutes = Array.from(routeMap.entries())
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 5)
+    .map(([route, count]) => {
+      const [o, d] = route.split(" → ");
+      return {
+        route: `${shortenLocation(o || "")} → ${shortenLocation(d || "")}`,
+        count,
+        pct: total > 0 ? (count / total) * 100 : 0,
+      };
+    });
+
+  const topDestinations = Array.from(destMap.entries())
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 5)
+    .map(([destination, count]) => ({
+      destination: shortenLocation(destination),
+      count,
+      pct: total > 0 ? (count / total) * 100 : 0,
+    }));
+
+  const monthly = Array.from(monthMap.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .slice(-6)
+    .map(([key, d]) => ({
+      key,
+      label: new Date(`${key}-01`).toLocaleDateString("es-CL", {
+        month: "short",
+        year: "2-digit",
+      }),
+      total: d.air + d.sea + d.ground,
+      air: d.air,
+      sea: d.sea,
+      ground: d.ground,
+    }));
+
+  return {
+    total,
+    air,
+    sea,
+    ground,
+    pieces,
+    weightKg,
+    volumeM3,
+    avgTransitDays: transitCount > 0 ? transitSum / transitCount : 0,
+    year: {
+      current: yearCurr,
+      previous: yearPrev,
+      growthPct: yearPrev > 0 ? ((yearCurr - yearPrev) / yearPrev) * 100 : 0,
+      currentYear: cy,
+      previousYear: py,
+    },
+    modeShare,
+    perfByMode,
+    topRoutes,
+    topDestinations,
+    monthly,
+  };
+}
+
+/** Carga páginas de embarques para KPIs (tope de seguridad). */
+export async function fetchAllClientShipments(
+  consigneeName: string,
+  opts: LinbisOpts,
+  maxPages = 20,
+): Promise<ShipmentRow[]> {
+  const all: ShipmentRow[] = [];
+  for (let page = 1; page <= maxPages; page += 1) {
+    const result = await fetchClientShipmentsAll(consigneeName, page, opts);
+    all.push(...result.items);
+    if (!result.hasMore) break;
+  }
+  return all;
 }

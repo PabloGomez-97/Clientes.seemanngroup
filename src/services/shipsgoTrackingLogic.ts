@@ -60,6 +60,32 @@ export function sortShipmentsByCreatedAt<T extends { created_at: string }>(
   );
 }
 
+/** Completado aéreo: aterrizado/entregado o 100% de progreso. */
+export function isAirTrackingComplete(shipment: AirShipment): boolean {
+  if (shipment.status === "LANDED" || shipment.status === "DELIVERED") {
+    return true;
+  }
+  return (shipment.route?.transit_percentage ?? 0) >= 100;
+}
+
+/** Completado marítimo: descargado o 100% de progreso. */
+export function isOceanTrackingComplete(shipment: OceanShipment): boolean {
+  if (shipment.status === "DISCHARGED") return true;
+  return (shipment.route?.transit_percentage ?? 0) >= 100;
+}
+
+/** En curso primero; completados (100% / aterrizado / descargado) al final. */
+export function sortShipmentsActiveFirst<
+  T extends { created_at: string },
+>(shipments: T[], isComplete: (shipment: T) => boolean): T[] {
+  return [...shipments].sort((a, b) => {
+    const aDone = isComplete(a) ? 1 : 0;
+    const bDone = isComplete(b) ? 1 : 0;
+    if (aDone !== bDone) return aDone - bDone;
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
+}
+
 export function isAirDelayed(shipment: AirShipment): boolean {
   if (!shipment.route) return false;
   const { transit_percentage } = shipment.route;

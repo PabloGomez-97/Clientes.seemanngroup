@@ -29,9 +29,8 @@ export default function MenuScreen() {
   const navigation = useNavigation<Nav>();
   const { user, activeUsername, logout } = useAuth();
 
-  const displayName =
-    user?.nombreuser?.trim() || user?.username || activeUsername || "";
   const email = user?.email?.trim() || "";
+  const accountName = activeUsername?.trim() || "";
 
   const confirmLogout = () => {
     Alert.alert(
@@ -148,15 +147,7 @@ export default function MenuScreen() {
             <Ionicons name="person" size={28} color={brand.primary} />
           </View>
           <View style={styles.profileInfo}>
-            <Text style={styles.profileName} numberOfLines={2}>
-              {displayName}
-            </Text>
-            {email ? (
-              <Text style={styles.profileEmail} numberOfLines={1}>
-                {email}
-              </Text>
-            ) : null}
-            {activeUsername ? (
+            {accountName ? (
               <View style={styles.accountRow}>
                 <Ionicons
                   name="business-outline"
@@ -164,9 +155,14 @@ export default function MenuScreen() {
                   color={brand.muted}
                 />
                 <Text style={styles.accountText} numberOfLines={1}>
-                  {activeUsername}
+                  {accountName}
                 </Text>
               </View>
+            ) : null}
+            {email ? (
+              <Text style={styles.profileEmail} numberOfLines={1}>
+                {email}
+              </Text>
             ) : null}
           </View>
         </View>
@@ -274,11 +270,6 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 4,
   },
-  profileName: {
-    fontSize: 17,
-    fontFamily: fonts.semiBold,
-    color: brand.ink,
-  },
   profileEmail: {
     fontSize: 13,
     color: brand.muted,
@@ -287,11 +278,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    marginTop: 2,
   },
   accountText: {
     fontSize: 13,
-    fontWeight: "600",
+    fontFamily: fonts.semiBold,
     color: brand.inkSecondary,
     flexShrink: 1,
   },

@@ -1,8 +1,10 @@
 import { Alert, Linking, Pressable, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../auth/AuthContext";
+import ScreenHeader from "../../components/ui/ScreenHeader";
 import { ACCOUNT_DELETION_EMAIL } from "../../config/portal";
 import type { MenuStackParamList } from "../../navigation/MenuStack";
 import { brand, radii, spacing } from "../../theme/brand";
@@ -50,49 +52,55 @@ export default function DeleteAccountScreen() {
   };
 
   return (
-    <View style={styles.root}>
-      <View style={styles.card}>
-        <View style={styles.iconWrap}>
-          <Ionicons name="warning-outline" size={28} color={brand.primary} />
+    <SafeAreaView style={styles.root} edges={["top"]}>
+      <ScreenHeader
+        title="Eliminar cuenta"
+        onBack={() => navigation.goBack()}
+      />
+      <View style={styles.bodyWrap}>
+        <View style={styles.card}>
+          <View style={styles.iconWrap}>
+            <Ionicons name="warning-outline" size={28} color={brand.primary} />
+          </View>
+          <Text style={styles.title}>Eliminar cuenta</Text>
+          <Text style={styles.body}>
+            De acuerdo con nuestra Política de Privacidad, puedes solicitar la
+            supresión de tus datos personales. Procesamos las solicitudes en un
+            plazo de hasta 30 días hábiles.
+          </Text>
+          <Text style={styles.body}>
+            Al continuar se abrirá tu aplicación de correo con un mensaje
+            prellenado dirigido a {ACCOUNT_DELETION_EMAIL}. Si tienes
+            operaciones activas o saldos pendientes, soporte podrá contactarte
+            antes de completar la baja.
+          </Text>
+
+          <Pressable
+            style={({ pressed }) => [
+              styles.primaryBtn,
+              pressed && styles.primaryBtnPressed,
+            ]}
+            onPress={openMailRequest}
+            accessibilityRole="button"
+            accessibilityLabel="Solicitar eliminación de cuenta"
+          >
+            <Ionicons name="mail-outline" size={20} color="#fff" />
+            <Text style={styles.primaryText}>Solicitar eliminación</Text>
+          </Pressable>
+
+          <Pressable
+            style={({ pressed }) => [
+              styles.secondaryBtn,
+              pressed && styles.secondaryBtnPressed,
+            ]}
+            onPress={() => navigation.navigate("MenuHome")}
+            accessibilityRole="button"
+          >
+            <Text style={styles.secondaryText}>Cancelar</Text>
+          </Pressable>
         </View>
-        <Text style={styles.title}>Eliminar cuenta</Text>
-        <Text style={styles.body}>
-          De acuerdo con nuestra Política de Privacidad, puedes solicitar la
-          supresión de tus datos personales. Procesamos las solicitudes en un
-          plazo de hasta 30 días hábiles.
-        </Text>
-        <Text style={styles.body}>
-          Al continuar se abrirá tu aplicación de correo con un mensaje
-          prellenado dirigido a {ACCOUNT_DELETION_EMAIL}. Si tienes operaciones
-          activas o saldos pendientes, soporte podrá contactarte antes de
-          completar la baja.
-        </Text>
-
-        <Pressable
-          style={({ pressed }) => [
-            styles.primaryBtn,
-            pressed && styles.primaryBtnPressed,
-          ]}
-          onPress={openMailRequest}
-          accessibilityRole="button"
-          accessibilityLabel="Solicitar eliminación de cuenta"
-        >
-          <Ionicons name="mail-outline" size={20} color="#fff" />
-          <Text style={styles.primaryText}>Solicitar eliminación</Text>
-        </Pressable>
-
-        <Pressable
-          style={({ pressed }) => [
-            styles.secondaryBtn,
-            pressed && styles.secondaryBtnPressed,
-          ]}
-          onPress={() => navigation.navigate("MenuHome")}
-          accessibilityRole="button"
-        >
-          <Text style={styles.secondaryText}>Cancelar</Text>
-        </Pressable>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -100,7 +108,11 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: brand.canvas,
-    padding: spacing.lg,
+  },
+  bodyWrap: {
+    flex: 1,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.lg,
   },
   card: {
     backgroundColor: brand.surface,

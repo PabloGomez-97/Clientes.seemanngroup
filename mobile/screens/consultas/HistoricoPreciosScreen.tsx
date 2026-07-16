@@ -14,6 +14,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import {
+  AIR_TIER_ORDER,
+  FCL_TIER_ORDER,
   fetchHistoricalExplorerSnapshot,
   type ExplorerMode,
   type HistoricalExplorerPoint,
@@ -24,10 +26,10 @@ import ScreenHeader from "../../components/ui/ScreenHeader";
 import { brand, radii, spacing } from "../../theme/brand";
 import { fonts } from "../../theme/typography";
 
-const MODES: { key: ExplorerMode; label: string; hint: string }[] = [
-  { key: "air", label: "Aéreo", hint: "Tramos por peso (kg)" },
-  { key: "fcl", label: "FCL", hint: "Contenedores 20GP / 40HQ / 40NOR" },
-  { key: "lcl", label: "LCL", hint: "Tarifa ocean freight W/M" },
+const MODES: { key: ExplorerMode; label: string }[] = [
+  { key: "air", label: "Aéreo" },
+  { key: "fcl", label: "FCL" },
+  { key: "lcl", label: "LCL" },
 ];
 
 type HistoryItem = {
@@ -41,6 +43,71 @@ type HistoryItem = {
   deltaPct: number | null;
   deltaAbs: number | null;
 };
+
+type FilterOption = { value: string; label: string };
+
+/** Variantes EN/ES frecuentes en planillas de rutas. */
+const CITY_ALIASES: Record<string, string> = {
+  amsterdam: "amsterdam",
+  johannesburg: "johannesburg",
+  johannesburgo: "johannesburg",
+  munich: "munich",
+  munchen: "munich",
+  cologne: "cologne",
+  colonia: "cologne",
+  koln: "cologne",
+  "new york": "new york",
+  "nueva york": "new york",
+  "sao paulo": "sao paulo",
+  "san pablo": "sao paulo",
+  "buenos aires": "buenos aires",
+  antwerp: "antwerp",
+  amberes: "antwerp",
+  antwerpen: "antwerp",
+  geneva: "geneva",
+  ginebra: "geneva",
+  genova: "genoa",
+  genoa: "genoa",
+  lyon: "lyon",
+  lion: "lyon",
+  moscow: "moscow",
+  moscu: "moscow",
+  "cape town": "cape town",
+  "ciudad del cabo": "cape town",
+  "hong kong": "hong kong",
+  "hong kong sar": "hong kong",
+};
+
+function stripDiacritics(value: string): string {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+function foldCityText(value: string): string {
+  return stripDiacritics(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+/** Clave estable para agrupar la misma ciudad pese a tildes o alias. */
+function cityIdentityKey(label: string): string {
+  const folded = foldCityText(label);
+  if (!folded) return "";
+  return CITY_ALIASES[folded] ?? folded;
+}
+
+function preferCityLabel(current: string, candidate: string): string {
+  const currentAccented = current !== stripDiacritics(current);
+  const candidateAccented = candidate !== stripDiacritics(candidate);
+  if (currentAccented && !candidateAccented) return candidate;
+  if (!currentAccented && candidateAccented) return current;
+  // Preferir forma más corta cuando son alias (Johannesburg vs Johannesburgo)
+  if (current.length !== candidate.length) {
+    return current.length <= candidate.length ? current : candidate;
+  }
+  return current.localeCompare(candidate, "es") <= 0 ? current : candidate;
+}
 
 function buildItems(
   routes: HistoricalRouteBundle[],
@@ -74,19 +141,94 @@ function buildItems(
       });
     }
   }
-  return list
-    .sort((a, b) => {
-      const an = a.route.originLabel.localeCompare(b.route.originLabel, "es");
-      if (an !== 0) return an;
-      return a.route.destLabel.localeCompare(b.route.destLabel, "es");
-    })
-    .slice(0, 80);
+  return list.sort((a, b) => {
+    const an = a.route.originLabel.localeCompare(b.route.originLabel, "es");
+    if (an !== 0) return an;
+    return a.route.destLabel.localeCompare(b.route.destLabel, "es");
+  });
 }
 
 function money(currency: string, value: number) {
   return `${currency} ${value.toLocaleString("es-CL", {
     maximumFractionDigits: 2,
   })}`;
+}
+
+function sortTier(
+  options: FilterOption[],
+  mode: ExplorerMode,
+): FilterOption[] {
+  const order =
+    mode === "air"
+      ? AIR_TIER_ORDER
+      : mode === "fcl"
+        ? FCL_TIER_ORDER
+        : [];
+  if (!order.length) {
+    return [...options].sort((a, b) => a.label.localeCompare(b.label, "es"));
+  }
+  const rank = new Map(order.map((t, i) => [t.tierKey, i]));
+  return [...options].sort((a, b) => {
+    const ai = rank.get(a.value) ?? 999;
+    const bi = rank.get(b.value) ?? 999;
+    if (ai !== bi) return ai - bi;
+    return a.label.localeCompare(b.label, "es");
+  });
+}
+
+function FilterPicker({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: FilterOption[];
+  onChange: (v: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = options.find((o) => o.value === value)?.label || "Todas";
+
+  return (
+    <>
+      <Pressable style={styles.filterBtn} onPress={() => setOpen(true)}>
+        <Text style={styles.filterLabel}>{label}</Text>
+        <Text style={styles.filterValue} numberOfLines={1}>
+          {selected}
+        </Text>
+        <Ionicons name="chevron-down" size={14} color={brand.muted} />
+      </Pressable>
+      <Modal visible={open} transparent animationType="fade">
+        <Pressable style={styles.modalBackdrop} onPress={() => setOpen(false)}>
+          <View style={styles.modalSheet}>
+            <Text style={styles.modalTitle}>{label}</Text>
+            <ScrollView style={{ maxHeight: 360 }}>
+              {options.map((opt) => (
+                <Pressable
+                  key={opt.value || "all"}
+                  style={styles.modalRow}
+                  onPress={() => {
+                    onChange(opt.value);
+                    setOpen(false);
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.modalRowText,
+                      opt.value === value && styles.modalRowActive,
+                    ]}
+                  >
+                    {opt.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+        </Pressable>
+      </Modal>
+    </>
+  );
 }
 
 function DeltaBadge({
@@ -259,6 +401,8 @@ export default function HistoricoPreciosScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<HistoryItem | null>(null);
+  const [city, setCity] = useState("");
+  const [tier, setTier] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -279,8 +423,73 @@ export default function HistoricoPreciosScreen() {
     void load();
   }, [load]);
 
-  const items = useMemo(() => buildItems(routes, mode), [mode, routes]);
-  const modeMeta = MODES.find((m) => m.key === mode);
+  const modeItems = useMemo(() => buildItems(routes, mode), [mode, routes]);
+
+  const cityOptions = useMemo(() => {
+    const pool = tier
+      ? modeItems.filter((item) => item.tier.tierKey === tier)
+      : modeItems;
+    const byKey = new Map<string, string>();
+    for (const item of pool) {
+      const raw = item.route.originLabel?.trim();
+      if (!raw) continue;
+      const key = cityIdentityKey(raw);
+      if (!key) continue;
+      const prev = byKey.get(key);
+      byKey.set(key, prev ? preferCityLabel(prev, raw) : raw);
+    }
+    const cities = Array.from(byKey.entries())
+      .sort(([, a], [, b]) => a.localeCompare(b, "es"))
+      .map(([value, label]) => ({ value, label }));
+    return [{ value: "", label: "Todas" }, ...cities];
+  }, [modeItems, tier]);
+
+  const tierOptions = useMemo(() => {
+    if (mode === "lcl") return [];
+    const pool = city
+      ? modeItems.filter(
+          (item) => cityIdentityKey(item.route.originLabel) === city,
+        )
+      : modeItems;
+    const map = new Map<string, string>();
+    for (const item of pool) {
+      if (!map.has(item.tier.tierKey)) {
+        map.set(item.tier.tierKey, item.tier.tierLabel);
+      }
+    }
+    const opts = Array.from(map.entries()).map(([value, label]) => ({
+      value,
+      label,
+    }));
+    return [{ value: "", label: "Todos" }, ...sortTier(opts, mode)];
+  }, [city, mode, modeItems]);
+
+  useEffect(() => {
+    if (city && !cityOptions.some((o) => o.value === city)) {
+      setCity("");
+    }
+  }, [city, cityOptions]);
+
+  useEffect(() => {
+    if (tier && !tierOptions.some((o) => o.value === tier)) {
+      setTier("");
+    }
+  }, [tier, tierOptions]);
+
+  const items = useMemo(() => {
+    return modeItems.filter((item) => {
+      if (city && cityIdentityKey(item.route.originLabel) !== city) return false;
+      if (tier && item.tier.tierKey !== tier) return false;
+      return true;
+    });
+  }, [city, modeItems, tier]);
+
+  const changeMode = (next: ExplorerMode) => {
+    setMode(next);
+    setCity("");
+    setTier("");
+    setSelected(null);
+  };
 
   const renderItem = ({ item }: { item: HistoryItem }) => {
     const currency = item.tier.currency || "USD";
@@ -330,6 +539,7 @@ export default function HistoricoPreciosScreen() {
       <ScreenHeader
         title="Histórico de precios"
         subtitle="Comparación por ruta y producto"
+        onBack={() => navigation.goBack()}
         right={
           <Pressable style={styles.iconBtn} onPress={() => void load()}>
             <Ionicons name="refresh" size={18} color={brand.navy} />
@@ -342,7 +552,7 @@ export default function HistoricoPreciosScreen() {
           <Pressable
             key={m.key}
             style={[styles.modeBtn, mode === m.key && styles.modeBtnActive]}
-            onPress={() => setMode(m.key)}
+            onPress={() => changeMode(m.key)}
           >
             <Text
               style={[
@@ -356,11 +566,32 @@ export default function HistoricoPreciosScreen() {
         ))}
       </View>
 
-      {modeMeta ? (
-        <Text style={styles.modeHint}>{modeMeta.hint}</Text>
-      ) : null}
+      <View style={styles.filters}>
+        <FilterPicker
+          label="Ciudad"
+          value={city}
+          options={cityOptions}
+          onChange={setCity}
+        />
+        {mode === "air" ? (
+          <FilterPicker
+            label="KGS"
+            value={tier}
+            options={tierOptions}
+            onChange={setTier}
+          />
+        ) : null}
+        {mode === "fcl" ? (
+          <FilterPicker
+            label="Contenedor"
+            value={tier}
+            options={tierOptions}
+            onChange={setTier}
+          />
+        ) : null}
+      </View>
 
-      {loading && items.length === 0 ? (
+      {loading && modeItems.length === 0 ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color={brand.primary} />
         </View>
@@ -384,16 +615,13 @@ export default function HistoricoPreciosScreen() {
               tintColor={brand.primary}
             />
           }
-          ListHeaderComponent={
-            <Text style={styles.intro}>
-              Cada tarjeta muestra el último precio de una ruta. El porcentaje
-              compara contra la fecha anterior. Toca una tarjeta para ver toda
-              la línea de tiempo.
-            </Text>
-          }
           ListEmptyComponent={
             <View style={styles.center}>
-              <Text style={styles.empty}>Sin histórico para este modo</Text>
+              <Text style={styles.empty}>
+                {city || tier
+                  ? "Sin resultados para estos filtros"
+                  : "Sin histórico para este modo"}
+              </Text>
             </View>
           }
         />
@@ -420,7 +648,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 8,
     paddingHorizontal: spacing.lg,
-    marginBottom: 6,
+    marginBottom: 8,
   },
   modeBtn: {
     flex: 1,
@@ -437,18 +665,49 @@ const styles = StyleSheet.create({
   },
   modeText: { fontFamily: fonts.semiBold, color: brand.muted },
   modeTextActive: { color: brand.primary },
-  modeHint: {
+  filters: {
     paddingHorizontal: spacing.lg,
+    gap: 8,
     marginBottom: 8,
-    fontSize: 12,
-    color: brand.muted,
   },
-  intro: {
-    fontSize: 13,
-    color: brand.muted,
-    lineHeight: 19,
-    marginBottom: 10,
+  filterBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: brand.surface,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: brand.border,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   },
+  filterLabel: { fontSize: 12, color: brand.muted, width: 78 },
+  filterValue: { flex: 1, fontSize: 13, color: brand.ink, fontWeight: "600" },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(15,23,42,0.45)",
+    justifyContent: "flex-end",
+  },
+  modalSheet: {
+    backgroundColor: brand.surface,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: spacing.lg,
+    maxHeight: "70%",
+  },
+  modalTitle: {
+    fontFamily: fonts.bold,
+    fontSize: 16,
+    marginBottom: 12,
+    color: brand.ink,
+  },
+  modalRow: {
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: brand.borderLight,
+  },
+  modalRowText: { fontSize: 14, color: brand.ink },
+  modalRowActive: { color: brand.primary, fontFamily: fonts.semiBold },
   list: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xl, gap: 10 },
   card: {
     backgroundColor: brand.surface,
@@ -526,7 +785,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
   },
   retryText: { color: "#fff", fontFamily: fonts.semiBold },
-  empty: { color: brand.muted },
+  empty: { color: brand.muted, textAlign: "center" },
   detailBackdrop: {
     flex: 1,
     backgroundColor: "rgba(15,23,42,0.5)",

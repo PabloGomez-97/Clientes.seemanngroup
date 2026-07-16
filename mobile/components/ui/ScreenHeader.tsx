@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { brand, spacing } from "../../theme/brand";
 import { fonts } from "../../theme/typography";
 
@@ -7,11 +8,22 @@ type Props = {
   title: string;
   subtitle?: string;
   right?: ReactNode;
+  onBack?: () => void;
 };
 
-export default function ScreenHeader({ title, subtitle, right }: Props) {
+export default function ScreenHeader({ title, subtitle, right, onBack }: Props) {
   return (
     <View style={styles.header}>
+      {onBack ? (
+        <Pressable
+          onPress={onBack}
+          hitSlop={12}
+          style={styles.backBtn}
+          accessibilityLabel="Volver"
+        >
+          <Ionicons name="chevron-back" size={26} color={brand.navy} />
+        </Pressable>
+      ) : null}
       <View style={styles.titles}>
         <Text style={styles.title} numberOfLines={1}>
           {title}
@@ -35,7 +47,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,
     paddingBottom: spacing.md,
-    gap: 12,
+    gap: 8,
+  },
+  backBtn: {
+    marginLeft: -4,
+    paddingVertical: 4,
   },
   titles: {
     flex: 1,

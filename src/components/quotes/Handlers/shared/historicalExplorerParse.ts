@@ -25,7 +25,7 @@ import {
   getPolCountry,
   normalizeEntityKey,
 } from "./resolvePolCountry";
-import { parseValidUntilToDate } from "../handlerFechas";
+import { formatValidUntilDisplay, parseValidUntilToDate } from "../handlerFechas";
 import type { PriceHistoryCurrency } from "./priceHistoryTypes";
 import {
   COTIZADOR_DATA_START_ROW,
@@ -336,7 +336,7 @@ function buildBundles(rawRows: RawHistoricalRow[]): HistoricalRouteBundle[] {
     const date = parseValidUntilToDate(row.validUntil);
     if (!date) continue;
     const dateKey = dateToKey(date);
-    const label = row.validUntil;
+    const label = formatValidUntilDisplay(row.validUntil);
     const existing = entity.points.find((p) => p.dateKey === dateKey);
     const shouldSet =
       !existing ||

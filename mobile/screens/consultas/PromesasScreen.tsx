@@ -35,6 +35,7 @@ export default function PromesasScreen() {
       <ScreenHeader
         title={t("promesas.hero.title")}
         subtitle={t("promesas.hero.eyebrow")}
+        onBack={() => navigation.goBack()}
       />
 
       <View style={styles.tabs}>

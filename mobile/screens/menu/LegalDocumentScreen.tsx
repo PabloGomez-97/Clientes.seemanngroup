@@ -1,7 +1,8 @@
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRoute } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
 import type { RouteProp } from "@react-navigation/native";
+import { Ionicons } from "@expo/vector-icons";
 import type {
   LegalBlock,
   LegalDocument,
@@ -106,11 +107,20 @@ function BlockView({ block }: { block: LegalBlock }) {
 }
 
 export default function LegalDocumentScreen() {
+  const navigation = useNavigation();
   const route = useRoute<Route>();
   const doc = DOCS[route.params.doc];
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
+      <Pressable
+        onPress={() => navigation.goBack()}
+        hitSlop={12}
+        style={styles.backBtn}
+        accessibilityLabel="Volver"
+      >
+        <Ionicons name="chevron-back" size={26} color={brand.navy} />
+      </Pressable>
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
@@ -149,9 +159,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: brand.canvas,
   },
+  backBtn: {
+    alignSelf: "flex-start",
+    marginLeft: spacing.lg - 4,
+    paddingVertical: 4,
+    paddingTop: spacing.sm,
+  },
   content: {
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
+    paddingTop: spacing.sm,
     paddingBottom: spacing.xl * 2,
     gap: spacing.lg,
   },

@@ -28,6 +28,7 @@ import TrackingStatusStrip from "../../components/tracking/TrackingStatusStrip";
 import { useShipsgoTracking } from "../../hooks/useShipsgoTracking";
 import type { TrackeosStackParamList } from "../../navigation/TrackeosStack";
 import { brand, radii, spacing } from "../../theme/brand";
+import { fonts } from "../../theme/typography";
 
 type NavigationProp = NativeStackNavigationProp<
   TrackeosStackParamList,
@@ -133,14 +134,6 @@ export default function TrackeosListScreen() {
     );
   };
 
-  const openNewTracking = () => {
-    if (activeTab === "air") {
-      navigation.navigate("NewAirTracking");
-      return;
-    }
-    navigation.navigate("NewOceanTracking");
-  };
-
   const loading = activeTab === "air" ? airLoading : oceanLoading;
   const error = activeTab === "air" ? airError : oceanError;
   const totalCount = activeTab === "air" ? userAir.length : userOcean.length;
@@ -173,17 +166,13 @@ export default function TrackeosListScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <View style={styles.header}>
-        <View>
-          <Text style={styles.title}>Rastreo de envíos</Text>
-          <Text style={styles.subtitle}>{activeUsername}</Text>
-        </View>
-        <View style={styles.headerActions}>
+        <View style={styles.headerTop}>
+          <View style={styles.headerText}>
+            <Text style={styles.title}>Seguimiento</Text>
+            <Text style={styles.subtitle}>{activeUsername}</Text>
+          </View>
           <Pressable style={styles.iconButton} onPress={() => void refreshAll()}>
             <Ionicons name="refresh" size={18} color={brand.navy} />
-          </Pressable>
-          <Pressable style={styles.primaryButton} onPress={openNewTracking}>
-            <Ionicons name="add" size={18} color="#fff" />
-            <Text style={styles.primaryButtonText}>Nuevo seguimiento</Text>
           </Pressable>
         </View>
       </View>
@@ -229,12 +218,9 @@ export default function TrackeosListScreen() {
           />
           <Text style={styles.emptyTitle}>No tienes envíos registrados</Text>
           <Text style={styles.emptyText}>
-            Agrega un nuevo seguimiento para comenzar a rastrear tus envíos.
+            Agrega un nuevo seguimiento con el botón + para comenzar a rastrear
+            tus envíos.
           </Text>
-          <Pressable style={styles.primaryButton} onPress={openNewTracking}>
-            <Ionicons name="add" size={18} color="#fff" />
-            <Text style={styles.primaryButtonText}>Nuevo seguimiento</Text>
-          </Pressable>
         </View>
       ) : activeTab === "air" ? (
         <FlatList
@@ -318,59 +304,51 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.md,
     gap: 12,
   },
+  headerTop: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  headerText: {
+    flex: 1,
+  },
   title: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: brand.ink,
+    fontSize: 26,
+    fontFamily: fonts.bold,
+    color: brand.navy,
+    letterSpacing: -0.4,
   },
   subtitle: {
     fontSize: 13,
     color: brand.muted,
     marginTop: 2,
-  },
-  headerActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
+    fontFamily: fonts.medium,
   },
   iconButton: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: 12,
     backgroundColor: brand.surface,
     borderWidth: 1,
-    borderColor: brand.border,
+    borderColor: "rgba(30, 58, 95, 0.1)",
     alignItems: "center",
     justifyContent: "center",
-  },
-  primaryButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: brand.primary,
-    borderRadius: radii.sm,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-  },
-  primaryButtonText: {
-    color: "#fff",
-    fontWeight: "600",
-    fontSize: 13,
   },
   tabs: {
     flexDirection: "row",
     marginHorizontal: spacing.lg,
     marginBottom: spacing.sm,
     backgroundColor: brand.surface,
-    borderRadius: radii.md,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: brand.border,
+    borderColor: "rgba(30, 58, 95, 0.08)",
     padding: 4,
   },
   tab: {
     flex: 1,
     paddingVertical: 10,
-    borderRadius: radii.sm,
+    borderRadius: 10,
     alignItems: "center",
   },
   tabActive: {
@@ -378,12 +356,12 @@ const styles = StyleSheet.create({
   },
   tabText: {
     fontSize: 13,
-    fontWeight: "500",
+    fontFamily: fonts.medium,
     color: brand.muted,
   },
   tabTextActive: {
     color: brand.primary,
-    fontWeight: "700",
+    fontFamily: fonts.semiBold,
   },
   center: {
     flex: 1,

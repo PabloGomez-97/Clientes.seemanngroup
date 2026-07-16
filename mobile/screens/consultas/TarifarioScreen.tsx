@@ -368,6 +368,7 @@ export default function TarifarioScreen() {
       <ScreenHeader
         title="Tarifario"
         subtitle="Solo consulta visual"
+        onBack={() => navigation.goBack()}
         right={
           <Pressable style={styles.iconBtn} onPress={() => void load(true)}>
             <Ionicons name="refresh" size={18} color={brand.navy} />

@@ -84,7 +84,7 @@ export default function MenuStack() {
       <Stack.Screen
         name="DeleteAccount"
         component={DeleteAccountScreen}
-        options={{ title: "Eliminar cuenta" }}
+        options={{ headerShown: false }}
       />
     </Stack.Navigator>
   );

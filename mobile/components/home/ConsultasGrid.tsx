@@ -47,7 +47,7 @@ const LAUNCHER: LauncherItem[] = [
   },
   {
     id: "track",
-    title: "Trackeos",
+    title: "Seguimientos",
     icon: "navigate",
     accent: "orange",
     kind: "tab",

@@ -92,7 +92,7 @@ export default function WelcomeHeader({ topInset = 0 }: Props) {
           ) : (
             <Text style={styles.statusVal}>{activeCount}</Text>
           )}
-          <Text style={styles.statusLink}>Trackeos ↗</Text>
+          <Text style={styles.statusLink}>Seguimientos ↗</Text>
         </Pressable>
 
         <View style={styles.statusDivider} />
