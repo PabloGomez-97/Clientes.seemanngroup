@@ -67,6 +67,10 @@ export const adminRoutes = (
       element={<ShipsGoTrackingAdmin />}
     />
     <Route
+      path="clientes/tracking/:clientUsername/:trackingMode/:trackingIdentifier"
+      element={<ShipsGoTrackingAdmin />}
+    />
+    <Route
       path="clientes/comportamiento/:clientUsername?"
       element={<ComportamientoDeClientes />}
     />
@@ -81,6 +85,10 @@ export const adminRoutes = (
     />
     <Route
       path="operaciones/tracking/:clientUsername?"
+      element={<ShipsGoTrackingAdminOP />}
+    />
+    <Route
+      path="operaciones/tracking/:clientUsername/:trackingMode/:trackingIdentifier"
       element={<ShipsGoTrackingAdminOP />}
     />
     <Route

@@ -63,8 +63,18 @@ interface CreateFormState {
 
 function ShipsGoTrackingAdmin() {
   const { token } = useAuth();
-  const { clientUsername } = useParams<{ clientUsername?: string }>();
+  const { clientUsername, trackingMode, trackingIdentifier } = useParams<{
+    clientUsername?: string;
+    trackingMode?: string;
+    trackingIdentifier?: string;
+  }>();
   const navigate = useNavigate();
+  const deepLinkTab =
+    trackingMode === "aereo"
+      ? ("air" as const)
+      : trackingMode === "maritimo"
+        ? ("ocean" as const)
+        : undefined;
 
   // Client list
   const [clientes, setClientes] = useState<Cliente[]>([]);
@@ -530,6 +540,11 @@ function ShipsGoTrackingAdmin() {
             onNewTracking={(type) =>
               handleNewTracking(type, selectedClient.username)
             }
+            initialTab={deepLinkTab}
+            routeTrackingIdentifier={
+              deepLinkTab ? trackingIdentifier : null
+            }
+            trackingRouteBase={`/admin/clientes/tracking/${encodeURIComponent(selectedClient.username)}`}
           />
         </div>
       </div>

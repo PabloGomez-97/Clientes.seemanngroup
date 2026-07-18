@@ -127,6 +127,10 @@ export interface ShipsGoTrackingProps {
   initialOpenTracking?: ShipsGoOpenTrackingTarget | null;
   /** Se invoca cuando ya se aplicó initialOpenTracking */
   onOpenTrackingConsumed?: () => void;
+  /** Identificador del deep link; null desactiva el parámetro de la ruta padre */
+  routeTrackingIdentifier?: string | null;
+  /** Base contextual para URLs profundas, por ejemplo el cliente en Operaciones */
+  trackingRouteBase?: string;
 }
 
 function ShipsGoTracking({
@@ -135,6 +139,8 @@ function ShipsGoTracking({
   initialTab = "air",
   initialOpenTracking = null,
   onOpenTrackingConsumed,
+  routeTrackingIdentifier,
+  trackingRouteBase,
 }: ShipsGoTrackingProps = {}) {
   const { token, activeUsername } = useAuth();
   const navigate = useNavigate();
@@ -142,6 +148,10 @@ function ShipsGoTracking({
   const { trackingIdentifier } = useParams<{
     trackingIdentifier?: string;
   }>();
+  const resolvedTrackingIdentifier =
+    routeTrackingIdentifier === undefined
+      ? trackingIdentifier
+      : routeTrackingIdentifier ?? undefined;
   const { registrarEvento } = useAuditLog();
   const effectiveUsername = filterUsername || activeUsername;
   const consumedEmbeddedOpenRef = useRef(false);
@@ -149,8 +159,12 @@ function ShipsGoTracking({
 
   const locationState = location.state as ShipsGoTrackingLocationState | null;
   const deepLinkTracking = useMemo(
-    () => buildOpenTrackingTargetFromPath(initialTab, trackingIdentifier),
-    [initialTab, trackingIdentifier],
+    () =>
+      buildOpenTrackingTargetFromPath(
+        initialTab,
+        resolvedTrackingIdentifier,
+      ),
+    [initialTab, resolvedTrackingIdentifier],
   );
   const pendingOpenTracking =
     initialOpenTracking ??
@@ -312,7 +326,7 @@ function ShipsGoTracking({
 
   useEffect(() => {
     setDeepLinkNotFound(false);
-  }, [trackingIdentifier]);
+  }, [resolvedTrackingIdentifier]);
 
   useEffect(() => {
     consumedEmbeddedOpenRef.current = false;
@@ -397,15 +411,24 @@ function ShipsGoTracking({
     );
   }
 
-  const isStandaloneTrackingRoute = location.pathname.startsWith("/trackings");
+  const isStandaloneTrackingRoute =
+    Boolean(trackingRouteBase) || location.pathname.startsWith("/trackings");
   const trackingBasePath = (tab: TabType) =>
-    tab === "air" ? "/trackings-aereo" : "/trackings-maritimo";
+    trackingRouteBase ??
+    (tab === "air" ? "/trackings-aereo" : "/trackings-maritimo");
+  const buildContextTrackingPath = (
+    mode: TabType,
+    identifier: string,
+  ) =>
+    trackingRouteBase
+      ? `${trackingRouteBase}/${mode === "air" ? "aereo" : "maritimo"}/${encodeURIComponent(identifier.trim())}`
+      : buildShipsgoTrackingPath(mode, identifier);
 
   const clearSelection = () => {
     setSelectedAir(null);
     setSelectedOcean(null);
     setDeepLinkNotFound(false);
-    if (trackingIdentifier && isStandaloneTrackingRoute) {
+    if (resolvedTrackingIdentifier && isStandaloneTrackingRoute) {
       navigate(trackingBasePath(activeTab), { replace: true });
     }
   };
@@ -420,7 +443,7 @@ function ShipsGoTracking({
       setSelectedAir(null);
       setAirStatusFilter(null);
     }
-    if (trackingIdentifier && isStandaloneTrackingRoute) {
+    if (resolvedTrackingIdentifier && isStandaloneTrackingRoute) {
       navigate(trackingBasePath(tab), { replace: true });
     }
   };
@@ -430,7 +453,7 @@ function ShipsGoTracking({
     setSelectedOcean(null);
     setDeepLinkNotFound(false);
     if (isStandaloneTrackingRoute) {
-      navigate(buildShipsgoTrackingPath("air", shipment.awb_number));
+      navigate(buildContextTrackingPath("air", shipment.awb_number));
     }
   };
 
@@ -441,7 +464,7 @@ function ShipsGoTracking({
     if (isStandaloneTrackingRoute) {
       const identifier = getOceanEmbedQuery(shipment);
       if (identifier) {
-        navigate(buildShipsgoTrackingPath("ocean", identifier));
+        navigate(buildContextTrackingPath("ocean", identifier));
       }
     }
   };
@@ -711,13 +734,13 @@ function ShipsGoTracking({
           </button>
         </div>
 
-        {deepLinkNotFound && trackingIdentifier && (
+        {deepLinkNotFound && resolvedTrackingIdentifier && (
           <div className="sg-deep-link-notice" role="status">
             <div>
               <strong>Embarque no encontrado</strong>
               <p>
-                No encontramos <b>{trackingIdentifier}</b> entre los embarques
-                asociados a tu cuenta.
+                No encontramos <b>{resolvedTrackingIdentifier}</b> entre los
+                embarques asociados a tu cuenta.
               </p>
             </div>
             <button type="button" onClick={clearSelection}>
