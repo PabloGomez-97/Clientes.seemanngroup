@@ -10,6 +10,25 @@ export type ShipsGoTrackingLocationState = {
   openTracking?: ShipsGoOpenTrackingTarget;
 };
 
+export function buildShipsgoTrackingPath(
+  mode: "air" | "ocean",
+  identifier: string,
+): string {
+  const base =
+    mode === "air" ? "/trackings-aereo" : "/trackings-maritimo";
+  return `${base}/${encodeURIComponent(identifier.trim())}`;
+}
+
+export function buildOpenTrackingTargetFromPath(
+  mode: "air" | "ocean",
+  identifier?: string | null,
+): ShipsGoOpenTrackingTarget | null {
+  if (!identifier?.trim()) return null;
+  return mode === "air"
+    ? buildAirOpenTrackingTarget(identifier)
+    : buildOceanOpenTrackingTarget({ trackingNumber: identifier });
+}
+
 export const normalizeShipsgoAwbKey = (value?: string | null) =>
   (value ?? "").replace(/[\s-]/g, "");
 

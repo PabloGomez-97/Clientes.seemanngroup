@@ -1,7 +1,7 @@
 // src/components/shipsgo/ShipsGoTracking.tsx
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useAuth } from "@/auth/AuthContext";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { useAuditLog } from "@/hooks/useAuditLog";
 import "@/components/cliente/styles/Shipsgotracking.css";
 import OceanShipmentDetail from "./shipsgo/OceanShipmentDetail";
@@ -23,6 +23,8 @@ import ShipsGoEmbed from "./shipsgo/ShipsGoEmbed";
 import {
   type ShipsGoOpenTrackingTarget,
   type ShipsGoTrackingLocationState,
+  buildOpenTrackingTargetFromPath,
+  buildShipsgoTrackingPath,
   matchesAirOpenTrackingTarget,
   matchesOceanOpenTrackingTarget,
 } from "@/services/shipsgoTrackingNavigation";
@@ -109,38 +111,10 @@ function TrackingStatusStrip({
   );
 }
 
-const SHIPSGO_LIST_CACHE_TTL_MS = 5 * 60 * 60 * 1000; // 5 horas
-
 const API_BASE_URL =
   import.meta.env.MODE === "development"
     ? "http://localhost:4000"
     : "https://portalclientes.seemanngroup.com";
-
-function buildShipsgoCacheKey(kind: "air" | "ocean", username?: string | null) {
-  const u = String(username || "unknown");
-  return `shipsgo:list:v1:${kind}:${u}`;
-}
-
-function readShipsgoCache<T>(key: string): { ts: number; data: T } | null {
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as { ts?: unknown; data?: unknown };
-    const ts = typeof parsed.ts === "number" ? parsed.ts : NaN;
-    if (!Number.isFinite(ts)) return null;
-    return { ts, data: parsed.data as T };
-  } catch {
-    return null;
-  }
-}
-
-function writeShipsgoCache<T>(key: string, data: T) {
-  try {
-    localStorage.setItem(key, JSON.stringify({ ts: Date.now(), data }));
-  } catch {
-    // ignore quota/serialization errors
-  }
-}
 
 export interface ShipsGoTrackingProps {
   /** Override the username used to filter shipments */
@@ -165,14 +139,24 @@ function ShipsGoTracking({
   const { token, activeUsername } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const { trackingIdentifier } = useParams<{
+    trackingIdentifier?: string;
+  }>();
   const { registrarEvento } = useAuditLog();
   const effectiveUsername = filterUsername || activeUsername;
   const consumedEmbeddedOpenRef = useRef(false);
   const consumedLocationOpenRef = useRef(false);
 
   const locationState = location.state as ShipsGoTrackingLocationState | null;
+  const deepLinkTracking = useMemo(
+    () => buildOpenTrackingTargetFromPath(initialTab, trackingIdentifier),
+    [initialTab, trackingIdentifier],
+  );
   const pendingOpenTracking =
-    initialOpenTracking ?? locationState?.openTracking ?? null;
+    initialOpenTracking ??
+    deepLinkTracking ??
+    locationState?.openTracking ??
+    null;
   const pendingOpenTab =
     pendingOpenTracking?.mode ??
     locationState?.openTab ??
@@ -192,16 +176,12 @@ function ShipsGoTracking({
   const [oceanLoading, setOceanLoading] = useState(true);
   const [oceanError, setOceanError] = useState<string | null>(null);
 
-  const [lastUpdatedTs, setLastUpdatedTs] = useState<{
-    air?: number;
-    ocean?: number;
-  }>({});
-
   // Inline selection (split panel, no modal)
   const [selectedAir, setSelectedAir] = useState<AirShipment | null>(null);
   const [selectedOcean, setSelectedOcean] = useState<OceanShipment | null>(
     null,
   );
+  const [deepLinkNotFound, setDeepLinkNotFound] = useState(false);
   const [airExpanded, setAirExpanded] = useState(false);
   const [oceanExpanded, setOceanExpanded] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
@@ -262,34 +242,13 @@ function ShipsGoTracking({
   );
 
   // Fetches
-  const fetchAir = useCallback(async (opts?: { force?: boolean }) => {
+  const fetchAir = useCallback(async () => {
     setAirLoading(true);
     setAirError(null);
     try {
-      const cacheKey = buildShipsgoCacheKey("air", effectiveUsername);
-      if (!opts?.force) {
-        const cached = readShipsgoCache<AirResponse>(cacheKey);
-        if (cached && Date.now() - cached.ts < SHIPSGO_LIST_CACHE_TTL_MS) {
-          const shipments = Array.isArray((cached.data as any)?.shipments)
-            ? (cached.data as any).shipments
-            : [];
-          setAllAirShipments(
-            shipments.sort(
-              (a: any, b: any) =>
-                new Date(b.created_at).getTime() -
-                new Date(a.created_at).getTime(),
-            ),
-          );
-          setLastUpdatedTs((prev) => ({ ...prev, air: cached.ts }));
-          return;
-        }
-      }
-
       const res = await fetch(`${API_BASE_URL}/api/shipsgo/shipments`);
       if (!res.ok) throw new Error("Error al obtener envíos aéreos");
       const data: AirResponse = await res.json();
-      writeShipsgoCache(cacheKey, data);
-      setLastUpdatedTs((prev) => ({ ...prev, air: Date.now() }));
       setAllAirShipments(
         data.shipments.sort(
           (a, b) =>
@@ -301,36 +260,15 @@ function ShipsGoTracking({
     } finally {
       setAirLoading(false);
     }
-  }, [effectiveUsername]);
+  }, []);
 
-  const fetchOcean = useCallback(async (opts?: { force?: boolean }) => {
+  const fetchOcean = useCallback(async () => {
     setOceanLoading(true);
     setOceanError(null);
     try {
-      const cacheKey = buildShipsgoCacheKey("ocean", effectiveUsername);
-      if (!opts?.force) {
-        const cached = readShipsgoCache<OceanResponse>(cacheKey);
-        if (cached && Date.now() - cached.ts < SHIPSGO_LIST_CACHE_TTL_MS) {
-          const shipments = Array.isArray((cached.data as any)?.shipments)
-            ? (cached.data as any).shipments
-            : [];
-          setAllOceanShipments(
-            shipments.sort(
-              (a: any, b: any) =>
-                new Date(b.created_at).getTime() -
-                new Date(a.created_at).getTime(),
-            ),
-          );
-          setLastUpdatedTs((prev) => ({ ...prev, ocean: cached.ts }));
-          return;
-        }
-      }
-
       const res = await fetch(`${API_BASE_URL}/api/shipsgo/ocean/shipments`);
       if (!res.ok) throw new Error("Error al obtener envíos marítimos");
       const data: OceanResponse = await res.json();
-      writeShipsgoCache(cacheKey, data);
-      setLastUpdatedTs((prev) => ({ ...prev, ocean: Date.now() }));
       setAllOceanShipments(
         data.shipments.sort(
           (a, b) =>
@@ -342,7 +280,7 @@ function ShipsGoTracking({
     } finally {
       setOceanLoading(false);
     }
-  }, [effectiveUsername]);
+  }, []);
 
   useEffect(() => {
     if (!effectiveUsername) {
@@ -359,6 +297,7 @@ function ShipsGoTracking({
   useEffect(() => {
     const tabIntent =
       initialOpenTracking?.mode ??
+      deepLinkTracking?.mode ??
       locationState?.openTracking?.mode ??
       locationState?.openTab;
     if (tabIntent) {
@@ -366,9 +305,14 @@ function ShipsGoTracking({
     }
   }, [
     initialOpenTracking?.mode,
+    deepLinkTracking?.mode,
     locationState?.openTracking?.mode,
     locationState?.openTab,
   ]);
+
+  useEffect(() => {
+    setDeepLinkNotFound(false);
+  }, [trackingIdentifier]);
 
   useEffect(() => {
     consumedEmbeddedOpenRef.current = false;
@@ -382,12 +326,16 @@ function ShipsGoTracking({
     if (!pendingOpenTracking) return;
 
     if (pendingOpenTracking.mode === "air") {
-      if (airLoading) return;
+      if (airLoading || airError) return;
       const match = userAir.find((shipment) =>
         matchesAirOpenTrackingTarget(shipment.awb_number, pendingOpenTracking),
       );
-      if (!match) return;
+      if (!match) {
+        if (deepLinkTracking) setDeepLinkNotFound(true);
+        return;
+      }
 
+      setDeepLinkNotFound(false);
       setSelectedOcean(null);
       setSelectedAir(match);
       setActiveTab("air");
@@ -403,12 +351,16 @@ function ShipsGoTracking({
       return;
     }
 
-    if (oceanLoading) return;
+    if (oceanLoading || oceanError) return;
     const match = userOcean.find((shipment) =>
       matchesOceanOpenTrackingTarget(shipment, pendingOpenTracking),
     );
-    if (!match) return;
+    if (!match) {
+      if (deepLinkTracking) setDeepLinkNotFound(true);
+      return;
+    }
 
+    setDeepLinkNotFound(false);
     setSelectedAir(null);
     setSelectedOcean(match);
     setActiveTab("ocean");
@@ -423,13 +375,16 @@ function ShipsGoTracking({
     }
   }, [
     pendingOpenTracking,
+    deepLinkTracking,
     airLoading,
+    airError,
     oceanLoading,
+    oceanError,
     userAir,
     userOcean,
     initialOpenTracking,
     locationState?.openTracking,
-    location.pathname,
+    location,
     navigate,
     onOpenTrackingConsumed,
   ]);
@@ -442,19 +397,52 @@ function ShipsGoTracking({
     );
   }
 
+  const isStandaloneTrackingRoute = location.pathname.startsWith("/trackings");
+  const trackingBasePath = (tab: TabType) =>
+    tab === "air" ? "/trackings-aereo" : "/trackings-maritimo";
+
   const clearSelection = () => {
     setSelectedAir(null);
     setSelectedOcean(null);
+    setDeepLinkNotFound(false);
+    if (trackingIdentifier && isStandaloneTrackingRoute) {
+      navigate(trackingBasePath(activeTab), { replace: true });
+    }
   };
 
   const handleTabChange = (tab: TabType) => {
     setActiveTab(tab);
+    setDeepLinkNotFound(false);
     if (tab === "air") {
       setSelectedOcean(null);
       setOceanStatusFilter(null);
     } else {
       setSelectedAir(null);
       setAirStatusFilter(null);
+    }
+    if (trackingIdentifier && isStandaloneTrackingRoute) {
+      navigate(trackingBasePath(tab), { replace: true });
+    }
+  };
+
+  const selectAirShipment = (shipment: AirShipment) => {
+    setSelectedAir(shipment);
+    setSelectedOcean(null);
+    setDeepLinkNotFound(false);
+    if (isStandaloneTrackingRoute) {
+      navigate(buildShipsgoTrackingPath("air", shipment.awb_number));
+    }
+  };
+
+  const selectOceanShipment = (shipment: OceanShipment) => {
+    setSelectedOcean(shipment);
+    setSelectedAir(null);
+    setDeepLinkNotFound(false);
+    if (isStandaloneTrackingRoute) {
+      const identifier = getOceanEmbedQuery(shipment);
+      if (identifier) {
+        navigate(buildShipsgoTrackingPath("ocean", identifier));
+      }
     }
   };
 
@@ -681,10 +669,10 @@ function ShipsGoTracking({
               className="sg-error-btn"
               type="button"
               onClick={() => {
-                void fetchAir({ force: true });
-                void fetchOcean({ force: true });
+                void fetchAir();
+                void fetchOcean();
               }}
-              title="Vuelve a consultar Shipsgo (ignora el cache)"
+              title="Vuelve a consultar Shipsgo"
             >
               Actualizar
             </button>
@@ -723,6 +711,21 @@ function ShipsGoTracking({
           </button>
         </div>
 
+        {deepLinkNotFound && trackingIdentifier && (
+          <div className="sg-deep-link-notice" role="status">
+            <div>
+              <strong>Embarque no encontrado</strong>
+              <p>
+                No encontramos <b>{trackingIdentifier}</b> entre los embarques
+                asociados a tu cuenta.
+              </p>
+            </div>
+            <button type="button" onClick={clearSelection}>
+              Ver todos
+            </button>
+          </div>
+        )}
+
         {/* === AIR TAB === */}
         {activeTab === "air" && (
           <>
@@ -738,7 +741,7 @@ function ShipsGoTracking({
                 <button
                   className="sg-error-btn"
                   type="button"
-                  onClick={() => void fetchAir({ force: true })}
+                  onClick={() => void fetchAir()}
                 >
                   Reintentar
                 </button>
@@ -836,8 +839,7 @@ function ShipsGoTracking({
                                 clearSelection();
                                 return;
                               }
-                              setSelectedAir(s);
-                              setSelectedOcean(null);
+                              selectAirShipment(s);
                             }}
                           >
                             <td>
@@ -1025,7 +1027,7 @@ function ShipsGoTracking({
                 <button
                   className="sg-error-btn"
                   type="button"
-                  onClick={() => void fetchOcean({ force: true })}
+                  onClick={() => void fetchOcean()}
                 >
                   Reintentar
                 </button>
@@ -1124,8 +1126,7 @@ function ShipsGoTracking({
                                 clearSelection();
                                 return;
                               }
-                              setSelectedOcean(s);
-                              setSelectedAir(null);
+                              selectOceanShipment(s);
                             }}
                           >
                             <td>

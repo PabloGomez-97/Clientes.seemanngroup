@@ -30,47 +30,6 @@ export interface HmOceanItem {
 
 export type HmShipmentItem = HmAirItem | HmOceanItem;
 
-const CACHE_TTL_MS = 20 * 60 * 1000;
-
-interface ActivityCache {
-  air: HmAirItem[];
-  ocean: HmOceanItem[];
-  fetchedAt: number;
-  username: string;
-}
-
-function getCacheKey(username: string) {
-  // v2: items now carry the raw status (needed for the active-shipments filter)
-  return `activity_bar_cache_v2_${username}`;
-}
-
-function readCache(username: string): ActivityCache | null {
-  try {
-    const raw = localStorage.getItem(getCacheKey(username));
-    if (!raw) return null;
-    const parsed: ActivityCache = JSON.parse(raw);
-    if (parsed.username !== username) return null;
-    if (Date.now() - parsed.fetchedAt > CACHE_TTL_MS) return null;
-    return parsed;
-  } catch {
-    return null;
-  }
-}
-
-function writeCache(username: string, air: HmAirItem[], ocean: HmOceanItem[]) {
-  try {
-    const payload: ActivityCache = {
-      air,
-      ocean,
-      fetchedAt: Date.now(),
-      username,
-    };
-    localStorage.setItem(getCacheKey(username), JSON.stringify(payload));
-  } catch {
-    /* ignore */
-  }
-}
-
 async function fetchShipments(username: string): Promise<{
   air: HmAirItem[];
   ocean: HmOceanItem[];
@@ -146,7 +105,6 @@ async function fetchShipments(username: string): Promise<{
       });
   }
 
-  writeCache(username, freshAir, freshOcean);
   return { air: freshAir, ocean: freshOcean };
 }
 
@@ -161,14 +119,6 @@ export function useHomeShipments(activeUsername: string | undefined) {
       return;
     }
     let cancelled = false;
-
-    const cached = readCache(activeUsername);
-    if (cached) {
-      setAir(cached.air);
-      setOcean(cached.ocean);
-      setLoading(false);
-      return;
-    }
 
     (async () => {
       setLoading(true);

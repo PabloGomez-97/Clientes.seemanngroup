@@ -7,6 +7,7 @@ import { useAuth } from "@/auth/AuthContext";
 import { useLinbisToken } from "@/hooks/useLinbisToken";
 import type { HmShipmentItem } from "@/hooks/useHomeShipments";
 import { useHomeQuotesSummary } from "@/hooks/useHomeQuotesSummary";
+import { buildShipsgoTrackingPath } from "@/services/shipsgoTrackingNavigation";
 
 interface HomeOperationStripProps {
   shipments: HmShipmentItem[];
@@ -114,9 +115,7 @@ const HomeOperationStrip: React.FC<HomeOperationStripProps> = ({
               {pagedShipments.map((item) => {
                 const isAir = item.kind === "air";
                 const ref = isAir ? item.awb : item.container;
-                const target = isAir
-                  ? "/trackings-aereo"
-                  : "/trackings-maritimo";
+                const target = buildShipsgoTrackingPath(item.kind, ref);
                 const badgeText = isAir
                   ? item.status === "BOOKED"
                     ? t("home.operation.statusBooked")

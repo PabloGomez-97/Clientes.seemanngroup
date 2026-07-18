@@ -50,7 +50,15 @@ export const clientRoutes = (
       element={<ShipsGoTracking initialTab="air" />}
     />
     <Route
+      path="trackings-aereo/:trackingIdentifier"
+      element={<ShipsGoTracking initialTab="air" />}
+    />
+    <Route
       path="trackings-maritimo"
+      element={<ShipsGoTracking initialTab="ocean" />}
+    />
+    <Route
+      path="trackings-maritimo/:trackingIdentifier"
       element={<ShipsGoTracking initialTab="ocean" />}
     />
     <Route path="ocean-shipments" element={<OceanShipmentsView />} />
