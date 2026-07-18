@@ -155,7 +155,26 @@
     "hero": {
       "prevSlide": "Slide anterior",
       "nextSlide": "Slide siguiente",
-      "goToSlide": "Ir al slide {{n}}"
+      "goToSlide": "Ir al slide {{n}}",
+      "liveEyebrow": "En tiempo real"
+    },
+    "operation": {
+      "eyebrow": "Tu operación",
+      "title": "Actividad reciente",
+      "shipmentsTitle": "Embarques activos",
+      "quotesTitle": "Cotizaciones recientes",
+      "activeLabel": "activos",
+      "noShipments": "Aún no tienes embarques en curso.",
+      "noQuotes": "Aún no tienes cotizaciones.",
+      "quoteNow": "Cotiza ahora",
+      "viewTracking": "Ver tracking",
+      "viewQuotes": "Ver cotizaciones",
+      "modeAir": "Aéreo",
+      "modeOcean": "Marítimo",
+      "statusBooked": "Reservado",
+      "pagerLabel": "Páginas de embarques",
+      "pagerPrev": "Embarques anteriores",
+      "pagerNext": "Embarques siguientes"
     },
     "servicesSection": {
       "eyebrow": "Cotizaciones",

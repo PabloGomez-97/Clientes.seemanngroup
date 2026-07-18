@@ -5,12 +5,16 @@ const HM_API_BASE =
     ? "http://localhost:4000"
     : "https://portalclientes.seemanngroup.com";
 
+export type HmAirStatus = "BOOKED" | "EN_ROUTE" | "LANDED" | "DELIVERED";
+export type HmOceanStatus = "SAILING" | "ARRIVED" | "DISCHARGED";
+
 export interface HmAirItem {
   kind: "air";
   id: number;
   awb: string;
   origin: string;
   destination: string;
+  status: HmAirStatus;
   delivered: boolean;
 }
 
@@ -20,6 +24,7 @@ export interface HmOceanItem {
   container: string;
   origin: string;
   destination: string;
+  status: HmOceanStatus;
   delivered: boolean;
 }
 
@@ -35,7 +40,8 @@ interface ActivityCache {
 }
 
 function getCacheKey(username: string) {
-  return `activity_bar_cache_${username}`;
+  // v2: items now carry the raw status (needed for the active-shipments filter)
+  return `activity_bar_cache_v2_${username}`;
 }
 
 function readCache(username: string): ActivityCache | null {
@@ -82,7 +88,8 @@ async function fetchShipments(username: string): Promise<{
       .filter(
         (s) =>
           s.reference === username &&
-          (s.status === "EN_ROUTE" ||
+          (s.status === "BOOKED" ||
+            s.status === "EN_ROUTE" ||
             s.status === "LANDED" ||
             s.status === "DELIVERED"),
       )
@@ -97,6 +104,7 @@ async function fetchShipments(username: string): Promise<{
           awb: (s.awb_number as string) || "—",
           origin: route?.origin?.location?.iata || "—",
           destination: route?.destination?.location?.iata || "—",
+          status: s.status as HmAirStatus,
           delivered: s.status === "LANDED" || s.status === "DELIVERED",
         };
       });
@@ -132,6 +140,7 @@ async function fetchShipments(username: string): Promise<{
             `#${s.id}`,
           origin: route?.port_of_loading?.location?.code || "—",
           destination: route?.port_of_discharge?.location?.code || "—",
+          status: s.status as HmOceanStatus,
           delivered: s.status === "ARRIVED" || s.status === "DISCHARGED",
         };
       });

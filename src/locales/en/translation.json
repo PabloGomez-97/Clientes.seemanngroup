@@ -155,7 +155,26 @@
     "hero": {
       "prevSlide": "Previous slide",
       "nextSlide": "Next slide",
-      "goToSlide": "Go to slide {{n}}"
+      "goToSlide": "Go to slide {{n}}",
+      "liveEyebrow": "Live"
+    },
+    "operation": {
+      "eyebrow": "Your operation",
+      "title": "Recent activity",
+      "shipmentsTitle": "Active shipments",
+      "quotesTitle": "Recent quotes",
+      "activeLabel": "active",
+      "noShipments": "You have no shipments in progress yet.",
+      "noQuotes": "You have no quotes yet.",
+      "quoteNow": "Quote now",
+      "viewTracking": "View tracking",
+      "viewQuotes": "View quotes",
+      "modeAir": "Air",
+      "modeOcean": "Ocean",
+      "statusBooked": "Booked",
+      "pagerLabel": "Shipment pages",
+      "pagerPrev": "Previous shipments",
+      "pagerNext": "Next shipments"
     },
     "servicesSection": {
       "eyebrow": "Quoting",

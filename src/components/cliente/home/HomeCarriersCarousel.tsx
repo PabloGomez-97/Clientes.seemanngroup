@@ -26,21 +26,28 @@ const HomeCarriersCarousel: React.FC = () => {
   const { t } = useTranslation();
 
   return (
-    <div className="hal-carriers-strip">
-      <p className="hal-carriers-label">{t("home.carriers.label")}</p>
-      <ul className="hm-carriers-grid" aria-label={t("home.carriers.label")}>
-        {CARRIER_LOGOS.map((name) => (
-          <li key={name} className="hm-carriers-grid__item" title={name}>
-            <img
-              src={carrierLogoUrl(name)}
-              alt={name}
-              loading="lazy"
-              draggable={false}
-            />
-          </li>
-        ))}
-      </ul>
-    </div>
+    <section className="hme-carriers" aria-label={t("home.carriers.label")}>
+      <p className="hme-carriers__label">{t("home.carriers.label")}</p>
+      <div className="hme-carriers__viewport">
+        <div className="hme-carriers__track">
+          {[...CARRIER_LOGOS, ...CARRIER_LOGOS].map((name, idx) => (
+            <div
+              key={`${name}-${idx}`}
+              className="hme-carriers__item"
+              title={name}
+              aria-hidden={idx >= CARRIER_LOGOS.length}
+            >
+              <img
+                src={carrierLogoUrl(name)}
+                alt={name}
+                loading="lazy"
+                draggable={false}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 };
 

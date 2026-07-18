@@ -20,34 +20,46 @@ const HomeServicesGrid: React.FC = () => {
   const { t } = useTranslation();
 
   return (
-    <section className="hal-services-section" aria-label={t("home.servicesSection.title")}>
-      <header className="hal-section-header">
-        <h2 className="hal-section-heading">{t("home.servicesSection.title")}</h2>
+    <section
+      className="hme-section"
+      aria-label={t("home.servicesSection.title")}
+    >
+      <header className="hme-section__head">
+        <span className="hme-section__eyebrow">
+          {t("home.servicesSection.eyebrow")}
+        </span>
+        <h2 className="hme-section__title">
+          {t("home.servicesSection.title")}
+        </h2>
       </header>
-      <div className="hal-services-grid">
+
+      <div className="hme-services">
         {SERVICE_KEYS.map(({ key, tipo, image }) => (
           <Link
             key={key}
             to={`/newquotes?tipo=${tipo}`}
-            className="hal-service-card"
+            className="hme-service-card"
           >
-            <img
-              className="hal-service-image"
-              src={imgUrl(image)}
-              alt={t(`home.services.${key}.title`)}
-              width={298}
-              height={166}
-              loading="lazy"
-            />
-            <div className="hal-service-content">
-              <h3 className="hal-service-title">
+            <div className="hme-service-card__media">
+              <img
+                src={imgUrl(image)}
+                alt={t(`home.services.${key}.title`)}
+                width={298}
+                height={166}
+                loading="lazy"
+                draggable={false}
+              />
+            </div>
+            <div className="hme-service-card__body">
+              <h3 className="hme-service-card__title">
                 {t(`home.services.${key}.title`)}
               </h3>
-              <p className="hal-service-desc">
+              <p className="hme-service-card__desc">
                 {t(`home.services.${key}.desc`)}
               </p>
-              <span className="hal-service-cta">
-                {t(`home.services.${key}.cta`)} →
+              <span className="hme-service-card__cta">
+                {t(`home.services.${key}.cta`)}
+                <span aria-hidden>→</span>
               </span>
             </div>
           </Link>
