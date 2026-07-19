@@ -92,7 +92,7 @@ interface Quote {
   cargoStatus?: string;
   modeOfTransportation?: string;
   customFieldValues?: QuoteCustomFieldValue[];
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 function getQuoteTransportModeLabel(quote: Quote): string {
@@ -138,7 +138,7 @@ function shouldShowQuoteTracking(quote: Quote): boolean {
   return !!getQuoteTrackType(quote) && !!getQuoteTrackingNumber(quote);
 }
 
-const ITEMS_PER_PAGE = 15;
+const ITEMS_PER_PAGE = 10;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const QUOTE_TRACKING_CUSTOM_FIELD_ID = 17;
 const API_BASE_URL =
@@ -236,28 +236,6 @@ function isQuoteValid(validUntilDate?: string): boolean | null {
   const until = new Date(validUntilDate);
   until.setHours(23, 59, 59, 999);
   return until >= today;
-}
-
-/**
- * Detect if a quote was created from the portal and return the quote type.
- * Returns "AIR" | "FCL" | "LCL" | null
- */
-function getPortalQuoteType(quote: Quote): "AIR" | "FCL" | "LCL" | null {
-  const ref = (quote.customerReference || "").toLowerCase();
-  if (ref.includes("portal") && ref.includes("[air")) return "AIR";
-  if (ref.includes("portal") && ref.includes("[fcl")) return "FCL";
-  if (ref.includes("portal") && ref.includes("[lcl")) return "LCL";
-  return null;
-}
-
-/**
- * Map the quote type to the navigation tipoEnvio for Cotizador
- */
-function mapQuoteTypeToTipoEnvio(
-  type: "AIR" | "FCL" | "LCL",
-): "AEREO" | "FCL" | "LCL" {
-  if (type === "AIR") return "AEREO";
-  return type;
 }
 
 function FlowBadge({ currentFlow }: { currentFlow?: string | null }) {
@@ -1125,7 +1103,7 @@ function QuotesView({
 }: { documentsOnly?: boolean; initialQuoteFilter?: string } = {}) {
   const { accessToken, refreshAccessToken } = useOutletContext<OutletContext>();
   const clientOverride = useClientOverride();
-  const { user, token, activeUsername: authUsername } = useAuth();
+  const { token, activeUsername: authUsername } = useAuth();
   const activeUsername = clientOverride || authUsername;
   const navigate = useNavigate();
   const location = useLocation();
@@ -1146,8 +1124,8 @@ function QuotesView({
   const [resendingPDF, setResendingPDF] = useState<string | null>(null);
 
   // Pagination
-  const [currentPage, setCurrentPage] = useState(1);
-  const [hasMoreQuotes, setHasMoreQuotes] = useState(true);
+  const [, setCurrentPage] = useState(1);
+  const [, setHasMoreQuotes] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [rowsPerPage, setRowsPerPage] = useState(ITEMS_PER_PAGE);
   const [tablePage, setTablePage] = useState(1);
@@ -1156,7 +1134,7 @@ function QuotesView({
   const [selectedQuoteId, setSelectedQuoteId] = useState<
     string | number | null
   >(null);
-  const [documentCounts, setDocumentCounts] = useState<
+  const [, setDocumentCounts] = useState<
     Record<string | number, number>
   >({});
 
@@ -1201,7 +1179,7 @@ function QuotesView({
   const [searchEndDate, setSearchEndDate] = useState("");
   const [searchOrigin, setSearchOrigin] = useState("");
   const [searchDestination, setSearchDestination] = useState("");
-  const [showAllQuotes, setShowAllQuotes] = useState(false);
+  const [, setShowAllQuotes] = useState(false);
 
   // Advanced toolbar filters
   const [filterNumber, setFilterNumber] = useState("");
@@ -1280,7 +1258,7 @@ function QuotesView({
 
   const sortedQuotes = useMemo(() => {
     const sorted = [...displayedQuotes].sort((a, b) => {
-      let valA: any, valB: any;
+      let valA: number | string, valB: number | string;
       switch (sortColumn) {
         case "number":
           valA = parseInt(String(a.number ?? "").replace(/\D/g, "") || "0", 10);
@@ -1982,12 +1960,6 @@ function QuotesView({
   );
 
   /* -- Search handlers -------------------------------------- */
-  const loadMoreQuotes = () => {
-    const next = currentPage + 1;
-    setCurrentPage(next);
-    fetchQuotes(next, true);
-  };
-
   const handleSearchByNumber = () => {
     if (!searchNumber.trim()) {
       setDisplayedQuotes(quotes);

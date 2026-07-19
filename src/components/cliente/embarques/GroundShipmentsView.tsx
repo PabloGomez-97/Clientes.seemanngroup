@@ -22,7 +22,7 @@ import { consigneeMatches } from "@/services/linbisListFetch";
 const GROUND_ALL_CACHE_KEY = "groundShipmentsAllCache_v1";
 const GROUND_ALL_CACHE_TS_KEY = "groundShipmentsAllCacheTimestamp_v1";
 
-const DEFAULT_ROWS_PER_PAGE = 15;
+const DEFAULT_ROWS_PER_PAGE = 10;
 
 function formatFieldValue(value: unknown): string {
   if (value === null || value === undefined || value === "") return "-";

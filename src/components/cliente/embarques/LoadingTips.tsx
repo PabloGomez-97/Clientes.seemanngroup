@@ -21,182 +21,22 @@ interface LoadingTipsProps {
 
 const ROW_COUNT = 10;
 
-const HEADER_COLUMNS = [
-  { className: "lt-bone--id", center: false },
-  { className: "lt-bone--badge", center: true },
-  { className: "lt-bone--badge", center: true },
-  { className: "lt-bone--city", center: false },
-  { className: "lt-bone--city-lg", center: false },
-  { className: "lt-bone--transport", center: false },
-  { className: "lt-bone--date", center: false },
-  { className: "lt-bone--date", center: false },
-  { className: "lt-bone--transit", center: true },
-  { className: "lt-bone--button", center: true },
-] as const;
-
-type RowCell = {
-  className: string;
-  center?: boolean;
-};
-
-const ROW_PATTERNS: RowCell[][] = [
-  [
-    { className: "lt-bone--id" },
-    { className: "lt-bone--badge", center: true },
-    { className: "lt-bone--badge", center: true },
-    { className: "lt-bone--city-lg" },
-    { className: "lt-bone--city" },
-    { className: "lt-bone--transport" },
-    { className: "lt-bone--date" },
-    { className: "lt-bone--date" },
-    { className: "lt-bone--transit", center: true },
-    { className: "lt-bone--button", center: true },
-  ],
-  [
-    { className: "lt-bone--id" },
-    { className: "lt-bone--badge", center: true },
-    { className: "lt-bone--badge", center: true },
-    { className: "lt-bone--city" },
-    { className: "lt-bone--city-lg" },
-    { className: "lt-bone--transport" },
-    { className: "lt-bone--date" },
-    { className: "lt-bone--date" },
-    { className: "lt-bone--transit", center: true },
-    { className: "lt-bone--button", center: true },
-  ],
-  [
-    { className: "lt-bone--id" },
-    { className: "lt-bone--badge", center: true },
-    { className: "lt-bone--badge", center: true },
-    { className: "lt-bone--city-lg" },
-    { className: "lt-bone--city-lg" },
-    { className: "lt-bone--transport" },
-    { className: "lt-bone--date" },
-    { className: "lt-bone--date" },
-    { className: "lt-bone--transit", center: true },
-    { className: "lt-bone--button", center: true },
-  ],
+/* Columnas genéricas cuando el consumidor no especifica ninguna */
+const DEFAULT_COLUMNS: LoadingTipsColumn[] = [
+  { label: "" },
+  { label: "" },
+  { label: "" },
+  { label: "" },
+  { label: "" },
+  { label: "", center: true },
+  { label: "", center: true },
 ];
 
-const ROW_PATTERNS_6: RowCell[][] = [
-  [
-    { className: "lt-bone--id" },
-    { className: "lt-bone--city-lg" },
-    { className: "lt-bone--transport" },
-    { className: "lt-bone--date", center: true },
-    { className: "lt-bone--date", center: true },
-    { className: "lt-bone--city", center: true },
-  ],
-  [
-    { className: "lt-bone--id" },
-    { className: "lt-bone--city" },
-    { className: "lt-bone--transport" },
-    { className: "lt-bone--date", center: true },
-    { className: "lt-bone--date", center: true },
-    { className: "lt-bone--city-lg", center: true },
-  ],
-  [
-    { className: "lt-bone--id" },
-    { className: "lt-bone--city" },
-    { className: "lt-bone--city-lg" },
-    { className: "lt-bone--date", center: true },
-    { className: "lt-bone--date", center: true },
-    { className: "lt-bone--city", center: true },
-  ],
-];
+/* Anchos de texto que rotan de forma determinista para dar un look orgánico */
+const TEXT_WIDTHS = ["lt-bone--w-md", "lt-bone--w-lg", "lt-bone--w-sm"] as const;
 
-const ROW_PATTERNS_7: RowCell[][] = [
-  [
-    { className: "lt-bone--id" },
-    { className: "lt-bone--city" },
-    { className: "lt-bone--city-lg" },
-    { className: "lt-bone--date" },
-    { className: "lt-bone--city-lg" },
-    { className: "lt-bone--badge", center: true },
-    { className: "lt-bone--transit", center: true },
-  ],
-  [
-    { className: "lt-bone--id" },
-    { className: "lt-bone--city-lg" },
-    { className: "lt-bone--city" },
-    { className: "lt-bone--date" },
-    { className: "lt-bone--city" },
-    { className: "lt-bone--badge", center: true },
-    { className: "lt-bone--transit", center: true },
-  ],
-  [
-    { className: "lt-bone--id" },
-    { className: "lt-bone--city" },
-    { className: "lt-bone--city" },
-    { className: "lt-bone--date" },
-    { className: "lt-bone--transport" },
-    { className: "lt-bone--badge", center: true },
-    { className: "lt-bone--transit", center: true },
-  ],
-];
-
-const ROW_PATTERNS_11: RowCell[][] = [
-  [
-    { className: "lt-bone--city" },
-    { className: "lt-bone--city-lg" },
-    { className: "lt-bone--transport" },
-    { className: "lt-bone--transit", center: true },
-    { className: "lt-bone--transit", center: true },
-    { className: "lt-bone--transit", center: true },
-    { className: "lt-bone--transit", center: true },
-    { className: "lt-bone--transit", center: true },
-    { className: "lt-bone--date" },
-    { className: "lt-bone--date" },
-    { className: "lt-bone--button", center: true },
-  ],
-  [
-    { className: "lt-bone--city-lg" },
-    { className: "lt-bone--city" },
-    { className: "lt-bone--transport" },
-    { className: "lt-bone--transit", center: true },
-    { className: "lt-bone--transit", center: true },
-    { className: "lt-bone--transit", center: true },
-    { className: "lt-bone--transit", center: true },
-    { className: "lt-bone--transit", center: true },
-    { className: "lt-bone--date" },
-    { className: "lt-bone--date" },
-    { className: "lt-bone--button", center: true },
-  ],
-  [
-    { className: "lt-bone--city" },
-    { className: "lt-bone--city" },
-    { className: "lt-bone--transport" },
-    { className: "lt-bone--transit", center: true },
-    { className: "lt-bone--transit", center: true },
-    { className: "lt-bone--transit", center: true },
-    { className: "lt-bone--transit", center: true },
-    { className: "lt-bone--transit", center: true },
-    { className: "lt-bone--date" },
-    { className: "lt-bone--date" },
-    { className: "lt-bone--button", center: true },
-  ],
-];
-
-const ROW_PATTERNS_BY_COUNT: Record<number, RowCell[][]> = {
-  6: ROW_PATTERNS_6,
-  7: ROW_PATTERNS_7,
-  10: ROW_PATTERNS,
-  11: ROW_PATTERNS_11,
-};
-
-function getRowCells(index: number, columns?: LoadingTipsColumn[]): RowCell[] {
-  const count = columns?.length ?? HEADER_COLUMNS.length;
-  const patterns = ROW_PATTERNS_BY_COUNT[count] ?? ROW_PATTERNS;
-  const cells = patterns[index % patterns.length];
-
-  if (!columns) {
-    return cells;
-  }
-
-  return cells.map((cell, i) => ({
-    ...cell,
-    center: columns[i]?.center ?? cell.center,
-  }));
+function textWidthClass(rowIndex: number, colIndex: number): string {
+  return TEXT_WIDTHS[(rowIndex * 3 + colIndex * 2) % TEXT_WIDTHS.length];
 }
 
 function LoadingOverlay() {
@@ -328,40 +168,51 @@ function ChartPanelSkeleton({
 }
 
 function TableSkeleton({ columns }: { columns?: LoadingTipsColumn[] }) {
+  const cols = columns?.length ? columns : DEFAULT_COLUMNS;
+
   return (
     <div className="lt-table-wrapper">
       <div className="lt-table-scroll">
         <table className="lt-skeleton-table">
           <thead>
             <tr>
-              {columns
-                ? columns.map((col, i) => (
-                    <th
-                      key={i}
-                      className={`lt-skeleton-th${col.center ? " lt-skeleton-th--center" : ""}`}
-                    >
-                      <span className="lt-skeleton-th-label">{col.label}</span>
-                    </th>
-                  ))
-                : HEADER_COLUMNS.map((col, i) => (
-                    <th
-                      key={i}
-                      className={`lt-skeleton-th${col.center ? " lt-skeleton-th--center" : ""}`}
-                    >
-                      <span className={`lt-bone lt-bone--header ${col.className}`} />
-                    </th>
-                  ))}
+              {cols.map((col, i) => (
+                <th
+                  key={i}
+                  className={`lt-skeleton-th${col.center ? " lt-skeleton-th--center" : ""}`}
+                >
+                  {col.label ? (
+                    <span className="lt-skeleton-th-label">{col.label}</span>
+                  ) : (
+                    <span className="lt-bone lt-bone--header" />
+                  )}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
             {Array.from({ length: ROW_COUNT }).map((_, rowIndex) => (
               <tr key={rowIndex}>
-                {getRowCells(rowIndex, columns).map((cell, cellIndex) => (
+                {cols.map((col, colIndex) => (
                   <td
-                    key={cellIndex}
-                    className={`lt-skeleton-td${cell.center ? " lt-skeleton-td--center" : ""}`}
+                    key={colIndex}
+                    className={`lt-skeleton-td${col.center ? " lt-skeleton-td--center" : ""}`}
                   >
-                    <span className={`lt-bone ${cell.className}`} />
+                    {colIndex === 0 ? (
+                      /* Celda rica: referencia + número, como en las tablas nuevas */
+                      <span className="lt-cell-rich">
+                        <span
+                          className={`lt-bone lt-bone--ref ${textWidthClass(rowIndex, 0)}`}
+                        />
+                        <span className="lt-bone lt-bone--num" />
+                      </span>
+                    ) : col.center ? (
+                      <span className="lt-bone lt-bone--pill" />
+                    ) : (
+                      <span
+                        className={`lt-bone lt-bone--text ${textWidthClass(rowIndex, colIndex)}`}
+                      />
+                    )}
                   </td>
                 ))}
               </tr>
@@ -372,7 +223,8 @@ function TableSkeleton({ columns }: { columns?: LoadingTipsColumn[] }) {
 
       <div className="lt-pagination" aria-hidden="true">
         <span className="lt-bone lt-bone--page-text" />
-        <span className="lt-bone lt-bone--page-btn" />
+        <span className="lt-bone lt-bone--page-select" />
+        <span className="lt-bone lt-bone--page-range" />
         <span className="lt-bone lt-bone--page-btn" />
         <span className="lt-bone lt-bone--page-btn" />
       </div>

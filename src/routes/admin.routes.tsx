@@ -59,6 +59,10 @@ export const adminRoutes = (
       element={<ReporteriaClientes />}
     />
     <Route
+      path="clientes/reporteria/:clientUsername/:trackingMode/:trackingIdentifier"
+      element={<ReporteriaClientes />}
+    />
+    <Route
       path="clientes/documentacion/:clientUsername?"
       element={<Documentacion />}
     />
@@ -77,6 +81,10 @@ export const adminRoutes = (
 
     <Route
       path="operaciones/clientes/reporteria/:clientUsername?"
+      element={<OPReporteriaClientes />}
+    />
+    <Route
+      path="operaciones/clientes/reporteria/:clientUsername/:trackingMode/:trackingIdentifier"
       element={<OPReporteriaClientes />}
     />
     <Route

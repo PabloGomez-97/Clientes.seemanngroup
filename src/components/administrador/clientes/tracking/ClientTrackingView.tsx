@@ -11,6 +11,10 @@ interface ClientTrackingViewProps {
   initialTrackingTab?: "air" | "ocean";
   initialOpenTracking?: ShipsGoOpenTrackingTarget | null;
   onOpenTrackingConsumed?: () => void;
+  /** Identificador del deep link (/aereo/{awb} o /maritimo/{id}); null lo desactiva */
+  routeTrackingIdentifier?: string | null;
+  /** Base contextual para generar URLs profundas al abrir un seguimiento */
+  trackingRouteBase?: string;
 }
 
 function ClientTrackingView({
@@ -18,6 +22,8 @@ function ClientTrackingView({
   initialTrackingTab,
   initialOpenTracking = null,
   onOpenTrackingConsumed,
+  routeTrackingIdentifier = null,
+  trackingRouteBase,
 }: ClientTrackingViewProps) {
   const [showCreateForm, setShowCreateForm] = useState<TrackingFormType>(null);
   const [trackingKey, setTrackingKey] = useState(0);
@@ -138,6 +144,8 @@ function ClientTrackingView({
         initialTab={initialTrackingTab}
         initialOpenTracking={initialOpenTracking}
         onOpenTrackingConsumed={onOpenTrackingConsumed}
+        routeTrackingIdentifier={routeTrackingIdentifier}
+        trackingRouteBase={trackingRouteBase}
       />
     </>
   );

@@ -49,7 +49,7 @@ import {
   type ShipsGoTrackingLocationState,
 } from "@/services/shipsgoTrackingNavigation";
 
-const ITEMS_PER_PAGE = 15;
+const ITEMS_PER_PAGE = 10;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const API_BASE_URL =
   import.meta.env.MODE === "development"

@@ -1,6 +1,5 @@
 // src/components/administrador/OP-reporteriaclientes.tsx — Client portal view for Operaciones (ALL clients)
-import { useState, useEffect, useMemo, useCallback } from "react";
-import { useTranslation } from "react-i18next";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useOutletContext, useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/auth/AuthContext";
 import { ClientOverrideProvider } from "@/contexts/ClientOverrideContext";
@@ -87,9 +86,22 @@ const FONT =
 function OPReporteriaClientes() {
   useOutletContext<OutletContext>();
   const { token } = useAuth();
-  const { t } = useTranslation();
-  const { clientUsername } = useParams<{ clientUsername?: string }>();
+  const { clientUsername, trackingMode, trackingIdentifier } = useParams<{
+    clientUsername?: string;
+    trackingMode?: string;
+    trackingIdentifier?: string;
+  }>();
   const navigate = useNavigate();
+
+  // Deep link de seguimiento:
+  // /admin/operaciones/clientes/reporteria/:cliente/aereo/{awb} o /maritimo/{id}
+  const deepLinkTab =
+    trackingMode === "aereo"
+      ? ("air" as const)
+      : trackingMode === "maritimo"
+        ? ("ocean" as const)
+        : undefined;
+  const deepLinkIdentifier = deepLinkTab ? trackingIdentifier : undefined;
 
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
@@ -99,7 +111,7 @@ function OPReporteriaClientes() {
   const [selectedClient, setSelectedClient] = useState<Cliente | null>(null);
   const [activeTab, setActiveTab] = useState<
     "air" | "ocean" | "ground" | "quotes" | "tracking" | "settings"
-  >("air");
+  >(deepLinkIdentifier ? "tracking" : "air");
   const [quoteFilterNumber, setQuoteFilterNumber] = useState<
     string | undefined
   >();
@@ -189,8 +201,35 @@ function OPReporteriaClientes() {
         ? prev
         : match,
     );
-    setActiveTab("air");
+    // Con deep link de seguimiento se abre directo la pestaña de tracking
+    setActiveTab(deepLinkIdentifier ? "tracking" : "air");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientUsername, clientes, loading]);
+
+  // Deep link que llega por navegación SPA (sin remontar): forzar pestaña tracking.
+  // El flag evita que el efecto de limpieza borre la URL antes de aplicarse.
+  const deepLinkPendingRef = useRef(Boolean(deepLinkIdentifier));
+  useEffect(() => {
+    if (!deepLinkIdentifier) return;
+    deepLinkPendingRef.current = true;
+    setActiveTab("tracking");
+  }, [deepLinkIdentifier]);
+
+  // Si el usuario cambia a otra pestaña con un deep link activo en la URL,
+  // se limpia la ruta profunda para no dejar segmentos obsoletos.
+  useEffect(() => {
+    if (!deepLinkIdentifier || !clientUsername) return;
+    if (activeTab === "tracking") {
+      deepLinkPendingRef.current = false;
+      return;
+    }
+    if (deepLinkPendingRef.current) return;
+    navigate(
+      `/admin/operaciones/clientes/reporteria/${encodeURIComponent(clientUsername)}`,
+      { replace: true },
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, deepLinkIdentifier, clientUsername]);
 
   const filteredClients = useMemo(() => {
     if (!searchQuery.trim()) return clientes;
@@ -716,9 +755,11 @@ function OPReporteriaClientes() {
             {activeTab === "tracking" && (
               <ClientTrackingView
                 clientUsername={selectedClient.username}
-                initialTrackingTab={trackingInitialTab}
+                initialTrackingTab={deepLinkTab ?? trackingInitialTab}
                 initialOpenTracking={trackingOpenTarget}
                 onOpenTrackingConsumed={() => setTrackingOpenTarget(null)}
+                routeTrackingIdentifier={deepLinkIdentifier ?? null}
+                trackingRouteBase={`/admin/operaciones/clientes/reporteria/${encodeURIComponent(selectedClient.username)}`}
               />
             )}
             {activeTab === "settings" && (

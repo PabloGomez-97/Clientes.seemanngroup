@@ -50,7 +50,7 @@ import {
   type QuoteProfitIndex,
 } from "@/services/linbisQuoteLookup";
 
-const ITEMS_PER_PAGE = 15;
+const ITEMS_PER_PAGE = 10;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const AIR_SHIPMENTS_CACHE_PREFIX = "airShipmentsCache_v3_";
 
