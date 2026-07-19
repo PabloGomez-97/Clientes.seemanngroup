@@ -14,22 +14,22 @@ const PromesasCommitmentsTab: React.FC = () => {
   const { t } = useTranslation();
 
   return (
-    <div className="pr-commit" role="tabpanel">
-      <blockquote className="pr-commit__quote">
-        <p>{t("promesas.commitments.intro")}"</p>
-      </blockquote>
+    <div className="pr-commit">
+      <p className="pr-commit__intro">{t("promesas.commitments.intro")}</p>
 
       <div className="pr-commit__pillars">
         {VALUE_PILLAR_KEYS.map((key, index) => {
           const Icon = PILLAR_ICONS[key];
           return (
             <article key={key} className="pr-commit__pillar">
-              <span className="pr-commit__pillar-index" aria-hidden>
-                {String(index + 1).padStart(2, "0")}
-              </span>
-              <span className="pr-commit__pillar-icon" aria-hidden>
-                <Icon size={20} strokeWidth={1.75} />
-              </span>
+              <div className="pr-commit__pillar-top">
+                <span className="pr-commit__pillar-num" aria-hidden>
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <span className="pr-commit__pillar-icon" aria-hidden>
+                  <Icon size={19} strokeWidth={1.75} />
+                </span>
+              </div>
               <h3 className="pr-commit__pillar-title">
                 {t(`promesas.commitments.pillars.${key}.title`)}
               </h3>
@@ -41,25 +41,25 @@ const PromesasCommitmentsTab: React.FC = () => {
         })}
       </div>
 
-      <section className="pr-commit__list-section">
-        <div className="pr-commit__list-header">
-          <span className="pr-chapter">{t("promesas.commitments.clientTitle")}</span>
-        </div>
+      <section className="pr-commit__pact">
+        <span className="pr-kicker pr-kicker--dark">
+          {t("promesas.commitments.clientTitle")}
+        </span>
 
-        <ol className="pr-commit__checklist">
+        <ol className="pr-commit__list">
           {[1, 2, 3, 4, 5].map((n) => (
-            <li key={n} className="pr-commit__check-item">
-              <span className="pr-commit__check-mark" aria-hidden>
-                <Check size={14} strokeWidth={2.5} />
+            <li key={n} className="pr-commit__item">
+              <span className="pr-commit__mark" aria-hidden>
+                <Check size={13} strokeWidth={2.5} />
               </span>
-              <span className="pr-commit__check-text">
+              <span className="pr-commit__text">
                 {t(`promesas.commitments.clientItems.item${n}`)}
               </span>
             </li>
           ))}
         </ol>
 
-        <p className="pr-disclaimer pr-disclaimer--inline">
+        <p className="pr-disclaimer pr-disclaimer--dark">
           {t("promesas.disclaimer")}
         </p>
       </section>

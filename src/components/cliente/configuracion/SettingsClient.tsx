@@ -236,6 +236,9 @@ function EmailSettings({
                 key={`${savedEmail}-${index}`}
                 className={`sc-row ${editingIndex === index ? "sc-row--active" : ""}`}
               >
+                <span className="sc-row__chip" aria-hidden>
+                  <EmailIcon />
+                </span>
                 <span className="sc-row__text">{savedEmail}</span>
                 <div className="sc-row__actions">
                   <button
@@ -466,6 +469,9 @@ function PhoneSettings({
                 key={`${savedPhone}-${index}`}
                 className={`sc-row ${editingIndex === index ? "sc-row--active" : ""}`}
               >
+                <span className="sc-row__chip" aria-hidden>
+                  <PhoneIcon />
+                </span>
                 <span className="sc-row__text">
                   {formatDisplayPhone(savedPhone)}
                 </span>
@@ -720,6 +726,36 @@ function SettingsClient({
   const [activeTab, setActiveTab] = useState<SettingsTab>("emails");
   const hasReference = Boolean(reference.trim());
 
+  const navItems: {
+    id: SettingsTab;
+    label: string;
+    hint: string;
+    icon: React.ReactElement;
+  }[] = [
+    {
+      id: "emails",
+      label: "Correos",
+      hint: "Notificaciones de seguimiento",
+      icon: <EmailIcon />,
+    },
+    {
+      id: "phones",
+      label: "Teléfonos",
+      hint: "Contactos de seguimiento",
+      icon: <PhoneIcon />,
+    },
+    ...(allowPasswordChange
+      ? [
+          {
+            id: "password" as const,
+            label: "Contraseña",
+            hint: "Seguridad de la cuenta",
+            icon: <LockIcon />,
+          },
+        ]
+      : []),
+  ];
+
   return (
     <section className="sc-page">
       <div className="sc-shell">
@@ -731,49 +767,43 @@ function SettingsClient({
           </p>
         </header>
 
-        <nav className="sc-nav" aria-label="Secciones de configuración">
-          <div className="sc-segmented">
-            <button
-              type="button"
-              className={`sc-segment ${activeTab === "emails" ? "sc-segment--active" : ""}`}
-              onClick={() => setActiveTab("emails")}
-              aria-pressed={activeTab === "emails"}
-            >
-              <EmailIcon />
-              Correos
-            </button>
-            <button
-              type="button"
-              className={`sc-segment ${activeTab === "phones" ? "sc-segment--active" : ""}`}
-              onClick={() => setActiveTab("phones")}
-              aria-pressed={activeTab === "phones"}
-            >
-              <PhoneIcon />
-              Teléfonos
-            </button>
-            {allowPasswordChange ? (
+        <div className="sc-layout">
+          <nav className="sc-nav" aria-label="Secciones de configuración">
+            {navItems.map((item) => (
               <button
+                key={item.id}
                 type="button"
-                className={`sc-segment ${activeTab === "password" ? "sc-segment--active" : ""}`}
-                onClick={() => setActiveTab("password")}
-                aria-pressed={activeTab === "password"}
+                className={`sc-navitem ${activeTab === item.id ? "sc-navitem--active" : ""}`}
+                onClick={() => setActiveTab(item.id)}
+                aria-current={activeTab === item.id ? "true" : undefined}
               >
-                <LockIcon />
-                Contraseña
+                <span className="sc-navitem__chip">{item.icon}</span>
+                <span className="sc-navitem__text">
+                  <span className="sc-navitem__label">{item.label}</span>
+                  <span className="sc-navitem__hint">{item.hint}</span>
+                </span>
               </button>
+            ))}
+          </nav>
+
+          <div>
+            {activeTab === "emails" && (
+              <EmailSettings
+                reference={reference}
+                hasReference={hasReference}
+              />
+            )}
+            {activeTab === "phones" && (
+              <PhoneSettings
+                reference={reference}
+                hasReference={hasReference}
+              />
+            )}
+            {allowPasswordChange && activeTab === "password" ? (
+              <PasswordSettings />
             ) : null}
           </div>
-        </nav>
-
-        {activeTab === "emails" && (
-          <EmailSettings reference={reference} hasReference={hasReference} />
-        )}
-        {activeTab === "phones" && (
-          <PhoneSettings reference={reference} hasReference={hasReference} />
-        )}
-        {allowPasswordChange && activeTab === "password" ? (
-          <PasswordSettings />
-        ) : null}
+        </div>
       </div>
     </section>
   );

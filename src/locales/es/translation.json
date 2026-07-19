@@ -1575,7 +1575,12 @@
     "hero": {
       "eyebrow": "Seemann Group",
       "title": "Tu carga, nuestra promesa",
-      "subtitle": "Conoce quiénes somos, en qué nos comprometemos contigo y cómo trabajamos en cada modalidad logística."
+      "subtitle": "Quiénes somos, qué nos comprometemos a cumplir contigo y cómo trabajamos en cada modalidad. Léelo como lo que es: nuestro manifiesto.",
+      "stats": {
+        "experience": "Años de experiencia",
+        "modalities": "Modalidades de servicio",
+        "contact": "Punto de contacto por operación"
+      }
     },
     "tabs": {
       "aria": "Secciones de promesas",
@@ -1588,51 +1593,51 @@
       "storyHeadline": "Más de tres décadas conectando negocios con el mundo",
       "history": {
         "title": "Historia",
-        "p1": "Seemann Group nace como resultado de una vasta experiencia de sus fundadores en el mercado de los seguros, reaseguros y de logística internacional, con más de 35 años de desarrollo.",
-        "p2": "Su fortaleza consiste en la entrega de asesorías profesionales y técnicas a sus clientes, evaluando siempre la mejor alternativa para el cumplimiento de sus objetivos.",
-        "p3": "A través de su trayectoria, se han desarrollado herramientas útiles y versátiles para diferentes tamaños de empresas, que nos permiten un trabajo eficaz en pequeñas, medianas y grandes empresas de Latinoamérica, recientemente en Estados Unidos y próximamente en Europa."
+        "p1": "Nacimos de la experiencia de nuestros fundadores en seguros, reaseguros y logística internacional. Más de 35 años después, seguimos haciendo lo mismo: mover carga con criterio.",
+        "p2": "Nuestra fortaleza es la asesoría profesional y técnica: antes de mover tu carga, evaluamos cuál es la mejor alternativa para tu objetivo, no la más cómoda para nosotros.",
+        "p3": "Hoy trabajamos con empresas de todos los tamaños en Latinoamérica, ya operamos en Estados Unidos y pronto también en Europa."
       },
       "mission": {
         "title": "Misión",
-        "p1": "Seemann Group es una empresa dedicada al transporte internacional de carga y freight forwarding, con una fuerte vocación de servicio. Fundamentamos nuestra propuesta comercial en la satisfacción de nuestros clientes respecto del trabajo otorgado.",
-        "p2": "Somos una organización flexible y preparada para enfrentar los cambios del mercado, con profesionales de diversas áreas orientados al servicio, al trabajo bajo presión y al cambio."
+        "p1": "Transportamos carga internacional y hacemos freight forwarding con una vocación clara: que quedes conforme con el trabajo entregado. Esa es la base de nuestra propuesta comercial.",
+        "p2": "Somos una organización flexible, con profesionales de distintas áreas acostumbrados a trabajar bajo presión y a adaptarse cuando el mercado cambia."
       },
       "vision": {
         "title": "Visión",
-        "p1": "Buscamos ser una empresa sólida a nivel mundial, con una expansión internacional relevante y mayor cobertura en economías estratégicas.",
-        "p2": "A nivel interno, seguimos desarrollando procesos de mejoramiento continuo que nos permiten evaluar y optimizar la calidad de nuestro servicio."
+        "p1": "Queremos ser una empresa sólida a nivel mundial, con presencia relevante en las economías estratégicas para tu comercio exterior.",
+        "p2": "Hacia adentro, mejoramos de forma continua: medimos, evaluamos y optimizamos la calidad de nuestro servicio."
       },
       "values": {
         "title": "Valores",
-        "intro": "Dentro de los valores corporativos de nuestra empresa se encuentran:",
+        "intro": "Seis principios que guían cómo trabajamos cada operación:",
         "empathy": {
           "title": "Empatía y orientación al cliente",
-          "description": "Nuestro principal objetivo es entregar un servicio profesional de alta calidad, donde prime la satisfacción del cliente respecto del trabajo realizado."
+          "description": "Un servicio profesional de alta calidad donde tu satisfacción con el trabajo realizado es lo primero."
         },
         "personalization": {
           "title": "Personalización",
-          "description": "Conocimiento y empatía con nuestros clientes, desarrollando soluciones personalizadas de alto impacto."
+          "description": "Conocemos tu operación y diseñamos soluciones a tu medida, no plantillas genéricas."
         },
         "responsibility": {
           "title": "Responsabilidad",
-          "description": "Con el manejo de la información, los compromisos adquiridos y el tratamiento de las operaciones en su globalidad."
+          "description": "Con tu información, con los compromisos adquiridos y con cada operación de principio a fin."
         },
         "sincerity": {
           "title": "Sinceridad y transparencia",
-          "description": "Compromiso con la entrega de información fidedigna y de manera oportuna."
+          "description": "Información fidedigna y a tiempo, también cuando la noticia no es la que esperabas."
         },
         "commitment": {
           "title": "Compromiso y proactividad",
-          "description": "En la búsqueda de soluciones que aporten optimización en las operaciones de nuestros clientes."
+          "description": "Buscamos activamente soluciones que optimicen tus operaciones, sin esperar a que las pidas."
         },
         "flexibility": {
           "title": "Flexibilidad",
-          "description": "Ser una organización orientada a los cambios, con pronta adaptación a las necesidades del cliente y del entorno."
+          "description": "Nos adaptamos rápido a tus necesidades y a los cambios del entorno."
         }
       }
     },
     "commitments": {
-      "intro": "Trabajamos para que ganes velocidad y eficiencia en cada envío. Estos son los pilares que guían nuestra relación contigo:",
+      "intro": "Trabajamos para que ganes velocidad y eficiencia en cada envío. Cuatro pilares sostienen esa promesa.",
       "clientTitle": "Nuestro compromiso contigo",
       "pillars": {
         "global": {

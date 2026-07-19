@@ -33,9 +33,10 @@ const PromesasServicesTab: React.FC<Props> = ({ service, onServiceChange }) => {
   const { t } = useTranslation();
 
   return (
-    <div className="pr-services" role="tabpanel">
+    <div className="pr-services">
+      {/* Selector de modalidad */}
       <div
-        className="pr-services__picker"
+        className="pr-modes"
         role="tablist"
         aria-label={t("promesas.services.pillsAria")}
       >
@@ -48,49 +49,51 @@ const PromesasServicesTab: React.FC<Props> = ({ service, onServiceChange }) => {
               type="button"
               role="tab"
               aria-selected={active}
-              className={`pr-services__pick${active ? " pr-services__pick--active" : ""}`}
+              className={`pr-mode${active ? " pr-mode--active" : ""}`}
               onClick={() => onServiceChange(mod)}
             >
-              <span className="pr-services__pick-thumb">
-                <img src={SERVICE_HERO_IMAGES[mod]} alt="" aria-hidden />
-              </span>
-              <span className="pr-services__pick-body">
-                <Icon size={16} strokeWidth={1.75} aria-hidden />
-                <span>{t(`promesas.services.modalities.${mod}`)}</span>
-              </span>
+              <Icon size={16} strokeWidth={1.75} aria-hidden />
+              <span>{t(`promesas.services.modalities.${mod}`)}</span>
             </button>
           );
         })}
       </div>
 
-      <article className="pr-services__panel">
-        <div className="pr-service-panel__hero">
-          <img src={SERVICE_HERO_IMAGES[service]} alt="" aria-hidden />
-          <div className="pr-service-panel__hero-content">
-            <span className="pr-service-panel__tag">
+      {/* Panel de la modalidad activa */}
+      <article key={service} className="pr-svc pr-svc--enter">
+        <header className="pr-svc__hero">
+          <img
+            src={SERVICE_HERO_IMAGES[service]}
+            alt=""
+            aria-hidden
+            className="pr-svc__hero-img"
+          />
+          <div className="pr-svc__hero-scrim" aria-hidden />
+          <div className="pr-svc__hero-copy">
+            <span className="pr-svc__tag">
               {t(`promesas.services.modalities.${service}`)}
             </span>
-            <h2 className="pr-service-panel__hero-title">
+            <h3 className="pr-svc__title">
               {t(`promesas.services.${service}.hero.title`)}
-            </h2>
-            <p className="pr-service-panel__hero-subtitle">
+            </h3>
+            <p className="pr-svc__subtitle">
               {t(`promesas.services.${service}.hero.subtitle`)}
             </p>
           </div>
-        </div>
+        </header>
 
-        <div className="pr-services__body">
-          <div className="pr-services__features">
+        <div className="pr-svc__body">
+          <div className="pr-svc__features">
             {[1, 2, 3].map((n) => (
-              <div key={n} className="pr-services__feature">
-                <span className="pr-services__feature-num" aria-hidden>
-                  {n}
+              <div key={n} className="pr-svc__feature">
+                <span className="pr-svc__feature-num" aria-hidden>
+                  {String(n).padStart(2, "0")}
                 </span>
-                <div>
-                  <h3 className="pr-services__feature-title">
+                <div className="pr-svc__feature-copy">
+                  <h4 className="pr-svc__feature-title">
                     {t(`promesas.services.${service}.features.f${n}.title`)}
-                  </h3>
-                  <p className="pr-services__feature-desc">
+                  </h4>
+                  <p className="pr-svc__feature-desc">
                     {t(`promesas.services.${service}.features.f${n}.desc`)}
                   </p>
                 </div>
@@ -98,29 +101,29 @@ const PromesasServicesTab: React.FC<Props> = ({ service, onServiceChange }) => {
             ))}
           </div>
 
-          <aside className="pr-services__overview">
+          <aside className="pr-svc__overview">
             <p>{t(`promesas.services.${service}.overview`)}</p>
           </aside>
 
-          <div className="pr-services__steps">
-            <h3 className="pr-services__steps-title">
+          <div className="pr-svc__promises">
+            <span className="pr-kicker">
               {t("promesas.services.promisesTitle")}
-            </h3>
-            <div className="pr-services__steps-row">
+            </span>
+            <div className="pr-svc__promise-row">
               {[1, 2, 3].map((n) => (
-                <div key={n} className="pr-services__step">
-                  <span className="pr-services__step-badge">{n}</span>
+                <div key={n} className="pr-svc__promise">
+                  <span className="pr-svc__promise-badge" aria-hidden>
+                    {n}
+                  </span>
                   <p>{t(`promesas.services.${service}.promises.item${n}`)}</p>
                 </div>
               ))}
             </div>
           </div>
 
-          <p className="pr-disclaimer pr-disclaimer--inline">
-            {t("promesas.disclaimer")}
-          </p>
+          <p className="pr-disclaimer">{t("promesas.disclaimer")}</p>
 
-          <div className="pr-services__cta">
+          <div className="pr-svc__cta">
             <Link
               to={SERVICE_QUOTE_LINKS[service]}
               className="pr-btn pr-btn--primary"

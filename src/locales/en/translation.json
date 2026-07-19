@@ -1574,7 +1574,12 @@
     "hero": {
       "eyebrow": "Seemann Group",
       "title": "Your cargo, our promise",
-      "subtitle": "Learn who we are, what we commit to you, and how we work across each logistics modality."
+      "subtitle": "Who we are, what we commit to deliver, and how we work across each modality. Read it for what it is: our manifesto.",
+      "stats": {
+        "experience": "Years of experience",
+        "modalities": "Service modalities",
+        "contact": "Point of contact per operation"
+      }
     },
     "tabs": {
       "aria": "Promises sections",
@@ -1587,51 +1592,51 @@
       "storyHeadline": "Over three decades connecting businesses with the world",
       "history": {
         "title": "History",
-        "p1": "Seemann Group was born from the vast experience of its founders in insurance, reinsurance and international logistics, with more than 35 years of development.",
-        "p2": "Its strength lies in providing professional and technical advice to clients, always evaluating the best alternative to meet their objectives.",
-        "p3": "Throughout its trajectory, useful and versatile tools have been developed for different company sizes, allowing effective work with small, medium and large companies in Latin America, recently in the United States and soon in Europe."
+        "p1": "We were born from our founders' experience in insurance, reinsurance and international logistics. More than 35 years later, we still do the same thing: move cargo with good judgment.",
+        "p2": "Our strength is professional and technical advice: before moving your cargo, we evaluate the best alternative for your objective — not the most convenient one for us.",
+        "p3": "Today we work with companies of every size across Latin America, we already operate in the United States, and soon in Europe as well."
       },
       "mission": {
         "title": "Mission",
-        "p1": "Seemann Group is dedicated to international cargo transportation and freight forwarding, with a strong service vocation. We base our commercial proposal on customer satisfaction with the work provided.",
-        "p2": "We are a flexible organization prepared to face market changes, with professionals from various areas focused on service, working under pressure and oriented to change."
+        "p1": "We move international cargo and provide freight forwarding with one clear goal: that you are satisfied with the work delivered. That is the foundation of our commercial proposal.",
+        "p2": "We are a flexible organization, with professionals from different areas used to working under pressure and adapting when the market changes."
       },
       "vision": {
         "title": "Vision",
-        "p1": "We seek to be a solid company worldwide, with relevant international expansion and greater coverage in strategic economies.",
-        "p2": "Internally, we continue developing continuous improvement processes that allow us to evaluate and optimize the quality of our service."
+        "p1": "We aim to be a solid company worldwide, with a relevant presence in the economies that matter to your foreign trade.",
+        "p2": "Internally, we improve continuously: we measure, evaluate and optimize the quality of our service."
       },
       "values": {
         "title": "Values",
-        "intro": "Among our company's corporate values are:",
+        "intro": "Six principles that guide how we handle every operation:",
         "empathy": {
           "title": "Empathy and customer orientation",
-          "description": "Our main objective is to deliver high-quality professional service, where customer satisfaction with the work performed is paramount."
+          "description": "High-quality professional service where your satisfaction with the work delivered comes first."
         },
         "personalization": {
           "title": "Personalization",
-          "description": "Knowledge and empathy with our clients, developing high-impact personalized solutions."
+          "description": "We know your operation and design solutions tailored to you — not generic templates."
         },
         "responsibility": {
           "title": "Responsibility",
-          "description": "With information management, commitments made and the treatment of operations as a whole."
+          "description": "With your information, with the commitments made, and with every operation from start to finish."
         },
         "sincerity": {
           "title": "Sincerity and transparency",
-          "description": "Commitment to providing reliable information in a timely manner."
+          "description": "Reliable information, on time — even when the news is not what you expected."
         },
         "commitment": {
           "title": "Commitment and proactivity",
-          "description": "In the search for solutions that provide optimization in our clients' operations."
+          "description": "We actively look for solutions that optimize your operations, without waiting to be asked."
         },
         "flexibility": {
           "title": "Flexibility",
-          "description": "Being an organization oriented to changes, with quick adaptation to client and environment needs."
+          "description": "We adapt quickly to your needs and to changes in the environment."
         }
       }
     },
     "commitments": {
-      "intro": "We work so you gain speed and efficiency on every shipment. These pillars guide our relationship with you:",
+      "intro": "We work so you gain speed and efficiency on every shipment. Four pillars hold that promise together.",
       "clientTitle": "Our commitment to you",
       "pillars": {
         "global": {

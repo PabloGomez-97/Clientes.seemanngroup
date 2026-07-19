@@ -7,7 +7,7 @@
 
 .sc-phone-prefix-flag {
   position: absolute;
-  left: 0.55rem;
+  left: 0.6rem;
   width: 1.1rem;
   height: 0.82rem;
   border-radius: 2px;
@@ -17,42 +17,45 @@
 
 .sc-phone-prefix-code {
   position: absolute;
-  right: 1.6rem;
+  right: 1.7rem;
   font-size: 0.8rem;
-  font-weight: 600;
-  color: #6b7280;
+  font-weight: 700;
+  color: #4b5565;
   pointer-events: none;
 }
 
 .sc-phone-prefix-select {
   width: 100%;
   max-width: 168px;
-  padding: 0.6rem 2.35rem 0.6rem 2rem;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  padding: 0.6rem 2.35rem 0.6rem 2.05rem;
+  border: 1px solid #dcdfe5;
+  border-radius: 10px;
   font: inherit;
   font-size: 0.8rem;
   color: transparent;
   background: #fff;
   cursor: pointer;
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238a93a3' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 0.55rem center;
   text-overflow: ellipsis;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .sc-phone-prefix-select:focus {
   outline: none;
-  border-color: var(--primary-color, #ff6200);
-  box-shadow: 0 0 0 2px rgba(255, 98, 0, 0.1);
+  border-color: #ff6200;
+  box-shadow: 0 0 0 3px rgba(255, 98, 0, 0.09);
 }
 
 .sc-phone-prefix-select:disabled {
-  opacity: 0.5;
+  opacity: 0.55;
   cursor: not-allowed;
 }
 
 .sc-phone-prefix-select option {
-  color: var(--secondary-color, #1a1a1a);
+  color: #1c2433;
 }
