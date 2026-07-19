@@ -1,6 +1,5 @@
-// src/layouts/Sidebar-proveedor.tsx — Sidebar minimalista para Proveedores
-
-import { useState, type MouseEvent } from "react";
+// src/layouts/Sidebar-proveedor.tsx — Chrome Enterprise Dark (proveedores)
+import { useEffect, useMemo, useState, type MouseEvent } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import logoSeemann from "./logoseemann.png";
@@ -24,6 +23,7 @@ interface MenuItem {
   path?: string;
   name: string;
   icon: string;
+  menuId?: string;
   badge?: {
     text: string;
     type: "new" | "beta";
@@ -36,19 +36,7 @@ interface MenuSection {
   items: MenuItem[];
 }
 
-// Design tokens — Enterprise Dark + Brand
-const colors = {
-  bg: "#232f3e",
-  bgHover: "#2d3a4a",
-  bgActive: "rgba(255, 98, 0, 0.14)",
-  text: "#ffffff",
-  textMuted: "#8d99a8",
-  border: "#3b4754",
-  accent: "#ff6200",
-};
-
-const SIDEBAR_FONT =
-  '"Manrope", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+const ACCENT = "#ff6200";
 
 function SidebarProveedor({
   isCollapsed,
@@ -59,95 +47,128 @@ function SidebarProveedor({
   const location = useLocation();
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
+
+  const isRail = isCollapsed && !isMobile;
+
+  const menuSections: MenuSection[] = useMemo(
+    () => [
+      {
+        items: [
+          {
+            path: "/proveedor/home",
+            name: t("proveedor.sidebar.home"),
+            icon: "fa fa-home",
+          },
+          {
+            menuId: "tarifario",
+            name: t("proveedor.sidebar.sectionTarifario"),
+            icon: "fa fa-tag",
+            subItems: [
+              {
+                path: "/proveedor/tarifario-aereo",
+                name: t("proveedor.sidebar.tarifarioAereo"),
+              },
+              {
+                path: "/proveedor/tarifario-fcl",
+                name: t("proveedor.sidebar.tarifarioFCL"),
+              },
+              {
+                path: "/proveedor/tarifario-lcl",
+                name: t("proveedor.sidebar.tarifarioLCL"),
+              },
+            ],
+          },
+          {
+            path: "/proveedor/ultima-milla",
+            name: t("proveedor.sidebar.ultimaMilla"),
+            icon: "fa fa-truck",
+          },
+        ],
+      },
+      {
+        title: t("home.sidebar.sectionReference"),
+        items: [
+          {
+            path: "/proveedor/consultar-tarifas",
+            name: t("home.sidebar.rateConsult"),
+            icon: "fa fa-tags",
+          },
+          {
+            path: "/proveedor/historico-precios",
+            name: t("home.sidebar.priceHistory"),
+            icon: "fa fa-chart-line",
+          },
+          {
+            path: "/proveedor/novedades",
+            name: t("home.sidebar.novedades"),
+            icon: "fa fa-newspaper",
+          },
+          {
+            path: "/proveedor/promesas",
+            name: t("home.sidebar.promesas"),
+            icon: "fa fa-handshake",
+          },
+        ],
+      },
+      {
+        items: [
+          {
+            path: "/proveedor/internacionalizacion",
+            name: t("proveedor.sidebar.internacionalizacion"),
+            icon: "fa fa-university",
+          },
+          {
+            path: "/proveedor/archivos",
+            name: t("proveedor.sidebar.archivos"),
+            icon: "fa fa-file",
+          },
+          {
+            path: "/proveedor/ayuda",
+            name: t("proveedor.sidebar.ayuda"),
+            icon: "fa fa-question-circle",
+          },
+        ],
+      },
+    ],
+    [t],
+  );
+
+  const isActive = (path: string) =>
+    location.pathname === path || location.pathname.startsWith(path + "/");
+
+  // Auto-expandir el grupo con la ruta activa
+  useEffect(() => {
+    const activeGroups = menuSections
+      .flatMap((section) => section.items)
+      .filter(
+        (item) => item.menuId && item.subItems?.some((sub) => isActive(sub.path)),
+      )
+      .map((item) => item.menuId!) as string[];
+
+    if (activeGroups.length > 0) {
+      setExpandedMenus((prev) => [
+        ...prev,
+        ...activeGroups.filter((id) => !prev.includes(id)),
+      ]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname, menuSections]);
+
+  // Escape cierra el drawer en teléfono
+  useEffect(() => {
+    if (!isMobile || isCollapsed) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onCloseMobile();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isMobile, isCollapsed, onCloseMobile]);
 
   const toggleMenu = (name: string) =>
     setExpandedMenus((prev) =>
       prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name],
     );
-
-  const menuSections: MenuSection[] = [
-    {
-      items: [
-        {
-          path: "/proveedor/home",
-          name: t("proveedor.sidebar.home"),
-          icon: "fa fa-home",
-        },
-        {
-          name: t("proveedor.sidebar.sectionTarifario"),
-          icon: "fa fa-tag",
-          subItems: [
-            {
-              path: "/proveedor/tarifario-aereo",
-              name: t("proveedor.sidebar.tarifarioAereo"),
-            },
-            {
-              path: "/proveedor/tarifario-fcl",
-              name: t("proveedor.sidebar.tarifarioFCL"),
-            },
-            {
-              path: "/proveedor/tarifario-lcl",
-              name: t("proveedor.sidebar.tarifarioLCL"),
-            },
-          ],
-        },
-        {
-          path: "/proveedor/ultima-milla",
-          name: t("proveedor.sidebar.ultimaMilla"),
-          icon: "fa fa-truck",
-        },
-      ],
-    },
-    {
-      title: t("home.sidebar.sectionReference"),
-      items: [
-        {
-          path: "/proveedor/consultar-tarifas",
-          name: t("home.sidebar.rateConsult"),
-          icon: "fa fa-tags",
-        },
-        {
-          path: "/proveedor/historico-precios",
-          name: t("home.sidebar.priceHistory"),
-          icon: "fa fa-chart-line",
-        },
-        {
-          path: "/proveedor/novedades",
-          name: t("home.sidebar.novedades"),
-          icon: "fa fa-newspaper",
-        },
-        {
-          path: "/proveedor/promesas",
-          name: t("home.sidebar.promesas"),
-          icon: "fa fa-handshake",
-        },
-      ],
-    },
-    {
-      items: [
-        {
-          path: "/proveedor/internacionalizacion",
-          name: t("proveedor.sidebar.internacionalizacion"),
-          icon: "fa fa-university",
-        },
-        {
-          path: "/proveedor/archivos",
-          name: t("proveedor.sidebar.archivos"),
-          icon: "fa fa-file",
-        },
-        {
-          path: "/proveedor/ayuda",
-          name: t("proveedor.sidebar.ayuda"),
-          icon: "fa fa-question-circle",
-        },
-      ],
-    },
-  ];
-
-  const isActive = (path: string) =>
-    location.pathname === path || location.pathname.startsWith(path + "/");
 
   const navigateFromSidebar = (
     event: MouseEvent<HTMLAnchorElement>,
@@ -162,336 +183,160 @@ function SidebarProveedor({
     });
   };
 
-  const sidebarWidth = isMobile ? "280px" : isCollapsed ? "84px" : "260px";
+  const rootClass = [
+    "csb-root",
+    isMobile ? "csb-root--drawer" : "csb-root--docked",
+    isMobile && isCollapsed ? "csb-root--drawer-hidden" : "",
+    isRail ? "csb-root--rail" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <>
       {isMobile && !isCollapsed && (
-        <div
+        <button
+          type="button"
+          className="csb-scrim"
           onClick={onCloseMobile}
-          style={{
-            position: "fixed",
-            inset: 0,
-            backgroundColor: "rgba(15, 23, 42, 0.45)",
-            zIndex: 1090,
-          }}
+          aria-label={t("home.sidebar.closeMenu")}
+          tabIndex={-1}
         />
       )}
 
-      <div
-        style={{
-          width: sidebarWidth,
-          minWidth: sidebarWidth,
-          height: "100vh",
-          backgroundColor: colors.bg,
-          display: "flex",
-          flexDirection: "column",
-          position: isMobile ? "fixed" : "sticky",
-          top: 0,
-          left: 0,
-          borderRight: `1px solid ${colors.border}`,
-          overflowY: "auto",
-          overflowX: "hidden",
-          fontFamily: SIDEBAR_FONT,
-          transition:
-            "width 0.22s ease, min-width 0.22s ease, transform 0.22s ease",
-          transform: isMobile
-            ? isCollapsed
-              ? "translateX(-100%)"
-              : "translateX(0)"
-            : "translateX(0)",
-          boxShadow:
-            isMobile && !isCollapsed ? "4px 0 20px rgba(0, 0, 0, 0.3)" : "none",
-          zIndex: isMobile ? 1100 : 20,
-          pointerEvents: isMobile && isCollapsed ? "none" : "auto",
-        }}
-        className="sidebar-proveedor-scroll"
-      >
-        <div
-          style={{
-            height: isMobile ? "65px" : "70px",
-            padding: isCollapsed && !isMobile ? "0 12px" : "0 20px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: isCollapsed && !isMobile ? "center" : "flex-start",
-            borderBottom: `1px solid ${colors.border}`,
-            flexShrink: 0,
-          }}
-        >
-          {isCollapsed && !isMobile ? (
-            <img
-              src={imgUrl("/logo.png")}
-              alt="Seemann"
-              style={{
-                width: "40px",
-                height: "40px",
-                objectFit: "contain",
-                borderRadius: "8px",
-                backgroundColor: colors.bgActive,
-                padding: "4px",
-              }}
-            />
-          ) : (
-            <img
-              src={logoSeemann}
-              alt="Seemann Group"
-              style={{
-                width: isMobile ? "160px" : "180px",
-                height: "auto",
-                objectFit: "contain",
-              }}
-            />
-          )}
+      <div className={rootClass} aria-hidden={isMobile && isCollapsed}>
+        <div className="csb-header">
+          <a
+            href="/proveedor/home"
+            className="csb-header__link"
+            onClick={(e) => navigateFromSidebar(e, "/proveedor/home")}
+            aria-label={t("proveedor.sidebar.home")}
+            title={t("proveedor.sidebar.home")}
+          >
+            {isRail ? (
+              <img src={imgUrl("/logo.png")} alt="Seemann" className="csb-logo--mark" />
+            ) : (
+              <img src={logoSeemann} alt="Seemann Group" className="csb-logo" />
+            )}
+          </a>
         </div>
 
-        {!isCollapsed && (
-          <div
-            style={{
-              padding: "16px 20px 8px",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-            }}
-          >
-            <span
-              style={{
-                fontSize: "11px",
-                fontWeight: "600",
-                color: colors.textMuted,
-                textTransform: "uppercase",
-                letterSpacing: "0.8px",
-              }}
-            >
+        {!isRail && (
+          <div className="csb-portal">
+            <span className="csb-portal__label">
               {t("proveedor.sidebar.portalLabel")}
             </span>
-            <span
-              style={{
-                padding: "2px 6px",
-                borderRadius: "3px",
-                fontSize: "9px",
-                fontWeight: "600",
-                backgroundColor: colors.accent,
-                color: colors.text,
-                textTransform: "uppercase",
-              }}
-            >
+            <span className="csb-portal__badge">
               {t("proveedor.sidebar.badge")}
             </span>
           </div>
         )}
 
-        <nav
-          style={{
-            flex: 1,
-            padding: isCollapsed && !isMobile ? "12px 10px" : "8px 0",
-          }}
-        >
+        <nav className="csb-nav" aria-label={t("home.sidebar.navLabel")}>
           {menuSections.map((section, sectionIdx) => (
-            <div
-              key={sectionIdx}
-              style={{
-                marginBottom: isCollapsed && !isMobile ? "10px" : "4px",
-              }}
-            >
-              {section.title && !isCollapsed ? (
-                <div
-                  style={{
-                    padding: "14px 20px 6px",
-                    fontSize: "10.5px",
-                    fontWeight: "600",
-                    color: colors.textMuted,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.1em",
-                    marginTop: sectionIdx > 0 ? "4px" : "0",
-                    fontFamily: SIDEBAR_FONT,
-                  }}
-                >
-                  {section.title}
-                </div>
-              ) : sectionIdx > 0 && isCollapsed ? (
-                <div
-                  style={{
-                    margin: "8px 14px",
-                    height: "1px",
-                    backgroundColor: colors.border,
-                    opacity: 0.7,
-                  }}
-                />
+            <div className="csb-section" key={sectionIdx}>
+              {!isRail && section.title ? (
+                <div className="csb-section__title">{section.title}</div>
+              ) : sectionIdx > 0 && isRail ? (
+                <div className="csb-section__divider" aria-hidden />
               ) : null}
 
-              <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+              <ul className="csb-list">
                 {section.items.map((item, itemIdx) => {
-                  const hasSubItems = item.subItems && item.subItems.length > 0;
-                  const isExpanded = expandedMenus.includes(item.name);
+                  const hasSubItems = !!item.subItems?.length;
+                  const isExpanded = item.menuId
+                    ? expandedMenus.includes(item.menuId)
+                    : false;
                   const isItemActive = item.path
                     ? isActive(item.path)
                     : item.subItems?.some((s) => isActive(s.path)) || false;
-                  const isHovered = hoveredItem === `${sectionIdx}-${itemIdx}`;
 
                   return (
                     <li key={itemIdx}>
                       <a
                         href={item.path ?? item.subItems?.[0]?.path ?? "#"}
-                        title={isCollapsed ? item.name : undefined}
+                        className={[
+                          "csb-item",
+                          isItemActive && (!hasSubItems || isRail)
+                            ? "csb-item--active"
+                            : "",
+                        ]
+                          .filter(Boolean)
+                          .join(" ")}
+                        title={isRail ? item.name : undefined}
                         onClick={(e) => {
                           if (hasSubItems) {
-                            if (isCollapsed) {
+                            if (isRail) {
                               navigateFromSidebar(e, item.subItems![0].path);
                             } else {
                               e.preventDefault();
-                              toggleMenu(item.name);
+                              toggleMenu(item.menuId!);
                             }
                           } else if (item.path) {
                             navigateFromSidebar(e, item.path);
                           }
                         }}
-                        onMouseEnter={() =>
-                          setHoveredItem(`${sectionIdx}-${itemIdx}`)
+                        aria-expanded={
+                          hasSubItems && !isRail ? isExpanded : undefined
                         }
-                        onMouseLeave={() => setHoveredItem(null)}
-                        style={{
-                          display: "flex",
-                          textDecoration: "none",
-                          padding:
-                            isCollapsed && !isMobile ? "11px 0" : "9px 12px",
-                          alignItems: "center",
-                          justifyContent:
-                            isCollapsed && !isMobile ? "center" : "flex-start",
-                          gap: isCollapsed && !isMobile ? "0" : "10px",
-                          cursor: "pointer",
-                          transition:
-                            "color 0.18s ease, background-color 0.18s ease",
-                          backgroundColor:
-                            !hasSubItems && isItemActive
-                              ? "rgba(255, 255, 255, 0.06)"
-                              : isHovered
-                                ? colors.bgHover
-                                : "transparent",
-                          borderLeft:
-                            !hasSubItems && isItemActive
-                              ? `2px solid ${colors.accent}`
-                              : "2px solid transparent",
-                          color:
-                            !hasSubItems && isItemActive
-                              ? colors.text
-                              : isHovered
-                                ? colors.text
-                                : colors.textMuted,
-                          fontSize: "14px",
-                          fontWeight:
-                            !hasSubItems && isItemActive ? "600" : "500",
-                          fontFamily: SIDEBAR_FONT,
-                          margin:
-                            isCollapsed && !isMobile ? "3px 10px" : "1px 8px",
-                          borderRadius: "6px",
-                        }}
+                        aria-current={
+                          !hasSubItems && isItemActive ? "page" : undefined
+                        }
                       >
-                        <i
-                          className={item.icon}
-                          style={{
-                            fontSize: "13px",
-                            width: "20px",
-                            textAlign: "center",
-                            flexShrink: 0,
-                            transition: "color 0.18s ease",
-                          }}
-                        />
-                        {!isCollapsed && (
+                        <i className={`csb-item__icon ${item.icon}`} aria-hidden />
+
+                        {!isRail && (
                           <>
-                            <span
-                              style={{
-                                flex: 1,
-                                fontSize: "14px",
-                                fontWeight:
-                                  !hasSubItems && isItemActive ? "600" : "500",
-                                fontFamily: SIDEBAR_FONT,
-                                letterSpacing: "0.01em",
-                              }}
-                            >
+                            <span className="csb-item__label">
                               {item.name}
                               {item.badge && (
                                 <SidebarMenuBadge
                                   text={item.badge.text}
                                   type={item.badge.type}
-                                  accentColor={colors.accent}
+                                  accentColor={ACCENT}
                                 />
                               )}
                             </span>
+
                             {hasSubItems && (
                               <i
-                                className="fa fa-chevron-right"
-                                style={{
-                                  fontSize: "12px",
-                                  transition: "transform 0.2s ease",
-                                  transform: isExpanded
-                                    ? "rotate(90deg)"
-                                    : "rotate(0deg)",
-                                  opacity: 0.7,
-                                }}
+                                className={[
+                                  "fa fa-chevron-right csb-item__chevron",
+                                  isExpanded ? "csb-item__chevron--open" : "",
+                                ]
+                                  .filter(Boolean)
+                                  .join(" ")}
+                                aria-hidden
                               />
                             )}
                           </>
                         )}
                       </a>
 
-                      {!isCollapsed && hasSubItems && (
+                      {!isRail && hasSubItems && (
                         <div
-                          style={{
-                            maxHeight: isExpanded ? "400px" : "0",
-                            overflow: "hidden",
-                            transition: "max-height 0.22s ease",
-                          }}
+                          className="csb-subwrap"
+                          style={{ maxHeight: isExpanded ? "400px" : "0" }}
                         >
-                          <ul
-                            style={{
-                              listStyle: "none",
-                              padding: "4px 0",
-                              margin: "0 8px 6px 28px",
-                              borderLeft: `2px solid rgba(141, 153, 168, 0.2)`,
-                            }}
-                          >
+                          <ul className="csb-sublist">
                             {item.subItems!.map((subItem, subIdx) => {
                               const isSubActive = isActive(subItem.path);
-                              const isSubHovered =
-                                hoveredItem === `sub-${subItem.path}`;
-
                               return (
                                 <li key={subIdx}>
                                   <a
                                     href={subItem.path}
+                                    className={[
+                                      "csb-subitem",
+                                      isSubActive ? "csb-subitem--active" : "",
+                                    ]
+                                      .filter(Boolean)
+                                      .join(" ")}
                                     onClick={(e) =>
                                       navigateFromSidebar(e, subItem.path)
                                     }
-                                    onMouseEnter={() =>
-                                      setHoveredItem(`sub-${subItem.path}`)
+                                    aria-current={
+                                      isSubActive ? "page" : undefined
                                     }
-                                    onMouseLeave={() => setHoveredItem(null)}
-                                    style={{
-                                      display: "flex",
-                                      alignItems: "center",
-                                      padding: "8px 12px 8px 14px",
-                                      textDecoration: "none",
-                                      cursor: "pointer",
-                                      transition:
-                                        "color 0.18s ease, background-color 0.18s ease",
-                                      backgroundColor:
-                                        isSubHovered && !isSubActive
-                                          ? colors.bgHover
-                                          : "transparent",
-                                      color: isSubActive
-                                        ? colors.text
-                                        : isSubHovered
-                                          ? colors.text
-                                          : colors.textMuted,
-                                      fontSize: "13.5px",
-                                      fontWeight: isSubActive ? "600" : "500",
-                                      fontFamily: SIDEBAR_FONT,
-                                      borderLeft: isSubActive
-                                        ? `2px solid ${colors.accent}`
-                                        : "2px solid transparent",
-                                      marginLeft: "-2px",
-                                      borderRadius: "0 6px 6px 0",
-                                    }}
                                   >
                                     {subItem.name}
                                   </a>
@@ -509,111 +354,59 @@ function SidebarProveedor({
           ))}
         </nav>
 
-        {/* Bottom toggle button — only on desktop */}
-        {!isMobile && (
-          <div
-            style={{
-              borderTop: `1px solid ${colors.border}`,
-              padding: "10px",
-              flexShrink: 0,
-            }}
+        {/* Colapsar / cerrar */}
+        <div className="csb-collapse">
+          <button
+            type="button"
+            className="csb-collapse__btn"
+            onClick={onToggle}
+            aria-label={
+              isMobile
+                ? t("home.sidebar.closeMenu")
+                : isCollapsed
+                  ? t("home.sidebar.expandMenu")
+                  : t("home.sidebar.collapseMenu")
+            }
+            title={
+              isMobile
+                ? t("home.sidebar.closeMenu")
+                : isCollapsed
+                  ? t("home.sidebar.expandMenu")
+                  : t("home.sidebar.collapseMenu")
+            }
           >
-            <button
-              type="button"
-              onClick={onToggle}
-              aria-label={
-                isCollapsed
-                  ? "Expandir barra lateral"
-                  : "Colapsar barra lateral"
-              }
-              title={isCollapsed ? "Expandir" : "Colapsar"}
-              style={{
-                width: "100%",
-                height: "36px",
-                boxSizing: "border-box",
-                borderRadius: "6px",
-                border: `1px solid ${colors.border}`,
-                backgroundColor: "transparent",
-                color: colors.textMuted,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: isCollapsed ? "center" : "flex-start",
-                gap: "8px",
-                padding: isCollapsed ? "0" : "0 10px",
-                cursor: "pointer",
-                transition: "background-color 0.18s ease, color 0.18s ease",
-                fontSize: "12.5px",
-                fontWeight: "500",
-                fontFamily: SIDEBAR_FONT,
-                overflow: "visible",
-                whiteSpace: "nowrap",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = colors.bgHover;
-                e.currentTarget.style.color = colors.text;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = "transparent";
-                e.currentTarget.style.color = colors.textMuted;
-              }}
+            <svg
+              width="15"
+              height="15"
+              viewBox="0 0 16 16"
+              fill="none"
+              style={{ flexShrink: 0 }}
+              aria-hidden
             >
-              <svg
-                width="15"
-                height="15"
-                viewBox="0 0 16 16"
-                fill="none"
-                style={{ flexShrink: 0 }}
-              >
-                <path
-                  d={
-                    isCollapsed
-                      ? "M5.5 3.5 9 8l-3.5 4.5"
-                      : "M10.5 3.5 7 8l3.5 4.5"
-                  }
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M3 2.5v11"
-                  stroke="currentColor"
-                  strokeWidth="1.2"
-                  strokeLinecap="round"
-                  opacity="0.65"
-                />
-              </svg>
-              {!isCollapsed && (
-                <span
-                  style={{
-                    overflow: "visible",
-                    textOverflow: "clip",
-                    whiteSpace: "nowrap",
-                    lineHeight: 1.2,
-                  }}
-                >
-                  Colapsar menú
-                </span>
-              )}
-            </button>
-          </div>
-        )}
-
-        <style>{`
-          .sidebar-proveedor-scroll {
-            background-image: none;
-          }
-
-          .sidebar-proveedor-scroll::-webkit-scrollbar {
-            width: 0;
-          }
-          .sidebar-proveedor-scroll::-webkit-scrollbar-track {
-            background: transparent;
-          }
-          .sidebar-proveedor-scroll::-webkit-scrollbar-thumb {
-            background: transparent;
-          }
-        `}</style>
+              <path
+                d={isRail ? "M5.5 3.5 9 8l-3.5 4.5" : "M10.5 3.5 7 8l3.5 4.5"}
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M3 2.5v11"
+                stroke="currentColor"
+                strokeWidth="1.2"
+                strokeLinecap="round"
+                opacity="0.65"
+              />
+            </svg>
+            {!isRail && (
+              <span>
+                {isMobile
+                  ? t("home.sidebar.closeMenu")
+                  : t("home.sidebar.collapseMenu")}
+              </span>
+            )}
+          </button>
+        </div>
       </div>
     </>
   );

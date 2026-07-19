@@ -265,19 +265,16 @@
       "profile": {
         "assignedExecutive": "Your Assigned Executive",
         "commercialExecutive": "Commercial Executive",
+        "settingsTitle": "Settings",
+        "settingsDesc": "Manage default emails for tracking",
         "logout": "Log Out"
       },
-      "search": {
-        "placeholder": "Search quotes, shipments, reports...",
-        "title": "Quick Search",
-        "description": "Search quotes, shipments, reports and more...",
-        "quickAccess": "Quick Access",
-        "newQuote": "New Quote",
-        "airShipments": "Air Shipments",
-        "oceanShipments": "Ocean Shipments",
-        "reports": "Reports",
-        "searching": "Searching"
-      }
+      "assistant": "Assistant",
+      "openAssistant": "Open assistant",
+      "darkMode": "Dark mode",
+      "lightMode": "Light mode",
+      "darkModeOn": "Enable dark mode",
+      "darkModeOff": "Disable dark mode"
     },
     "sidebar": {
       "dashboard": "Dashboard",
@@ -316,7 +313,11 @@
       "sectionReference": "Reference",
       "badgeNew": "New",
       "settings": "Settings",
-      "help": "Help"
+      "help": "Help",
+      "navLabel": "Main navigation",
+      "closeMenu": "Close menu",
+      "collapseMenu": "Collapse menu",
+      "expandMenu": "Expand menu"
     },
     "userLayout": {
       "linbisTokenError": "Could not obtain Linbis token",

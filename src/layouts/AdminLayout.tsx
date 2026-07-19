@@ -9,18 +9,26 @@ import { ChatbotProvider } from "../contexts/ChatbotContext";
 import { useAuth } from "../auth/AuthContext";
 import { canAccessRoute } from "../config/roleRoutes";
 import { useLinbisToken } from "../hooks/useLinbisToken";
+import "./ClientShell.css";
 
-/** Teléfono y tablet: menú lateral como drawer */
-const MOBILE_BREAKPOINT = 1024;
+/** Teléfonos: menú lateral como drawer superpuesto */
+const MOBILE_BREAKPOINT = 768;
+/** Tablets: rail compacto persistente por defecto */
+const TABLET_BREAKPOINT = 1199;
+
+/** Clave propia del portal admin (no compartida con cliente/proveedor) */
+const SIDEBAR_PREF_KEY = "admin.sidebarCollapsed";
 
 const isMobileViewport = () =>
   typeof window !== "undefined" && window.innerWidth <= MOBILE_BREAKPOINT;
+
+const isTabletViewport = () =>
+  typeof window !== "undefined" && window.innerWidth <= TABLET_BREAKPOINT;
 
 function AdminLayout() {
   const { user } = useAuth();
   const {
     accessToken,
-    loading,
     error,
     refreshAccessToken,
     ensureFreshToken,
@@ -29,20 +37,21 @@ function AdminLayout() {
   const [isMobile, setIsMobile] = useState(isMobileViewport);
   const [hasUserPref, setHasUserPref] = useState<boolean>(() => {
     try {
-      return localStorage.getItem("sidebarCollapsed") !== null;
-    } catch (e) {
+      return localStorage.getItem(SIDEBAR_PREF_KEY) !== null;
+    } catch {
       return false;
     }
   });
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+    if (isMobileViewport()) return true;
     try {
-      const stored = localStorage.getItem("sidebarCollapsed");
+      const stored = localStorage.getItem(SIDEBAR_PREF_KEY);
       if (stored !== null) return stored === "true";
-    } catch (e) {
+    } catch {
       /* ignore */
     }
-    return isMobileViewport();
+    return isTabletViewport();
   });
   const location = useLocation();
   const mainRef = useRef<HTMLDivElement>(null);
@@ -59,7 +68,20 @@ function AdminLayout() {
 
       setIsMobile((previousMobile) => {
         if (previousMobile !== mobile) {
-          if (!hasUserPref) setSidebarCollapsed(mobile);
+          if (mobile) {
+            setSidebarCollapsed(true);
+          } else {
+            let next = isTabletViewport();
+            if (hasUserPref) {
+              try {
+                const stored = localStorage.getItem(SIDEBAR_PREF_KEY);
+                if (stored !== null) next = stored === "true";
+              } catch {
+                /* ignore */
+              }
+            }
+            setSidebarCollapsed(next);
+          }
         }
 
         return mobile;
@@ -84,13 +106,15 @@ function AdminLayout() {
   };
 
   const toggleSidebar = () => {
-    setHasUserPref(true);
     setSidebarCollapsed((previous) => {
       const next = !previous;
-      try {
-        localStorage.setItem("sidebarCollapsed", String(next));
-      } catch (e) {
-        /* ignore */
+      if (!isMobileViewport()) {
+        setHasUserPref(true);
+        try {
+          localStorage.setItem(SIDEBAR_PREF_KEY, String(next));
+        } catch {
+          /* ignore */
+        }
       }
       return next;
     });

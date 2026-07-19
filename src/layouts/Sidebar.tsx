@@ -1,5 +1,5 @@
-// src/layouts/Sidebar.tsx - AWS/Azure Minimalist Design
-import { useState, type MouseEvent } from "react";
+// src/layouts/Sidebar.tsx — Chrome del portal de clientes (Enterprise Dark)
+import { useEffect, useMemo, useState, type MouseEvent } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../auth/AuthContext";
@@ -18,6 +18,8 @@ interface SidebarProps {
 interface SubMenuItem {
   path: string;
   name: string;
+  /** Rutas adicionales que activan este ítem (ej. deep links) */
+  matchPrefixes?: string[];
 }
 
 interface MenuItem {
@@ -44,19 +46,7 @@ interface BottomMenuItem {
   external?: boolean;
 }
 
-// Design tokens - Enterprise Dark + Brand
-const colors = {
-  bg: "#232f3e",
-  bgHover: "#2d3a4a",
-  bgActive: "rgba(255, 98, 0, 0.14)",
-  text: "#ffffff",
-  textMuted: "#8d99a8",
-  border: "#3b4754",
-  accent: "#ff6200",
-};
-
-const SIDEBAR_FONT =
-  '"Manrope", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+const ACCENT = "#ff6200";
 
 function Sidebar({
   isCollapsed,
@@ -69,122 +59,134 @@ function Sidebar({
   const { t } = useTranslation();
   const { user, activeUsername, setActiveUsername } = useAuth();
   const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
-  const [hoveredItem, setHoveredItem] = useState<string | null>(null);
 
-  // Determinar si se muestra el selector de cuenta
   const usernames = user?.usernames || [];
   const showAccountSelector = usernames.length > 1;
   const ejecutivo = user?.ejecutivo;
-  const hasEjecutivo = !!ejecutivo;
-  const showEjecutivoStrip = !isMobile && hasEjecutivo;
 
-  const menuSections: MenuSection[] = [
-    {
-      items: [{ path: "/", name: t("home.sidebar.home"), icon: "fa fa-home" }],
-    },
-    {
-      title: t("home.sidebar.sectionQuote"),
-      items: [
-        {
-          menuId: "quote",
-          name: t("home.sidebar.quote"),
-          icon: "fa fa-calculator",
-          subItems: [
-            { path: "/newquotes", name: t("home.sidebar.newQuote") },
-            {
-              path: "/cotizacion-especial",
-              name: t("home.sidebar.specialQuote"),
-            },
-            { path: "/quotes", name: t("home.sidebar.quotes") },
-          ],
-        },
-      ],
-    },
-    {
-      title: t("home.sidebar.sectionShipments"),
-      items: [
-        {
-          menuId: "operations",
-          name: t("home.sidebar.operations"),
-          icon: "fa fa-folder-open",
-          subItems: [
-            {
-              path: "/air-shipments",
-              name: t("home.sidebar.airOperations"),
-            },
-            {
-              path: "/ocean-shipments",
-              name: t("home.sidebar.oceanOperations"),
-            },
-            {
-              path: "/ground-shipments",
-              name: t("home.sidebar.groundOperations"),
-            },
-          ],
-        },
-        {
-          menuId: "track",
-          name: t("home.sidebar.track"),
-          icon: "fa fa-route",
-          subItems: [
-            {
-              path: "/new-tracking",
-              name: t("home.sidebar.trackNewShipment"),
-            },
-            {
-              path: "/new-ocean-tracking",
-              name: t("home.sidebar.trackNewOceanShipment"),
-            },
-            { path: "/trackings", name: t("home.sidebar.myShipments") },
-          ],
-        },
-        {
-          path: "/mis-documentos",
-          name: t("home.sidebar.myDocuments"),
-          icon: "fa fa-file",
-        },
-      ],
-    },
-    {
-      title: t("home.sidebar.sectionReports"),
-      items: [
-        {
-          menuId: "reporting",
-          name: t("home.sidebar.reporting"),
-          icon: "fa fa-chart-bar",
-          subItems: [
-            { path: "/financiera", name: t("home.sidebar.financial") },
-            { path: "/operacional", name: t("home.sidebar.operational") },
-          ],
-        },
-      ],
-    },
-    {
-      title: t("home.sidebar.sectionReference"),
-      items: [
-        {
-          path: "/consultar-tarifas",
-          name: t("home.sidebar.rateConsult"),
-          icon: "fa fa-tags",
-        },
-        {
-          path: "/historico-precios",
-          name: t("home.sidebar.priceHistory"),
-          icon: "fa fa-chart-line",
-        },
-        {
-          path: "/novedades",
-          name: t("home.sidebar.novedades"),
-          icon: "fa fa-newspaper",
-        },
-        {
-          path: "/promesas",
-          name: t("home.sidebar.promesas"),
-          icon: "fa fa-handshake",
-        },
-      ],
-    },
-  ];
+  const isRail = isCollapsed && !isMobile;
+  const showEjecutivoStrip = !!ejecutivo && !isRail;
+
+  const menuSections: MenuSection[] = useMemo(
+    () => [
+      {
+        items: [
+          { path: "/", name: t("home.sidebar.home"), icon: "fa fa-home" },
+        ],
+      },
+      {
+        title: t("home.sidebar.sectionQuote"),
+        items: [
+          {
+            menuId: "quote",
+            name: t("home.sidebar.quote"),
+            icon: "fa fa-calculator",
+            subItems: [
+              {
+                path: "/newquotes",
+                name: t("home.sidebar.newQuote"),
+                matchPrefixes: ["/QuoteAIR", "/QuoteLCL", "/QuoteFCL"],
+              },
+              {
+                path: "/cotizacion-especial",
+                name: t("home.sidebar.specialQuote"),
+              },
+              { path: "/quotes", name: t("home.sidebar.quotes") },
+            ],
+          },
+        ],
+      },
+      {
+        title: t("home.sidebar.sectionShipments"),
+        items: [
+          {
+            menuId: "operations",
+            name: t("home.sidebar.operations"),
+            icon: "fa fa-folder-open",
+            subItems: [
+              {
+                path: "/air-shipments",
+                name: t("home.sidebar.airOperations"),
+              },
+              {
+                path: "/ocean-shipments",
+                name: t("home.sidebar.oceanOperations"),
+              },
+              {
+                path: "/ground-shipments",
+                name: t("home.sidebar.groundOperations"),
+              },
+            ],
+          },
+          {
+            menuId: "track",
+            name: t("home.sidebar.track"),
+            icon: "fa fa-route",
+            subItems: [
+              {
+                path: "/new-tracking",
+                name: t("home.sidebar.trackNewShipment"),
+              },
+              {
+                path: "/new-ocean-tracking",
+                name: t("home.sidebar.trackNewOceanShipment"),
+              },
+              {
+                path: "/trackings",
+                name: t("home.sidebar.myShipments"),
+                matchPrefixes: ["/trackings-aereo", "/trackings-maritimo"],
+              },
+            ],
+          },
+          {
+            path: "/mis-documentos",
+            name: t("home.sidebar.myDocuments"),
+            icon: "fa fa-file",
+          },
+        ],
+      },
+      {
+        title: t("home.sidebar.sectionReports"),
+        items: [
+          {
+            menuId: "reporting",
+            name: t("home.sidebar.reporting"),
+            icon: "fa fa-chart-bar",
+            subItems: [
+              { path: "/financiera", name: t("home.sidebar.financial") },
+              { path: "/operacional", name: t("home.sidebar.operational") },
+            ],
+          },
+        ],
+      },
+      {
+        title: t("home.sidebar.sectionReference"),
+        items: [
+          {
+            path: "/consultar-tarifas",
+            name: t("home.sidebar.rateConsult"),
+            icon: "fa fa-tags",
+          },
+          {
+            path: "/historico-precios",
+            name: t("home.sidebar.priceHistory"),
+            icon: "fa fa-chart-line",
+          },
+          {
+            path: "/novedades",
+            name: t("home.sidebar.novedades"),
+            icon: "fa fa-newspaper",
+          },
+          {
+            path: "/promesas",
+            name: t("home.sidebar.promesas"),
+            icon: "fa fa-handshake",
+          },
+        ],
+      },
+    ],
+    [t],
+  );
 
   const bottomMenuItems: BottomMenuItem[] = [
     {
@@ -200,13 +202,48 @@ function Sidebar({
     },
   ];
 
-  const isActive = (path: string) => location.pathname === path;
+  const isPathActive = (path: string, matchPrefixes?: string[]) => {
+    const { pathname } = location;
+    if (path === "/") return pathname === "/";
+    if (pathname === path || pathname.startsWith(`${path}/`)) return true;
+    return (
+      matchPrefixes?.some(
+        (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+      ) ?? false
+    );
+  };
 
-  const sidebarWidth = isMobile
-    ? "min(86vw, 320px)"
-    : isCollapsed
-      ? "84px"
-      : "260px";
+  const isSubItemActive = (subItem: SubMenuItem) =>
+    isPathActive(subItem.path, subItem.matchPrefixes);
+
+  // Auto-expandir el grupo que contiene la ruta activa
+  useEffect(() => {
+    const activeGroups = menuSections
+      .flatMap((section) => section.items)
+      .filter(
+        (item) =>
+          item.menuId && item.subItems?.some((sub) => isSubItemActive(sub)),
+      )
+      .map((item) => item.menuId!) as string[];
+
+    if (activeGroups.length > 0) {
+      setExpandedMenus((prev) => [
+        ...prev,
+        ...activeGroups.filter((id) => !prev.includes(id)),
+      ]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname, menuSections]);
+
+  // Escape cierra el drawer en teléfono
+  useEffect(() => {
+    if (!isMobile || isCollapsed) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onCloseMobile();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isMobile, isCollapsed, onCloseMobile]);
 
   const toggleMenu = (menuName: string) => {
     setExpandedMenus((prev) =>
@@ -229,146 +266,74 @@ function Sidebar({
     });
   };
 
+  const handleAccountChange = (nextUsername: string) => {
+    setActiveUsername(nextUsername);
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (
+        key &&
+        (key.startsWith("quotesCache_") ||
+          key.startsWith("airShipmentsCache_") ||
+          key.startsWith("oceanShipmentsCache_") ||
+          key.startsWith("invoicesCache_") ||
+          key.startsWith("shipmentsCache_"))
+      ) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach((key) => localStorage.removeItem(key));
+    window.location.reload();
+  };
+
+  const rootClass = [
+    "csb-root",
+    isMobile ? "csb-root--drawer" : "csb-root--docked",
+    isMobile && isCollapsed ? "csb-root--drawer-hidden" : "",
+    isRail ? "csb-root--rail" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
     <>
       {isMobile && !isCollapsed && (
-        <div
+        <button
+          type="button"
+          className="csb-scrim"
           onClick={onCloseMobile}
-          style={{
-            position: "fixed",
-            inset: 0,
-            backgroundColor: "rgba(15, 23, 42, 0.45)",
-            zIndex: 1090,
-          }}
+          aria-label={t("home.sidebar.closeMenu")}
+          tabIndex={-1}
         />
       )}
 
-      <div
-        className="sidebar-scroll sidebar-shell"
-        style={{
-          width: sidebarWidth,
-          minWidth: sidebarWidth,
-          height: "100vh",
-          backgroundColor: colors.bg,
-          display: "flex",
-          flexDirection: "column",
-          position: isMobile ? "fixed" : "sticky",
-          top: 0,
-          left: 0,
-          borderRight: `1px solid ${colors.border}`,
-          overflowY: "auto",
-          overflowX: "hidden",
-          fontFamily: SIDEBAR_FONT,
-          transition:
-            "width 0.22s ease, min-width 0.22s ease, transform 0.22s ease",
-          transform: isMobile
-            ? isCollapsed
-              ? "translateX(-100%)"
-              : "translateX(0)"
-            : "translateX(0)",
-          boxShadow:
-            isMobile && !isCollapsed ? "4px 0 20px rgba(0, 0, 0, 0.3)" : "none",
-          zIndex: isMobile ? 1100 : 20,
-          pointerEvents: isMobile && isCollapsed ? "none" : "auto",
-        }}
-      >
-        <div
-          className="sidebar-header"
-          style={{
-            height: isMobile ? "65px" : "70px",
-            padding: isCollapsed && !isMobile ? "0 12px" : "0 20px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: isCollapsed && !isMobile ? "center" : "flex-start",
-            borderBottom: `1px solid ${colors.border}`,
-            flexShrink: 0,
-          }}
-        >
-          {isCollapsed && !isMobile ? (
-            <img
-              src={imgUrl("/logo.png")}
-              alt="Seemann"
-              style={{
-                width: "40px",
-                height: "40px",
-                objectFit: "contain",
-                borderRadius: "8px",
-                backgroundColor: colors.bgActive,
-                padding: "4px",
-              }}
-            />
-          ) : (
-            <img
-              src={logoSeemann}
-              alt="Seemann Group"
-              className="sidebar-logo"
-              style={{
-                width: isMobile ? "160px" : "180px",
-                height: "auto",
-                objectFit: "contain",
-              }}
-            />
-          )}
+      <div className={rootClass} aria-hidden={isMobile && isCollapsed}>
+        <div className="csb-header">
+          <a
+            href="/"
+            className="csb-header__link"
+            onClick={(e) => navigateFromSidebar(e, "/")}
+            aria-label={t("home.sidebar.home")}
+            title={t("home.sidebar.home")}
+          >
+            {isRail ? (
+              <img src={imgUrl("/logo.png")} alt="Seemann" className="csb-logo--mark" />
+            ) : (
+              <img src={logoSeemann} alt="Seemann Group" className="csb-logo" />
+            )}
+          </a>
         </div>
 
-        {showAccountSelector && !isCollapsed && (
-          <div
-            style={{
-              padding: "12px 16px",
-              borderBottom: `1px solid ${colors.border}`,
-            }}
-          >
-            <label
-              style={{
-                display: "block",
-                fontSize: "10px",
-                fontWeight: "600",
-                color: colors.textMuted,
-                textTransform: "uppercase",
-                letterSpacing: "0.8px",
-                marginBottom: "6px",
-              }}
-            >
+        {showAccountSelector && !isRail && (
+          <div className="csb-account">
+            <label className="csb-account__label" htmlFor="csb-account-select">
               {t("sidebar.account")}
             </label>
             <select
+              id="csb-account-select"
+              className="csb-account__select"
               value={activeUsername}
-              onChange={(e) => {
-                setActiveUsername(e.target.value);
-                const keysToRemove: string[] = [];
-                for (let i = 0; i < localStorage.length; i++) {
-                  const key = localStorage.key(i);
-                  if (
-                    key &&
-                    (key.startsWith("quotesCache_") ||
-                      key.startsWith("airShipmentsCache_") ||
-                      key.startsWith("oceanShipmentsCache_") ||
-                      key.startsWith("invoicesCache_") ||
-                      key.startsWith("shipmentsCache_"))
-                  ) {
-                    keysToRemove.push(key);
-                  }
-                }
-                keysToRemove.forEach((key) => localStorage.removeItem(key));
-                window.location.reload();
-              }}
-              style={{
-                width: "100%",
-                padding: "8px 10px",
-                fontSize: "13px",
-                fontWeight: "500",
-                backgroundColor: colors.bgHover,
-                color: colors.text,
-                border: `1px solid ${colors.border}`,
-                borderRadius: "6px",
-                outline: "none",
-                cursor: "pointer",
-                appearance: "none",
-                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%238d99a8' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E")`,
-                backgroundRepeat: "no-repeat",
-                backgroundPosition: "right 10px center",
-                paddingRight: "30px",
-              }}
+              onChange={(e) => handleAccountChange(e.target.value)}
             >
               {usernames.map((name) => (
                 <option key={name} value={name}>
@@ -381,26 +346,19 @@ function Sidebar({
 
         {showEjecutivoStrip && ejecutivo && (
           <div
-            className={[
-              "sidebar-ejecutivo",
-              isCollapsed && !isMobile ? "sidebar-ejecutivo--collapsed" : "",
-            ]
-              .filter(Boolean)
-              .join(" ")}
+            className="csb-exec"
             title={`${t("sidebar.yourExecutive")} ${ejecutivo.nombre}`}
           >
-            {(!isCollapsed || isMobile) && (
-              <span className="sidebar-ejecutivo__text">
-                <span className="sidebar-ejecutivo__label">
-                  {t("sidebar.yourExecutive")}{" "}
-                </span>
-                <span className="sidebar-ejecutivo__name">{ejecutivo.nombre}</span>
+            <span className="csb-exec__text">
+              <span className="csb-exec__label">
+                {t("sidebar.yourExecutive")}{" "}
               </span>
-            )}
-            <div className="sidebar-ejecutivo__actions">
+              <span className="csb-exec__name">{ejecutivo.nombre}</span>
+            </span>
+            <div className="csb-exec__actions">
               <a
                 href={`mailto:${ejecutivo.email}`}
-                className="sidebar-ejecutivo__action"
+                className="csb-exec__action"
                 title={ejecutivo.email}
                 aria-label={ejecutivo.email}
               >
@@ -411,7 +369,7 @@ function Sidebar({
               {ejecutivo.telefono ? (
                 <a
                   href={`tel:${ejecutivo.telefono}`}
-                  className="sidebar-ejecutivo__action"
+                  className="csb-exec__action"
                   title={ejecutivo.telefono}
                   aria-label={ejecutivo.telefono}
                 >
@@ -427,72 +385,41 @@ function Sidebar({
           </div>
         )}
 
-        <nav
-          className={[
-            "sidebar-nav",
-            isCollapsed && !isMobile ? "sidebar-nav--collapsed" : "",
-          ]
-            .filter(Boolean)
-            .join(" ")}
-          style={{
-            flex: 1,
-            padding: isCollapsed && !isMobile ? undefined : isMobile ? "12px 0" : undefined,
-          }}
-        >
+        <nav className="csb-nav" aria-label={t("home.sidebar.navLabel")}>
           {menuSections.map((section, sectionIdx) => (
-            <div
-              key={sectionIdx}
-              style={{
-                marginBottom: isCollapsed && !isMobile ? "10px" : "4px",
-              }}
-            >
-              {!isCollapsed && section.title ? (
-                <div
-                  style={{
-                    padding: "14px 20px 6px",
-                    fontSize: "10.5px",
-                    fontWeight: "600",
-                    color: colors.textMuted,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.1em",
-                    marginTop: sectionIdx > 0 ? "4px" : "0",
-                    fontFamily: SIDEBAR_FONT,
-                  }}
-                >
-                  {section.title}
-                </div>
-              ) : sectionIdx > 0 && isCollapsed ? (
-                <div
-                  style={{
-                    margin: "8px 14px",
-                    height: "1px",
-                    backgroundColor: colors.border,
-                    opacity: 0.7,
-                  }}
-                />
+            <div className="csb-section" key={sectionIdx}>
+              {!isRail && section.title ? (
+                <div className="csb-section__title">{section.title}</div>
+              ) : sectionIdx > 0 && isRail ? (
+                <div className="csb-section__divider" aria-hidden />
               ) : null}
 
-              <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+              <ul className="csb-list">
                 {section.items.map((item, itemIdx) => {
-                  const hasSubItems = item.subItems && item.subItems.length > 0;
+                  const hasSubItems = !!item.subItems?.length;
                   const isExpanded = item.menuId
                     ? expandedMenus.includes(item.menuId)
                     : false;
                   const isItemActive = item.path
-                    ? isActive(item.path)
-                    : item.subItems?.some((subItem) =>
-                      isActive(subItem.path),
-                    ) || false;
-                  const isHovered =
-                    hoveredItem === `${section.title}-${item.name}`;
+                    ? isPathActive(item.path)
+                    : item.subItems?.some((sub) => isSubItemActive(sub)) ||
+                      false;
 
                   return (
                     <li key={itemIdx}>
                       <a
                         href={item.path ?? item.subItems?.[0]?.path ?? "#"}
+                        className={[
+                          "csb-item",
+                          isItemActive && (!hasSubItems || isRail)
+                            ? "csb-item--active"
+                            : "",
+                        ]
+                          .filter(Boolean)
+                          .join(" ")}
                         onClick={(e) => {
                           if (hasSubItems) {
-                            if (isCollapsed) {
+                            if (isRail) {
                               navigateFromSidebar(e, item.subItems![0].path);
                             } else {
                               e.preventDefault();
@@ -502,162 +429,70 @@ function Sidebar({
                             navigateFromSidebar(e, item.path);
                           }
                         }}
-                        title={isCollapsed ? item.name : undefined}
-                        onMouseEnter={() =>
-                          setHoveredItem(`${section.title}-${item.name}`)
+                        title={isRail ? item.name : undefined}
+                        aria-expanded={
+                          hasSubItems && !isRail ? isExpanded : undefined
                         }
-                        onMouseLeave={() => setHoveredItem(null)}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          textDecoration: "none",
-                          color:
-                            !hasSubItems && isItemActive
-                              ? colors.text
-                              : isHovered
-                                ? colors.text
-                                : colors.textMuted,
-                          padding:
-                            isCollapsed && !isMobile ? "11px 0" : "9px 12px",
-                          justifyContent:
-                            isCollapsed && !isMobile ? "center" : "flex-start",
-                          gap: isCollapsed && !isMobile ? "0" : "10px",
-                          cursor: "pointer",
-                          transition:
-                            "color 0.18s ease, background-color 0.18s ease",
-                          backgroundColor:
-                            !hasSubItems && isItemActive
-                              ? "rgba(255, 255, 255, 0.06)"
-                              : isHovered
-                                ? colors.bgHover
-                                : "transparent",
-                          borderLeft:
-                            !hasSubItems && isItemActive
-                              ? `2px solid ${colors.accent}`
-                              : "2px solid transparent",
-                          fontSize: "14px",
-                          fontWeight:
-                            !hasSubItems && isItemActive ? "600" : "500",
-                          fontFamily: SIDEBAR_FONT,
-                          margin:
-                            isCollapsed && !isMobile ? "3px 10px" : "1px 8px",
-                          borderRadius: "6px",
-                        }}
+                        aria-current={
+                          !hasSubItems && isItemActive ? "page" : undefined
+                        }
                       >
-                        <i
-                          className={item.icon}
-                          style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            width: "20px",
-                            height: "20px",
-                            fontSize: "13px",
-                            textAlign: "center",
-                            flexShrink: 0,
-                            transition: "color 0.18s ease",
-                          }}
-                        />
+                        <i className={`csb-item__icon ${item.icon}`} aria-hidden />
 
-                        {!isCollapsed && (
+                        {!isRail && (
                           <>
-                            <span
-                              style={{
-                                flex: 1,
-                                fontSize: "14px",
-                                fontWeight:
-                                  !hasSubItems && isItemActive ? "600" : "500",
-                                fontFamily: SIDEBAR_FONT,
-                                letterSpacing: "0.01em",
-                              }}
-                            >
+                            <span className="csb-item__label">
                               {item.name}
                               {item.badge && (
                                 <SidebarMenuBadge
                                   text={item.badge.text}
                                   type={item.badge.type}
-                                  accentColor={colors.accent}
+                                  accentColor={ACCENT}
                                 />
                               )}
                             </span>
 
                             {hasSubItems && (
                               <i
-                                className="fa fa-chevron-right"
-                                style={{
-                                  fontSize: "11px",
-                                  transition: "transform 0.2s ease",
-                                  transform: isExpanded
-                                    ? "rotate(90deg)"
-                                    : "rotate(0deg)",
-                                  opacity: 0.7,
-                                }}
+                                className={[
+                                  "fa fa-chevron-right csb-item__chevron",
+                                  isExpanded ? "csb-item__chevron--open" : "",
+                                ]
+                                  .filter(Boolean)
+                                  .join(" ")}
+                                aria-hidden
                               />
                             )}
                           </>
                         )}
                       </a>
 
-                      {!isCollapsed && hasSubItems && (
+                      {!isRail && hasSubItems && (
                         <div
-                          style={{
-                            maxHeight: isExpanded ? "400px" : "0",
-                            overflow: "hidden",
-                            transition: "max-height 0.22s ease",
-                          }}
+                          className="csb-subwrap"
+                          style={{ maxHeight: isExpanded ? "400px" : "0" }}
                         >
-                          <ul
-                            style={{
-                              listStyle: "none",
-                              padding: "4px 0",
-                              margin: "0 8px 6px 28px",
-                              borderLeft: "2px solid rgba(141, 153, 168, 0.2)",
-                            }}
-                          >
+                          <ul className="csb-sublist">
                             {item.subItems!.map((subItem, subIdx) => {
-                              const isSubActive = isActive(subItem.path);
-                              const isSubHovered =
-                                hoveredItem === `sub-${subItem.path}`;
-
+                              const isSubActive = isSubItemActive(subItem);
                               return (
                                 <li key={subIdx}>
                                   <a
                                     href={subItem.path}
-                                    onClick={(e) => {
-                                      navigateFromSidebar(e, subItem.path);
-                                    }}
-                                    onMouseEnter={() =>
-                                      setHoveredItem(`sub-${subItem.path}`)
+                                    className={[
+                                      "csb-subitem",
+                                      isSubActive ? "csb-subitem--active" : "",
+                                    ]
+                                      .filter(Boolean)
+                                      .join(" ")}
+                                    onClick={(e) =>
+                                      navigateFromSidebar(e, subItem.path)
                                     }
-                                    onMouseLeave={() => setHoveredItem(null)}
-                                    style={{
-                                      display: "flex",
-                                      alignItems: "center",
-                                      padding: "8px 12px 8px 14px",
-                                      cursor: "pointer",
-                                      transition:
-                                        "color 0.18s ease, background-color 0.18s ease",
-                                      backgroundColor:
-                                        isSubHovered && !isSubActive
-                                          ? colors.bgHover
-                                          : "transparent",
-                                      color: isSubActive
-                                        ? colors.text
-                                        : isSubHovered
-                                          ? colors.text
-                                          : colors.textMuted,
-                                      fontSize: "13.5px",
-                                      fontWeight: isSubActive ? "600" : "500",
-                                      fontFamily: SIDEBAR_FONT,
-                                      textDecoration: "none",
-                                      borderLeft: isSubActive
-                                        ? `2px solid ${colors.accent}`
-                                        : "2px solid transparent",
-                                      marginLeft: "-2px",
-                                      borderRadius: "0 6px 6px 0",
-                                    }}
+                                    aria-current={
+                                      isSubActive ? "page" : undefined
+                                    }
                                   >
-                                    <span style={{ flex: 1 }}>{subItem.name}</span>
+                                    {subItem.name}
                                   </a>
                                 </li>
                               );
@@ -673,326 +508,99 @@ function Sidebar({
           ))}
         </nav>
 
-        {/* Configuración y Ayuda — al final, encima de colapsar menú */}
-        {(!isMobile || !isCollapsed) && (
-          <div
-            style={{
-              padding: isCollapsed && !isMobile ? "8px 0" : "8px 0 4px",
-              flexShrink: 0,
-            }}
-          >
-            <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-              {bottomMenuItems.map((item) => {
-                const itemKey = `bottom-${item.path}`;
-                const isItemActive = !item.external && isActive(item.path);
-                const isHovered = hoveredItem === itemKey;
+        {/* Configuración y Ayuda */}
+        <div className="csb-footer">
+          <ul className="csb-list">
+            {bottomMenuItems.map((item) => {
+              const isItemActive = !item.external && isPathActive(item.path);
+              return (
+                <li key={item.path}>
+                  <a
+                    href={item.path}
+                    target={item.external ? "_blank" : undefined}
+                    rel={item.external ? "noopener noreferrer" : undefined}
+                    className={[
+                      "csb-item",
+                      isItemActive ? "csb-item--active" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                    onClick={(e) => {
+                      if (item.external) {
+                        if (isMobile) onCloseMobile();
+                        return;
+                      }
+                      navigateFromSidebar(e, item.path);
+                    }}
+                    title={isRail ? item.name : undefined}
+                    aria-current={isItemActive ? "page" : undefined}
+                  >
+                    <i className={`csb-item__icon ${item.icon}`} aria-hidden />
+                    {!isRail && (
+                      <span className="csb-item__label">{item.name}</span>
+                    )}
+                  </a>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
 
-                return (
-                  <li key={item.path}>
-                    <a
-                      href={item.path}
-                      target={item.external ? "_blank" : undefined}
-                      rel={item.external ? "noopener noreferrer" : undefined}
-                      onClick={(e) => {
-                        if (item.external) {
-                          if (isMobile) onCloseMobile();
-                          return;
-                        }
-                        navigateFromSidebar(e, item.path);
-                      }}
-                      title={isCollapsed && !isMobile ? item.name : undefined}
-                      onMouseEnter={() => setHoveredItem(itemKey)}
-                      onMouseLeave={() => setHoveredItem(null)}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        textDecoration: "none",
-                        color: isItemActive
-                          ? colors.text
-                          : isHovered
-                            ? colors.text
-                            : colors.textMuted,
-                        padding:
-                          isCollapsed && !isMobile ? "11px 0" : "9px 12px",
-                        justifyContent:
-                          isCollapsed && !isMobile ? "center" : "flex-start",
-                        gap: isCollapsed && !isMobile ? "0" : "10px",
-                        cursor: "pointer",
-                        transition:
-                          "color 0.18s ease, background-color 0.18s ease",
-                        backgroundColor: isItemActive
-                          ? "rgba(255, 255, 255, 0.06)"
-                          : isHovered
-                            ? colors.bgHover
-                            : "transparent",
-                        borderLeft: isItemActive
-                          ? `2px solid ${colors.accent}`
-                          : "2px solid transparent",
-                        fontSize: "14px",
-                        fontWeight: isItemActive ? "600" : "500",
-                        fontFamily: SIDEBAR_FONT,
-                        margin:
-                          isCollapsed && !isMobile ? "3px 10px" : "1px 8px",
-                        borderRadius: "6px",
-                      }}
-                    >
-                      <i
-                        className={item.icon}
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          width: "20px",
-                          height: "20px",
-                          fontSize: "13px",
-                          textAlign: "center",
-                          flexShrink: 0,
-                        }}
-                      />
-                      {(!isCollapsed || isMobile) && (
-                        <span
-                          style={{
-                            flex: 1,
-                            fontSize: "14px",
-                            fontWeight: isItemActive ? "600" : "500",
-                            fontFamily: SIDEBAR_FONT,
-                            letterSpacing: "0.01em",
-                          }}
-                        >
-                          {item.name}
-                        </span>
-                      )}
-                    </a>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        )}
-
-        {/* Bottom toggle — desktop siempre; móvil solo con menú abierto */}
-        {(!isMobile || !isCollapsed) && (
-          <div
-            style={{
-              borderTop: `1px solid ${colors.border}`,
-              padding: "10px",
-              flexShrink: 0,
-            }}
+        {/* Colapsar / cerrar */}
+        <div className="csb-collapse">
+          <button
+            type="button"
+            className="csb-collapse__btn"
+            onClick={onToggle}
+            aria-label={
+              isMobile
+                ? t("home.sidebar.closeMenu")
+                : isCollapsed
+                  ? t("home.sidebar.expandMenu")
+                  : t("home.sidebar.collapseMenu")
+            }
+            title={
+              isMobile
+                ? t("home.sidebar.closeMenu")
+                : isCollapsed
+                  ? t("home.sidebar.expandMenu")
+                  : t("home.sidebar.collapseMenu")
+            }
           >
-            <button
-              type="button"
-              onClick={onToggle}
-              aria-label={
-                isMobile
-                  ? "Cerrar menú de navegación"
-                  : isCollapsed
-                    ? "Expandir barra lateral"
-                    : "Colapsar barra lateral"
-              }
-              title={isMobile ? "Cerrar menú" : isCollapsed ? "Expandir" : "Colapsar"}
-              style={{
-                width: "100%",
-                height: "36px",
-                boxSizing: "border-box",
-                borderRadius: "6px",
-                border: `1px solid ${colors.border}`,
-                backgroundColor: "transparent",
-                color: colors.textMuted,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: isCollapsed ? "center" : "flex-start",
-                gap: "8px",
-                padding: isCollapsed ? "0" : "0 10px",
-                cursor: "pointer",
-                transition: "background-color 0.18s ease, color 0.18s ease",
-                fontSize: "12.5px",
-                fontWeight: "500",
-                fontFamily: SIDEBAR_FONT,
-                overflow: "visible",
-                whiteSpace: "nowrap",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = colors.bgHover;
-                e.currentTarget.style.color = colors.text;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = "transparent";
-                e.currentTarget.style.color = colors.textMuted;
-              }}
+            <svg
+              width="15"
+              height="15"
+              viewBox="0 0 16 16"
+              fill="none"
+              style={{ flexShrink: 0 }}
+              aria-hidden
             >
-              <svg
-                width="15"
-                height="15"
-                viewBox="0 0 16 16"
-                fill="none"
-                style={{ flexShrink: 0 }}
-              >
-                <path
-                  d={
-                    isCollapsed
-                      ? "M5.5 3.5 9 8l-3.5 4.5"
-                      : "M10.5 3.5 7 8l3.5 4.5"
-                  }
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M3 2.5v11"
-                  stroke="currentColor"
-                  strokeWidth="1.2"
-                  strokeLinecap="round"
-                  opacity="0.65"
-                />
-              </svg>
-              {(!isCollapsed || isMobile) && (
-                <span
-                  style={{
-                    overflow: "visible",
-                    textOverflow: "clip",
-                    whiteSpace: "nowrap",
-                    lineHeight: 1.2,
-                  }}
-                >
-                  {isMobile ? "Cerrar menú" : "Colapsar menú"}
-                </span>
-              )}
-            </button>
-          </div>
-        )}
-
-        <style>{`
-          .sidebar-shell {
-            background-image: none;
-          }
-
-          .sidebar-scroll::-webkit-scrollbar {
-            width: 0;
-          }
-
-          .sidebar-scroll::-webkit-scrollbar-track {
-            background: transparent;
-          }
-
-          .sidebar-scroll::-webkit-scrollbar-thumb {
-            background: transparent;
-          }
-
-          /* Desktop: franja ejecutivo (40px) + menú alineado al carrusel */
-          @media (min-width: 1025px) {
-            .sidebar-ejecutivo {
-              flex-shrink: 0;
-              height: 40px;
-              min-height: 40px;
-              max-height: 40px;
-              display: flex;
-              align-items: center;
-              gap: 8px;
-              padding: 0 12px;
-              box-sizing: border-box;
-              border-bottom: 1px solid ${colors.border};
-              font-family: ${SIDEBAR_FONT};
-            }
-
-            .sidebar-ejecutivo--collapsed {
-              justify-content: center;
-              padding: 0 8px;
-            }
-
-            .sidebar-ejecutivo__text {
-              flex: 1;
-              min-width: 0;
-              font-size: 11.5px;
-              line-height: 1.2;
-              white-space: nowrap;
-              overflow: hidden;
-              text-overflow: ellipsis;
-            }
-
-            .sidebar-ejecutivo__label {
-              font-weight: 500;
-              color: ${colors.textMuted};
-              letter-spacing: 0.01em;
-            }
-
-            .sidebar-ejecutivo__name {
-              font-weight: 600;
-              color: ${colors.text};
-            }
-
-            .sidebar-ejecutivo__actions {
-              display: flex;
-              align-items: center;
-              gap: 4px;
-              flex-shrink: 0;
-            }
-
-            .sidebar-ejecutivo__action {
-              display: inline-flex;
-              align-items: center;
-              justify-content: center;
-              width: 28px;
-              height: 28px;
-              border-radius: 6px;
-              color: ${colors.textMuted};
-              text-decoration: none;
-              transition: background-color 0.18s ease, color 0.18s ease;
-            }
-
-            .sidebar-ejecutivo__action svg {
-              fill: currentColor;
-            }
-
-            .sidebar-ejecutivo__action:hover {
-              background-color: ${colors.bgHover};
-              color: ${colors.text};
-            }
-
-            .sidebar-nav {
-              padding: ${showEjecutivoStrip ? "0 0 12px" : "40px 0 12px"};
-            }
-
-            .sidebar-nav.sidebar-nav--collapsed {
-              padding: ${showEjecutivoStrip ? "0 10px 12px" : "40px 10px 12px"};
-            }
-          }
-
-          @media (max-width: 1024px) {
-            .sidebar-shell {
-              border-top-right-radius: 24px;
-              border-bottom-right-radius: 24px;
-              box-shadow: 10px 0 32px rgba(15, 23, 42, 0.28) !important;
-            }
-
-            .sidebar-header {
-              height: 72px !important;
-              padding: 0 18px !important;
-            }
-
-            .sidebar-logo {
-              width: min(180px, 55vw) !important;
-            }
-
-            .sidebar-nav {
-              padding: 14px 0 28px !important;
-            }
-          }
-
-          @media (max-width: 768px) {
-            .sidebar-shell {
-              width: min(86vw, 320px) !important;
-              min-width: min(86vw, 320px) !important;
-            }
-          }
-
-          @media (max-width: 480px) {
-            .sidebar-shell {
-              width: min(90vw, 320px) !important;
-              min-width: min(90vw, 320px) !important;
-            }
-          }
-        `}</style>
+              <path
+                d={
+                  isRail ? "M5.5 3.5 9 8l-3.5 4.5" : "M10.5 3.5 7 8l3.5 4.5"
+                }
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M3 2.5v11"
+                stroke="currentColor"
+                strokeWidth="1.2"
+                strokeLinecap="round"
+                opacity="0.65"
+              />
+            </svg>
+            {!isRail && (
+              <span>
+                {isMobile
+                  ? t("home.sidebar.closeMenu")
+                  : t("home.sidebar.collapseMenu")}
+              </span>
+            )}
+          </button>
+        </div>
       </div>
     </>
   );
