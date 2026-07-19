@@ -22,6 +22,10 @@ import { useTrackingEmailPreferences } from "@/hooks/useTrackingEmailPreferences
 import { useTranslation } from "react-i18next";
 import PageBannerHeader from "@/components/shared/layout/PageBannerHeader";
 import LoadingTips from "@/components/cliente/embarques/LoadingTips";
+import {
+  formatExecutiveAmount,
+  parseCurrencyFromDisplayValue,
+} from "@/components/administrador/reporteria/financiera/quoteUtils";
 import { DocumentosSection } from "@/components/cliente/documentos/DocumentosSection";
 import { DocumentosSectionQuoteAir } from "@/components/cliente/documentos/DocumentosSectionQuoteAir";
 import { DocumentosSectionQuoteOcean } from "@/components/cliente/documentos/DocumentosSectionQuoteOcean";
@@ -462,7 +466,11 @@ interface QuoteDetailPanelProps {
   t: (key: string) => string;
   formatDateShort: (dateString?: string) => string;
   formatDateLong: (dateString?: string) => string;
-  formatCLP: (priceString?: string) => string | null;
+  formatQuoteAmount: (
+    priceString?: string,
+    isPortalQuote?: boolean,
+    currencyFallbacks?: Array<string | undefined>,
+  ) => string | null;
   shouldShowQuoteTracking: (quote: Quote) => boolean;
   isQuoteAlreadyTracked: (quote: Quote) => boolean;
   getQuoteTrackingNumber: (quote: Quote) => string;
@@ -499,7 +507,7 @@ function QuoteDetailPanel({
   t,
   formatDateShort,
   formatDateLong,
-  formatCLP,
+  formatQuoteAmount,
   shouldShowQuoteTracking,
   isQuoteAlreadyTracked,
   getQuoteTrackingNumber,
@@ -699,7 +707,14 @@ function QuoteDetailPanel({
         <h3 className="qv-summary__title">{t("quotesView.summaryTitle")}</h3>
         <div className="qv-summary__amount">
           <span className="qv-summary__amount-value">
-            {formatCLP(quote.totalCharge_IncomeDisplayValue) || "$0 CLP"}
+            {formatQuoteAmount(
+              quote.totalCharge_IncomeDisplayValue,
+              hasPdf,
+              [
+                quote.totalCharge_ExpenseDisplayValue,
+                quote.totalCharge_ProfitDisplayValue,
+              ],
+            ) || (hasPdf ? "—" : "$0 CLP")}
           </span>
           <span className="qv-summary__amount-label">
             {t("quotesView.summaryAmount")}
@@ -1004,8 +1019,14 @@ function QuoteDetailPanel({
                 <div className="qv-field-grid">
                   <FieldGridCell label={t("quotesView.summaryAmount")}>
                     <span className="qv-field-cell__value qv-field-cell__value--finance">
-                      {formatCLP(quote.totalCharge_IncomeDisplayValue) ||
-                        "$0 CLP"}
+                      {formatQuoteAmount(
+                        quote.totalCharge_IncomeDisplayValue,
+                        hasPdf,
+                        [
+                          quote.totalCharge_ExpenseDisplayValue,
+                          quote.totalCharge_ProfitDisplayValue,
+                        ],
+                      ) || (hasPdf ? "—" : "$0 CLP")}
                     </span>
                   </FieldGridCell>
                   <FieldGridCell
@@ -1222,15 +1243,48 @@ function QuotesView({
     });
   }, []);
 
-  const formatCLP = useCallback((priceString?: string) => {
-    if (!priceString) return null;
-    const numberMatch = priceString.match(/[\d.,]+/);
-    if (!numberMatch) return priceString;
-    const cleanNumber = numberMatch[0].replace(/,/g, "");
-    const num = parseFloat(cleanNumber);
-    if (isNaN(num)) return priceString;
-    return `$${new Intl.NumberFormat("es-CL").format(num)} CLP`;
-  }, []);
+  const formatQuoteAmount = useCallback(
+    (
+      priceString?: string,
+      isPortalQuote = false,
+      currencyFallbacks: Array<string | undefined> = [],
+    ) => {
+      if (!priceString) return null;
+
+      // Cotizaciones fuera del portal: se mantiene el formateo histórico a CLP.
+      if (!isPortalQuote) {
+        const numberMatch = priceString.match(/[\d.,]+/);
+        if (!numberMatch) return priceString;
+        const cleanNumber = numberMatch[0].replace(/,/g, "");
+        const num = parseFloat(cleanNumber);
+        if (isNaN(num)) return priceString;
+        return `$${new Intl.NumberFormat("es-CL").format(num)} CLP`;
+      }
+
+      // Cotizaciones del portal (tienen PDF en QuotePDF): respetar currency del display.
+      let currency = parseCurrencyFromDisplayValue(priceString);
+      if (!currency) {
+        for (const fallback of currencyFallbacks) {
+          currency = parseCurrencyFromDisplayValue(fallback);
+          if (currency) break;
+        }
+      }
+
+      const numberMatch = priceString.match(/-?[\d.,]+/);
+      if (!numberMatch) return priceString.trim();
+      const cleanNumber = numberMatch[0].replace(/,/g, "");
+      const num = parseFloat(cleanNumber);
+      if (isNaN(num)) return priceString.trim();
+
+      if (currency) {
+        return formatExecutiveAmount(num, currency);
+      }
+
+      // Portal sin moneda detectada: no forzar CLP; mostrar el valor original.
+      return priceString.trim();
+    },
+    [],
+  );
 
   /* -- Sorting ---------------------------------------------- */
   const handleSort = useCallback((column: string) => {
@@ -2886,7 +2940,7 @@ function QuotesView({
           t={t}
           formatDateShort={formatDateShort}
           formatDateLong={formatDateLong}
-          formatCLP={formatCLP}
+          formatQuoteAmount={formatQuoteAmount}
           shouldShowQuoteTracking={shouldShowQuoteTracking}
           isQuoteAlreadyTracked={isQuoteAlreadyTracked}
           getQuoteTrackingNumber={getQuoteTrackingNumber}
