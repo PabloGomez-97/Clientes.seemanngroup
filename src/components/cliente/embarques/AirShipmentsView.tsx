@@ -169,6 +169,11 @@ interface GeneralTabContentProps {
   getAllCommodities: (s: AirShipment) => any[];
   formatDate: (dateObj: unknown) => string;
   getDisplayedTrackAwbNumber: (s: AirShipment) => string;
+  isTrackAwbLoading: (s: AirShipment) => boolean;
+  isTrackAwbReady: (s: AirShipment) => boolean;
+  isShipmentAlreadyTracked: (s: AirShipment) => boolean;
+  openTrackModal: (s: AirShipment) => void;
+  onOpenTracking: () => void;
   onOpenQuote: (quoteNumber: string) => void;
   registerSection: (id: string) => (el: HTMLElement | null) => void;
 }
@@ -182,6 +187,11 @@ function GeneralTabContent({
   getAllCommodities,
   formatDate,
   getDisplayedTrackAwbNumber,
+  isTrackAwbLoading,
+  isTrackAwbReady,
+  isShipmentAlreadyTracked,
+  openTrackModal,
+  onOpenTracking,
   onOpenQuote,
   registerSection,
 }: GeneralTabContentProps) {
@@ -221,6 +231,10 @@ function GeneralTabContent({
     : cargoDetail?.hazardous != null
       ? cargoDetail.hazardous
       : undefined;
+
+  const trackLoading = isTrackAwbLoading(shipment);
+  const trackReady = isTrackAwbReady(shipment);
+  const alreadyTracked = isShipmentAlreadyTracked(shipment);
 
   return (
     <>
@@ -278,6 +292,48 @@ function GeneralTabContent({
               : null
           }
         />
+        <FieldGridCell label="Seguimiento de tu operación">
+          {alreadyTracked ? (
+            <button
+              type="button"
+              className="asv-btn asv-btn--sm asv-accordion-track asv-accordion-track--linked asv-accordion-track--live"
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenTracking();
+              }}
+            >
+              <span className="asv-accordion-track__dot-wrap" aria-hidden>
+                <span className="asv-accordion-track__dot-ring" />
+                <span className="asv-accordion-track__dot" />
+              </span>
+              Ver seguimiento
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="asv-btn asv-btn--sm asv-accordion-track asv-accordion-track--primary"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (!trackReady) return;
+                openTrackModal(shipment);
+              }}
+              disabled={!trackReady || trackLoading}
+              title={
+                trackReady
+                  ? undefined
+                  : trackLoading
+                    ? "Espera a que se cargue el Número de Seguimiento."
+                    : "No hay número de seguimiento disponible para este envío."
+              }
+            >
+              {trackLoading
+                ? "Cargando..."
+                : trackReady
+                  ? "Trackea tu envío"
+                  : "Sin seguimiento"}
+            </button>
+          )}
+        </FieldGridCell>
         <FieldGridCell label="Fecha llegada">
           {renderAccordionArrivalDate()}
         </FieldGridCell>
@@ -680,6 +736,11 @@ function AirShipmentDetailPanel({
             getAllCommodities={getAllCommodities}
             formatDate={formatDate}
             getDisplayedTrackAwbNumber={getDisplayedTrackAwbNumber}
+            isTrackAwbLoading={isTrackAwbLoading}
+            isTrackAwbReady={isTrackAwbReady}
+            isShipmentAlreadyTracked={isShipmentAlreadyTracked}
+            openTrackModal={openTrackModal}
+            onOpenTracking={onOpenTracking}
             onOpenQuote={onOpenQuote}
             registerSection={registerSection}
           />

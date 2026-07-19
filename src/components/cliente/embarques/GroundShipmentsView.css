@@ -325,11 +325,9 @@
 @keyframes gsv-fade-up {
   from {
     opacity: 0;
-    transform: translateY(10px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 
@@ -946,7 +944,7 @@
 .gsv-detail__body {
   grid-template-columns: 180px minmax(0, 1fr) 264px;
   gap: 22px;
-  align-items: start;
+  align-items: stretch;
 }
 
 .gsv-detail__sections {
@@ -1003,9 +1001,15 @@
   font-weight: 800;
 }
 
+.gsv-summary {
+  min-width: 0;
+  align-self: stretch;
+}
+
 .gsv-summary__panel {
   position: sticky;
-  top: calc(var(--gsv-sticky-topbar-h) + 10px);
+  top: 8px;
+  z-index: 25;
   overflow: hidden;
   background: var(--gsv-surface);
   border: 1px solid var(--gsv-line);

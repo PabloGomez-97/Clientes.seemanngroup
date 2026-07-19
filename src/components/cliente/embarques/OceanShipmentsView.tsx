@@ -215,6 +215,11 @@ interface OceanGeneralTabContentProps {
   getHBLIFromShipment: (s: OceanShippingOrder) => string | null;
   formatDateLong: (dateString?: string | null) => string;
   getDisplayedTrackingNumber: (s: OceanShippingOrder) => string;
+  isTrackingLoading: (s: OceanShippingOrder) => boolean;
+  isTrackingReady: (s: OceanShippingOrder) => boolean;
+  isOceanShipmentAlreadyTracked: (s: OceanShippingOrder) => boolean;
+  openTrackModal: (s: OceanShippingOrder) => void;
+  onOpenTracking: () => void;
   onOpenQuote: (quoteNumber: string) => void;
   registerSection: (id: string) => (el: HTMLElement | null) => void;
 }
@@ -227,6 +232,11 @@ function OceanGeneralTabContent({
   getHBLIFromShipment,
   formatDateLong,
   getDisplayedTrackingNumber,
+  isTrackingLoading,
+  isTrackingReady,
+  isOceanShipmentAlreadyTracked,
+  openTrackModal,
+  onOpenTracking,
   onOpenQuote,
   registerSection,
 }: OceanGeneralTabContentProps) {
@@ -237,6 +247,10 @@ function OceanGeneralTabContent({
   const containerValue = hbliEntry?.loading
     ? "Cargando..."
     : hbliEntry?.containerNumber;
+
+  const trackLoading = isTrackingLoading(shipment);
+  const trackReady = isTrackingReady(shipment);
+  const alreadyTracked = isOceanShipmentAlreadyTracked(shipment);
 
   return (
     <>
@@ -291,6 +305,48 @@ function OceanGeneralTabContent({
           label="Fecha salida"
           value={formatDateLong(shipment.departureDate)}
         />
+        <FieldGridCell label="Seguimiento de tu operación">
+          {alreadyTracked ? (
+            <button
+              type="button"
+              className="osv-btn osv-btn--sm osv-accordion-track osv-accordion-track--linked osv-accordion-track--live"
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenTracking();
+              }}
+            >
+              <span className="osv-accordion-track__dot-wrap" aria-hidden>
+                <span className="osv-accordion-track__dot-ring" />
+                <span className="osv-accordion-track__dot" />
+              </span>
+              Ver seguimiento
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="osv-btn osv-btn--sm osv-accordion-track osv-accordion-track--primary"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (!trackReady) return;
+                openTrackModal(shipment);
+              }}
+              disabled={!trackReady || trackLoading}
+              title={
+                trackReady
+                  ? undefined
+                  : trackLoading
+                    ? "Espera a que se cargue el Número de Seguimiento."
+                    : "No hay número de seguimiento disponible para este envío."
+              }
+            >
+              {trackLoading
+                ? "Cargando..."
+                : trackReady
+                  ? "Trackea tu envío"
+                  : "Sin seguimiento"}
+            </button>
+          )}
+        </FieldGridCell>
         <FieldGridCell label="Fecha llegada">
           {renderAccordionArrivalDate()}
         </FieldGridCell>
@@ -678,6 +734,11 @@ function OceanShipmentDetailPanel({
             getHBLIFromShipment={getHBLIFromShipment}
             formatDateLong={formatDateLong}
             getDisplayedTrackingNumber={getDisplayedTrackingNumber}
+            isTrackingLoading={isTrackingLoading}
+            isTrackingReady={isTrackingReady}
+            isOceanShipmentAlreadyTracked={isOceanShipmentAlreadyTracked}
+            openTrackModal={openTrackModal}
+            onOpenTracking={onOpenTracking}
             onOpenQuote={onOpenQuote}
             registerSection={registerSection}
           />

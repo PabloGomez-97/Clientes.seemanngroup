@@ -915,11 +915,11 @@ function QuoteDetailPanel({
                     value={quote.destination}
                   />
                   {showTracking ? (
-                    <FieldGridCell label="" action>
+                    <FieldGridCell label="Seguimiento de tu operación">
                       {alreadyTracked && trackType ? (
                         <button
                           type="button"
-                          className="qv-btn qv-accordion-track qv-accordion-track--linked qv-accordion-track--live"
+                          className="qv-btn qv-btn--sm qv-accordion-track qv-accordion-track--linked qv-accordion-track--live"
                           onClick={(e) => {
                             e.stopPropagation();
                             onOpenTracking(trackType);
@@ -937,7 +937,7 @@ function QuoteDetailPanel({
                       ) : (
                         <button
                           type="button"
-                          className="qv-btn qv-accordion-track qv-accordion-track--primary"
+                          className="qv-btn qv-btn--sm qv-accordion-track qv-accordion-track--primary"
                           onClick={(e) => {
                             e.stopPropagation();
                             openTrackModal(quote);
