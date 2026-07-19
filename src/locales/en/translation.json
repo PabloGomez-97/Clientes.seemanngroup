@@ -1176,6 +1176,7 @@
     "summaryAmount": "Estimated amount",
     "summaryValidity": "Validity",
     "summaryStage": "Stage",
+    "summaryTitle": "Summary",
     "detailNavAria": "Quote sections",
     "filterNumber": "Quote #",
     "filterStatus": "Status (valid/expired)",

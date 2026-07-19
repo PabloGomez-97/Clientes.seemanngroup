@@ -215,11 +215,6 @@ interface OceanGeneralTabContentProps {
   getHBLIFromShipment: (s: OceanShippingOrder) => string | null;
   formatDateLong: (dateString?: string | null) => string;
   getDisplayedTrackingNumber: (s: OceanShippingOrder) => string;
-  isTrackingLoading: (s: OceanShippingOrder) => boolean;
-  isTrackingReady: (s: OceanShippingOrder) => boolean;
-  isOceanShipmentAlreadyTracked: (s: OceanShippingOrder) => boolean;
-  openTrackModal: (s: OceanShippingOrder) => void;
-  onOpenTracking: () => void;
   onOpenQuote: (quoteNumber: string) => void;
   registerSection: (id: string) => (el: HTMLElement | null) => void;
 }
@@ -232,11 +227,6 @@ function OceanGeneralTabContent({
   getHBLIFromShipment,
   formatDateLong,
   getDisplayedTrackingNumber,
-  isTrackingLoading,
-  isTrackingReady,
-  isOceanShipmentAlreadyTracked,
-  openTrackModal,
-  onOpenTracking,
   onOpenQuote,
   registerSection,
 }: OceanGeneralTabContentProps) {
@@ -247,10 +237,6 @@ function OceanGeneralTabContent({
   const containerValue = hbliEntry?.loading
     ? "Cargando..."
     : hbliEntry?.containerNumber;
-
-  const trackLoading = isTrackingLoading(shipment);
-  const trackReady = isTrackingReady(shipment);
-  const alreadyTracked = isOceanShipmentAlreadyTracked(shipment);
 
   return (
     <>
@@ -307,48 +293,6 @@ function OceanGeneralTabContent({
         />
         <FieldGridCell label="Fecha llegada">
           {renderAccordionArrivalDate()}
-        </FieldGridCell>
-        <FieldGridCell label="Seguimiento de tu operación">
-          {alreadyTracked ? (
-            <button
-              type="button"
-              className="osv-btn osv-btn--sm osv-accordion-track osv-accordion-track--linked osv-accordion-track--live"
-              onClick={(e) => {
-                e.stopPropagation();
-                onOpenTracking();
-              }}
-            >
-              <span className="osv-accordion-track__dot-wrap" aria-hidden>
-                <span className="osv-accordion-track__dot-ring" />
-                <span className="osv-accordion-track__dot" />
-              </span>
-              Ver seguimiento
-            </button>
-          ) : (
-            <button
-              type="button"
-              className="osv-btn osv-btn--sm osv-accordion-track osv-accordion-track--primary"
-              onClick={(e) => {
-                e.stopPropagation();
-                if (!trackReady) return;
-                openTrackModal(shipment);
-              }}
-              disabled={!trackReady || trackLoading}
-              title={
-                trackReady
-                  ? undefined
-                  : trackLoading
-                    ? "Espera a que se cargue el Número de Seguimiento."
-                    : "No hay número de seguimiento disponible para este envío."
-              }
-            >
-              {trackLoading
-                ? "Cargando..."
-                : trackReady
-                  ? "Trackea tu envío"
-                  : "Sin seguimiento"}
-            </button>
-          )}
         </FieldGridCell>
       </FieldGridSection>
 
@@ -478,6 +422,9 @@ function OceanShipmentDetailPanel({
   onOpenQuote,
 }: OceanShipmentDetailPanelProps) {
   const hasNotes = !!shipment.notes;
+  const trackLoading = isTrackingLoading(shipment);
+  const trackReady = isTrackingReady(shipment);
+  const alreadyTracked = isOceanShipmentAlreadyTracked(shipment);
 
   const [activeSection, setActiveSection] = useState("detalles");
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
@@ -540,63 +487,132 @@ function OceanShipmentDetailPanel({
       sectionRefs.current[id] = el;
     };
 
-  const heroBlock = (
-    <header className="osv-detail__hero">
-      <div className="osv-detail__id">
-        <span className="osv-detail__eyebrow">Referencia Cliente</span>
-        <h2 className="osv-detail__title">
-          {shipment.customerReference || "—"}
-        </h2>
-        <div className="osv-detail__meta">
+  const headerBlock = (
+    <header className="osv-dhead">
+      <div className="osv-dhead__top">
+        <div>
+          <span className="osv-dhead__eyebrow">Referencia Cliente</span>
+          <h2 className="osv-dhead__title">
+            {shipment.customerReference || "—"}
+          </h2>
+        </div>
+        <div className="osv-dhead__side">
           <span className="osv-detail__chip">
             <Ship size={13} aria-hidden />
             Marítimo
           </span>
-          {shipment.number && (
-            <span className="osv-detail__chip">N° {shipment.number}</span>
-          )}
+          <div className="osv-dhead__actions">
+            {quoteDisplay.quoteNumber && !quoteDisplay.loading ? (
+              <button
+                type="button"
+                className="osv-action-btn osv-action-btn--ghost"
+                onClick={() => onOpenQuote(quoteDisplay.quoteNumber!)}
+              >
+                Ver cotización
+              </button>
+            ) : null}
+            {alreadyTracked ? (
+              <button
+                type="button"
+                className="osv-action-btn"
+                onClick={onOpenTracking}
+              >
+                Ver seguimiento
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="osv-action-btn"
+                disabled={!trackReady || trackLoading}
+                onClick={() => {
+                  if (trackReady) openTrackModal(shipment);
+                }}
+              >
+                {trackLoading
+                  ? "Cargando..."
+                  : trackReady
+                    ? "Trackea tu envío"
+                    : "Sin seguimiento"}
+              </button>
+            )}
+          </div>
         </div>
       </div>
-
-      <div className="osv-route">
-        <div className="osv-route__point">
-          <span className="osv-route__label">Origen</span>
-          <span className="osv-route__value">
-            {shipment.executedAt?.name?.trim() || "-"}
-          </span>
-          {shipment.departureDate && (
-            <span className="osv-route__date">
-              {formatDateInline(shipment.departureDate)}
-            </span>
-          )}
+      <dl className="osv-dhead__meta">
+        <div className="osv-dhead__field">
+          <dt>N° de envío</dt>
+          <dd>{shipment.number || "—"}</dd>
         </div>
-        <div className="osv-route__connector" aria-hidden>
-          <span className="osv-route__line" />
-          <span className="osv-route__icon">
-            <Ship size={16} aria-hidden />
-          </span>
-          <span className="osv-route__line" />
-          {shipment.carrier?.name && (
-            <span className="osv-route__transit" title={shipment.carrier.name}>
-              {shipment.carrier.name}
-            </span>
-          )}
+        <div className="osv-dhead__field">
+          <dt>Origen</dt>
+          <dd>{shipment.executedAt?.name?.trim() || "—"}</dd>
         </div>
-        <div className="osv-route__point osv-route__point--end">
-          <span className="osv-route__label">Destino</span>
-          <span className="osv-route__value">
-            {shipment.destination?.name?.trim() || "-"}
-          </span>
-          {effectiveArrivalDate && (
-            <span className="osv-route__date">
-              {effectiveArrivalIsShipsgo
+        <div className="osv-dhead__field">
+          <dt>Destino</dt>
+          <dd>{shipment.destination?.name?.trim() || "—"}</dd>
+        </div>
+        <div className="osv-dhead__field">
+          <dt>Fecha salida</dt>
+          <dd>
+            {shipment.departureDate
+              ? formatDateInline(shipment.departureDate)
+              : "—"}
+          </dd>
+        </div>
+        <div className="osv-dhead__field">
+          <dt>Fecha llegada</dt>
+          <dd>
+            {effectiveArrivalDate
+              ? effectiveArrivalIsShipsgo
                 ? formatShipsgoDateLong(effectiveArrivalDate)
-                : formatDateInline(effectiveArrivalDate)}
-            </span>
-          )}
+                : formatDateInline(effectiveArrivalDate)
+              : "—"}
+          </dd>
         </div>
-      </div>
+        <div className="osv-dhead__field">
+          <dt>Booking</dt>
+          <dd>{shipment.bookingNumber || "—"}</dd>
+        </div>
+      </dl>
     </header>
+  );
+
+  const summaryAside = (
+    <aside className="osv-summary">
+      <div className="osv-summary__panel">
+        <h3 className="osv-summary__title">Resumen</h3>
+        <dl className="osv-summary__rows">
+          <div className="osv-summary__row">
+            <dt>Carrier</dt>
+            <dd>{shipment.carrier?.name || "—"}</dd>
+          </div>
+          <div className="osv-summary__row">
+            <dt>Booking</dt>
+            <dd>{shipment.bookingNumber || shipment.waybillNumber || "—"}</dd>
+          </div>
+          <div className="osv-summary__row">
+            <dt>Tracking</dt>
+            <dd>
+              {trackLoading
+                ? "Cargando"
+                : alreadyTracked
+                  ? "Activo"
+                  : trackReady
+                    ? "Disponible"
+                    : "No disponible"}
+            </dd>
+          </div>
+          <div className="osv-summary__row">
+            <dt>Cotización</dt>
+            <dd>
+              {quoteDisplay.loading
+                ? "Cargando..."
+                : quoteDisplay.quoteNumber || "—"}
+            </dd>
+          </div>
+        </dl>
+      </div>
+    </aside>
   );
 
   if (documentsOnly) {
@@ -608,7 +624,7 @@ function OceanShipmentDetailPanel({
             Volver a embarques
           </button>
         </div>
-        {heroBlock}
+        {headerBlock}
         <div className="osv-detail__docs-only">
           <QuoteOperationalDocumentsSection
             mode="ocean"
@@ -628,6 +644,8 @@ function OceanShipmentDetailPanel({
           Volver a embarques
         </button>
       </div>
+
+      {headerBlock}
 
       <div className="osv-detail__body">
         <aside className="osv-detail__nav">
@@ -651,42 +669,7 @@ function OceanShipmentDetailPanel({
           </nav>
         </aside>
 
-        <main className="osv-detail__sections">
-          {heroBlock}
-
-          <dl className="osv-stats">
-            <div className="osv-stat">
-              <dt className="osv-stat__label">Fecha salida</dt>
-              <dd className="osv-stat__value">
-                {shipment.departureDate
-                  ? formatDateInline(shipment.departureDate)
-                  : "—"}
-              </dd>
-            </div>
-            <div className="osv-stat">
-              <dt className="osv-stat__label">Fecha llegada</dt>
-              <dd className="osv-stat__value">
-                {effectiveArrivalDate
-                  ? effectiveArrivalIsShipsgo
-                    ? formatShipsgoDateLong(effectiveArrivalDate)
-                    : formatDateInline(effectiveArrivalDate)
-                  : "—"}
-              </dd>
-            </div>
-            <div className="osv-stat">
-              <dt className="osv-stat__label">Carrier</dt>
-              <dd className="osv-stat__value">
-                {shipment.carrier?.name || "—"}
-              </dd>
-            </div>
-            <div className="osv-stat">
-              <dt className="osv-stat__label">Booking</dt>
-              <dd className="osv-stat__value">
-                {shipment.bookingNumber || shipment.waybillNumber || "—"}
-              </dd>
-            </div>
-          </dl>
-
+        <main className="osv-detail__sections osv-sheet">
           <OceanGeneralTabContent
             shipment={shipment}
             quoteDisplay={quoteDisplay}
@@ -695,11 +678,6 @@ function OceanShipmentDetailPanel({
             getHBLIFromShipment={getHBLIFromShipment}
             formatDateLong={formatDateLong}
             getDisplayedTrackingNumber={getDisplayedTrackingNumber}
-            isTrackingLoading={isTrackingLoading}
-            isTrackingReady={isTrackingReady}
-            isOceanShipmentAlreadyTracked={isOceanShipmentAlreadyTracked}
-            openTrackModal={openTrackModal}
-            onOpenTracking={onOpenTracking}
             onOpenQuote={onOpenQuote}
             registerSection={registerSection}
           />
@@ -728,6 +706,8 @@ function OceanShipmentDetailPanel({
             </section>
           )}
         </main>
+
+        {summaryAside}
       </div>
     </div>
   );

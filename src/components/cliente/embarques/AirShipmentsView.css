@@ -943,6 +943,233 @@
   color: var(--asv-muted-2);
 }
 
+/* ═══ DETALLE PLANO 2026 ═════════════════════════════════════════════════ */
+.asv-dhead {
+  background: var(--asv-surface);
+  border: 1px solid var(--asv-line);
+  border-radius: var(--asv-radius);
+  box-shadow: var(--asv-shadow);
+  overflow: hidden;
+}
+
+.asv-dhead__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 20px 26px;
+}
+
+.asv-dhead__eyebrow {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--asv-orange);
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.asv-dhead__title {
+  margin: 0;
+  color: var(--asv-ink);
+  font-size: clamp(1.15rem, 2.4vw, 1.45rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.asv-dhead__side,
+.asv-dhead__actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.asv-dhead__side {
+  gap: 10px;
+}
+
+.asv-dhead__meta {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  margin: 0;
+  background: #fafbfc;
+  border-top: 1px solid var(--asv-line);
+}
+
+.asv-dhead__field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  padding: 12px 18px;
+}
+
+.asv-dhead__field + .asv-dhead__field {
+  border-left: 1px solid var(--asv-line);
+}
+
+.asv-dhead__field dt,
+.asv-summary__row dt {
+  color: var(--asv-muted-2);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.asv-dhead__field dd,
+.asv-summary__row dd {
+  margin: 0;
+  color: var(--asv-ink);
+  font-size: 0.84rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.asv-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 6px 12px;
+  border: 1px solid var(--asv-dark);
+  border-radius: 8px;
+  background: var(--asv-dark);
+  color: #fff;
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.asv-action-btn--ghost {
+  background: var(--asv-surface);
+  border-color: var(--asv-line-strong);
+  color: var(--asv-ink);
+}
+
+.asv-action-btn:hover:not(:disabled) {
+  background: #111827;
+  border-color: #111827;
+  color: #fff;
+}
+
+.asv-action-btn--ghost:hover:not(:disabled) {
+  background: #f3f5f7;
+  border-color: var(--asv-dark);
+  color: var(--asv-ink);
+}
+
+.asv-action-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.asv-detail__body {
+  grid-template-columns: 180px minmax(0, 1fr) 264px;
+  gap: 22px;
+  align-items: start;
+}
+
+.asv-detail__sections {
+  gap: 0;
+}
+
+.asv-sheet {
+  background: var(--asv-surface);
+  border: 1px solid var(--asv-line);
+  border-radius: var(--asv-radius);
+  box-shadow: var(--asv-shadow);
+  overflow: hidden;
+}
+
+.asv-sheet .asv-dsection {
+  padding: 0 0 22px;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.asv-sheet .asv-dsection__title {
+  margin: 0 0 4px;
+  padding: 10px 26px;
+  background: #f3f5f7;
+  border-top: 1px solid var(--asv-line);
+  border-bottom: 1px solid var(--asv-line);
+  color: var(--asv-muted);
+  font-size: 0.66rem;
+}
+
+.asv-sheet .asv-dsection:first-child .asv-dsection__title {
+  border-top: 0;
+}
+
+.asv-sheet .asv-field-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 44px;
+  padding: 4px 26px 0;
+}
+
+.asv-sheet .asv-field-cell {
+  padding: 10px 0 9px;
+  border-bottom: 1px solid #eef0f3;
+}
+
+.asv-sheet .asv-dsection > *:not(.asv-dsection__title):not(.asv-field-grid) {
+  margin: 14px 26px 0;
+}
+
+.asv-summary__panel {
+  position: sticky;
+  top: calc(var(--asv-sticky-topbar-h) + 10px);
+  overflow: hidden;
+  background: var(--asv-surface);
+  border: 1px solid var(--asv-line);
+  border-radius: var(--asv-radius);
+  box-shadow: var(--asv-shadow);
+}
+
+.asv-summary__title {
+  margin: 0;
+  padding: 12px 18px;
+  background: #fafbfc;
+  border-bottom: 1px solid var(--asv-line);
+  color: var(--asv-muted-2);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.asv-summary__rows {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+
+.asv-summary__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 18px;
+}
+
+.asv-summary__row + .asv-summary__row {
+  border-top: 1px solid var(--asv-line);
+}
+
+.asv-summary__row dd {
+  text-align: right;
+}
+
 /* ═══ RESPONSIVE ═════════════════════════════════════════════════════════ */
 @media (max-width: 1199px) {
   .asv-detail {
@@ -997,12 +1224,45 @@
     color: #fff;
   }
 
-  .asv-stats {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .asv-summary {
+    order: -1;
+  }
+
+  .asv-summary__panel {
+    position: static;
+  }
+
+  .asv-summary__rows {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .asv-summary__row {
+    flex: 1 1 180px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .asv-summary__row + .asv-summary__row {
+    border-top: 0;
+    border-left: 1px solid var(--asv-line);
   }
 }
 
 @media (max-width: 991px) {
+  .asv-dhead__meta {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .asv-dhead__field:nth-child(3n + 1) {
+    border-left: 0;
+  }
+
+  .asv-dhead__field:nth-child(n + 4) {
+    border-top: 1px solid var(--asv-line);
+  }
+
   .asv-detail__hero {
     grid-template-columns: minmax(0, 1fr);
     gap: 20px;
@@ -1025,8 +1285,38 @@
     gap: 12px;
   }
 
-  .asv-detail__hero {
-    padding: 18px 16px;
+  .asv-dhead__top {
+    padding: 16px 18px;
+  }
+
+  .asv-dhead__meta {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .asv-dhead__field:nth-child(3n + 1) {
+    border-left: 1px solid var(--asv-line);
+  }
+
+  .asv-dhead__field:nth-child(odd) {
+    border-left: 0;
+  }
+
+  .asv-dhead__field:nth-child(n + 3) {
+    border-top: 1px solid var(--asv-line);
+  }
+
+  .asv-sheet .asv-dsection__title {
+    padding: 10px 16px;
+  }
+
+  .asv-sheet .asv-field-grid {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 4px 16px 0;
+  }
+
+  .asv-sheet .asv-dsection > *:not(.asv-dsection__title):not(.asv-field-grid) {
+    margin-left: 16px;
+    margin-right: 16px;
   }
 
   .asv-route {

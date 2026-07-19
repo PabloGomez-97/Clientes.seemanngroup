@@ -921,6 +921,233 @@
   color: var(--osv-muted);
 }
 
+/* ═══ DETALLE PLANO 2026 ═════════════════════════════════════════════════ */
+.osv-dhead {
+  background: var(--osv-surface);
+  border: 1px solid var(--osv-line);
+  border-radius: var(--osv-radius);
+  box-shadow: var(--osv-shadow);
+  overflow: hidden;
+}
+
+.osv-dhead__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 20px 26px;
+}
+
+.osv-dhead__eyebrow {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--osv-orange);
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.osv-dhead__title {
+  margin: 0;
+  color: var(--osv-ink);
+  font-size: clamp(1.15rem, 2.4vw, 1.45rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.osv-dhead__side,
+.osv-dhead__actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.osv-dhead__side {
+  gap: 10px;
+}
+
+.osv-dhead__meta {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  margin: 0;
+  background: #fafbfc;
+  border-top: 1px solid var(--osv-line);
+}
+
+.osv-dhead__field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  padding: 12px 18px;
+}
+
+.osv-dhead__field + .osv-dhead__field {
+  border-left: 1px solid var(--osv-line);
+}
+
+.osv-dhead__field dt,
+.osv-summary__row dt {
+  color: var(--osv-muted-2);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.osv-dhead__field dd,
+.osv-summary__row dd {
+  margin: 0;
+  color: var(--osv-ink);
+  font-size: 0.84rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.osv-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 6px 12px;
+  border: 1px solid var(--osv-dark);
+  border-radius: 8px;
+  background: var(--osv-dark);
+  color: #fff;
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.osv-action-btn--ghost {
+  background: var(--osv-surface);
+  border-color: var(--osv-line-strong);
+  color: var(--osv-ink);
+}
+
+.osv-action-btn:hover:not(:disabled) {
+  background: #111827;
+  border-color: #111827;
+  color: #fff;
+}
+
+.osv-action-btn--ghost:hover:not(:disabled) {
+  background: #f3f5f7;
+  border-color: var(--osv-dark);
+  color: var(--osv-ink);
+}
+
+.osv-action-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.osv-detail__body {
+  grid-template-columns: 180px minmax(0, 1fr) 264px;
+  gap: 22px;
+  align-items: start;
+}
+
+.osv-detail__sections {
+  gap: 0;
+}
+
+.osv-sheet {
+  overflow: hidden;
+  background: var(--osv-surface);
+  border: 1px solid var(--osv-line);
+  border-radius: var(--osv-radius);
+  box-shadow: var(--osv-shadow);
+}
+
+.osv-sheet .osv-dsection {
+  padding: 0 0 22px;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.osv-sheet .osv-dsection__title {
+  margin: 0 0 4px;
+  padding: 10px 26px;
+  background: #f3f5f7;
+  border-top: 1px solid var(--osv-line);
+  border-bottom: 1px solid var(--osv-line);
+  color: var(--osv-muted);
+  font-size: 0.66rem;
+}
+
+.osv-sheet .osv-dsection:first-child .osv-dsection__title {
+  border-top: 0;
+}
+
+.osv-sheet .osv-field-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 44px;
+  padding: 4px 26px 0;
+}
+
+.osv-sheet .osv-field-cell {
+  padding: 10px 0 9px;
+  border-bottom: 1px solid #eef0f3;
+}
+
+.osv-sheet .osv-dsection > *:not(.osv-dsection__title):not(.osv-field-grid) {
+  margin: 14px 26px 0;
+}
+
+.osv-summary__panel {
+  position: sticky;
+  top: calc(var(--osv-sticky-topbar-h) + 10px);
+  overflow: hidden;
+  background: var(--osv-surface);
+  border: 1px solid var(--osv-line);
+  border-radius: var(--osv-radius);
+  box-shadow: var(--osv-shadow);
+}
+
+.osv-summary__title {
+  margin: 0;
+  padding: 12px 18px;
+  background: #fafbfc;
+  border-bottom: 1px solid var(--osv-line);
+  color: var(--osv-muted-2);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.osv-summary__rows {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+
+.osv-summary__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 18px;
+}
+
+.osv-summary__row + .osv-summary__row {
+  border-top: 1px solid var(--osv-line);
+}
+
+.osv-summary__row dd {
+  text-align: right;
+}
+
 /* ═══ RESPONSIVE ═════════════════════════════════════════════════════════ */
 @media (max-width: 1199px) {
   .osv-detail {
@@ -975,12 +1202,45 @@
     color: #fff;
   }
 
-  .osv-stats {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .osv-summary {
+    order: -1;
+  }
+
+  .osv-summary__panel {
+    position: static;
+  }
+
+  .osv-summary__rows {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .osv-summary__row {
+    flex: 1 1 180px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .osv-summary__row + .osv-summary__row {
+    border-top: 0;
+    border-left: 1px solid var(--osv-line);
   }
 }
 
 @media (max-width: 991px) {
+  .osv-dhead__meta {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .osv-dhead__field:nth-child(3n + 1) {
+    border-left: 0;
+  }
+
+  .osv-dhead__field:nth-child(n + 4) {
+    border-top: 1px solid var(--osv-line);
+  }
+
   .osv-detail__hero {
     grid-template-columns: minmax(0, 1fr);
     gap: 20px;
@@ -1003,8 +1263,38 @@
     gap: 12px;
   }
 
-  .osv-detail__hero {
-    padding: 18px 16px;
+  .osv-dhead__top {
+    padding: 16px 18px;
+  }
+
+  .osv-dhead__meta {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .osv-dhead__field:nth-child(3n + 1) {
+    border-left: 1px solid var(--osv-line);
+  }
+
+  .osv-dhead__field:nth-child(odd) {
+    border-left: 0;
+  }
+
+  .osv-dhead__field:nth-child(n + 3) {
+    border-top: 1px solid var(--osv-line);
+  }
+
+  .osv-sheet .osv-dsection__title {
+    padding: 10px 16px;
+  }
+
+  .osv-sheet .osv-field-grid {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 4px 16px 0;
+  }
+
+  .osv-sheet .osv-dsection > *:not(.osv-dsection__title):not(.osv-field-grid) {
+    margin-left: 16px;
+    margin-right: 16px;
   }
 
   .osv-route {

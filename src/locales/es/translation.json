@@ -1177,6 +1177,7 @@
     "summaryAmount": "Monto estimado",
     "summaryValidity": "Vigencia",
     "summaryStage": "Etapa",
+    "summaryTitle": "Resumen",
     "detailNavAria": "Secciones de la cotización",
     "filterNumber": "N° Cotización",
     "filterStatus": "Estado (válida/vencida)",

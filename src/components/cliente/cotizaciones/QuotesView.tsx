@@ -601,59 +601,146 @@ function QuoteDetailPanel({
       sectionRefs.current[id] = el;
     };
 
-  const heroBlock = (
-    <header className="qv-detail__hero">
-      <div className="qv-detail__id">
-        <span className="qv-detail__eyebrow">
-          {t("quotesView.customerRef")}
-        </span>
-        <h2 className="qv-detail__title">{quote.customerReference || "—"}</h2>
-        <div className="qv-detail__meta">
+  const pdfActions = hasPdf ? (
+    <div className="qv-dhead__actions">
+      <button
+        type="button"
+        className="qv-action-btn"
+        disabled={downloadingPDF === quoteNumber}
+        onClick={(e) => {
+          e.stopPropagation();
+          onDownloadPdf(quoteNumber);
+        }}
+      >
+        {downloadingPDF === quoteNumber ? (
+          <span
+            className="spinner-border spinner-border-sm"
+            style={{ width: "11px", height: "11px" }}
+          />
+        ) : (
+          <Download size={13} strokeWidth={2} aria-hidden />
+        )}
+        PDF
+      </button>
+      <QuotePdfResendCell
+        quoteNumber={quote.number || ""}
+        hasPdf={hasPdf}
+        customerReference={quote.customerReference}
+        ownerUsername={resendOwnerUsername}
+        token={resendToken}
+        isSending={resendingPDF === quoteNumber}
+        onSend={async (params) => {
+          await onResendPdf(params);
+        }}
+        triggerLabel={t("quotesView.resendShort")}
+        triggerClassName="qv-action-btn qv-action-btn--ghost"
+      />
+    </div>
+  ) : null;
+
+  const headerBlock = (
+    <header className="qv-dhead">
+      <div className="qv-dhead__top">
+        <div className="qv-dhead__id">
+          <span className="qv-dhead__eyebrow">
+            {t("quotesView.customerRef")}
+          </span>
+          <h2 className="qv-dhead__title">{quote.customerReference || "—"}</h2>
+        </div>
+        <div className="qv-dhead__side">
           <span className="qv-detail__chip">
             <TransportModeIcon quote={quote} size={13} />
             {transportLabel === "-" ? "—" : transportLabel}
           </span>
-          <span className="qv-detail__chip">
-            {t("quotesView.quoteNumber")} {quote.number || "—"}
-          </span>
+          {pdfActions}
         </div>
       </div>
 
-      <div className="qv-route">
-        <div className="qv-route__point">
-          <span className="qv-route__label">{t("quotesView.origin")}</span>
-          <span className="qv-route__value">{quote.origin || "N/A"}</span>
-          {quote.deperture_Date && (
-            <span className="qv-route__date">
-              {formatDateShort(quote.deperture_Date)}
-            </span>
-          )}
+      <dl className="qv-dhead__meta">
+        <div className="qv-dhead__field">
+          <dt>{t("quotesView.quoteNumber")}</dt>
+          <dd>{quote.number || "—"}</dd>
         </div>
-        <div className="qv-route__connector" aria-hidden>
-          <span className="qv-route__line" />
-          <span className="qv-route__icon">
-            <TransportModeIcon quote={quote} size={16} />
-          </span>
-          <span className="qv-route__line" />
-          {quote.transitDays != null && (
-            <span className="qv-route__transit">
-              {quote.transitDays} {t("quotesView.transitDays")}
-            </span>
-          )}
+        <div className="qv-dhead__field">
+          <dt>{t("quotesView.origin")}</dt>
+          <dd>{quote.origin || "—"}</dd>
         </div>
-        <div className="qv-route__point qv-route__point--end">
-          <span className="qv-route__label">
-            {t("quotesView.destination")}
-          </span>
-          <span className="qv-route__value">{quote.destination || "N/A"}</span>
-          {quote.arrival_Date && (
-            <span className="qv-route__date">
-              {formatDateShort(quote.arrival_Date)}
-            </span>
-          )}
+        <div className="qv-dhead__field">
+          <dt>{t("quotesView.destination")}</dt>
+          <dd>{quote.destination || "—"}</dd>
         </div>
-      </div>
+        <div className="qv-dhead__field">
+          <dt>{t("quotesView.thTransit")}</dt>
+          <dd>
+            {quote.transitDays != null
+              ? `${quote.transitDays} ${t("quotesView.transitDays")}`
+              : "—"}
+          </dd>
+        </div>
+        <div className="qv-dhead__field">
+          <dt>{t("quotesView.issueDate")}</dt>
+          <dd>{quote.date ? formatDateShort(quote.date) : "—"}</dd>
+        </div>
+        <div className="qv-dhead__field">
+          <dt>{t("quotesView.validUntil")}</dt>
+          <dd>
+            {quote.validUntil_Date
+              ? formatDateShort(quote.validUntil_Date)
+              : "—"}
+          </dd>
+        </div>
+      </dl>
     </header>
+  );
+
+  const summaryAside = (
+    <aside className="qv-summary">
+      <div className="qv-summary__panel">
+        <h3 className="qv-summary__title">{t("quotesView.summaryTitle")}</h3>
+        <div className="qv-summary__amount">
+          <span className="qv-summary__amount-value">
+            {formatCLP(quote.totalCharge_IncomeDisplayValue) || "$0 CLP"}
+          </span>
+          <span className="qv-summary__amount-label">
+            {t("quotesView.summaryAmount")}
+          </span>
+        </div>
+        <dl className="qv-summary__rows">
+          <div className="qv-summary__row">
+            <dt>{t("quotesView.summaryValidity")}</dt>
+            <dd>
+              {quote.validUntil_Date
+                ? formatDateShort(quote.validUntil_Date)
+                : "—"}
+              {quoteValid !== null && (
+                <span
+                  className={`qv-summary__hint ${quoteValid ? "qv-summary__hint--ok" : "qv-summary__hint--off"}`}
+                >
+                  <span className="qv-summary__dot" aria-hidden />
+                  {quoteValid
+                    ? t("quotesView.statusValid")
+                    : t("quotesView.statusExpired")}
+                </span>
+              )}
+            </dd>
+          </div>
+          <div className="qv-summary__row">
+            <dt>{t("quotesView.thTransit")}</dt>
+            <dd>
+              {quote.transitDays != null
+                ? `${quote.transitDays} ${t("quotesView.transitDays")}`
+                : "—"}
+            </dd>
+          </div>
+          <div className="qv-summary__row">
+            <dt>{t("quotesView.summaryStage")}</dt>
+            <dd>
+              <FlowBadge currentFlow={quote.currentFlow} />
+            </dd>
+          </div>
+        </dl>
+      </div>
+    </aside>
   );
 
   if (documentsOnly) {
@@ -665,7 +752,7 @@ function QuoteDetailPanel({
             {t("quotesView.backToList")}
           </button>
         </div>
-        {heroBlock}
+        {headerBlock}
         <div className="qv-detail__docs-only">
           <QuoteDocumentsTabs
             quote={quote}
@@ -684,6 +771,8 @@ function QuoteDetailPanel({
           {t("quotesView.backToList")}
         </button>
       </div>
+
+      {headerBlock}
 
       <div className="qv-detail__body">
         <aside className="qv-detail__nav">
@@ -712,59 +801,7 @@ function QuoteDetailPanel({
           setDocumentCounts={setDocumentCounts}
         >
           {({ onCotizacionCountChange, onOperacionalCountChange }) => (
-            <main className="qv-detail__sections">
-              {heroBlock}
-
-              <dl className="qv-stats">
-                <div className="qv-stat">
-                  <dt className="qv-stat__label">
-                    {t("quotesView.summaryAmount")}
-                  </dt>
-                  <dd className="qv-stat__value qv-stat__value--amount">
-                    {formatCLP(quote.totalCharge_IncomeDisplayValue) ||
-                      "$0 CLP"}
-                  </dd>
-                </div>
-                <div className="qv-stat">
-                  <dt className="qv-stat__label">
-                    {t("quotesView.summaryValidity")}
-                  </dt>
-                  <dd className="qv-stat__value">
-                    {quote.validUntil_Date
-                      ? formatDateShort(quote.validUntil_Date)
-                      : "—"}
-                  </dd>
-                  {quoteValid !== null && (
-                    <dd
-                      className={`qv-stat__hint ${quoteValid ? "qv-stat__hint--ok" : "qv-stat__hint--off"}`}
-                    >
-                      <span className="qv-stat__dot" aria-hidden />
-                      {quoteValid
-                        ? t("quotesView.statusValid")
-                        : t("quotesView.statusExpired")}
-                    </dd>
-                  )}
-                </div>
-                <div className="qv-stat">
-                  <dt className="qv-stat__label">
-                    {t("quotesView.thTransit")}
-                  </dt>
-                  <dd className="qv-stat__value">
-                    {quote.transitDays != null
-                      ? `${quote.transitDays} ${t("quotesView.transitDays")}`
-                      : "—"}
-                  </dd>
-                </div>
-                <div className="qv-stat">
-                  <dt className="qv-stat__label">
-                    {t("quotesView.summaryStage")}
-                  </dt>
-                  <dd className="qv-stat__value qv-stat__value--badge">
-                    <FlowBadge currentFlow={quote.currentFlow} />
-                  </dd>
-                </div>
-              </dl>
-
+            <main className="qv-detail__sections qv-sheet">
               {/* ── Resumen ── */}
               <section
                 ref={registerSection("resumen")}
@@ -835,51 +872,6 @@ function QuoteDetailPanel({
                     value={quote.carrierBroker}
                   />
                   <FieldGridCell label="ID interno" value={quote.id} />
-                  <FieldGridCell label={t("quotesView.thPDF")} action>
-                    {hasPdf ? (
-                      <button
-                        type="button"
-                        className="qv-action-btn"
-                        disabled={downloadingPDF === quoteNumber}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onDownloadPdf(quoteNumber);
-                        }}
-                      >
-                        {downloadingPDF === quoteNumber ? (
-                          <span
-                            className="spinner-border spinner-border-sm"
-                            style={{ width: "11px", height: "11px" }}
-                          />
-                        ) : (
-                          <Download size={13} strokeWidth={2} aria-hidden />
-                        )}
-                        {t("quotesView.download")} PDF
-                      </button>
-                    ) : (
-                      <span className="qv-field-cell__value qv-field-cell__value--muted">
-                        —
-                      </span>
-                    )}
-                  </FieldGridCell>
-                  <FieldGridCell
-                    label={t("quotesView.sendPdfByEmail")}
-                    action={hasPdf}
-                  >
-                    <QuotePdfResendCell
-                      quoteNumber={quote.number || ""}
-                      hasPdf={hasPdf}
-                      customerReference={quote.customerReference}
-                      ownerUsername={resendOwnerUsername}
-                      token={resendToken}
-                      isSending={resendingPDF === quoteNumber}
-                      onSend={async (params) => {
-                        await onResendPdf(params);
-                      }}
-                      triggerLabel={t("quotesView.resendShort")}
-                      triggerClassName="qv-action-btn"
-                    />
-                  </FieldGridCell>
                 </div>
               </section>
 
@@ -1009,19 +1001,13 @@ function QuoteDetailPanel({
                 <h3 className="qv-dsection__title">
                   {t("quotesView.tabFinancial")}
                 </h3>
-                <div className="qv-amount">
-                  <span className="qv-amount__value">
-                    {formatCLP(quote.totalCharge_IncomeDisplayValue) ||
-                      "$0 CLP"}
-                  </span>
-                  <span className="qv-amount__label">
-                    {t("quotesView.totalExpense")}
-                  </span>
-                  <span className="qv-amount__hint">
-                    {t("quotesView.estimatedAmount")}
-                  </span>
-                </div>
                 <div className="qv-field-grid">
+                  <FieldGridCell label={t("quotesView.summaryAmount")}>
+                    <span className="qv-field-cell__value qv-field-cell__value--finance">
+                      {formatCLP(quote.totalCharge_IncomeDisplayValue) ||
+                        "$0 CLP"}
+                    </span>
+                  </FieldGridCell>
                   <FieldGridCell
                     label="Flujo actual"
                     value={quote.currentFlow}
@@ -1088,6 +1074,8 @@ function QuoteDetailPanel({
             </main>
           )}
         </QuoteDocumentCountBridge>
+
+        {summaryAside}
       </div>
     </div>
   );

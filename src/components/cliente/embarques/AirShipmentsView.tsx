@@ -169,11 +169,6 @@ interface GeneralTabContentProps {
   getAllCommodities: (s: AirShipment) => any[];
   formatDate: (dateObj: unknown) => string;
   getDisplayedTrackAwbNumber: (s: AirShipment) => string;
-  isTrackAwbLoading: (s: AirShipment) => boolean;
-  isTrackAwbReady: (s: AirShipment) => boolean;
-  isShipmentAlreadyTracked: (s: AirShipment) => boolean;
-  openTrackModal: (s: AirShipment) => void;
-  onOpenTracking: () => void;
   onOpenQuote: (quoteNumber: string) => void;
   registerSection: (id: string) => (el: HTMLElement | null) => void;
 }
@@ -187,11 +182,6 @@ function GeneralTabContent({
   getAllCommodities,
   formatDate,
   getDisplayedTrackAwbNumber,
-  isTrackAwbLoading,
-  isTrackAwbReady,
-  isShipmentAlreadyTracked,
-  openTrackModal,
-  onOpenTracking,
   onOpenQuote,
   registerSection,
 }: GeneralTabContentProps) {
@@ -231,10 +221,6 @@ function GeneralTabContent({
     : cargoDetail?.hazardous != null
       ? cargoDetail.hazardous
       : undefined;
-
-  const trackLoading = isTrackAwbLoading(shipment);
-  const isTrackReady = isTrackAwbReady(shipment);
-  const alreadyTracked = isShipmentAlreadyTracked(shipment);
 
   return (
     <>
@@ -294,48 +280,6 @@ function GeneralTabContent({
         />
         <FieldGridCell label="Fecha llegada">
           {renderAccordionArrivalDate()}
-        </FieldGridCell>
-        <FieldGridCell label="Seguimiento de tu operación">
-          {alreadyTracked ? (
-            <button
-              type="button"
-              className="asv-btn asv-btn--sm asv-accordion-track asv-accordion-track--linked asv-accordion-track--live"
-              onClick={(e) => {
-                e.stopPropagation();
-                onOpenTracking();
-              }}
-            >
-              <span className="asv-accordion-track__dot-wrap" aria-hidden>
-                <span className="asv-accordion-track__dot-ring" />
-                <span className="asv-accordion-track__dot" />
-              </span>
-              Ver seguimiento
-            </button>
-          ) : (
-            <button
-              type="button"
-              className="asv-btn asv-btn--sm asv-accordion-track asv-accordion-track--primary"
-              onClick={(e) => {
-                e.stopPropagation();
-                if (!isTrackReady) return;
-                openTrackModal(shipment);
-              }}
-              disabled={!isTrackReady || trackLoading}
-              title={
-                isTrackReady
-                  ? undefined
-                  : trackLoading
-                    ? "Espera a que se cargue el Número de Seguimiento."
-                    : "No hay número de seguimiento disponible para este envío."
-              }
-            >
-              {trackLoading
-                ? "Cargando..."
-                : isTrackReady
-                  ? "Trackea tu envío"
-                  : "Sin seguimiento"}
-            </button>
-          )}
         </FieldGridCell>
       </FieldGridSection>
 
@@ -481,6 +425,9 @@ function AirShipmentDetailPanel({
   onOpenQuote,
 }: AirShipmentDetailPanelProps) {
   const hasNotes = !!shipment.notes;
+  const trackLoading = isTrackAwbLoading(shipment);
+  const trackReady = isTrackAwbReady(shipment);
+  const alreadyTracked = isShipmentAlreadyTracked(shipment);
 
   const [activeSection, setActiveSection] = useState("detalles");
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
@@ -543,65 +490,130 @@ function AirShipmentDetailPanel({
       sectionRefs.current[id] = el;
     };
 
-  const heroBlock = (
-    <header className="asv-detail__hero">
-      <div className="asv-detail__id">
-        <span className="asv-detail__eyebrow">Referencia Cliente</span>
-        <h2 className="asv-detail__title">
-          {shipment.customerReference || "—"}
-        </h2>
-        <div className="asv-detail__meta">
+  const headerBlock = (
+    <header className="asv-dhead">
+      <div className="asv-dhead__top">
+        <div>
+          <span className="asv-dhead__eyebrow">Referencia Cliente</span>
+          <h2 className="asv-dhead__title">
+            {shipment.customerReference || "—"}
+          </h2>
+        </div>
+        <div className="asv-dhead__side">
           <span className="asv-detail__chip">
             <Plane size={13} aria-hidden />
             Aéreo
           </span>
-          {shipment.number && (
-            <span className="asv-detail__chip">N° {shipment.number}</span>
-          )}
+          <div className="asv-dhead__actions">
+            {quoteEntry?.quoteNumber && !quoteEntry.loading ? (
+              <button
+                type="button"
+                className="asv-action-btn asv-action-btn--ghost"
+                onClick={() => onOpenQuote(quoteEntry.quoteNumber!)}
+              >
+                Ver cotización
+              </button>
+            ) : null}
+            {alreadyTracked ? (
+              <button
+                type="button"
+                className="asv-action-btn"
+                onClick={onOpenTracking}
+              >
+                Ver seguimiento
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="asv-action-btn"
+                disabled={!trackReady || trackLoading}
+                onClick={() => {
+                  if (trackReady) openTrackModal(shipment);
+                }}
+              >
+                {trackLoading
+                  ? "Cargando..."
+                  : trackReady
+                    ? "Trackea tu envío"
+                    : "Sin seguimiento"}
+              </button>
+            )}
+          </div>
         </div>
       </div>
-
-      <div className="asv-route">
-        <div className="asv-route__point">
-          <span className="asv-route__label">Aeropuerto de Carga</span>
-          <span className="asv-route__value">
-            {formatAirportCell(shipment, "origin")}
-          </span>
-          {shipment.departure?.displayDate && (
-            <span className="asv-route__date">
-              {formatDateInline(
-                shipment.departure?.date ?? shipment.departure?.displayDate,
-              )}
-            </span>
-          )}
+      <dl className="asv-dhead__meta">
+        <div className="asv-dhead__field">
+          <dt>N° de envío</dt>
+          <dd>{shipment.number || "—"}</dd>
         </div>
-        <div className="asv-route__connector" aria-hidden>
-          <span className="asv-route__line" />
-          <span className="asv-route__icon">
-            <Plane size={16} aria-hidden />
-          </span>
-          <span className="asv-route__line" />
-          {shipment.carrier?.name && (
-            <span className="asv-route__transit" title={shipment.carrier.name}>
-              {shipment.carrier.name}
-            </span>
-          )}
+        <div className="asv-dhead__field">
+          <dt>Origen</dt>
+          <dd>{formatAirportCell(shipment, "origin")}</dd>
         </div>
-        <div className="asv-route__point asv-route__point--end">
-          <span className="asv-route__label">Aeropuerto de Descarga</span>
-          <span className="asv-route__value">
-            {formatAirportCell(shipment, "dest")}
-          </span>
-          {effectiveArrivalDisplayDate && (
-            <span className="asv-route__date">
-              {effectiveArrivalIsShipsgo
+        <div className="asv-dhead__field">
+          <dt>Destino</dt>
+          <dd>{formatAirportCell(shipment, "dest")}</dd>
+        </div>
+        <div className="asv-dhead__field">
+          <dt>Fecha salida</dt>
+          <dd>
+            {shipment.departure
+              ? formatDateInline(
+                  shipment.departure.date ?? shipment.departure.displayDate,
+                )
+              : "—"}
+          </dd>
+        </div>
+        <div className="asv-dhead__field">
+          <dt>Fecha llegada</dt>
+          <dd>
+            {effectiveArrivalDisplayDate
+              ? effectiveArrivalIsShipsgo
                 ? formatShipsgoDateLong(effectiveArrivalDisplayDate)
-                : formatDateInline(effectiveArrivalDisplayDate)}
-            </span>
-          )}
+                : formatDateInline(effectiveArrivalDisplayDate)
+              : "—"}
+          </dd>
         </div>
-      </div>
+        <div className="asv-dhead__field">
+          <dt>Waybill</dt>
+          <dd>{shipment.waybillNumber || "—"}</dd>
+        </div>
+      </dl>
     </header>
+  );
+
+  const summaryAside = (
+    <aside className="asv-summary">
+      <div className="asv-summary__panel">
+        <h3 className="asv-summary__title">Resumen</h3>
+        <dl className="asv-summary__rows">
+          <div className="asv-summary__row">
+            <dt>Carrier</dt>
+            <dd>{shipment.carrier?.name || "—"}</dd>
+          </div>
+          <div className="asv-summary__row">
+            <dt>Waybill</dt>
+            <dd>{shipment.waybillNumber || "—"}</dd>
+          </div>
+          <div className="asv-summary__row">
+            <dt>Tracking</dt>
+            <dd>
+              {trackLoading
+                ? "Cargando"
+                : alreadyTracked
+                  ? "Activo"
+                  : trackReady
+                    ? "Disponible"
+                    : "No disponible"}
+            </dd>
+          </div>
+          <div className="asv-summary__row">
+            <dt>Cotización</dt>
+            <dd>{quoteEntry?.loading ? "Cargando..." : quoteEntry?.quoteNumber || "—"}</dd>
+          </div>
+        </dl>
+      </div>
+    </aside>
   );
 
   if (documentsOnly) {
@@ -613,7 +625,7 @@ function AirShipmentDetailPanel({
             Volver a embarques
           </button>
         </div>
-        {heroBlock}
+        {headerBlock}
         <div className="asv-detail__docs-only">
           <QuoteOperationalDocumentsSection
             mode="air"
@@ -633,6 +645,8 @@ function AirShipmentDetailPanel({
           Volver a embarques
         </button>
       </div>
+
+      {headerBlock}
 
       <div className="asv-detail__body">
         <aside className="asv-detail__nav">
@@ -656,45 +670,7 @@ function AirShipmentDetailPanel({
           </nav>
         </aside>
 
-        <main className="asv-detail__sections">
-          {heroBlock}
-
-          <dl className="asv-stats">
-            <div className="asv-stat">
-              <dt className="asv-stat__label">Fecha salida</dt>
-              <dd className="asv-stat__value">
-                {shipment.departure
-                  ? formatDateInline(
-                      shipment.departure?.date ??
-                        shipment.departure?.displayDate,
-                    )
-                  : "—"}
-              </dd>
-            </div>
-            <div className="asv-stat">
-              <dt className="asv-stat__label">Fecha llegada</dt>
-              <dd className="asv-stat__value">
-                {effectiveArrivalDisplayDate
-                  ? effectiveArrivalIsShipsgo
-                    ? formatShipsgoDateLong(effectiveArrivalDisplayDate)
-                    : formatDateInline(effectiveArrivalDisplayDate)
-                  : "—"}
-              </dd>
-            </div>
-            <div className="asv-stat">
-              <dt className="asv-stat__label">Carrier</dt>
-              <dd className="asv-stat__value">
-                {shipment.carrier?.name || "—"}
-              </dd>
-            </div>
-            <div className="asv-stat">
-              <dt className="asv-stat__label">Waybill</dt>
-              <dd className="asv-stat__value">
-                {shipment.waybillNumber || "—"}
-              </dd>
-            </div>
-          </dl>
-
+        <main className="asv-detail__sections asv-sheet">
           <GeneralTabContent
             shipment={shipment}
             cargoDetail={cargoDetail}
@@ -704,11 +680,6 @@ function AirShipmentDetailPanel({
             getAllCommodities={getAllCommodities}
             formatDate={formatDate}
             getDisplayedTrackAwbNumber={getDisplayedTrackAwbNumber}
-            isTrackAwbLoading={isTrackAwbLoading}
-            isTrackAwbReady={isTrackAwbReady}
-            isShipmentAlreadyTracked={isShipmentAlreadyTracked}
-            openTrackModal={openTrackModal}
-            onOpenTracking={onOpenTracking}
             onOpenQuote={onOpenQuote}
             registerSection={registerSection}
           />
@@ -737,6 +708,8 @@ function AirShipmentDetailPanel({
             </section>
           )}
         </main>
+
+        {summaryAside}
       </div>
     </div>
   );

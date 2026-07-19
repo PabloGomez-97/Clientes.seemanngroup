@@ -53,16 +53,26 @@ function FieldGridSection({
   );
 }
 
-function FieldGridCell({ label, value }: { label: string; value?: unknown }) {
+function FieldGridCell({
+  label,
+  value,
+  children,
+}: {
+  label: string;
+  value?: unknown;
+  children?: React.ReactNode;
+}) {
   const display = formatFieldValue(value);
   return (
     <div className="gsv-field-cell">
       <span className="gsv-field-cell__label">{label}</span>
-      <span
-        className={`gsv-field-cell__value${display === "-" ? " gsv-field-cell__value--muted" : ""}`}
-      >
-        {display}
-      </span>
+      {children ?? (
+        <span
+          className={`gsv-field-cell__value${display === "-" ? " gsv-field-cell__value--muted" : ""}`}
+        >
+          {display}
+        </span>
+      )}
     </div>
   );
 }
@@ -147,57 +157,79 @@ function GroundShipmentDetailPanel({
     sectionRefs.current[id] = el;
   };
 
-  const heroBlock = (
-    <header className="gsv-detail__hero">
-      <div className="gsv-detail__id">
-        <span className="gsv-detail__eyebrow">Referencia Cliente</span>
-        <h2 className="gsv-detail__title">
-          {shipment.customerReference || "—"}
-        </h2>
-        <div className="gsv-detail__meta">
-          <span className="gsv-detail__chip">
-            <Truck size={13} aria-hidden />
-            Terrestre
-          </span>
-          {shipment.number && (
-            <span className="gsv-detail__chip">N° {shipment.number}</span>
-          )}
+  const headerBlock = (
+    <header className="gsv-dhead">
+      <div className="gsv-dhead__top">
+        <div>
+          <span className="gsv-dhead__eyebrow">Referencia Cliente</span>
+          <h2 className="gsv-dhead__title">
+            {shipment.customerReference || "—"}
+          </h2>
         </div>
+        <span className="gsv-detail__chip">
+          <Truck size={13} aria-hidden />
+          Terrestre
+        </span>
       </div>
-
-      <div className="gsv-route">
-        <div className="gsv-route__point">
-          <span className="gsv-route__label">Origen</span>
-          <span className="gsv-route__value">{shipment.from || "N/A"}</span>
-          {shipment.departure && (
-            <span className="gsv-route__date">
-              {formatDateShort(shipment.departure)}
-            </span>
-          )}
+      <dl className="gsv-dhead__meta">
+        <div className="gsv-dhead__field">
+          <dt>N° de envío</dt>
+          <dd>{shipment.number || "—"}</dd>
         </div>
-        <div className="gsv-route__connector" aria-hidden>
-          <span className="gsv-route__line" />
-          <span className="gsv-route__icon">
-            <Truck size={16} aria-hidden />
-          </span>
-          <span className="gsv-route__line" />
-          {shipment.carrier && (
-            <span className="gsv-route__transit" title={shipment.carrier}>
-              {shipment.carrier}
-            </span>
-          )}
+        <div className="gsv-dhead__field">
+          <dt>Origen</dt>
+          <dd>{shipment.from || "—"}</dd>
         </div>
-        <div className="gsv-route__point gsv-route__point--end">
-          <span className="gsv-route__label">Destino</span>
-          <span className="gsv-route__value">{shipment.to || "N/A"}</span>
-          {shipment.arrival && (
-            <span className="gsv-route__date">
-              {formatDateShort(shipment.arrival)}
-            </span>
-          )}
+        <div className="gsv-dhead__field">
+          <dt>Destino</dt>
+          <dd>{shipment.to || "—"}</dd>
         </div>
-      </div>
+        <div className="gsv-dhead__field">
+          <dt>Fecha salida</dt>
+          <dd>
+            {shipment.departure
+              ? formatDateShort(shipment.departure)
+              : "—"}
+          </dd>
+        </div>
+        <div className="gsv-dhead__field">
+          <dt>Fecha llegada</dt>
+          <dd>
+            {shipment.arrival ? formatDateShort(shipment.arrival) : "—"}
+          </dd>
+        </div>
+        <div className="gsv-dhead__field">
+          <dt>Transportista</dt>
+          <dd>{shipment.carrier || "—"}</dd>
+        </div>
+      </dl>
     </header>
+  );
+
+  const summaryAside = (
+    <aside className="gsv-summary">
+      <div className="gsv-summary__panel">
+        <h3 className="gsv-summary__title">Resumen</h3>
+        <dl className="gsv-summary__rows">
+          <div className="gsv-summary__row">
+            <dt>Transportista</dt>
+            <dd>{shipment.carrier || "—"}</dd>
+          </div>
+          <div className="gsv-summary__row">
+            <dt>Conductor</dt>
+            <dd>{shipment.driver || "—"}</dd>
+          </div>
+          <div className="gsv-summary__row">
+            <dt>N° camión</dt>
+            <dd>{shipment.truckNumber || "—"}</dd>
+          </div>
+          <div className="gsv-summary__row">
+            <dt>N° tracking</dt>
+            <dd>{shipment.trackingNumber || "—"}</dd>
+          </div>
+        </dl>
+      </div>
+    </aside>
   );
 
   if (documentsOnly) {
@@ -209,7 +241,7 @@ function GroundShipmentDetailPanel({
             Volver a embarques
           </button>
         </div>
-        {heroBlock}
+        {headerBlock}
         <div className="gsv-detail__docs-only">
           <DocumentosSectionGround shipmentId={shipmentId} />
         </div>
@@ -225,6 +257,8 @@ function GroundShipmentDetailPanel({
           Volver a embarques
         </button>
       </div>
+
+      {headerBlock}
 
       <div className="gsv-detail__body">
         <aside className="gsv-detail__nav">
@@ -248,34 +282,7 @@ function GroundShipmentDetailPanel({
           </nav>
         </aside>
 
-        <main className="gsv-detail__sections">
-          {heroBlock}
-
-          <dl className="gsv-stats">
-            <div className="gsv-stat">
-              <dt className="gsv-stat__label">Fecha salida</dt>
-              <dd className="gsv-stat__value">
-                {shipment.departure ? formatDate(shipment.departure) : "—"}
-              </dd>
-            </div>
-            <div className="gsv-stat">
-              <dt className="gsv-stat__label">Fecha llegada</dt>
-              <dd className="gsv-stat__value">
-                {shipment.arrival ? formatDate(shipment.arrival) : "—"}
-              </dd>
-            </div>
-            <div className="gsv-stat">
-              <dt className="gsv-stat__label">Transportista</dt>
-              <dd className="gsv-stat__value">{shipment.carrier || "—"}</dd>
-            </div>
-            <div className="gsv-stat">
-              <dt className="gsv-stat__label">Gasto total</dt>
-              <dd className="gsv-stat__value gsv-stat__value--amount">
-                {formatCLP(shipment.totalCharge_IncomeDisplayValue) || "$0 CLP"}
-              </dd>
-            </div>
-          </dl>
-
+        <main className="gsv-detail__sections gsv-sheet">
           <FieldGridSection
             title="Detalles del envío"
             sectionRef={registerSection("detalles")}
@@ -409,16 +416,12 @@ function GroundShipmentDetailPanel({
             className="gsv-dsection"
           >
             <h3 className="gsv-dsection__title">Financiero</h3>
-            <div className="gsv-amount">
-              <span className="gsv-amount__value">
+            <div className="gsv-field-grid">
+              <FieldGridCell label="Gasto total (no incluye impuestos)">
+                <span className="gsv-field-cell__value gsv-field-cell__value--finance">
                 {formatCLP(shipment.totalCharge_IncomeDisplayValue) || "$0 CLP"}
-              </span>
-              <span className="gsv-amount__label">
-                Gasto Total (No incluye impuestos)
-              </span>
-              <span className="gsv-amount__hint">
-                Monto estimado para este envío
-              </span>
+                </span>
+              </FieldGridCell>
             </div>
           </section>
 
@@ -433,6 +436,8 @@ function GroundShipmentDetailPanel({
             </section>
           )}
         </main>
+
+        {summaryAside}
       </div>
     </div>
   );
