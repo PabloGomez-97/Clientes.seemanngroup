@@ -1,13 +1,17 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+  useCallback,
+} from "react";
+import { ArrowLeft, Truck } from "lucide-react";
 import LoadingTips from "./LoadingTips";
 import { useOutletContext, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/auth/AuthContext";
 import { useClientOverride } from "@/contexts/ClientOverrideContext";
 import PageBannerHeader from "@/components/shared/layout/PageBannerHeader";
-import {
-  type GroundShipment,
-  InfoField,
-} from "./Handlers/HandlerGroundShipments";
+import { type GroundShipment } from "./Handlers/HandlerGroundShipments";
 import type { OutletContext } from "./Handlers/HandlerOceanShipments";
 import { MUNDOGAMING_DUMMY_GROUND_SHIPMENTS } from "@/mocks/mundogaming";
 import { DocumentosSectionGround } from "@/components/cliente/documentos/DocumentosSectionGround";
@@ -20,42 +24,48 @@ const GROUND_ALL_CACHE_TS_KEY = "groundShipmentsAllCacheTimestamp_v1";
 
 const DEFAULT_ROWS_PER_PAGE = 15;
 
-/* -- DetailTabs (accordion inline tabs) --------------------- */
-interface TabDef {
-  key: string;
-  label: string;
-  icon?: React.ReactNode;
-  content: React.ReactNode;
-  hidden?: boolean;
+function formatFieldValue(value: unknown): string {
+  if (value === null || value === undefined || value === "") return "-";
+  if (typeof value === "boolean") return value ? "Sí" : "No";
+  return String(value);
 }
 
-function DetailTabs({ tabs }: { tabs: TabDef[] }) {
-  const visibleTabs = tabs.filter((t) => !t.hidden);
-  const [activeTab, setActiveTab] = useState(visibleTabs[0]?.key || "");
-  const current = visibleTabs.find((t) => t.key === activeTab);
-
+function FieldGridSection({
+  title,
+  children,
+  sectionRef,
+  dataId,
+}: {
+  title: string;
+  children: React.ReactNode;
+  sectionRef?: (el: HTMLElement | null) => void;
+  dataId?: string;
+}) {
   return (
-    <div className="gsv-tabs">
-      <div className="gsv-tabs__nav">
-        {visibleTabs.map((tab) => (
-          <button
-            key={tab.key}
-            className={`gsv-tabs__btn ${activeTab === tab.key ? "gsv-tabs__btn--active" : ""}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              setActiveTab(tab.key);
-            }}
-          >
-            {tab.icon && <span className="gsv-tabs__icon">{tab.icon}</span>}
-            {tab.label}
-          </button>
-        ))}
-      </div>
-      <div className="gsv-tabs__panel">{current?.content}</div>
-    </div>
+    <section
+      ref={sectionRef}
+      data-gsv-section={dataId}
+      className="gsv-dsection"
+    >
+      <h3 className="gsv-dsection__title">{title}</h3>
+      <div className="gsv-field-grid">{children}</div>
+    </section>
   );
 }
 
+function FieldGridCell({ label, value }: { label: string; value?: unknown }) {
+  const display = formatFieldValue(value);
+  return (
+    <div className="gsv-field-cell">
+      <span className="gsv-field-cell__label">{label}</span>
+      <span
+        className={`gsv-field-cell__value${display === "-" ? " gsv-field-cell__value--muted" : ""}`}
+      >
+        {display}
+      </span>
+    </div>
+  );
+}
 
 interface GroundShipmentDetailPanelProps {
   shipment: GroundShipment;
@@ -76,432 +86,355 @@ function GroundShipmentDetailPanel({
   formatDateShort,
   formatCLP,
 }: GroundShipmentDetailPanelProps) {
-  return (
-    <>
-      <div className="gsv-split-detail__header">
-        <div>
-          <span className="gsv-split-detail__eyebrow">Referencia Cliente</span>
-          <h3 className="gsv-split-detail__title">
-            {shipment.customerReference || "—"}
-          </h3>
+  const hasNotes = !!shipment.notes && shipment.notes !== "N/A";
+
+  const [activeSection, setActiveSection] = useState("detalles");
+  const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
+
+  const navSections = useMemo(
+    () =>
+      [
+        { id: "detalles", label: "Detalles del envío" },
+        { id: "transporte", label: "Transporte terrestre" },
+        { id: "referencias", label: "Documentos y referencias" },
+        { id: "fechas", label: "Fechas" },
+        { id: "carga", label: "Información de carga" },
+        { id: "documentos", label: "Documentos" },
+        { id: "financiero", label: "Financiero" },
+        { id: "notas", label: "Notas", hidden: !hasNotes },
+      ].filter((section) => !section.hidden),
+    [hasNotes],
+  );
+
+  // Al cambiar de envío: volver arriba y reiniciar la sección activa
+  useEffect(() => {
+    setActiveSection("detalles");
+    const layoutMain = document.querySelector<HTMLElement>(".user-layout-main");
+    layoutMain?.scrollTo({ top: 0 });
+  }, [shipmentId]);
+
+  useEffect(() => {
+    if (documentsOnly) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+        const id = visible[0]?.target.getAttribute("data-gsv-section");
+        if (id) setActiveSection(id);
+      },
+      {
+        // Compensa topbar sticky (~52px) + margen para marcar la sección activa
+        rootMargin: "-20% 0px -55% 0px",
+        threshold: [0, 0.1, 0.5],
+      },
+    );
+    navSections.forEach(({ id }) => {
+      const el = sectionRefs.current[id];
+      if (el) observer.observe(el);
+    });
+    return () => observer.disconnect();
+  }, [navSections, shipmentId, documentsOnly]);
+
+  const scrollToSection = (id: string) => {
+    sectionRefs.current[id]?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  };
+
+  const registerSection = (id: string) => (el: HTMLElement | null) => {
+    sectionRefs.current[id] = el;
+  };
+
+  const heroBlock = (
+    <header className="gsv-detail__hero">
+      <div className="gsv-detail__id">
+        <span className="gsv-detail__eyebrow">Referencia Cliente</span>
+        <h2 className="gsv-detail__title">
+          {shipment.customerReference || "—"}
+        </h2>
+        <div className="gsv-detail__meta">
+          <span className="gsv-detail__chip">
+            <Truck size={13} aria-hidden />
+            Terrestre
+          </span>
+          {shipment.number && (
+            <span className="gsv-detail__chip">N° {shipment.number}</span>
+          )}
         </div>
-        <button
-          type="button"
-          className="gsv-split-detail__close"
-          onClick={onClose}
-          aria-label="Cerrar detalle"
-        >
-          Cerrar
+      </div>
+
+      <div className="gsv-route">
+        <div className="gsv-route__point">
+          <span className="gsv-route__label">Origen</span>
+          <span className="gsv-route__value">{shipment.from || "N/A"}</span>
+          {shipment.departure && (
+            <span className="gsv-route__date">
+              {formatDateShort(shipment.departure)}
+            </span>
+          )}
+        </div>
+        <div className="gsv-route__connector" aria-hidden>
+          <span className="gsv-route__line" />
+          <span className="gsv-route__icon">
+            <Truck size={16} aria-hidden />
+          </span>
+          <span className="gsv-route__line" />
+          {shipment.carrier && (
+            <span className="gsv-route__transit" title={shipment.carrier}>
+              {shipment.carrier}
+            </span>
+          )}
+        </div>
+        <div className="gsv-route__point gsv-route__point--end">
+          <span className="gsv-route__label">Destino</span>
+          <span className="gsv-route__value">{shipment.to || "N/A"}</span>
+          {shipment.arrival && (
+            <span className="gsv-route__date">
+              {formatDateShort(shipment.arrival)}
+            </span>
+          )}
+        </div>
+      </div>
+    </header>
+  );
+
+  if (documentsOnly) {
+    return (
+      <div className="gsv-detail">
+        <div className="gsv-detail__topbar">
+          <button type="button" className="gsv-back" onClick={onClose}>
+            <ArrowLeft size={16} strokeWidth={2} aria-hidden />
+            Volver a embarques
+          </button>
+        </div>
+        {heroBlock}
+        <div className="gsv-detail__docs-only">
+          <DocumentosSectionGround shipmentId={shipmentId} />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="gsv-detail">
+      <div className="gsv-detail__topbar">
+        <button type="button" className="gsv-back" onClick={onClose}>
+          <ArrowLeft size={16} strokeWidth={2} aria-hidden />
+          Volver a embarques
         </button>
       </div>
-      <div className="gsv-split-detail__body">
-                              {/* Route summary card */}
-                              <div className="gsv-route-card">
-                                <div className="gsv-route-card__point">
-                                  <span className="gsv-route-card__label">
-                                    Origen
-                                  </span>
-                                  <span className="gsv-route-card__value">
-                                    {shipment.from || "N/A"}
-                                  </span>
-                                  {shipment.departure && (
-                                    <span className="gsv-route-card__date">
-                                      {formatDateShort(shipment.departure)}
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="gsv-route-card__arrow">
-                                  <svg
-                                    width="24"
-                                    height="24"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="var(--primary-color)"
-                                    strokeWidth="2"
-                                  >
-                                    <line x1="5" y1="12" x2="19" y2="12" />
-                                    <polyline points="12 5 19 12 12 19" />
-                                  </svg>
-                                  {shipment.carrier && (
-                                    <span className="gsv-route-card__transit">
-                                      {shipment.carrier.length > 25
-                                        ? shipment.carrier.substring(0, 25) +
-                                          "…"
-                                        : shipment.carrier}
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="gsv-route-card__point gsv-route-card__point--end">
-                                  <span className="gsv-route-card__label">
-                                    Destino
-                                  </span>
-                                  <span className="gsv-route-card__value">
-                                    {shipment.to || "N/A"}
-                                  </span>
-                                  {shipment.arrival && (
-                                    <span className="gsv-route-card__date">
-                                      {formatDateShort(shipment.arrival)}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
 
-                              {/* Tabs */}
-                              {documentsOnly ? (
-                                <DocumentosSectionGround
-                                  shipmentId={shipmentId}
-                                />
-                              ) : (
-                                <DetailTabs
-                                  tabs={[
-                                    {
-                                      key: "general",
-                                      label: "Informacion General",
-                                      icon: (
-                                        <svg
-                                          width="14"
-                                          height="14"
-                                          viewBox="0 0 24 24"
-                                          fill="none"
-                                          stroke="currentColor"
-                                          strokeWidth="2"
-                                        >
-                                          <circle cx="12" cy="12" r="10" />
-                                          <line
-                                            x1="12"
-                                            y1="16"
-                                            x2="12"
-                                            y2="12"
-                                          />
-                                          <line
-                                            x1="12"
-                                            y1="8"
-                                            x2="12.01"
-                                            y2="8"
-                                          />
-                                        </svg>
-                                      ),
-                                      content: (
-                                        <div className="gsv-cards-grid">
-                                          <div className="gsv-card">
-                                            <h4>Detalles del Envio</h4>
-                                            <div className="gsv-info-grid">
-                                              <InfoField
-                                                label="Numero de Envio"
-                                                value={shipment.number}
-                                              />
-                                              <InfoField
-                                                label="Tipo de Operacion"
-                                                value={shipment.operationFlow}
-                                              />
-                                              <InfoField
-                                                label="Tipo de Envio"
-                                                value={shipment.shipmentType}
-                                              />
-                                              <InfoField
-                                                label="Clase"
-                                                value={shipment.shipmentClass}
-                                              />
-                                              <InfoField
-                                                label="Categoria"
-                                                value={shipment.rateCategory}
-                                              />
-                                              <InfoField
-                                                label="Tipo de Pago"
-                                                value={shipment.paymentType}
-                                              />
-                                            </div>
-                                          </div>
-                                          <div className="gsv-card">
-                                            <h4>Transporte Terrestre</h4>
-                                            <div className="gsv-info-grid">
-                                              <InfoField
-                                                label="Transportista"
-                                                value={shipment.carrier}
-                                              />
-                                              <InfoField
-                                                label="Conductor"
-                                                value={shipment.driver}
-                                              />
-                                              <InfoField
-                                                label="N° Camion"
-                                                value={shipment.truckNumber}
-                                              />
-                                              <InfoField
-                                                label="N° Tracking"
-                                                value={shipment.trackingNumber}
-                                              />
-                                              <InfoField
-                                                label="Pro Number"
-                                                value={shipment.proNumber}
-                                              />
-                                              <InfoField
-                                                label="Origen"
-                                                value={shipment.from}
-                                              />
-                                              <InfoField
-                                                label="Destino"
-                                                value={shipment.to}
-                                              />
-                                              <InfoField
-                                                label="Destino Final"
-                                                value={
-                                                  shipment.finalDestination
-                                                }
-                                              />
-                                            </div>
-                                          </div>
-                                          <div className="gsv-card">
-                                            <h4>Documentos y Referencias</h4>
-                                            <div className="gsv-info-grid">
-                                              <InfoField
-                                                label="Booking Number"
-                                                value={shipment.bookingNumber}
-                                              />
-                                              <InfoField
-                                                label="Waybill Number"
-                                                value={shipment.waybillNumber}
-                                              />
-                                              <InfoField
-                                                label="N° Contenedor"
-                                                value={shipment.containerNumber}
-                                              />
-                                              <InfoField
-                                                label="Referencia Cliente"
-                                                value={
-                                                  shipment.customerReference
-                                                }
-                                              />
-                                              <InfoField
-                                                label="Representante Ventas"
-                                                value={shipment.salesRep}
-                                              />
-                                            </div>
-                                          </div>
-                                          <div className="gsv-card">
-                                            <h4>Fechas</h4>
-                                            <div className="gsv-info-grid">
-                                              <InfoField
-                                                label="Fecha de Creacion"
-                                                value={
-                                                  shipment.createdOn
-                                                    ? formatDate(
-                                                        shipment.createdOn,
-                                                      )
-                                                    : null
-                                                }
-                                              />
-                                              <InfoField
-                                                label="Fecha Salida"
-                                                value={
-                                                  shipment.departure
-                                                    ? formatDate(
-                                                        shipment.departure,
-                                                      )
-                                                    : null
-                                                }
-                                              />
-                                              <InfoField
-                                                label="Fecha Llegada"
-                                                value={
-                                                  shipment.arrival
-                                                    ? formatDate(
-                                                        shipment.arrival,
-                                                      )
-                                                    : null
-                                                }
-                                              />
-                                            </div>
-                                          </div>
-                                        </div>
-                                      ),
-                                    },
-                                    {
-                                      key: "cargo",
-                                      label: "Informacion de Carga",
-                                      icon: (
-                                        <svg
-                                          width="14"
-                                          height="14"
-                                          viewBox="0 0 24 24"
-                                          fill="none"
-                                          stroke="currentColor"
-                                          strokeWidth="2"
-                                        >
-                                          <rect
-                                            x="1"
-                                            y="3"
-                                            width="15"
-                                            height="13"
-                                          />
-                                          <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
-                                          <circle cx="5.5" cy="18.5" r="2.5" />
-                                          <circle cx="18.5" cy="18.5" r="2.5" />
-                                        </svg>
-                                      ),
-                                      content: (
-                                        <div className="gsv-cards-grid">
-                                          <div className="gsv-card">
-                                            <h4>Cantidades</h4>
-                                            <div className="gsv-info-grid">
-                                              <InfoField
-                                                label="Total de Piezas"
-                                                value={
-                                                  shipment.totalCargo_Pieces
-                                                }
-                                              />
-                                              <InfoField
-                                                label="Peso Total"
-                                                value={
-                                                  shipment.totalCargo_WeightDisplayValue
-                                                }
-                                              />
-                                              <InfoField
-                                                label="Volumen Total"
-                                                value={
-                                                  shipment.totalCargo_VolumeDisplayValue
-                                                }
-                                              />
-                                              <InfoField
-                                                label="Pallets"
-                                                value={shipment.pallets}
-                                              />
-                                            </div>
-                                          </div>
-                                          <div className="gsv-card">
-                                            <h4>Detalle de Carga</h4>
-                                            <div className="gsv-info-grid">
-                                              <InfoField
-                                                label="Descripcion de Carga"
-                                                value={
-                                                  shipment.cargoDescription
-                                                }
-                                                fullWidth
-                                              />
-                                            </div>
-                                          </div>
-                                          <div className="gsv-card">
-                                            <h4>Estado y Seguridad</h4>
-                                            <div className="gsv-info-grid">
-                                              <InfoField
-                                                label="Estado de Carga"
-                                                value={shipment.cargoStatus}
-                                              />
-                                              <InfoField
-                                                label="Carga Peligrosa"
-                                                value={
-                                                  shipment.hazardous
-                                                    ? "Si"
-                                                    : "No"
-                                                }
-                                              />
-                                            </div>
-                                          </div>
-                                        </div>
-                                      ),
-                                    },
-                                    {
-                                      key: "documentos",
-                                      label: "Documentos",
-                                      icon: (
-                                        <svg
-                                          width="14"
-                                          height="14"
-                                          viewBox="0 0 24 24"
-                                          fill="none"
-                                          stroke="currentColor"
-                                          strokeWidth="2"
-                                        >
-                                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                                          <polyline points="14 2 14 8 20 8" />
-                                          <line
-                                            x1="16"
-                                            y1="13"
-                                            x2="8"
-                                            y2="13"
-                                          />
-                                          <line
-                                            x1="16"
-                                            y1="17"
-                                            x2="8"
-                                            y2="17"
-                                          />
-                                        </svg>
-                                      ),
-                                      content: (
-                                        <DocumentosSectionGround
-                                          shipmentId={shipmentId}
-                                        />
-                                      ),
-                                    },
-                                    {
-                                      key: "financiero",
-                                      label: "Financiero",
-                                      icon: (
-                                        <svg
-                                          width="14"
-                                          height="14"
-                                          viewBox="0 0 24 24"
-                                          fill="none"
-                                          stroke="currentColor"
-                                          strokeWidth="2"
-                                        >
-                                          <line
-                                            x1="12"
-                                            y1="1"
-                                            x2="12"
-                                            y2="23"
-                                          />
-                                          <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-                                        </svg>
-                                      ),
-                                      content: (
-                                        <div className="gsv-finance-card">
-                                          <span className="gsv-finance-card__label">
-                                            Gasto Total (No incluye impuestos)
-                                          </span>
-                                          <span className="gsv-finance-card__amount">
-                                            {formatCLP(
-                                              shipment.totalCharge_IncomeDisplayValue,
-                                            ) || "$0 CLP"}
-                                          </span>
-                                          <span className="gsv-finance-card__note">
-                                            Monto estimado para este envio
-                                          </span>
-                                        </div>
-                                      ),
-                                    },
-                                    {
-                                      key: "notas",
-                                      label: "Notas",
-                                      icon: (
-                                        <svg
-                                          width="14"
-                                          height="14"
-                                          viewBox="0 0 24 24"
-                                          fill="none"
-                                          stroke="currentColor"
-                                          strokeWidth="2"
-                                        >
-                                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                                        </svg>
-                                      ),
-                                      hidden:
-                                        !shipment.notes ||
-                                        shipment.notes === "N/A",
-                                      content: (
-                                        <div className="gsv-notes">
-                                          {shipment.notes}
-                                        </div>
-                                      ),
-                                    },
-                                  ]}
-                                />
-                              )}
-                            
+      <div className="gsv-detail__body">
+        <aside className="gsv-detail__nav">
+          <nav
+            className="gsv-detail__nav-inner"
+            aria-label="Secciones del envío"
+          >
+            {navSections.map(({ id, label }) => (
+              <button
+                key={id}
+                type="button"
+                className={`gsv-detail__nav-item${
+                  activeSection === id ? " gsv-detail__nav-item--active" : ""
+                }`}
+                aria-current={activeSection === id ? "true" : undefined}
+                onClick={() => scrollToSection(id)}
+              >
+                {label}
+              </button>
+            ))}
+          </nav>
+        </aside>
+
+        <main className="gsv-detail__sections">
+          {heroBlock}
+
+          <dl className="gsv-stats">
+            <div className="gsv-stat">
+              <dt className="gsv-stat__label">Fecha salida</dt>
+              <dd className="gsv-stat__value">
+                {shipment.departure ? formatDate(shipment.departure) : "—"}
+              </dd>
+            </div>
+            <div className="gsv-stat">
+              <dt className="gsv-stat__label">Fecha llegada</dt>
+              <dd className="gsv-stat__value">
+                {shipment.arrival ? formatDate(shipment.arrival) : "—"}
+              </dd>
+            </div>
+            <div className="gsv-stat">
+              <dt className="gsv-stat__label">Transportista</dt>
+              <dd className="gsv-stat__value">{shipment.carrier || "—"}</dd>
+            </div>
+            <div className="gsv-stat">
+              <dt className="gsv-stat__label">Gasto total</dt>
+              <dd className="gsv-stat__value gsv-stat__value--amount">
+                {formatCLP(shipment.totalCharge_IncomeDisplayValue) || "$0 CLP"}
+              </dd>
+            </div>
+          </dl>
+
+          <FieldGridSection
+            title="Detalles del envío"
+            sectionRef={registerSection("detalles")}
+            dataId="detalles"
+          >
+            <FieldGridCell label="Numero de Envio" value={shipment.number} />
+            <FieldGridCell
+              label="Tipo de Operacion"
+              value={shipment.operationFlow}
+            />
+            <FieldGridCell
+              label="Tipo de Envio"
+              value={shipment.shipmentType}
+            />
+            <FieldGridCell label="Clase" value={shipment.shipmentClass} />
+            <FieldGridCell label="Categoria" value={shipment.rateCategory} />
+            <FieldGridCell label="Tipo de Pago" value={shipment.paymentType} />
+          </FieldGridSection>
+
+          <FieldGridSection
+            title="Transporte terrestre"
+            sectionRef={registerSection("transporte")}
+            dataId="transporte"
+          >
+            <FieldGridCell label="Transportista" value={shipment.carrier} />
+            <FieldGridCell label="Conductor" value={shipment.driver} />
+            <FieldGridCell label="N° Camion" value={shipment.truckNumber} />
+            <FieldGridCell
+              label="N° Tracking"
+              value={shipment.trackingNumber}
+            />
+            <FieldGridCell label="Pro Number" value={shipment.proNumber} />
+            <FieldGridCell label="Origen" value={shipment.from} />
+            <FieldGridCell label="Destino" value={shipment.to} />
+            <FieldGridCell
+              label="Destino Final"
+              value={shipment.finalDestination}
+            />
+          </FieldGridSection>
+
+          <FieldGridSection
+            title="Documentos y referencias"
+            sectionRef={registerSection("referencias")}
+            dataId="referencias"
+          >
+            <FieldGridCell
+              label="Booking Number"
+              value={shipment.bookingNumber}
+            />
+            <FieldGridCell
+              label="Waybill Number"
+              value={shipment.waybillNumber}
+            />
+            <FieldGridCell
+              label="N° Contenedor"
+              value={shipment.containerNumber}
+            />
+            <FieldGridCell
+              label="Referencia Cliente"
+              value={shipment.customerReference}
+            />
+            <FieldGridCell
+              label="Representante Ventas"
+              value={shipment.salesRep}
+            />
+          </FieldGridSection>
+
+          <FieldGridSection
+            title="Fechas"
+            sectionRef={registerSection("fechas")}
+            dataId="fechas"
+          >
+            <FieldGridCell
+              label="Fecha de Creacion"
+              value={shipment.createdOn ? formatDate(shipment.createdOn) : null}
+            />
+            <FieldGridCell
+              label="Fecha Salida"
+              value={shipment.departure ? formatDate(shipment.departure) : null}
+            />
+            <FieldGridCell
+              label="Fecha Llegada"
+              value={shipment.arrival ? formatDate(shipment.arrival) : null}
+            />
+          </FieldGridSection>
+
+          <FieldGridSection
+            title="Información de carga"
+            sectionRef={registerSection("carga")}
+            dataId="carga"
+          >
+            <FieldGridCell
+              label="Total de Piezas"
+              value={shipment.totalCargo_Pieces}
+            />
+            <FieldGridCell
+              label="Peso Total"
+              value={shipment.totalCargo_WeightDisplayValue}
+            />
+            <FieldGridCell
+              label="Volumen Total"
+              value={shipment.totalCargo_VolumeDisplayValue}
+            />
+            <FieldGridCell label="Pallets" value={shipment.pallets} />
+            <FieldGridCell
+              label="Descripcion de Carga"
+              value={shipment.cargoDescription}
+            />
+            <FieldGridCell
+              label="Estado de Carga"
+              value={shipment.cargoStatus}
+            />
+            <FieldGridCell
+              label="Carga Peligrosa"
+              value={shipment.hazardous ? "Si" : "No"}
+            />
+          </FieldGridSection>
+
+          <section
+            ref={registerSection("documentos")}
+            data-gsv-section="documentos"
+            className="gsv-dsection"
+          >
+            <h3 className="gsv-dsection__title">Documentos</h3>
+            <DocumentosSectionGround shipmentId={shipmentId} />
+          </section>
+
+          <section
+            ref={registerSection("financiero")}
+            data-gsv-section="financiero"
+            className="gsv-dsection"
+          >
+            <h3 className="gsv-dsection__title">Financiero</h3>
+            <div className="gsv-amount">
+              <span className="gsv-amount__value">
+                {formatCLP(shipment.totalCharge_IncomeDisplayValue) || "$0 CLP"}
+              </span>
+              <span className="gsv-amount__label">
+                Gasto Total (No incluye impuestos)
+              </span>
+              <span className="gsv-amount__hint">
+                Monto estimado para este envío
+              </span>
+            </div>
+          </section>
+
+          {hasNotes && (
+            <section
+              ref={registerSection("notas")}
+              data-gsv-section="notas"
+              className="gsv-dsection"
+            >
+              <h3 className="gsv-dsection__title">Notas</h3>
+              <div className="gsv-notes">{shipment.notes}</div>
+            </section>
+          )}
+        </main>
       </div>
-    </>
+    </div>
   );
 }
 
@@ -688,10 +621,7 @@ function GroundShipmentsView({
   const writeGroundAllCache = (arr: GroundShipment[]) => {
     try {
       localStorage.setItem(GROUND_ALL_CACHE_KEY, JSON.stringify(arr));
-      localStorage.setItem(
-        GROUND_ALL_CACHE_TS_KEY,
-        Date.now().toString(),
-      );
+      localStorage.setItem(GROUND_ALL_CACHE_TS_KEY, Date.now().toString());
     } catch {
       /* quota exceeded */
     }
@@ -853,8 +783,7 @@ function GroundShipmentsView({
     const shipment =
       paginatedShipments.find(
         (sh, index) => getShipmentRowId(sh, index) === shipmentId,
-      ) ??
-      displayedShipments.find((sh) => (sh.id || sh.number) === shipmentId);
+      ) ?? displayedShipments.find((sh) => (sh.id || sh.number) === shipmentId);
     if (shipment) setEmbedQuery(shipment.number || null);
   };
 
@@ -1027,72 +956,58 @@ function GroundShipmentsView({
      ========================================================= */
   return (
     <div className="gsv-container">
-      <PageBannerHeader variant="groundShipments" />
+      {!selectedShipment && (
+        <>
+          <PageBannerHeader variant="groundShipments" />
 
-      {/* Toolbar */}
-      <div
-        className="gsv-toolbar"
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
-          marginTop: 24,
-        }}
-      >
-        <div
-          style={{
-            marginLeft: "auto",
-            display: "flex",
-            gap: 8,
-            alignItems: "center",
-          }}
-        >
-          <button
-            className={`gsv-btn gsv-btn--ghost gsv-toolbar__icon-btn ${activeFilterCount > 0 ? "gsv-toolbar__icon-btn--active" : ""}`}
-            type="button"
-            onClick={() => setShowSearchModal(true)}
-            aria-label="Abrir filtros"
-          >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+          {/* Toolbar */}
+          <div className="gsv-toolbar">
+            <button
+              className={`gsv-btn gsv-btn--ghost gsv-toolbar__icon-btn ${activeFilterCount > 0 ? "gsv-toolbar__icon-btn--active" : ""}`}
+              type="button"
+              onClick={() => setShowSearchModal(true)}
+              aria-label="Abrir filtros"
             >
-              <circle cx="11" cy="11" r="7" />
-              <path d="m20 20-3.5-3.5" />
-            </svg>
-            <span>Filtros</span>
-            {activeFilterCount > 0 && (
-              <span className="gsv-toolbar__badge">{activeFilterCount}</span>
-            )}
-          </button>
-          <button
-            className="gsv-btn"
-            style={{ color: "white", backgroundColor: "var(--primary-color)" }}
-            onClick={refreshShipments}
-          >
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="11" cy="11" r="7" />
+                <path d="m20 20-3.5-3.5" />
+              </svg>
+              <span>Filtros</span>
+              {activeFilterCount > 0 && (
+                <span className="gsv-toolbar__badge">{activeFilterCount}</span>
+              )}
+            </button>
+            <button
+              className="gsv-btn gsv-btn--primary"
+              onClick={refreshShipments}
             >
-              <polyline points="23 4 23 10 17 10" />
-              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
-            </svg>
-            Actualizar
-          </button>
-        </div>
-      </div>
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="23 4 23 10 17 10" />
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+              </svg>
+              Actualizar
+            </button>
+          </div>
+        </>
+      )}
 
       {/* Search modal */}
       {showSearchModal && (
@@ -1478,7 +1393,6 @@ function GroundShipmentsView({
         <LoadingTips
           columns={[
             { label: "Referencia Cliente" },
-            { label: "Numero" },
             { label: "Origen" },
             { label: "Destino" },
             { label: "Fecha Salida" },
@@ -1499,182 +1413,155 @@ function GroundShipmentsView({
       {/* =====================================================
           TABLE
          ===================================================== */}
-      {!loading && displayedShipments.length > 0 && (
-        <div
-          className={`gsv-split-view${selectedShipment ? " gsv-split-view--active" : ""}`}
-        >
-          <div className="gsv-split-list">
-            <div className="gsv-table-wrapper">
-              <div className="gsv-table-scroll">
-                <table className="gsv-table">
-                  <thead>
-                    <tr>
-                      <th className="gsv-th">Referencia Cliente</th>
-                      <th className="gsv-th gsv-th--split-hidden">Numero</th>
-                      <th className="gsv-th">Origen</th>
-                      <th className="gsv-th">Destino</th>
-                      <th className="gsv-th">Fecha Salida</th>
-                      <th className="gsv-th gsv-th--split-hidden">
-                        Transportista
-                      </th>
-                      <th className="gsv-th gsv-th--center gsv-th--split-hidden">
-                        Tipo
-                      </th>
-                      <th className="gsv-th gsv-th--center gsv-th--split-hidden">
-                        Piezas
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {paginatedShipments.map((shipment, index) => {
-                      const shipmentId = getShipmentRowId(shipment, index);
-                      const isSelected = selectedShipmentId === shipmentId;
-                      const referenceLabel =
-                        shipment.customerReference || "-";
-                      const numberLabel = shipment.number || "---";
-                      const originLabel = shipment.from || "---";
-                      const destinationLabel = shipment.to || "---";
-                      const departureLabel = formatDateShort(
-                        shipment.departure,
-                      );
-                      const carrierLabel = shipment.carrier
-                        ? shipment.carrier.length > 30
-                          ? shipment.carrier.substring(0, 30) + "…"
-                          : shipment.carrier
-                        : "-";
+      {!loading && displayedShipments.length > 0 && !selectedShipment && (
+        <div className="gsv-list">
+          <div className="gsv-table-wrapper">
+            <div className="gsv-table-scroll">
+              <table className="gsv-table">
+                <thead>
+                  <tr>
+                    <th className="gsv-th">Referencia Cliente</th>
+                    <th className="gsv-th">Origen</th>
+                    <th className="gsv-th">Destino</th>
+                    <th className="gsv-th">Fecha Salida</th>
+                    <th className="gsv-th">Transportista</th>
+                    <th className="gsv-th gsv-th--center">Tipo</th>
+                    <th className="gsv-th gsv-th--center">Piezas</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedShipments.map((shipment, index) => {
+                    const shipmentId = getShipmentRowId(shipment, index);
+                    const referenceLabel = shipment.customerReference || "-";
+                    const numberLabel = shipment.number || "---";
+                    const originLabel = shipment.from || "---";
+                    const destinationLabel = shipment.to || "---";
+                    const departureLabel = formatDateShort(shipment.departure);
+                    const carrierLabel = shipment.carrier
+                      ? shipment.carrier.length > 30
+                        ? shipment.carrier.substring(0, 30) + "…"
+                        : shipment.carrier
+                      : "-";
 
-                      return (
-                        <tr
-                          key={shipmentId}
-                          className={`gsv-tr${isSelected ? " gsv-tr--selected" : ""}`}
-                          onClick={() => toggleShipmentSelection(shipmentId)}
+                    return (
+                      <tr
+                        key={shipmentId}
+                        className="gsv-tr"
+                        onClick={() => toggleShipmentSelection(shipmentId)}
+                      >
+                        <td
+                          className="gsv-td gsv-td--reference"
+                          title={referenceLabel}
                         >
-                          <td
-                            className="gsv-td gsv-td--reference"
-                            title={referenceLabel}
-                          >
-                            {referenceLabel}
-                          </td>
-                          <td
-                            className="gsv-td gsv-td--number gsv-td--split-hidden"
-                            title={numberLabel}
-                          >
-                            {numberLabel}
-                          </td>
-                          <td className="gsv-td" title={originLabel}>
-                            {originLabel}
-                          </td>
-                          <td className="gsv-td" title={destinationLabel}>
-                            {destinationLabel}
-                          </td>
-                          <td className="gsv-td" title={departureLabel}>
-                            {departureLabel}
-                          </td>
-                          <td
-                            className="gsv-td gsv-td--split-hidden"
-                            title={carrierLabel}
-                          >
-                            {carrierLabel}
-                          </td>
-                          <td className="gsv-td gsv-td--center gsv-td--split-hidden">
-                            {shipment.shipmentClass ? (
-                              <span
-                                className={`gsv-badge gsv-badge--${shipment.shipmentClass.toLowerCase()}`}
-                              >
-                                {shipment.shipmentClass}
-                              </span>
-                            ) : (
-                              "---"
-                            )}
-                          </td>
-                          <td className="gsv-td gsv-td--center gsv-td--split-hidden">
-                            {shipment.totalCargo_Pieces ?? "---"}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                          <span className="gsv-cell-ref">{referenceLabel}</span>
+                          <span className="gsv-cell-num">{numberLabel}</span>
+                        </td>
+                        <td className="gsv-td" title={originLabel}>
+                          {originLabel}
+                        </td>
+                        <td className="gsv-td" title={destinationLabel}>
+                          {destinationLabel}
+                        </td>
+                        <td className="gsv-td" title={departureLabel}>
+                          {departureLabel}
+                        </td>
+                        <td className="gsv-td" title={carrierLabel}>
+                          {carrierLabel}
+                        </td>
+                        <td className="gsv-td gsv-td--center">
+                          {shipment.shipmentClass ? (
+                            <span
+                              className={`gsv-badge gsv-badge--${shipment.shipmentClass.toLowerCase()}`}
+                            >
+                              {shipment.shipmentClass}
+                            </span>
+                          ) : (
+                            "---"
+                          )}
+                        </td>
+                        <td className="gsv-td gsv-td--center">
+                          {shipment.totalCargo_Pieces ?? "---"}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
 
-              <div className="gsv-table-footer">
-                <div className="gsv-table-footer__left">
-                  {loading && (
-                    <span className="gsv-loading-text">Cargando...</span>
-                  )}
-                </div>
-                <div className="gsv-table-footer__right">
-                  <span className="gsv-pagination-label">Filas por pagina:</span>
-                  <select
-                    className="gsv-pagination-select"
-                    value={rowsPerPage}
-                    onChange={(e) => {
-                      setRowsPerPage(Number(e.target.value));
-                      setTablePage(1);
-                    }}
+            <div className="gsv-table-footer">
+              <div className="gsv-table-footer__left">
+                {loading && (
+                  <span className="gsv-loading-text">Cargando...</span>
+                )}
+              </div>
+              <div className="gsv-table-footer__right">
+                <span className="gsv-pagination-label">Filas por pagina:</span>
+                <select
+                  className="gsv-pagination-select"
+                  value={rowsPerPage}
+                  onChange={(e) => {
+                    setRowsPerPage(Number(e.target.value));
+                    setTablePage(1);
+                  }}
+                >
+                  <option value={10}>10</option>
+                  <option value={15}>15</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                </select>
+                <span className="gsv-pagination-range">
+                  {paginationRangeText}
+                </span>
+                <button
+                  className="gsv-pagination-btn"
+                  disabled={tablePage <= 1}
+                  onClick={() => setTablePage((p) => p - 1)}
+                >
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
                   >
-                    <option value={10}>10</option>
-                    <option value={15}>15</option>
-                    <option value={25}>25</option>
-                    <option value={50}>50</option>
-                  </select>
-                  <span className="gsv-pagination-range">
-                    {paginationRangeText}
-                  </span>
-                  <button
-                    className="gsv-pagination-btn"
-                    disabled={tablePage <= 1}
-                    onClick={() => setTablePage((p) => p - 1)}
+                    <polyline points="15 18 9 12 15 6" />
+                  </svg>
+                </button>
+                <button
+                  className="gsv-pagination-btn"
+                  disabled={tablePage >= totalTablePages}
+                  onClick={() => setTablePage((p) => p + 1)}
+                >
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
                   >
-                    <svg
-                      width="18"
-                      height="18"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <polyline points="15 18 9 12 15 6" />
-                    </svg>
-                  </button>
-                  <button
-                    className="gsv-pagination-btn"
-                    disabled={tablePage >= totalTablePages}
-                    onClick={() => setTablePage((p) => p + 1)}
-                  >
-                    <svg
-                      width="18"
-                      height="18"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <polyline points="9 18 15 12 9 6" />
-                    </svg>
-                  </button>
-                </div>
+                    <polyline points="9 18 15 12 9 6" />
+                  </svg>
+                </button>
               </div>
             </div>
           </div>
-
-          {selectedShipment && selectedShipmentIndex >= 0 && (
-            <aside className="gsv-split-detail">
-              <GroundShipmentDetailPanel
-                shipment={selectedShipment}
-                shipmentId={getShipmentRowId(
-                  selectedShipment,
-                  selectedShipmentIndex,
-                )}
-                documentsOnly={documentsOnly}
-                onClose={() => setSelectedShipmentId(null)}
-                formatDate={formatDate}
-                formatDateShort={formatDateShort}
-                formatCLP={formatCLP}
-              />
-            </aside>
-          )}
         </div>
+      )}
+
+      {/* Detail (full page) */}
+      {!loading && selectedShipment && selectedShipmentIndex >= 0 && (
+        <GroundShipmentDetailPanel
+          shipment={selectedShipment}
+          shipmentId={getShipmentRowId(selectedShipment, selectedShipmentIndex)}
+          documentsOnly={documentsOnly}
+          onClose={() => setSelectedShipmentId(null)}
+          formatDate={formatDate}
+          formatDateShort={formatDateShort}
+          formatCLP={formatCLP}
+        />
       )}
 
       {/* Empty - no search results */}

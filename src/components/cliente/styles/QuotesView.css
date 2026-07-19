@@ -215,13 +215,13 @@
 .qv-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.84rem;
+  font-size: 0.75rem;
 }
 
 .qv-th {
-  padding: 13px 16px;
+  padding: 11px 14px;
   text-align: left;
-  font-size: 0.68rem;
+  font-size: 0.63rem;
   font-weight: 800;
   letter-spacing: 0.09em;
   text-transform: uppercase;
@@ -273,7 +273,7 @@
 }
 
 .qv-td {
-  padding: 13px 16px;
+  padding: 11px 14px;
   border-bottom: 1px solid var(--qv-line);
   color: #374151;
   vertical-align: middle;
@@ -290,7 +290,7 @@
 .qv-td--date {
   white-space: nowrap;
   color: var(--qv-muted);
-  font-size: 0.82rem;
+  font-size: 0.75rem;
 }
 
 /* Celda rica: referencia + número */
@@ -310,7 +310,7 @@
 .qv-cell-num {
   display: block;
   margin-top: 2px;
-  font-size: 0.72rem;
+  font-size: 0.67rem;
   font-weight: 600;
   color: var(--qv-muted-2);
 }

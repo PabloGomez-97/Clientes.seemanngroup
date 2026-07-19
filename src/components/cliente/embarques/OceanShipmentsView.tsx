@@ -5,6 +5,7 @@ import React, {
   useCallback,
   useRef,
 } from "react";
+import { ArrowLeft, Ship } from "lucide-react";
 import LoadingTips from "./LoadingTips";
 import { useOutletContext, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/auth/AuthContext";
@@ -142,42 +143,6 @@ interface ProfitIndexCacheEntry {
   index: QuoteProfitIndex;
 }
 
-/* -- DetailTabs  -------------------------------------------- */
-interface TabDef {
-  key: string;
-  label: string;
-  icon?: React.ReactNode;
-  content: React.ReactNode;
-  hidden?: boolean;
-}
-
-function DetailTabs({ tabs }: { tabs: TabDef[] }) {
-  const visible = tabs.filter((t) => !t.hidden);
-  const [active, setActive] = useState(visible[0]?.key || "");
-  const current = visible.find((t) => t.key === active);
-
-  return (
-    <div className="osv-tabs">
-      <div className="osv-tabs__nav">
-        {visible.map((tab) => (
-          <button
-            key={tab.key}
-            className={`osv-tabs__btn ${active === tab.key ? "osv-tabs__btn--active" : ""}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              setActive(tab.key);
-            }}
-          >
-            {tab.icon && <span className="osv-tabs__icon">{tab.icon}</span>}
-            {tab.label}
-          </button>
-        ))}
-      </div>
-      <div className="osv-tabs__panel">{current?.content}</div>
-    </div>
-  );
-}
-
 function formatFieldValue(value: unknown): string {
   if (value === null || value === undefined || value === "") return "-";
   if (typeof value === "boolean") return value ? "Sí" : "No";
@@ -187,13 +152,21 @@ function formatFieldValue(value: unknown): string {
 function FieldGridSection({
   title,
   children,
+  sectionRef,
+  dataId,
 }: {
   title: string;
   children: React.ReactNode;
+  sectionRef?: (el: HTMLElement | null) => void;
+  dataId?: string;
 }) {
   return (
-    <section className="osv-field-section">
-      <h4 className="osv-field-section__title">{title}</h4>
+    <section
+      ref={sectionRef}
+      data-osv-section={dataId}
+      className="osv-dsection"
+    >
+      <h3 className="osv-dsection__title">{title}</h3>
       <div className="osv-field-grid">{children}</div>
     </section>
   );
@@ -248,6 +221,7 @@ interface OceanGeneralTabContentProps {
   openTrackModal: (s: OceanShippingOrder) => void;
   onOpenTracking: () => void;
   onOpenQuote: (quoteNumber: string) => void;
+  registerSection: (id: string) => (el: HTMLElement | null) => void;
 }
 
 function OceanGeneralTabContent({
@@ -264,6 +238,7 @@ function OceanGeneralTabContent({
   openTrackModal,
   onOpenTracking,
   onOpenQuote,
+  registerSection,
 }: OceanGeneralTabContentProps) {
   const comms = shipment.commodities ?? [];
   const hbliValue =
@@ -278,8 +253,12 @@ function OceanGeneralTabContent({
   const alreadyTracked = isOceanShipmentAlreadyTracked(shipment);
 
   return (
-    <div className="osv-field-sections">
-      <FieldGridSection title="Detalles del envío">
+    <>
+      <FieldGridSection
+        title="Detalles del envío"
+        sectionRef={registerSection("detalles")}
+        dataId="detalles"
+      >
         <FieldGridCell label="Número de envío" value={shipment.number} />
         <FieldGridCell
           label="Referencia cliente"
@@ -311,7 +290,11 @@ function OceanGeneralTabContent({
         <FieldGridCell label="ID interno" value={shipment.id} />
       </FieldGridSection>
 
-      <FieldGridSection title="Seguimiento y operación">
+      <FieldGridSection
+        title="Seguimiento y operación"
+        sectionRef={registerSection("seguimiento")}
+        dataId="seguimiento"
+      >
         <FieldGridCell label="Carrier" value={shipment.carrier?.name} />
         <FieldGridCell
           label="Número de seguimiento"
@@ -325,11 +308,11 @@ function OceanGeneralTabContent({
         <FieldGridCell label="Fecha llegada">
           {renderAccordionArrivalDate()}
         </FieldGridCell>
-        <FieldGridCell label="" action>
+        <FieldGridCell label="Seguimiento de tu operación">
           {alreadyTracked ? (
             <button
               type="button"
-              className="osv-btn osv-accordion-track osv-accordion-track--linked osv-accordion-track--live"
+              className="osv-btn osv-btn--sm osv-accordion-track osv-accordion-track--linked osv-accordion-track--live"
               onClick={(e) => {
                 e.stopPropagation();
                 onOpenTracking();
@@ -344,7 +327,7 @@ function OceanGeneralTabContent({
           ) : (
             <button
               type="button"
-              className="osv-btn osv-accordion-track osv-accordion-track--primary"
+              className="osv-btn osv-btn--sm osv-accordion-track osv-accordion-track--primary"
               onClick={(e) => {
                 e.stopPropagation();
                 if (!trackReady) return;
@@ -369,7 +352,11 @@ function OceanGeneralTabContent({
         </FieldGridCell>
       </FieldGridSection>
 
-      <FieldGridSection title="Información de carga">
+      <FieldGridSection
+        title="Información de carga"
+        sectionRef={registerSection("carga")}
+        dataId="carga"
+      >
         <FieldGridCell
           label="Total de piezas"
           value={shipment.totalCargo?.pieces}
@@ -388,7 +375,11 @@ function OceanGeneralTabContent({
         />
       </FieldGridSection>
 
-      <FieldGridSection title="Detalle por ítem">
+      <FieldGridSection
+        title="Detalle por ítem"
+        sectionRef={registerSection("items")}
+        dataId="items"
+      >
         {comms.length > 0 ? (
           comms.map((commodity, index) => (
             <React.Fragment key={index}>
@@ -439,7 +430,7 @@ function OceanGeneralTabContent({
           </>
         )}
       </FieldGridSection>
-    </div>
+    </>
   );
 }
 
@@ -486,157 +477,259 @@ function OceanShipmentDetailPanel({
   onOpenTracking,
   onOpenQuote,
 }: OceanShipmentDetailPanelProps) {
-  return (
-    <>
-      <div className="osv-split-detail__header">
-        <div>
-          <span className="osv-split-detail__eyebrow">Referencia Cliente</span>
-          <h3 className="osv-split-detail__title">
-            {shipment.customerReference || "—"}
-          </h3>
-        </div>
-        <button
-          type="button"
-          className="osv-split-detail__close"
-          onClick={onClose}
-          aria-label="Cerrar detalle"
-        >
-          Cerrar
-        </button>
-      </div>
-      <div className="osv-split-detail__body">
-        <div className="osv-route-card">
-          <div className="osv-route-card__point">
-            <span className="osv-route-card__label">Origen</span>
-            <span className="osv-route-card__value">
-              {shipment.executedAt?.name?.trim() || "-"}
-            </span>
-            {shipment.departureDate && (
-              <span className="osv-route-card__date">
-                {formatDateInline(shipment.departureDate)}
-              </span>
-            )}
-          </div>
-          <div className="osv-route-card__connector">
-            <span className="osv-route-card__line" />
-            {shipment.carrier?.name && (
-              <span
-                className="osv-route-card__carrier"
-                title={shipment.carrier.name}
-              >
-                {shipment.carrier.name}
-              </span>
-            )}
-          </div>
-          <div className="osv-route-card__point osv-route-card__point--end">
-            <span className="osv-route-card__label">Destino</span>
-            <span className="osv-route-card__value">
-              {shipment.destination?.name?.trim() || "-"}
-            </span>
-            {effectiveArrivalDate && (
-              <span className="osv-route-card__date">
-                {effectiveArrivalIsShipsgo
-                  ? formatShipsgoDateLong(effectiveArrivalDate)
-                  : formatDateInline(effectiveArrivalDate)}
-              </span>
-            )}
-          </div>
-        </div>
+  const hasNotes = !!shipment.notes;
 
-        {documentsOnly ? (
+  const [activeSection, setActiveSection] = useState("detalles");
+  const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
+
+  const navSections = useMemo(
+    () =>
+      [
+        { id: "detalles", label: "Detalles del envío" },
+        { id: "seguimiento", label: "Seguimiento y operación" },
+        { id: "carga", label: "Información de carga" },
+        { id: "items", label: "Detalle por ítem" },
+        { id: "documentos", label: "Documentos Operacionales" },
+        { id: "notas", label: "Notas", hidden: !hasNotes },
+      ].filter((section) => !section.hidden),
+    [hasNotes],
+  );
+
+  // Al cambiar de envío: volver arriba y reiniciar la sección activa
+  useEffect(() => {
+    setActiveSection("detalles");
+    const layoutMain = document.querySelector<HTMLElement>(
+      ".user-layout-main",
+    );
+    layoutMain?.scrollTo({ top: 0 });
+  }, [shipmentId]);
+
+  useEffect(() => {
+    if (documentsOnly) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+        const id = visible[0]?.target.getAttribute("data-osv-section");
+        if (id) setActiveSection(id);
+      },
+      {
+        // Compensa topbar sticky (~52px) + margen para marcar la sección activa
+        rootMargin: "-20% 0px -55% 0px",
+        threshold: [0, 0.1, 0.5],
+      },
+    );
+    navSections.forEach(({ id }) => {
+      const el = sectionRefs.current[id];
+      if (el) observer.observe(el);
+    });
+    return () => observer.disconnect();
+  }, [navSections, shipmentId, documentsOnly]);
+
+  const scrollToSection = (id: string) => {
+    sectionRefs.current[id]?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  };
+
+  const registerSection =
+    (id: string) =>
+    (el: HTMLElement | null) => {
+      sectionRefs.current[id] = el;
+    };
+
+  const heroBlock = (
+    <header className="osv-detail__hero">
+      <div className="osv-detail__id">
+        <span className="osv-detail__eyebrow">Referencia Cliente</span>
+        <h2 className="osv-detail__title">
+          {shipment.customerReference || "—"}
+        </h2>
+        <div className="osv-detail__meta">
+          <span className="osv-detail__chip">
+            <Ship size={13} aria-hidden />
+            Marítimo
+          </span>
+          {shipment.number && (
+            <span className="osv-detail__chip">N° {shipment.number}</span>
+          )}
+        </div>
+      </div>
+
+      <div className="osv-route">
+        <div className="osv-route__point">
+          <span className="osv-route__label">Origen</span>
+          <span className="osv-route__value">
+            {shipment.executedAt?.name?.trim() || "-"}
+          </span>
+          {shipment.departureDate && (
+            <span className="osv-route__date">
+              {formatDateInline(shipment.departureDate)}
+            </span>
+          )}
+        </div>
+        <div className="osv-route__connector" aria-hidden>
+          <span className="osv-route__line" />
+          <span className="osv-route__icon">
+            <Ship size={16} aria-hidden />
+          </span>
+          <span className="osv-route__line" />
+          {shipment.carrier?.name && (
+            <span className="osv-route__transit" title={shipment.carrier.name}>
+              {shipment.carrier.name}
+            </span>
+          )}
+        </div>
+        <div className="osv-route__point osv-route__point--end">
+          <span className="osv-route__label">Destino</span>
+          <span className="osv-route__value">
+            {shipment.destination?.name?.trim() || "-"}
+          </span>
+          {effectiveArrivalDate && (
+            <span className="osv-route__date">
+              {effectiveArrivalIsShipsgo
+                ? formatShipsgoDateLong(effectiveArrivalDate)
+                : formatDateInline(effectiveArrivalDate)}
+            </span>
+          )}
+        </div>
+      </div>
+    </header>
+  );
+
+  if (documentsOnly) {
+    return (
+      <div className="osv-detail">
+        <div className="osv-detail__topbar">
+          <button type="button" className="osv-back" onClick={onClose}>
+            <ArrowLeft size={16} strokeWidth={2} aria-hidden />
+            Volver a embarques
+          </button>
+        </div>
+        {heroBlock}
+        <div className="osv-detail__docs-only">
           <QuoteOperationalDocumentsSection
             mode="ocean"
             quoteNumber={quoteDisplay.quoteNumber}
             loading={quoteDisplay.loading}
           />
-        ) : (
-          <DetailTabs
-            tabs={[
-              {
-                key: "general",
-                label: "Información General",
-                icon: (
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <circle cx="12" cy="12" r="10" />
-                    <line x1="12" y1="16" x2="12" y2="12" />
-                    <line x1="12" y1="8" x2="12.01" y2="8" />
-                  </svg>
-                ),
-                content: (
-                  <OceanGeneralTabContent
-                    shipment={shipment}
-                    quoteDisplay={quoteDisplay}
-                    hbliEntry={hbliEntry}
-                    renderAccordionArrivalDate={renderAccordionArrivalDate}
-                    getHBLIFromShipment={getHBLIFromShipment}
-                    formatDateLong={formatDateLong}
-                    getDisplayedTrackingNumber={getDisplayedTrackingNumber}
-                    isTrackingLoading={isTrackingLoading}
-                    isTrackingReady={isTrackingReady}
-                    isOceanShipmentAlreadyTracked={isOceanShipmentAlreadyTracked}
-                    openTrackModal={openTrackModal}
-                    onOpenTracking={onOpenTracking}
-                    onOpenQuote={onOpenQuote}
-                  />
-                ),
-              },
-              {
-                key: "docs",
-                label: "Documentos Operacionales",
-                icon: (
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                    <polyline points="14 2 14 8 20 8" />
-                    <line x1="16" y1="13" x2="8" y2="13" />
-                    <line x1="16" y1="17" x2="8" y2="17" />
-                  </svg>
-                ),
-                content: (
-                  <QuoteOperationalDocumentsSection
-                    mode="ocean"
-                    quoteNumber={quoteDisplay.quoteNumber}
-                    loading={quoteDisplay.loading}
-                  />
-                ),
-              },
-              {
-                key: "notes",
-                label: "Notas",
-                icon: (
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                  </svg>
-                ),
-                hidden: !shipment.notes,
-                content: <div className="osv-notes">{shipment.notes}</div>,
-              },
-            ]}
-          />
-        )}
+        </div>
       </div>
-    </>
+    );
+  }
+
+  return (
+    <div className="osv-detail">
+      <div className="osv-detail__topbar">
+        <button type="button" className="osv-back" onClick={onClose}>
+          <ArrowLeft size={16} strokeWidth={2} aria-hidden />
+          Volver a embarques
+        </button>
+      </div>
+
+      <div className="osv-detail__body">
+        <aside className="osv-detail__nav">
+          <nav
+            className="osv-detail__nav-inner"
+            aria-label="Secciones del envío"
+          >
+            {navSections.map(({ id, label }) => (
+              <button
+                key={id}
+                type="button"
+                className={`osv-detail__nav-item${
+                  activeSection === id ? " osv-detail__nav-item--active" : ""
+                }`}
+                aria-current={activeSection === id ? "true" : undefined}
+                onClick={() => scrollToSection(id)}
+              >
+                {label}
+              </button>
+            ))}
+          </nav>
+        </aside>
+
+        <main className="osv-detail__sections">
+          {heroBlock}
+
+          <dl className="osv-stats">
+            <div className="osv-stat">
+              <dt className="osv-stat__label">Fecha salida</dt>
+              <dd className="osv-stat__value">
+                {shipment.departureDate
+                  ? formatDateInline(shipment.departureDate)
+                  : "—"}
+              </dd>
+            </div>
+            <div className="osv-stat">
+              <dt className="osv-stat__label">Fecha llegada</dt>
+              <dd className="osv-stat__value">
+                {effectiveArrivalDate
+                  ? effectiveArrivalIsShipsgo
+                    ? formatShipsgoDateLong(effectiveArrivalDate)
+                    : formatDateInline(effectiveArrivalDate)
+                  : "—"}
+              </dd>
+            </div>
+            <div className="osv-stat">
+              <dt className="osv-stat__label">Carrier</dt>
+              <dd className="osv-stat__value">
+                {shipment.carrier?.name || "—"}
+              </dd>
+            </div>
+            <div className="osv-stat">
+              <dt className="osv-stat__label">Booking</dt>
+              <dd className="osv-stat__value">
+                {shipment.bookingNumber || shipment.waybillNumber || "—"}
+              </dd>
+            </div>
+          </dl>
+
+          <OceanGeneralTabContent
+            shipment={shipment}
+            quoteDisplay={quoteDisplay}
+            hbliEntry={hbliEntry}
+            renderAccordionArrivalDate={renderAccordionArrivalDate}
+            getHBLIFromShipment={getHBLIFromShipment}
+            formatDateLong={formatDateLong}
+            getDisplayedTrackingNumber={getDisplayedTrackingNumber}
+            isTrackingLoading={isTrackingLoading}
+            isTrackingReady={isTrackingReady}
+            isOceanShipmentAlreadyTracked={isOceanShipmentAlreadyTracked}
+            openTrackModal={openTrackModal}
+            onOpenTracking={onOpenTracking}
+            onOpenQuote={onOpenQuote}
+            registerSection={registerSection}
+          />
+
+          <section
+            ref={registerSection("documentos")}
+            data-osv-section="documentos"
+            className="osv-dsection"
+          >
+            <h3 className="osv-dsection__title">Documentos Operacionales</h3>
+            <QuoteOperationalDocumentsSection
+              mode="ocean"
+              quoteNumber={quoteDisplay.quoteNumber}
+              loading={quoteDisplay.loading}
+            />
+          </section>
+
+          {hasNotes && (
+            <section
+              ref={registerSection("notas")}
+              data-osv-section="notas"
+              className="osv-dsection"
+            >
+              <h3 className="osv-dsection__title">Notas</h3>
+              <div className="osv-notes">{shipment.notes}</div>
+            </section>
+          )}
+        </main>
+      </div>
+    </div>
   );
 }
 
@@ -963,11 +1056,6 @@ function OceanShipmentsView({
             flexWrap: "wrap",
           }}
         >
-          {linbisDate ? (
-            <span style={{ textDecoration: "line-through", opacity: 0.65 }}>
-              {formatDateLong(linbisDate)}
-            </span>
-          ) : null}
           <span
             style={{
               display: "inline-flex",
@@ -1000,6 +1088,11 @@ function OceanShipmentsView({
               </span>
             ) : null}
           </span>
+          {linbisDate ? (
+            <span style={{ textDecoration: "line-through", opacity: 0.65 }}>
+              {formatDateLong(linbisDate)}
+            </span>
+          ) : null}
         </span>
       );
     }
@@ -1989,96 +2082,58 @@ function OceanShipmentsView({
      ========================================================= */
   return (
     <div className="osv-container">
-      <PageBannerHeader variant="oceanShipments" />
+      {!selectedShipment && (
+        <>
+          <PageBannerHeader variant="oceanShipments" />
 
-      {/* Toolbar */}
-      <div
-        className="osv-toolbar"
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
-          marginTop: 24,
-        }}
-      >
-        <div
-          style={{
-            marginLeft: "auto",
-            display: "flex",
-            gap: 8,
-            alignItems: "center",
-          }}
-        >
-          {/* Filter Icon Button */}
-          <button
-            className={`osv-btn osv-btn--ghost${activeFilterCount > 0 ? " osv-btn--ghost-active" : ""}`}
-            type="button"
-            onClick={() => setShowSearchModal(true)}
-            aria-label="Abrir filtros"
-          >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+          {/* Toolbar */}
+          <div className="osv-toolbar">
+            <button
+              className={`osv-btn osv-btn--ghost osv-toolbar__icon-btn ${activeFilterCount > 0 ? "osv-toolbar__icon-btn--active" : ""}`}
+              type="button"
+              onClick={() => setShowSearchModal(true)}
+              aria-label="Abrir filtros"
             >
-              <circle cx="11" cy="11" r="7" />
-              <path d="m20 20-3.5-3.5" />
-            </svg>
-            <span>Filtros</span>
-            {activeFilterCount > 0 && (
-              <span
-                style={{
-                  backgroundColor: "var(--primary-color)",
-                  color: "#fff",
-                  borderRadius: "9999px",
-                  fontSize: "0.6875rem",
-                  fontWeight: 700,
-                  padding: "1px 7px",
-                  marginLeft: 2,
-                }}
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
               >
-                {activeFilterCount}
-              </span>
-            )}
-          </button>
-
-          {/* Refresh Button */}
-          <button
-            className="osv-btn"
-            onClick={refreshShipments}
-            style={{
-              backgroundColor: "var(--primary-color)",
-              color: "#fff",
-              border: "none",
-              borderRadius: "4px",
-              padding: "0 12px",
-              height: "32px",
-              fontSize: "12px",
-              cursor: "pointer",
-              fontFamily:
-                '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
-            }}
-          >
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
+                <circle cx="11" cy="11" r="7" />
+                <path d="m20 20-3.5-3.5" />
+              </svg>
+              <span>Filtros</span>
+              {activeFilterCount > 0 && (
+                <span className="osv-toolbar__badge">{activeFilterCount}</span>
+              )}
+            </button>
+            <button
+              className="osv-btn osv-btn--primary"
+              onClick={refreshShipments}
             >
-              <polyline points="23 4 23 10 17 10" />
-              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
-            </svg>
-            Actualizar
-          </button>
-        </div>
-      </div>
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="23 4 23 10 17 10" />
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+              </svg>
+              Actualizar
+            </button>
+          </div>
+        </>
+      )}
 
       {/* Search / Filter modal */}
       {showSearchModal && (
@@ -2324,7 +2379,6 @@ function OceanShipmentsView({
         <LoadingTips
           columns={[
             { label: "Referencia Cliente" },
-            { label: "Número" },
             { label: "Origen" },
             { label: "Fecha Salida", center: true },
             { label: "Fecha Llegada", center: true },
@@ -2340,196 +2394,184 @@ function OceanShipmentsView({
         </div>
       )}
 
-      {/* Table */}
-      {!loading && displayedOceanShipments.length > 0 && (
-        <div
-          className={`osv-split-view${selectedShipment ? " osv-split-view--active" : ""}`}
-        >
-          <div className="osv-split-list">
-            <div className="osv-table-wrapper">
-              <div className="osv-table-scroll">
-                <table className="osv-table">
-                  <thead>
-                    <tr>
-                      <th className="osv-th">Referencia Cliente</th>
-                      <th className="osv-th osv-th--split-hidden">Número</th>
-                      <th className="osv-th">Origen</th>
-                      <th className="osv-th osv-th--center">Fecha Salida</th>
-                      <th className="osv-th osv-th--center">Fecha Llegada</th>
-                      <th className="osv-th osv-th--center osv-th--split-hidden">
-                        Carrier
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {paginatedShipments.map((shipment, index) => {
-                      const shipmentId = getShipmentRowId(shipment, index);
-                      const isSelected = selectedShipmentId === shipmentId;
-                      const effectiveArrivalDate =
-                        getEffectiveArrivalDate(shipment);
-                      const effectiveArrivalIsShipsgo =
-                        isOceanArrivalFromShipsgo(shipment);
-                      const referenceLabel =
-                        shipment.customerReference || "-";
-                      const numberLabel = shipment.number || "---";
-                      const originLabel =
-                        shipment.executedAt?.name?.trim() || "-";
-                      const departureLabel = formatDateInline(
-                        shipment.departureDate,
-                      );
-                      const carrierLabel = shipment.carrier?.name || "-";
+      {/* Table (list view) */}
+      {!loading && displayedOceanShipments.length > 0 && !selectedShipment && (
+        <div className="osv-list">
+          <div className="osv-table-wrapper">
+            <div className="osv-table-scroll">
+              <table className="osv-table">
+                <thead>
+                  <tr>
+                    <th className="osv-th">Referencia Cliente</th>
+                    <th className="osv-th">Origen</th>
+                    <th className="osv-th osv-th--center">Fecha Salida</th>
+                    <th className="osv-th osv-th--center">Fecha Llegada</th>
+                    <th className="osv-th osv-th--center">Carrier</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedShipments.map((shipment, index) => {
+                    const shipmentId = getShipmentRowId(shipment, index);
+                    const effectiveArrivalDate =
+                      getEffectiveArrivalDate(shipment);
+                    const effectiveArrivalIsShipsgo =
+                      isOceanArrivalFromShipsgo(shipment);
+                    const referenceLabel =
+                      shipment.customerReference || "-";
+                    const numberLabel = shipment.number || "---";
+                    const originLabel =
+                      shipment.executedAt?.name?.trim() || "-";
+                    const departureLabel = formatDateInline(
+                      shipment.departureDate,
+                    );
+                    const carrierLabel = shipment.carrier?.name || "-";
 
-                      return (
-                        <tr
-                          key={shipmentId}
-                          className={`osv-tr${isSelected ? " osv-tr--selected" : ""}`}
-                          onClick={() => toggleShipmentSelection(shipmentId)}
+                    return (
+                      <tr
+                        key={shipmentId}
+                        className="osv-tr"
+                        onClick={() => toggleShipmentSelection(shipmentId)}
+                      >
+                        <td
+                          className="osv-td osv-td--reference"
+                          title={referenceLabel}
                         >
-                          <td
-                            className="osv-td osv-td--reference"
-                            title={referenceLabel}
-                          >
+                          <span className="osv-cell-ref">
                             {referenceLabel}
-                          </td>
-                          <td
-                            className="osv-td osv-td--number osv-td--split-hidden"
-                            title={numberLabel}
-                          >
-                            {numberLabel}
-                          </td>
-                          <td className="osv-td" title={originLabel}>
-                            {originLabel}
-                          </td>
-                          <td
-                            className="osv-td osv-td--center"
-                            title={departureLabel}
-                          >
-                            {departureLabel}
-                          </td>
-                          <td
-                            className="osv-td osv-td--center"
-                            title={effectiveArrivalDate || "-"}
-                          >
-                            {renderArrivalInline(
-                              effectiveArrivalDate,
-                              effectiveArrivalIsShipsgo,
-                            )}
-                          </td>
-                          <td
-                            className="osv-td osv-td--center osv-td--split-hidden"
-                            title={carrierLabel}
-                          >
-                            {carrierLabel}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                          </span>
+                          <span className="osv-cell-num">{numberLabel}</span>
+                        </td>
+                        <td className="osv-td" title={originLabel}>
+                          {originLabel}
+                        </td>
+                        <td
+                          className="osv-td osv-td--center"
+                          title={departureLabel}
+                        >
+                          {departureLabel}
+                        </td>
+                        <td
+                          className="osv-td osv-td--center"
+                          title={effectiveArrivalDate || "-"}
+                        >
+                          {renderArrivalInline(
+                            effectiveArrivalDate,
+                            effectiveArrivalIsShipsgo,
+                          )}
+                        </td>
+                        <td
+                          className="osv-td osv-td--center"
+                          title={carrierLabel}
+                        >
+                          {carrierLabel}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
 
-              <div className="osv-table-footer">
-                <div className="osv-table-footer__left">
-                  {loading && (
-                    <span className="osv-loading-text">Cargando...</span>
-                  )}
-                </div>
-                <div className="osv-table-footer__right">
-                  <span className="osv-pagination-label">Filas por página:</span>
-                  <select
-                    className="osv-pagination-select"
-                    value={rowsPerPage}
-                    onChange={(e) => {
-                      setRowsPerPage(Number(e.target.value));
-                      setTablePage(1);
-                    }}
+            <div className="osv-table-footer">
+              <div className="osv-table-footer__left">
+                {loading && (
+                  <span className="osv-loading-text">Cargando...</span>
+                )}
+              </div>
+              <div className="osv-table-footer__right">
+                <span className="osv-pagination-label">Filas por página:</span>
+                <select
+                  className="osv-pagination-select"
+                  value={rowsPerPage}
+                  onChange={(e) => {
+                    setRowsPerPage(Number(e.target.value));
+                    setTablePage(1);
+                  }}
+                >
+                  <option value={10}>10</option>
+                  <option value={15}>15</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                </select>
+                <span className="osv-pagination-range">
+                  {paginationRangeText}
+                </span>
+                <button
+                  className="osv-pagination-btn"
+                  disabled={tablePage <= 1}
+                  onClick={() => setTablePage((p) => p - 1)}
+                >
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
                   >
-                    <option value={10}>10</option>
-                    <option value={15}>15</option>
-                    <option value={25}>25</option>
-                    <option value={50}>50</option>
-                  </select>
-                  <span className="osv-pagination-range">
-                    {paginationRangeText}
-                  </span>
-                  <button
-                    className="osv-pagination-btn"
-                    disabled={tablePage <= 1}
-                    onClick={() => setTablePage((p) => p - 1)}
+                    <polyline points="15 18 9 12 15 6" />
+                  </svg>
+                </button>
+                <button
+                  className="osv-pagination-btn"
+                  disabled={tablePage >= totalTablePages}
+                  onClick={() => setTablePage((p) => p + 1)}
+                >
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
                   >
-                    <svg
-                      width="18"
-                      height="18"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <polyline points="15 18 9 12 15 6" />
-                    </svg>
-                  </button>
-                  <button
-                    className="osv-pagination-btn"
-                    disabled={tablePage >= totalTablePages}
-                    onClick={() => setTablePage((p) => p + 1)}
-                  >
-                    <svg
-                      width="18"
-                      height="18"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <polyline points="9 18 15 12 9 6" />
-                    </svg>
-                  </button>
-                </div>
+                    <polyline points="9 18 15 12 9 6" />
+                  </svg>
+                </button>
               </div>
             </div>
           </div>
-
-          {selectedShipment && selectedShipmentIndex >= 0 && (
-            <aside className="osv-split-detail">
-              <OceanShipmentDetailPanel
-                shipment={selectedShipment}
-                shipmentId={getShipmentRowId(
-                  selectedShipment,
-                  selectedShipmentIndex,
-                )}
-                documentsOnly={documentsOnly}
-                onClose={() => setSelectedShipmentId(null)}
-                formatDateInline={formatDateInline}
-                effectiveArrivalDate={getEffectiveArrivalDate(selectedShipment)}
-                effectiveArrivalIsShipsgo={isOceanArrivalFromShipsgo(
-                  selectedShipment,
-                )}
-                quoteDisplay={getQuoteDisplayState(selectedShipment)}
-                hbliEntry={hbliCache[selectedShipment.number]}
-                renderAccordionArrivalDate={() =>
-                  renderAccordionArrivalDate(selectedShipment)
-                }
-                getHBLIFromShipment={getHBLIFromShipment}
-                formatDateLong={formatDateLong}
-                getDisplayedTrackingNumber={getDisplayedTrackingNumber}
-                isTrackingLoading={isTrackingLoading}
-                isTrackingReady={isTrackingReady}
-                isOceanShipmentAlreadyTracked={isOceanShipmentAlreadyTracked}
-                openTrackModal={openTrackModal}
-                onOpenTracking={() =>
-                  openTrackedShipmentInPortal(selectedShipment)
-                }
-                onOpenQuote={(qn) => {
-                  if (reporteriaClientesContext) {
-                    reporteriaClientesContext.openQuotesTab(qn);
-                  } else {
-                    navigate("/quotes", { state: { quoteFilter: qn } });
-                  }
-                }}
-              />
-            </aside>
-          )}
         </div>
+      )}
+
+      {/* Detail (full page) */}
+      {!loading && selectedShipment && selectedShipmentIndex >= 0 && (
+        <OceanShipmentDetailPanel
+          shipment={selectedShipment}
+          shipmentId={getShipmentRowId(
+            selectedShipment,
+            selectedShipmentIndex,
+          )}
+          documentsOnly={documentsOnly}
+          onClose={() => setSelectedShipmentId(null)}
+          formatDateInline={formatDateInline}
+          effectiveArrivalDate={getEffectiveArrivalDate(selectedShipment)}
+          effectiveArrivalIsShipsgo={isOceanArrivalFromShipsgo(
+            selectedShipment,
+          )}
+          quoteDisplay={getQuoteDisplayState(selectedShipment)}
+          hbliEntry={hbliCache[selectedShipment.number]}
+          renderAccordionArrivalDate={() =>
+            renderAccordionArrivalDate(selectedShipment)
+          }
+          getHBLIFromShipment={getHBLIFromShipment}
+          formatDateLong={formatDateLong}
+          getDisplayedTrackingNumber={getDisplayedTrackingNumber}
+          isTrackingLoading={isTrackingLoading}
+          isTrackingReady={isTrackingReady}
+          isOceanShipmentAlreadyTracked={isOceanShipmentAlreadyTracked}
+          openTrackModal={openTrackModal}
+          onOpenTracking={() =>
+            openTrackedShipmentInPortal(selectedShipment)
+          }
+          onOpenQuote={(qn) => {
+            if (reporteriaClientesContext) {
+              reporteriaClientesContext.openQuotesTab(qn);
+            } else {
+              navigate("/quotes", { state: { quoteFilter: qn } });
+            }
+          }}
+        />
       )}
 
       {/* Track Modal */}

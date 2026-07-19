@@ -707,49 +707,6 @@ function QuoteDetailPanel({
         </button>
       </div>
 
-      {heroBlock}
-
-      <dl className="qv-stats">
-        <div className="qv-stat">
-          <dt className="qv-stat__label">{t("quotesView.summaryAmount")}</dt>
-          <dd className="qv-stat__value qv-stat__value--amount">
-            {formatCLP(quote.totalCharge_IncomeDisplayValue) || "$0 CLP"}
-          </dd>
-        </div>
-        <div className="qv-stat">
-          <dt className="qv-stat__label">{t("quotesView.summaryValidity")}</dt>
-          <dd className="qv-stat__value">
-            {quote.validUntil_Date
-              ? formatDateShort(quote.validUntil_Date)
-              : "—"}
-          </dd>
-          {quoteValid !== null && (
-            <dd
-              className={`qv-stat__hint ${quoteValid ? "qv-stat__hint--ok" : "qv-stat__hint--off"}`}
-            >
-              <span className="qv-stat__dot" aria-hidden />
-              {quoteValid
-                ? t("quotesView.statusValid")
-                : t("quotesView.statusExpired")}
-            </dd>
-          )}
-        </div>
-        <div className="qv-stat">
-          <dt className="qv-stat__label">{t("quotesView.thTransit")}</dt>
-          <dd className="qv-stat__value">
-            {quote.transitDays != null
-              ? `${quote.transitDays} ${t("quotesView.transitDays")}`
-              : "—"}
-          </dd>
-        </div>
-        <div className="qv-stat">
-          <dt className="qv-stat__label">{t("quotesView.summaryStage")}</dt>
-          <dd className="qv-stat__value qv-stat__value--badge">
-            <FlowBadge currentFlow={quote.currentFlow} />
-          </dd>
-        </div>
-      </dl>
-
       <div className="qv-detail__body">
         <aside className="qv-detail__nav">
           <nav
@@ -778,6 +735,58 @@ function QuoteDetailPanel({
         >
           {({ onCotizacionCountChange, onOperacionalCountChange }) => (
             <main className="qv-detail__sections">
+              {heroBlock}
+
+              <dl className="qv-stats">
+                <div className="qv-stat">
+                  <dt className="qv-stat__label">
+                    {t("quotesView.summaryAmount")}
+                  </dt>
+                  <dd className="qv-stat__value qv-stat__value--amount">
+                    {formatCLP(quote.totalCharge_IncomeDisplayValue) ||
+                      "$0 CLP"}
+                  </dd>
+                </div>
+                <div className="qv-stat">
+                  <dt className="qv-stat__label">
+                    {t("quotesView.summaryValidity")}
+                  </dt>
+                  <dd className="qv-stat__value">
+                    {quote.validUntil_Date
+                      ? formatDateShort(quote.validUntil_Date)
+                      : "—"}
+                  </dd>
+                  {quoteValid !== null && (
+                    <dd
+                      className={`qv-stat__hint ${quoteValid ? "qv-stat__hint--ok" : "qv-stat__hint--off"}`}
+                    >
+                      <span className="qv-stat__dot" aria-hidden />
+                      {quoteValid
+                        ? t("quotesView.statusValid")
+                        : t("quotesView.statusExpired")}
+                    </dd>
+                  )}
+                </div>
+                <div className="qv-stat">
+                  <dt className="qv-stat__label">
+                    {t("quotesView.thTransit")}
+                  </dt>
+                  <dd className="qv-stat__value">
+                    {quote.transitDays != null
+                      ? `${quote.transitDays} ${t("quotesView.transitDays")}`
+                      : "—"}
+                  </dd>
+                </div>
+                <div className="qv-stat">
+                  <dt className="qv-stat__label">
+                    {t("quotesView.summaryStage")}
+                  </dt>
+                  <dd className="qv-stat__value qv-stat__value--badge">
+                    <FlowBadge currentFlow={quote.currentFlow} />
+                  </dd>
+                </div>
+              </dl>
+
               {/* ── Resumen ── */}
               <section
                 ref={registerSection("resumen")}
