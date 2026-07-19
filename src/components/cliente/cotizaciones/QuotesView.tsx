@@ -1,5 +1,19 @@
-﻿import React, { useState, useEffect, useMemo, useCallback } from "react";
+﻿import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+  useRef,
+} from "react";
 import { useOutletContext, useNavigate, useLocation } from "react-router-dom";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Plane,
+  Ship,
+  Package,
+  Download,
+} from "lucide-react";
 import { useAuth } from "@/auth/AuthContext";
 import { useClientOverride } from "@/contexts/ClientOverrideContext";
 import { useReporteriaClientesContext } from "@/contexts/ReporteriaClientesContext";
@@ -246,22 +260,6 @@ function mapQuoteTypeToTipoEnvio(
   return type;
 }
 
-function StatusBadge({ validUntilDate }: { validUntilDate?: string }) {
-  const { t } = useTranslation();
-  const valid = isQuoteValid(validUntilDate);
-  if (valid === null)
-    return <span className="qv-badge qv-badge--neutral">---</span>;
-  return valid ? (
-    <span className="qv-badge qv-badge--neutral">
-      {t("quotesView.statusValid")}
-    </span>
-  ) : (
-    <span className="qv-badge qv-badge--neutral" style={{ color: "#6b7280" }}>
-      {t("quotesView.statusExpired")}
-    </span>
-  );
-}
-
 function FlowBadge({ currentFlow }: { currentFlow?: string | null }) {
   const flow = currentFlow || "Requested";
   const flowMap: Record<string, { label: string; extraClass?: string }> = {
@@ -278,61 +276,6 @@ function FlowBadge({ currentFlow }: { currentFlow?: string | null }) {
     <span className={`qv-badge ${entry.extraClass ?? "qv-badge--neutral"}`}>
       {entry.label}
     </span>
-  );
-}
-
-/* -- InfoField (modal) -------------------------------------- */
-function InfoField({
-  label,
-  value,
-  fullWidth = false,
-}: {
-  label: string;
-  value: any;
-  fullWidth?: boolean;
-}) {
-  if (value === null || value === undefined || value === "" || value === "N/A")
-    return null;
-  return (
-    <div className={`qv-info-field ${fullWidth ? "qv-info-field--full" : ""}`}>
-      <div className="qv-info-field__label">{label}</div>
-      <div className="qv-info-field__value">{String(value)}</div>
-    </div>
-  );
-}
-
-/* -- CollapsibleSection (modal) ----------------------------- */
-function CollapsibleSection({
-  title,
-  children,
-  defaultOpen = false,
-}: {
-  title: string;
-  children: React.ReactNode;
-  defaultOpen?: boolean;
-}) {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
-  return (
-    <div className="qv-collapsible">
-      <button
-        className={`qv-collapsible__header ${isOpen ? "qv-collapsible__header--open" : ""}`}
-        onClick={() => setIsOpen(!isOpen)}
-      >
-        <span className="qv-collapsible__title">{title}</span>
-        <svg
-          className={`qv-collapsible__chevron ${isOpen ? "qv-collapsible__chevron--open" : ""}`}
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-        >
-          <polyline points="6 9 12 15 18 9" />
-        </svg>
-      </button>
-      {isOpen && <div className="qv-collapsible__body">{children}</div>}
-    </div>
   );
 }
 
@@ -385,21 +328,6 @@ function formatFieldValue(value: unknown): string {
   return String(value);
 }
 
-function FieldGridSection({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="qv-field-section">
-      <h4 className="qv-field-section__title">{title}</h4>
-      <div className="qv-field-grid">{children}</div>
-    </section>
-  );
-}
-
 function FieldGridCell({
   label,
   value,
@@ -435,279 +363,22 @@ function FieldGridCell({
   );
 }
 
-interface QuoteGeneralTabContentProps {
-  quote: Quote;
-  t: (key: string) => string;
-  formatDateLong: (dateString?: string) => string;
-  formatCLP: (priceString?: string) => string | null;
-  shouldShowQuoteTracking: (quote: Quote) => boolean;
-  isQuoteAlreadyTracked: (quote: Quote) => boolean;
-  getQuoteTrackingNumber: (quote: Quote) => string;
-  openTrackModal: (quote: Quote) => void;
-  onOpenTracking: (type: "air" | "ocean") => void;
-  showPdfAction?: boolean;
-  hasPdf?: boolean;
-  isDownloadingPdf?: boolean;
-  onDownloadPdf?: () => void;
-  isResendingPdf?: boolean;
-  onResendPdf?: (params: {
-    quoteNumber: string;
-    emails: string[];
-    customerReference?: string;
-    ownerUsername?: string;
-  }) => Promise<void>;
-  resendToken?: string | null;
-  resendOwnerUsername?: string;
-  operationNumber?: string | null;
-  operationFilterNumber?: string | null;
-  operationNumberLoading?: boolean;
-  onOpenShipment?: (params: {
-    shipmentType: "air" | "ocean";
-    filterNumber: string;
-  }) => void;
+/** Quita el prefijo numérico "NN - " de los modos de transporte Linbis */
+function getTransportShortLabel(label: string): string {
+  return label.replace(/^\s*\d+\s*-\s*/, "").trim() || label;
 }
 
-function QuoteGeneralTabContent({
+function TransportModeIcon({
   quote,
-  t,
-  formatDateLong,
-  formatCLP,
-  shouldShowQuoteTracking,
-  isQuoteAlreadyTracked,
-  getQuoteTrackingNumber,
-  openTrackModal,
-  onOpenTracking,
-  showPdfAction = false,
-  hasPdf = false,
-  isDownloadingPdf = false,
-  onDownloadPdf,
-  isResendingPdf = false,
-  onResendPdf,
-  resendToken = null,
-  resendOwnerUsername,
-  operationNumber = null,
-  operationFilterNumber = null,
-  operationNumberLoading = false,
-  onOpenShipment,
-}: QuoteGeneralTabContentProps) {
-  const showTracking = shouldShowQuoteTracking(quote);
-  const alreadyTracked = isQuoteAlreadyTracked(quote);
-  const trackType = getQuoteTrackType(quote);
-  const shipmentType = getQuoteTrackType(quote);
-  const canOpenShipment =
-    !operationNumberLoading &&
-    !!operationNumber &&
-    !!operationFilterNumber &&
-    !!shipmentType &&
-    !!onOpenShipment;
-
-  return (
-    <div className="qv-field-sections">
-      <FieldGridSection title={t("quotesView.quoteDetails")}>
-        <FieldGridCell label={t("quotesView.quoteNumber")} value={quote.number} />
-        {operationNumberLoading ? (
-          <FieldGridCell label={t("quotesView.quoteOperationNumber")} value="Cargando..." />
-        ) : canOpenShipment ? (
-          <FieldGridCell label={t("quotesView.quoteOperationNumber")}>
-            <span
-              className="qv-field-cell__value qv-field-cell__value--accent"
-              onClick={(e) => {
-                e.stopPropagation();
-                onOpenShipment!({
-                  shipmentType: shipmentType!,
-                  filterNumber: operationFilterNumber!,
-                });
-              }}
-              role="button"
-              tabIndex={0}
-              title={
-                shipmentType === "air"
-                  ? "Ver envío aéreo"
-                  : "Ver envío marítimo"
-              }
-            >
-              {operationNumber}
-            </span>
-          </FieldGridCell>
-        ) : (
-          <FieldGridCell label={t("quotesView.quoteOperationNumber")} value={operationNumber} />
-        )}
-        <FieldGridCell
-          label={t("quotesView.issueDate")}
-          value={quote.date ? formatDateLong(quote.date) : null}
-        />
-        <FieldGridCell
-          label={t("quotesView.validUntil")}
-          value={
-            quote.validUntil_Date
-              ? formatDateLong(quote.validUntil_Date)
-              : null
-          }
-        />
-        <FieldGridCell
-          label={t("quotesView.customerRef")}
-          value={quote.customerReference}
-        />
-        <FieldGridCell
-          label={t("quotesView.carrierBroker")}
-          value={quote.carrierBroker}
-        />
-        <FieldGridCell label="ID interno" value={quote.id} />
-      </FieldGridSection>
-
-      <FieldGridSection title={t("quotesView.logistics")}>
-        <FieldGridCell
-          label={t("quotesView.transitDaysLabel")}
-          value={quote.transitDays}
-        />
-        <FieldGridCell
-          label={t("quotesView.transportMode")}
-          value={getQuoteTransportModeLabel(quote) || quote.modeOfTransportation}
-        />
-        <FieldGridCell
-          label={t("quotesView.paymentType")}
-          value={quote.paymentType}
-        />
-        {showTracking ? (
-          <FieldGridCell
-            label="Número de seguimiento"
-            value={getQuoteTrackingNumber(quote)}
-          />
-        ) : null}
-        <FieldGridCell
-          label={t("quotesView.origin")}
-          value={quote.origin}
-        />
-        <FieldGridCell
-          label={t("quotesView.destination")}
-          value={quote.destination}
-        />
-        {showTracking ? (
-          <FieldGridCell label="" action>
-            {alreadyTracked && trackType ? (
-              <button
-                type="button"
-                className="qv-btn qv-accordion-track qv-accordion-track--linked qv-accordion-track--live"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onOpenTracking(trackType);
-                }}
-              >
-                <span className="qv-accordion-track__dot-wrap" aria-hidden>
-                  <span className="qv-accordion-track__dot-ring" />
-                  <span className="qv-accordion-track__dot" />
-                </span>
-                Ver seguimiento
-              </button>
-            ) : (
-              <button
-                type="button"
-                className="qv-btn qv-accordion-track qv-accordion-track--primary"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  openTrackModal(quote);
-                }}
-              >
-                Trackea tu envío
-              </button>
-            )}
-          </FieldGridCell>
-        ) : null}
-      </FieldGridSection>
-
-      <FieldGridSection title={t("quotesView.tabCargo")}>
-        <FieldGridCell
-          label={t("quotesView.totalPieces")}
-          value={quote.totalCargo_Pieces}
-        />
-        <FieldGridCell
-          label={t("quotesView.containers")}
-          value={quote.totalCargo_Container}
-        />
-        <FieldGridCell
-          label={t("quotesView.totalWeight")}
-          value={quote.totalCargo_WeightDisplayValue}
-        />
-        <FieldGridCell
-          label={t("quotesView.totalVolume")}
-          value={quote.totalCargo_VolumeDisplayValue}
-        />
-        <FieldGridCell
-          label={t("quotesView.volumeWeight")}
-          value={quote.totalCargo_VolumeWeightDisplayValue}
-        />
-        <FieldGridCell
-          label={t("quotesView.hazardous")}
-          value={quote.hazardous}
-        />
-        <FieldGridCell
-          label={t("quotesView.cargoStatus")}
-          value={quote.cargoStatus}
-        />
-      </FieldGridSection>
-
-      <FieldGridSection title={t("quotesView.tabFinancial")}>
-        <FieldGridCell label={t("quotesView.totalExpense")}>
-          <span className="qv-field-cell__value qv-field-cell__value--finance">
-            {formatCLP(quote.totalCharge_IncomeDisplayValue) || "$0 CLP"}
-          </span>
-        </FieldGridCell>
-        <FieldGridCell
-          label={t("quotesView.estimatedAmount")}
-          value={t("quotesView.estimatedAmount")}
-        />
-        <FieldGridCell label="Flujo actual" value={quote.currentFlow} />
-        <FieldGridCell label="Ejecutivo comercial" value={quote.salesRep} />
-        <FieldGridCell
-          label={t("quotesView.resendQuote")}
-          action={hasPdf}
-        >
-          <QuotePdfResendCell
-            quoteNumber={quote.number || ""}
-            hasPdf={hasPdf}
-            customerReference={quote.customerReference}
-            ownerUsername={resendOwnerUsername}
-            token={resendToken}
-            isSending={isResendingPdf}
-            onSend={async (params) => {
-              if (!onResendPdf) {
-                throw new Error("No se pudo enviar el PDF.");
-              }
-              await onResendPdf(params);
-            }}
-          />
-        </FieldGridCell>
-        {showPdfAction ? (
-          <FieldGridCell label={t("quotesView.thPDF")} action>
-            {hasPdf ? (
-              <button
-                type="button"
-                className="qv-pdf-btn"
-                disabled={isDownloadingPdf}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDownloadPdf?.();
-                }}
-              >
-                {isDownloadingPdf ? (
-                  <span
-                    className="spinner-border spinner-border-sm"
-                    style={{ width: "10px", height: "10px" }}
-                  />
-                ) : (
-                  t("quotesView.download")
-                )}
-              </button>
-            ) : (
-              <span className="qv-field-cell__value qv-field-cell__value--muted">
-                —
-              </span>
-            )}
-          </FieldGridCell>
-        ) : null}
-      </FieldGridSection>
-    </div>
-  );
+  size = 14,
+}: {
+  quote: Quote;
+  size?: number;
+}) {
+  const type = getQuoteTrackType(quote);
+  if (type === "air") return <Plane size={size} strokeWidth={1.75} aria-hidden />;
+  if (type === "ocean") return <Ship size={size} strokeWidth={1.75} aria-hidden />;
+  return <Package size={size} strokeWidth={1.75} aria-hidden />;
 }
 
 function getQuoteNumberForDocuments(quote: Quote): string {
@@ -872,199 +543,566 @@ function QuoteDetailPanel({
   const quoteNumber = quote.number || "";
   const hasPdf = availablePDFs.has(quoteNumber);
   const trackType = getQuoteTrackType(quote);
+  const showTracking = shouldShowQuoteTracking(quote);
+  const alreadyTracked = isQuoteAlreadyTracked(quote);
+  const canOpenShipment =
+    !operationNumberLoading &&
+    !!operationNumber &&
+    !!operationFilterNumber &&
+    !!trackType &&
+    !!onOpenShipment;
+  const hasNotes = !!quote.notes && quote.notes !== "N/A";
+  const quoteValid = isQuoteValid(quote.validUntil_Date);
+  const transportLabel = getTransportShortLabel(
+    getQuoteTransportDisplay(quote),
+  );
 
-  return (
-    <>
-      <div className="qv-split-detail__header">
-        <div>
-          <span className="qv-split-detail__eyebrow">
-            {t("quotesView.customerRef")}
+  const [activeSection, setActiveSection] = useState("resumen");
+  const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
+
+  const navSections = useMemo(
+    () =>
+      [
+        { id: "resumen", label: t("quotesView.quoteDetails") },
+        { id: "logistica", label: t("quotesView.logistics") },
+        { id: "carga", label: t("quotesView.tabCargo") },
+        { id: "financiero", label: t("quotesView.tabFinancial") },
+        { id: "documentos", label: t("quotesView.tabDocuments") },
+        {
+          id: "documentos-operacionales",
+          label: "Documentos Operacionales",
+          hidden: !trackType,
+        },
+        { id: "notas", label: t("quotesView.tabNotes"), hidden: !hasNotes },
+      ].filter((section) => !section.hidden),
+    [t, trackType, hasNotes],
+  );
+
+  // Al cambiar de cotización: volver arriba y reiniciar la sección activa
+  useEffect(() => {
+    setActiveSection("resumen");
+    const layoutMain = document.querySelector<HTMLElement>(
+      ".user-layout-main",
+    );
+    layoutMain?.scrollTo({ top: 0 });
+  }, [quoteNumber]);
+
+  useEffect(() => {
+    if (documentsOnly) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+        const id = visible[0]?.target.getAttribute("data-qv-section");
+        if (id) setActiveSection(id);
+      },
+      {
+        // Compensa topbar sticky (~52px) + margen para marcar la sección activa
+        rootMargin: "-20% 0px -55% 0px",
+        threshold: [0, 0.1, 0.5],
+      },
+    );
+    navSections.forEach(({ id }) => {
+      const el = sectionRefs.current[id];
+      if (el) observer.observe(el);
+    });
+    return () => observer.disconnect();
+  }, [navSections, quoteNumber, documentsOnly]);
+
+  const scrollToSection = (id: string) => {
+    sectionRefs.current[id]?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  };
+
+  const registerSection =
+    (id: string) =>
+    (el: HTMLElement | null) => {
+      sectionRefs.current[id] = el;
+    };
+
+  const heroBlock = (
+    <header className="qv-detail__hero">
+      <div className="qv-detail__id">
+        <span className="qv-detail__eyebrow">
+          {t("quotesView.customerRef")}
+        </span>
+        <h2 className="qv-detail__title">{quote.customerReference || "—"}</h2>
+        <div className="qv-detail__meta">
+          <span className="qv-detail__chip">
+            <TransportModeIcon quote={quote} size={13} />
+            {transportLabel === "-" ? "—" : transportLabel}
           </span>
-          <h3 className="qv-split-detail__title">
-            {quote.customerReference || "—"}
-          </h3>
+          <span className="qv-detail__chip">
+            {t("quotesView.quoteNumber")} {quote.number || "—"}
+          </span>
         </div>
-        <button
-          type="button"
-          className="qv-split-detail__close"
-          onClick={onClose}
-          aria-label={t("quotesView.close")}
-        >
-          {t("quotesView.close")}
-        </button>
       </div>
-      <div className="qv-split-detail__body">
 
-        <div className="qv-route-card">
-          <div className="qv-route-card__point">
-            <span className="qv-route-card__label">{t("quotesView.origin")}</span>
-            <span className="qv-route-card__value">{quote.origin || "N/A"}</span>
-            {quote.deperture_Date && (
-              <span className="qv-route-card__date">
-                {formatDateShort(quote.deperture_Date)}
-              </span>
-            )}
-          </div>
-          <div className="qv-route-card__connector">
-            <span className="qv-route-card__line" />
-            {quote.transitDays != null && (
-              <span className="qv-route-card__carrier">
-                {quote.transitDays} {t("quotesView.transitDays")}
-              </span>
-            )}
-          </div>
-          <div className="qv-route-card__point qv-route-card__point--end">
-            <span className="qv-route-card__label">
-              {t("quotesView.destination")}
+      <div className="qv-route">
+        <div className="qv-route__point">
+          <span className="qv-route__label">{t("quotesView.origin")}</span>
+          <span className="qv-route__value">{quote.origin || "N/A"}</span>
+          {quote.deperture_Date && (
+            <span className="qv-route__date">
+              {formatDateShort(quote.deperture_Date)}
             </span>
-            <span className="qv-route-card__value">
-              {quote.destination || "N/A"}
-            </span>
-            {quote.arrival_Date && (
-              <span className="qv-route-card__date">
-                {formatDateShort(quote.arrival_Date)}
-              </span>
-            )}
-          </div>
+          )}
         </div>
+        <div className="qv-route__connector" aria-hidden>
+          <span className="qv-route__line" />
+          <span className="qv-route__icon">
+            <TransportModeIcon quote={quote} size={16} />
+          </span>
+          <span className="qv-route__line" />
+          {quote.transitDays != null && (
+            <span className="qv-route__transit">
+              {quote.transitDays} {t("quotesView.transitDays")}
+            </span>
+          )}
+        </div>
+        <div className="qv-route__point qv-route__point--end">
+          <span className="qv-route__label">
+            {t("quotesView.destination")}
+          </span>
+          <span className="qv-route__value">{quote.destination || "N/A"}</span>
+          {quote.arrival_Date && (
+            <span className="qv-route__date">
+              {formatDateShort(quote.arrival_Date)}
+            </span>
+          )}
+        </div>
+      </div>
+    </header>
+  );
 
-        {documentsOnly ? (
+  if (documentsOnly) {
+    return (
+      <div className="qv-detail">
+        <div className="qv-detail__topbar">
+          <button type="button" className="qv-back" onClick={onClose}>
+            <ArrowLeft size={16} strokeWidth={2} aria-hidden />
+            {t("quotesView.backToList")}
+          </button>
+        </div>
+        {heroBlock}
+        <div className="qv-detail__docs-only">
           <QuoteDocumentsTabs
             quote={quote}
             setDocumentCounts={setDocumentCounts}
           />
-        ) : (
-          <QuoteDocumentCountBridge
-            quote={quote}
-            setDocumentCounts={setDocumentCounts}
-          >
-            {({ onCotizacionCountChange, onOperacionalCountChange }) => (
-              <DetailTabs
-                tabs={[
-                  {
-                    key: "general",
-                    label: t("quotesView.tabGeneral"),
-                    icon: (
-                      <svg
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                      >
-                        <circle cx="12" cy="12" r="10" />
-                        <line x1="12" y1="16" x2="12" y2="12" />
-                        <line x1="12" y1="8" x2="12.01" y2="8" />
-                      </svg>
-                    ),
-                    content: (
-                      <QuoteGeneralTabContent
-                        quote={quote}
-                        t={t}
-                        formatDateLong={formatDateLong}
-                        formatCLP={formatCLP}
-                        shouldShowQuoteTracking={shouldShowQuoteTracking}
-                        isQuoteAlreadyTracked={isQuoteAlreadyTracked}
-                        getQuoteTrackingNumber={getQuoteTrackingNumber}
-                        openTrackModal={openTrackModal}
-                        onOpenTracking={onOpenTracking}
-                        showPdfAction
-                        hasPdf={hasPdf}
-                        isDownloadingPdf={downloadingPDF === quoteNumber}
-                        onDownloadPdf={() => onDownloadPdf(quoteNumber)}
-                        isResendingPdf={resendingPDF === quoteNumber}
-                        onResendPdf={onResendPdf}
-                        resendToken={resendToken}
-                        resendOwnerUsername={resendOwnerUsername}
-                        operationNumber={operationNumber}
-                        operationFilterNumber={operationFilterNumber}
-                        operationNumberLoading={operationNumberLoading}
-                        onOpenShipment={onOpenShipment}
-                      />
-                    ),
-                  },
-                  {
-                    key: "documentos",
-                    label: t("quotesView.tabDocuments"),
-                    icon: (
-                      <svg
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                      >
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                        <polyline points="14 2 14 8 20 8" />
-                        <line x1="16" y1="13" x2="8" y2="13" />
-                        <line x1="16" y1="17" x2="8" y2="17" />
-                        <polyline points="10 9 9 9 8 9" />
-                      </svg>
-                    ),
-                    content: (
-                      <DocumentosSection
-                        quoteId={getQuoteNumberForDocuments(quote)}
-                        onCountChange={onCotizacionCountChange}
-                      />
-                    ),
-                  },
-                  {
-                    key: "documentos-operacionales",
-                    label: "Documentos Operacionales",
-                    hidden: !trackType,
-                    icon: (
-                      <svg
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                      >
-                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-                      </svg>
-                    ),
-                    content:
-                      trackType === "air" ? (
-                        <DocumentosSectionQuoteAir
-                          quoteNumber={getQuoteNumberForDocuments(quote)}
-                          onCountChange={onOperacionalCountChange}
-                        />
-                      ) : trackType === "ocean" ? (
-                        <DocumentosSectionQuoteOcean
-                          quoteNumber={getQuoteNumberForDocuments(quote)}
-                          onCountChange={onOperacionalCountChange}
-                        />
-                      ) : null,
-                  },
-                  {
-                    key: "notas",
-                    label: t("quotesView.tabNotes"),
-                    icon: (
-                      <svg
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                      >
-                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                      </svg>
-                    ),
-                    hidden: !quote.notes || quote.notes === "N/A",
-                    content: <div className="qv-notes">{quote.notes}</div>,
-                  },
-                ]}
-              />
-            )}
-          </QuoteDocumentCountBridge>
-        )}
+        </div>
       </div>
-    </>
+    );
+  }
+
+  return (
+    <div className="qv-detail">
+      <div className="qv-detail__topbar">
+        <button type="button" className="qv-back" onClick={onClose}>
+          <ArrowLeft size={16} strokeWidth={2} aria-hidden />
+          {t("quotesView.backToList")}
+        </button>
+      </div>
+
+      {heroBlock}
+
+      <dl className="qv-stats">
+        <div className="qv-stat">
+          <dt className="qv-stat__label">{t("quotesView.summaryAmount")}</dt>
+          <dd className="qv-stat__value qv-stat__value--amount">
+            {formatCLP(quote.totalCharge_IncomeDisplayValue) || "$0 CLP"}
+          </dd>
+        </div>
+        <div className="qv-stat">
+          <dt className="qv-stat__label">{t("quotesView.summaryValidity")}</dt>
+          <dd className="qv-stat__value">
+            {quote.validUntil_Date
+              ? formatDateShort(quote.validUntil_Date)
+              : "—"}
+          </dd>
+          {quoteValid !== null && (
+            <dd
+              className={`qv-stat__hint ${quoteValid ? "qv-stat__hint--ok" : "qv-stat__hint--off"}`}
+            >
+              <span className="qv-stat__dot" aria-hidden />
+              {quoteValid
+                ? t("quotesView.statusValid")
+                : t("quotesView.statusExpired")}
+            </dd>
+          )}
+        </div>
+        <div className="qv-stat">
+          <dt className="qv-stat__label">{t("quotesView.thTransit")}</dt>
+          <dd className="qv-stat__value">
+            {quote.transitDays != null
+              ? `${quote.transitDays} ${t("quotesView.transitDays")}`
+              : "—"}
+          </dd>
+        </div>
+        <div className="qv-stat">
+          <dt className="qv-stat__label">{t("quotesView.summaryStage")}</dt>
+          <dd className="qv-stat__value qv-stat__value--badge">
+            <FlowBadge currentFlow={quote.currentFlow} />
+          </dd>
+        </div>
+      </dl>
+
+      <div className="qv-detail__body">
+        <aside className="qv-detail__nav">
+          <nav
+            className="qv-detail__nav-inner"
+            aria-label={t("quotesView.detailNavAria")}
+          >
+            {navSections.map(({ id, label }) => (
+              <button
+                key={id}
+                type="button"
+                className={`qv-detail__nav-item${
+                  activeSection === id ? " qv-detail__nav-item--active" : ""
+                }`}
+                aria-current={activeSection === id ? "true" : undefined}
+                onClick={() => scrollToSection(id)}
+              >
+                {label}
+              </button>
+            ))}
+          </nav>
+        </aside>
+
+        <QuoteDocumentCountBridge
+          quote={quote}
+          setDocumentCounts={setDocumentCounts}
+        >
+          {({ onCotizacionCountChange, onOperacionalCountChange }) => (
+            <main className="qv-detail__sections">
+              {/* ── Resumen ── */}
+              <section
+                ref={registerSection("resumen")}
+                data-qv-section="resumen"
+                className="qv-dsection"
+              >
+                <h3 className="qv-dsection__title">
+                  {t("quotesView.quoteDetails")}
+                </h3>
+                <div className="qv-field-grid">
+                  <FieldGridCell
+                    label={t("quotesView.quoteNumber")}
+                    value={quote.number}
+                  />
+                  {operationNumberLoading ? (
+                    <FieldGridCell
+                      label={t("quotesView.quoteOperationNumber")}
+                      value="Cargando..."
+                    />
+                  ) : canOpenShipment ? (
+                    <FieldGridCell
+                      label={t("quotesView.quoteOperationNumber")}
+                    >
+                      <span
+                        className="qv-field-cell__value qv-field-cell__value--accent"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onOpenShipment!({
+                            shipmentType: trackType!,
+                            filterNumber: operationFilterNumber!,
+                          });
+                        }}
+                        role="button"
+                        tabIndex={0}
+                        title={
+                          trackType === "air"
+                            ? "Ver envío aéreo"
+                            : "Ver envío marítimo"
+                        }
+                      >
+                        {operationNumber}
+                      </span>
+                    </FieldGridCell>
+                  ) : (
+                    <FieldGridCell
+                      label={t("quotesView.quoteOperationNumber")}
+                      value={operationNumber}
+                    />
+                  )}
+                  <FieldGridCell
+                    label={t("quotesView.issueDate")}
+                    value={quote.date ? formatDateLong(quote.date) : null}
+                  />
+                  <FieldGridCell
+                    label={t("quotesView.validUntil")}
+                    value={
+                      quote.validUntil_Date
+                        ? formatDateLong(quote.validUntil_Date)
+                        : null
+                    }
+                  />
+                  <FieldGridCell
+                    label={t("quotesView.customerRef")}
+                    value={quote.customerReference}
+                  />
+                  <FieldGridCell
+                    label={t("quotesView.carrierBroker")}
+                    value={quote.carrierBroker}
+                  />
+                  <FieldGridCell label="ID interno" value={quote.id} />
+                  <FieldGridCell label={t("quotesView.thPDF")} action>
+                    {hasPdf ? (
+                      <button
+                        type="button"
+                        className="qv-action-btn"
+                        disabled={downloadingPDF === quoteNumber}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDownloadPdf(quoteNumber);
+                        }}
+                      >
+                        {downloadingPDF === quoteNumber ? (
+                          <span
+                            className="spinner-border spinner-border-sm"
+                            style={{ width: "11px", height: "11px" }}
+                          />
+                        ) : (
+                          <Download size={13} strokeWidth={2} aria-hidden />
+                        )}
+                        {t("quotesView.download")} PDF
+                      </button>
+                    ) : (
+                      <span className="qv-field-cell__value qv-field-cell__value--muted">
+                        —
+                      </span>
+                    )}
+                  </FieldGridCell>
+                  <FieldGridCell
+                    label={t("quotesView.sendPdfByEmail")}
+                    action={hasPdf}
+                  >
+                    <QuotePdfResendCell
+                      quoteNumber={quote.number || ""}
+                      hasPdf={hasPdf}
+                      customerReference={quote.customerReference}
+                      ownerUsername={resendOwnerUsername}
+                      token={resendToken}
+                      isSending={resendingPDF === quoteNumber}
+                      onSend={async (params) => {
+                        await onResendPdf(params);
+                      }}
+                      triggerLabel={t("quotesView.resendShort")}
+                      triggerClassName="qv-action-btn"
+                    />
+                  </FieldGridCell>
+                </div>
+              </section>
+
+              {/* ── Logística ── */}
+              <section
+                ref={registerSection("logistica")}
+                data-qv-section="logistica"
+                className="qv-dsection"
+              >
+                <h3 className="qv-dsection__title">
+                  {t("quotesView.logistics")}
+                </h3>
+                <div className="qv-field-grid">
+                  <FieldGridCell
+                    label={t("quotesView.transitDaysLabel")}
+                    value={quote.transitDays}
+                  />
+                  <FieldGridCell
+                    label={t("quotesView.transportMode")}
+                    value={
+                      getQuoteTransportModeLabel(quote) ||
+                      quote.modeOfTransportation
+                    }
+                  />
+                  <FieldGridCell
+                    label={t("quotesView.paymentType")}
+                    value={quote.paymentType}
+                  />
+                  {showTracking ? (
+                    <FieldGridCell
+                      label="Número de seguimiento"
+                      value={getQuoteTrackingNumber(quote)}
+                    />
+                  ) : null}
+                  <FieldGridCell
+                    label={t("quotesView.origin")}
+                    value={quote.origin}
+                  />
+                  <FieldGridCell
+                    label={t("quotesView.destination")}
+                    value={quote.destination}
+                  />
+                  {showTracking ? (
+                    <FieldGridCell label="" action>
+                      {alreadyTracked && trackType ? (
+                        <button
+                          type="button"
+                          className="qv-btn qv-accordion-track qv-accordion-track--linked qv-accordion-track--live"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onOpenTracking(trackType);
+                          }}
+                        >
+                          <span
+                            className="qv-accordion-track__dot-wrap"
+                            aria-hidden
+                          >
+                            <span className="qv-accordion-track__dot-ring" />
+                            <span className="qv-accordion-track__dot" />
+                          </span>
+                          Ver seguimiento
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className="qv-btn qv-accordion-track qv-accordion-track--primary"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openTrackModal(quote);
+                          }}
+                        >
+                          Trackea tu envío
+                        </button>
+                      )}
+                    </FieldGridCell>
+                  ) : null}
+                </div>
+              </section>
+
+              {/* ── Carga ── */}
+              <section
+                ref={registerSection("carga")}
+                data-qv-section="carga"
+                className="qv-dsection"
+              >
+                <h3 className="qv-dsection__title">
+                  {t("quotesView.tabCargo")}
+                </h3>
+                <div className="qv-field-grid">
+                  <FieldGridCell
+                    label={t("quotesView.totalPieces")}
+                    value={quote.totalCargo_Pieces}
+                  />
+                  <FieldGridCell
+                    label={t("quotesView.containers")}
+                    value={quote.totalCargo_Container}
+                  />
+                  <FieldGridCell
+                    label={t("quotesView.totalWeight")}
+                    value={quote.totalCargo_WeightDisplayValue}
+                  />
+                  <FieldGridCell
+                    label={t("quotesView.totalVolume")}
+                    value={quote.totalCargo_VolumeDisplayValue}
+                  />
+                  <FieldGridCell
+                    label={t("quotesView.volumeWeight")}
+                    value={quote.totalCargo_VolumeWeightDisplayValue}
+                  />
+                  <FieldGridCell
+                    label={t("quotesView.hazardous")}
+                    value={quote.hazardous}
+                  />
+                  <FieldGridCell
+                    label={t("quotesView.cargoStatus")}
+                    value={quote.cargoStatus}
+                  />
+                </div>
+              </section>
+
+              {/* ── Financiero ── */}
+              <section
+                ref={registerSection("financiero")}
+                data-qv-section="financiero"
+                className="qv-dsection"
+              >
+                <h3 className="qv-dsection__title">
+                  {t("quotesView.tabFinancial")}
+                </h3>
+                <div className="qv-amount">
+                  <span className="qv-amount__value">
+                    {formatCLP(quote.totalCharge_IncomeDisplayValue) ||
+                      "$0 CLP"}
+                  </span>
+                  <span className="qv-amount__label">
+                    {t("quotesView.totalExpense")}
+                  </span>
+                  <span className="qv-amount__hint">
+                    {t("quotesView.estimatedAmount")}
+                  </span>
+                </div>
+                <div className="qv-field-grid">
+                  <FieldGridCell
+                    label="Flujo actual"
+                    value={quote.currentFlow}
+                  />
+                  <FieldGridCell
+                    label="Ejecutivo comercial"
+                    value={quote.salesRep}
+                  />
+                </div>
+              </section>
+
+              {/* ── Documentos ── */}
+              <section
+                ref={registerSection("documentos")}
+                data-qv-section="documentos"
+                className="qv-dsection"
+              >
+                <h3 className="qv-dsection__title">
+                  {t("quotesView.tabDocuments")}
+                </h3>
+                <DocumentosSection
+                  quoteId={getQuoteNumberForDocuments(quote)}
+                  onCountChange={onCotizacionCountChange}
+                />
+              </section>
+
+              {/* ── Documentos operacionales ── */}
+              {trackType ? (
+                <section
+                  ref={registerSection("documentos-operacionales")}
+                  data-qv-section="documentos-operacionales"
+                  className="qv-dsection"
+                >
+                  <h3 className="qv-dsection__title">
+                    Documentos Operacionales
+                  </h3>
+                  {trackType === "air" ? (
+                    <DocumentosSectionQuoteAir
+                      quoteNumber={getQuoteNumberForDocuments(quote)}
+                      onCountChange={onOperacionalCountChange}
+                    />
+                  ) : (
+                    <DocumentosSectionQuoteOcean
+                      quoteNumber={getQuoteNumberForDocuments(quote)}
+                      onCountChange={onOperacionalCountChange}
+                    />
+                  )}
+                </section>
+              ) : null}
+
+              {/* ── Notas ── */}
+              {hasNotes ? (
+                <section
+                  ref={registerSection("notas")}
+                  data-qv-section="notas"
+                  className="qv-dsection"
+                >
+                  <h3 className="qv-dsection__title">
+                    {t("quotesView.tabNotes")}
+                  </h3>
+                  <div className="qv-notes">{quote.notes}</div>
+                </section>
+              ) : null}
+            </main>
+          )}
+        </QuoteDocumentCountBridge>
+      </div>
+    </div>
   );
 }
 
@@ -2315,70 +2353,63 @@ function QuotesView({
      ========================================================= */
   return (
     <div className="qv-container">
-      <PageBannerHeader variant="quotes" rounded />
+      {!selectedQuote && (
+        <>
+          <PageBannerHeader variant="quotes" rounded />
 
-      {/* -- Toolbar (advanced search) ------------------------- */}
-      <div
-        className="qv-toolbar"
-        style={{ display: "flex", alignItems: "center", gap: 12 }}
-      >
-        <div
-          style={{
-            marginLeft: "auto",
-            display: "flex",
-            gap: 8,
-            alignItems: "center",
-          }}
-        >
-          <button
-            className={`qv-btn qv-btn--ghost qv-toolbar__icon-btn ${activeFilterCount > 0 ? "qv-toolbar__icon-btn--active" : ""}`}
-            type="button"
-            onClick={() => setShowSearchModal(true)}
-            aria-label={t("quotesView.searchTitle")}
-          >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+          {/* -- Toolbar (advanced search) ------------------------- */}
+          <div className="qv-toolbar">
+            <button
+              className={`qv-btn qv-btn--ghost qv-toolbar__icon-btn ${activeFilterCount > 0 ? "qv-toolbar__icon-btn--active" : ""}`}
+              type="button"
+              onClick={() => setShowSearchModal(true)}
+              aria-label={t("quotesView.searchTitle")}
             >
-              <circle cx="11" cy="11" r="7" />
-              <path d="m20 20-3.5-3.5" />
-            </svg>
-            <span>Filtros</span>
-            {activeFilterCount > 0 && (
-              <span className="qv-toolbar__badge">{activeFilterCount}</span>
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="11" cy="11" r="7" />
+                <path d="m20 20-3.5-3.5" />
+              </svg>
+              <span>Filtros</span>
+              {activeFilterCount > 0 && (
+                <span className="qv-toolbar__badge">{activeFilterCount}</span>
+              )}
+            </button>
+            <button
+              className="qv-btn qv-btn--primary"
+              onClick={refreshQuotes}
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="23 4 23 10 17 10" />
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+              </svg>
+              {t("quotesView.refresh")}
+            </button>
+            {loadingMore && (
+              <span className="qv-loading-text">
+                {t("quotesView.loading")}
+              </span>
             )}
-          </button>
-          <button
-            className="qv-btn"
-            style={{ color: "white", backgroundColor: "var(--primary-color)" }}
-            onClick={refreshQuotes}
-          >
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <polyline points="23 4 23 10 17 10" />
-              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
-            </svg>
-            {t("quotesView.refresh")}
-          </button>
-          {loadingMore && (
-            <span className="qv-loading-text">{t("quotesView.loading")}</span>
-          )}
-        </div>
-      </div>
+          </div>
+        </>
+      )}
 
       {/* -- Search modal ------------------------------------ */}
       {showSearchModal && (
@@ -2605,16 +2636,12 @@ function QuotesView({
       )}
 
       {/* -- Loading ----------------------------------------- */}
-      {/* Loading */}
       {loading && (
         <LoadingTips
           columns={[
             { label: t("quotesView.customerRef") },
-            { label: t("quotesView.thNumber") },
             { label: "Etapa", center: true },
-            { label: "Vigencia", center: true },
-            { label: t("quotesView.thOrigin") },
-            { label: t("quotesView.thDestination") },
+            { label: t("quotesView.thRoute") },
             { label: t("quotesView.thTransport") },
             { label: t("quotesView.thIssueDate") },
             { label: t("quotesView.thValidUntil") },
@@ -2631,13 +2658,10 @@ function QuotesView({
         </div>
       )}
       {/* =====================================================
-          TABLE
+          TABLE (lista)
          ===================================================== */}
-      {!loading && displayedQuotes.length > 0 && (
-        <div
-          className={`qv-split-view${selectedQuote ? " qv-split-view--active" : ""}`}
-        >
-          <div className="qv-split-list">
+      {!loading && displayedQuotes.length > 0 && !selectedQuote && (
+        <div className="qv-list">
             <div className="qv-table-wrapper">
               <div className="qv-table-scroll">
                 <table className="qv-table">
@@ -2650,38 +2674,21 @@ function QuotesView({
                         <span>{t("quotesView.customerRef")}</span>
                         <SortIcon column="customerReference" />
                       </th>
-                      <th
-                        className="qv-th qv-th--sortable qv-th--split-hidden"
-                        onClick={() => handleSort("number")}
-                      >
-                        <span>{t("quotesView.thNumber")}</span>
-                        <SortIcon column="number" />
-                      </th>
                       <th className="qv-th qv-th--center">
                         <span>Etapa</span>
-                      </th>
-                      <th className="qv-th qv-th--center qv-th--split-hidden">
-                        <span>Vigencia</span>
                       </th>
                       <th
                         className="qv-th qv-th--sortable"
                         onClick={() => handleSort("origin")}
                       >
-                        <span>{t("quotesView.thOrigin")}</span>
+                        <span>{t("quotesView.thRoute")}</span>
                         <SortIcon column="origin" />
                       </th>
-                      <th
-                        className="qv-th qv-th--sortable"
-                        onClick={() => handleSort("destination")}
-                      >
-                        <span>{t("quotesView.thDestination")}</span>
-                        <SortIcon column="destination" />
-                      </th>
-                      <th className="qv-th qv-th--split-hidden">
+                      <th className="qv-th">
                         <span>{t("quotesView.thTransport")}</span>
                       </th>
                       <th
-                        className="qv-th qv-th--sortable qv-th--split-hidden"
+                        className="qv-th qv-th--sortable"
                         onClick={() => handleSort("date")}
                       >
                         <span>{t("quotesView.thIssueDate")}</span>
@@ -2695,13 +2702,13 @@ function QuotesView({
                         <SortIcon column="validUntil" />
                       </th>
                       <th
-                        className="qv-th qv-th--center qv-th--sortable qv-th--split-hidden"
+                        className="qv-th qv-th--center qv-th--sortable"
                         onClick={() => handleSort("transit")}
                       >
                         <span>{t("quotesView.thTransit")}</span>
                         <SortIcon column="transit" />
                       </th>
-                      <th className="qv-th qv-th--center qv-th--split-hidden">
+                      <th className="qv-th qv-th--center">
                         <span>{t("quotesView.thPDF")}</span>
                       </th>
                     </tr>
@@ -2712,7 +2719,10 @@ function QuotesView({
                       const isSelected = selectedQuoteId === quoteKey;
                       const referenceLabel = getQuoteDisplayReference(quote);
                       const numberLabel = getQuoteNumberLabel(quote);
-                      const transportLabel = getQuoteTransportDisplay(quote);
+                      const transportLabel = getTransportShortLabel(
+                        getQuoteTransportDisplay(quote),
+                      );
+                      const quoteValid = isQuoteValid(quote.validUntil_Date);
 
                       return (
                         <tr
@@ -2721,69 +2731,107 @@ function QuotesView({
                           onClick={() => toggleQuoteSelection(quote, index)}
                         >
                           <td
-                            className="qv-td qv-td--reference"
+                            className="qv-td qv-td--quote"
                             title={referenceLabel}
                           >
-                            {referenceLabel}
-                          </td>
-                          <td
-                            className="qv-td qv-td--number qv-td--split-hidden"
-                            title={numberLabel}
-                          >
-                            {numberLabel}
+                            <span className="qv-cell-ref">
+                              {referenceLabel}
+                            </span>
+                            <span className="qv-cell-num">
+                              {numberLabel !== "---"
+                                ? `N° ${numberLabel}`
+                                : "---"}
+                            </span>
                           </td>
                           <td className="qv-td qv-td--center">
                             <FlowBadge currentFlow={quote.currentFlow} />
                           </td>
-                          <td className="qv-td qv-td--center qv-td--split-hidden">
-                            <StatusBadge validUntilDate={quote.validUntil_Date} />
+                          <td className="qv-td qv-td--route">
+                            <span className="qv-cell-route">
+                              <span
+                                className="qv-cell-route__point"
+                                title={quote.origin || "---"}
+                              >
+                                {quote.origin || "---"}
+                              </span>
+                              <ArrowRight
+                                className="qv-cell-route__arrow"
+                                size={12}
+                                strokeWidth={2}
+                                aria-hidden
+                              />
+                              <span
+                                className="qv-cell-route__point"
+                                title={quote.destination || "---"}
+                              >
+                                {quote.destination || "---"}
+                              </span>
+                            </span>
                           </td>
                           <td
-                            className="qv-td qv-td--truncate"
-                            title={quote.origin || "---"}
+                            className="qv-td qv-td--transport"
+                            title={getQuoteTransportDisplay(quote)}
                           >
-                            {quote.origin || "---"}
+                            <span className="qv-cell-transport">
+                              <TransportModeIcon quote={quote} size={13} />
+                              <span className="qv-cell-transport__label">
+                                {transportLabel}
+                              </span>
+                            </span>
                           </td>
-                          <td
-                            className="qv-td qv-td--truncate"
-                            title={quote.destination || "---"}
-                          >
-                            {quote.destination || "---"}
-                          </td>
-                          <td
-                            className="qv-td qv-td--split-hidden"
-                            title={transportLabel}
-                          >
-                            {transportLabel}
-                          </td>
-                          <td className="qv-td qv-td--split-hidden">
+                          <td className="qv-td qv-td--date">
                             {formatDateShort(quote.date)}
                           </td>
-                          <td className="qv-td">
-                            {formatDateShort(quote.validUntil_Date)}
+                          <td className="qv-td qv-td--date">
+                            <span className="qv-cell-valid">
+                              <span
+                                className={`qv-dot ${
+                                  quoteValid === null
+                                    ? "qv-dot--na"
+                                    : quoteValid
+                                      ? "qv-dot--ok"
+                                      : "qv-dot--off"
+                                }`}
+                                aria-hidden
+                              />
+                              {formatDateShort(quote.validUntil_Date)}
+                            </span>
                           </td>
-                          <td className="qv-td qv-td--center qv-td--split-hidden">
+                          <td className="qv-td qv-td--center">
                             {quote.transitDays != null
-                              ? `${quote.transitDays}d`
+                              ? `${quote.transitDays} d`
                               : "---"}
                           </td>
                           <td
-                            className="qv-td qv-td--center qv-td--split-hidden"
+                            className="qv-td qv-td--center"
                             onClick={(e) => e.stopPropagation()}
                           >
-                            <QuotePdfResendCell
-                              quoteNumber={quote.number || ""}
-                              hasPdf={availablePDFs.has(quote.number || "")}
-                              customerReference={quote.customerReference}
-                              ownerUsername={activeUsername}
-                              token={token}
-                              isSending={resendingPDF === quote.number}
-                              onSend={handleResendQuotePdf}
-                              triggerLabel={t("quotesView.download")}
-                              triggerClassName="qv-pdf-btn"
-                              showSuccessMessage={false}
-                              emptyVariant="table"
-                            />
+                            {availablePDFs.has(quote.number || "") ? (
+                              <button
+                                type="button"
+                                className="qv-pdf-btn"
+                                disabled={downloadingPDF === quote.number}
+                                onClick={() =>
+                                  handleDownloadPDF(quote.number || "")
+                                }
+                              >
+                                {downloadingPDF === quote.number ? (
+                                  <span
+                                    className="spinner-border spinner-border-sm"
+                                    style={{ width: "10px", height: "10px" }}
+                                  />
+                                ) : (
+                                  <Download
+                                    size={12}
+                                    strokeWidth={2}
+                                    aria-hidden
+                                  />
+                                )}
+                                {t("quotesView.download")}
+                              </button>
+                            ) : (
+                              <span className="qv-table-empty-pdf">---</span>
+                            )}
                           </td>
                         </tr>
                       );
@@ -2855,53 +2903,51 @@ function QuotesView({
                 </div>
               </div>
             </div>
-          </div>
-
-          {selectedQuote && selectedQuoteIndex >= 0 && (
-            <aside className="qv-split-detail">
-              <QuoteDetailPanel
-                quote={selectedQuote}
-                documentsOnly={documentsOnly}
-                onClose={() => setSelectedQuoteId(null)}
-                t={t}
-                formatDateShort={formatDateShort}
-                formatDateLong={formatDateLong}
-                formatCLP={formatCLP}
-                shouldShowQuoteTracking={shouldShowQuoteTracking}
-                isQuoteAlreadyTracked={isQuoteAlreadyTracked}
-                getQuoteTrackingNumber={getQuoteTrackingNumber}
-                openTrackModal={openTrackModal}
-                onOpenTracking={(type) => {
-                  if (reporteriaClientesContext) {
-                    reporteriaClientesContext.openTrackingTab(type);
-                  } else {
-                    navigate(
-                      type === "air"
-                        ? "/trackings-aereo"
-                        : "/trackings-maritimo",
-                    );
-                  }
-                }}
-                setDocumentCounts={setDocumentCounts}
-                availablePDFs={availablePDFs}
-                downloadingPDF={downloadingPDF}
-                onDownloadPdf={handleDownloadPDF}
-                resendingPDF={resendingPDF}
-                onResendPdf={handleResendQuotePdf}
-                resendToken={token}
-                resendOwnerUsername={activeUsername}
-                operationNumber={selectedQuoteOperationEntry?.value ?? null}
-                operationFilterNumber={
-                  selectedQuoteOperationEntry?.filterNumber ?? null
-                }
-                operationNumberLoading={
-                  selectedQuoteOperationEntry?.loading ?? false
-                }
-                onOpenShipment={handleOpenShipment}
-              />
-            </aside>
-          )}
         </div>
+      )}
+
+      {/* =====================================================
+          DETAIL (página completa)
+         ===================================================== */}
+      {!loading && selectedQuote && selectedQuoteIndex >= 0 && (
+        <QuoteDetailPanel
+          quote={selectedQuote}
+          documentsOnly={documentsOnly}
+          onClose={() => setSelectedQuoteId(null)}
+          t={t}
+          formatDateShort={formatDateShort}
+          formatDateLong={formatDateLong}
+          formatCLP={formatCLP}
+          shouldShowQuoteTracking={shouldShowQuoteTracking}
+          isQuoteAlreadyTracked={isQuoteAlreadyTracked}
+          getQuoteTrackingNumber={getQuoteTrackingNumber}
+          openTrackModal={openTrackModal}
+          onOpenTracking={(type) => {
+            if (reporteriaClientesContext) {
+              reporteriaClientesContext.openTrackingTab(type);
+            } else {
+              navigate(
+                type === "air" ? "/trackings-aereo" : "/trackings-maritimo",
+              );
+            }
+          }}
+          setDocumentCounts={setDocumentCounts}
+          availablePDFs={availablePDFs}
+          downloadingPDF={downloadingPDF}
+          onDownloadPdf={handleDownloadPDF}
+          resendingPDF={resendingPDF}
+          onResendPdf={handleResendQuotePdf}
+          resendToken={token}
+          resendOwnerUsername={activeUsername}
+          operationNumber={selectedQuoteOperationEntry?.value ?? null}
+          operationFilterNumber={
+            selectedQuoteOperationEntry?.filterNumber ?? null
+          }
+          operationNumberLoading={
+            selectedQuoteOperationEntry?.loading ?? false
+          }
+          onOpenShipment={handleOpenShipment}
+        />
       )}
 
       {/* -- Empty states ------------------------------------- */}
