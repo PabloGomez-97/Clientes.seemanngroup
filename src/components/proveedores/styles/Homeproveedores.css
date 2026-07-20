@@ -74,8 +74,8 @@
 }
 
 .prov-archivos-link:hover {
-  border-color: #ff6200;
-  background-color: #fff7ed;
+  border-color: var(--accent-color, #ff6200);
+  background-color: var(--accent-soft, rgba(255, 98, 0, 0.08));
 }
 
 .prov-archivos-title {
@@ -95,7 +95,7 @@
 .prov-archivos-cta {
   font-size: 13px;
   font-weight: 500;
-  color: #ff6200;
+  color: var(--accent-color, #ff6200);
 }
 
 /* ─── Necesitas Ayuda ─── */

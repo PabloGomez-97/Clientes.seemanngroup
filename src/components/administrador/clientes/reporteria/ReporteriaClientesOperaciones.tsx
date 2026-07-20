@@ -538,14 +538,14 @@ function OPReporteriaClientes() {
                 border: "none",
                 borderTop:
                   activeTab === "quotes"
-                    ? "2px solid #ff6200"
+                    ? "2px solid var(--accent-color, #ff6200)"
                     : "2px solid transparent",
                 borderRadius: "4px 4px 0 0",
                 marginBottom: -1,
                 cursor: "pointer",
                 fontSize: 12,
                 fontWeight: activeTab === "quotes" ? 600 : 400,
-                color: activeTab === "quotes" ? "#ff6200" : "#6b7280",
+                color: activeTab === "quotes" ? "var(--accent-color, #ff6200)" : "#6b7280",
                 transition: "all 0.15s",
                 whiteSpace: "nowrap",
                 fontFamily: FONT,
@@ -573,7 +573,7 @@ function OPReporteriaClientes() {
                   activeTab === "air" ||
                     activeTab === "ocean" ||
                     activeTab === "ground"
-                    ? "2px solid #ff6200"
+                    ? "2px solid var(--accent-color, #ff6200)"
                     : "2px solid transparent",
                 borderRadius: "4px 4px 0 0",
                 marginBottom: -1,
@@ -589,7 +589,7 @@ function OPReporteriaClientes() {
                   activeTab === "air" ||
                     activeTab === "ocean" ||
                     activeTab === "ground"
-                    ? "#ff6200"
+                    ? "var(--accent-color, #ff6200)"
                     : "#6b7280",
                 transition: "all 0.15s",
                 whiteSpace: "nowrap",
@@ -630,14 +630,14 @@ function OPReporteriaClientes() {
                 border: "none",
                 borderTop:
                   activeTab === "tracking"
-                    ? "2px solid #ff6200"
+                    ? "2px solid var(--accent-color, #ff6200)"
                     : "2px solid transparent",
                 borderRadius: "4px 4px 0 0",
                 marginBottom: -1,
                 cursor: "pointer",
                 fontSize: 12,
                 fontWeight: activeTab === "tracking" ? 600 : 400,
-                color: activeTab === "tracking" ? "#ff6200" : "#6b7280",
+                color: activeTab === "tracking" ? "var(--accent-color, #ff6200)" : "#6b7280",
                 transition: "all 0.15s",
                 whiteSpace: "nowrap",
                 fontFamily: FONT,
@@ -661,14 +661,14 @@ function OPReporteriaClientes() {
                 border: "none",
                 borderTop:
                   activeTab === "settings"
-                    ? "2px solid #ff6200"
+                    ? "2px solid var(--accent-color, #ff6200)"
                     : "2px solid transparent",
                 borderRadius: "4px 4px 0 0",
                 marginBottom: -1,
                 cursor: "pointer",
                 fontSize: 12,
                 fontWeight: activeTab === "settings" ? 600 : 400,
-                color: activeTab === "settings" ? "#ff6200" : "#6b7280",
+                color: activeTab === "settings" ? "var(--accent-color, #ff6200)" : "#6b7280",
                 transition: "all 0.15s",
                 whiteSpace: "nowrap",
                 fontFamily: FONT,
@@ -713,7 +713,7 @@ function OPReporteriaClientes() {
                       border: "none",
                       borderLeft:
                         activeTab === op.key
-                          ? "2px solid #ff6200"
+                          ? "2px solid var(--accent-color, #ff6200)"
                           : "2px solid transparent",
                       marginLeft: "-2px",
                       cursor: "pointer",

@@ -200,7 +200,7 @@ const GestorTarifas: React.FC = () => {
                 fontSize: 14,
                 fontWeight: 600,
                 color: "#374151",
-                fontFamily: '"Inter", system-ui, sans-serif',
+                fontFamily: "var(--portal-font)",
               }}
             >
               Agregar tarifa en nombre de:
@@ -210,7 +210,7 @@ const GestorTarifas: React.FC = () => {
             value={selectedProveedor}
             onChange={(e) => setSelectedProveedor(e.target.value)}
             style={{
-              fontFamily: '"Inter", system-ui, sans-serif',
+              fontFamily: "var(--portal-font)",
               padding: "8px 12px",
               borderRadius: 8,
               border: "1px solid #d1d5db",

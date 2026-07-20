@@ -134,8 +134,35 @@ function SidebarProveedor({
     [t],
   );
 
+  const pathMatches = (path: string, pathname: string) =>
+    pathname === path || pathname.startsWith(path + "/");
+
+  const getMostSpecificMatchingPath = (
+    paths: string[],
+    pathname: string,
+  ): string | null => {
+    const matches = paths.filter((p) => pathMatches(p, pathname));
+    if (matches.length === 0) return null;
+    return matches.reduce((best, current) =>
+      current.length > best.length ? current : best,
+    );
+  };
+
+  const allNavPaths = useMemo(() => {
+    const paths: string[] = [];
+    for (const section of menuSections) {
+      for (const item of section.items) {
+        if (item.path) paths.push(item.path);
+        for (const sub of item.subItems || []) {
+          paths.push(sub.path);
+        }
+      }
+    }
+    return paths;
+  }, [menuSections]);
+
   const isActive = (path: string) =>
-    location.pathname === path || location.pathname.startsWith(path + "/");
+    getMostSpecificMatchingPath(allNavPaths, location.pathname) === path;
 
   // Auto-expandir el grupo con la ruta activa
   useEffect(() => {

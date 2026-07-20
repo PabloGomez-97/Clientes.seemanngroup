@@ -190,7 +190,7 @@
 .ct-toggle input {
   width: 16px;
   height: 16px;
-  accent-color: #ff6200;
+  accent-color: var(--accent-color, #ff6200);
   cursor: pointer;
 }
 
@@ -283,7 +283,7 @@
 .ct-select-checkbox {
   width: 16px;
   height: 16px;
-  accent-color: #ff6200;
+  accent-color: var(--accent-color, #ff6200);
   cursor: pointer;
 }
 
@@ -476,7 +476,7 @@
 }
 
 .ct-table-wrap:focus-visible {
-  outline: 2px solid #ff6200;
+  outline: 2px solid var(--accent-color, #ff6200);
   outline-offset: 2px;
 }
 
@@ -582,7 +582,7 @@
   font-family: inherit;
   font-size: 0.75rem;
   font-weight: 600;
-  color: #ff6200;
+  color: var(--accent-color, #ff6200);
   background: transparent;
   border: none;
   cursor: pointer;
@@ -768,7 +768,7 @@
 }
 
 .ct-popular-accordion__summary--ocean {
-  border-left: 4px solid #ff6200;
+  border-left: 4px solid var(--accent-color, #ff6200);
 }
 
 .ct-popular-accordion__body {
@@ -854,7 +854,7 @@
   font-family: inherit;
   font-size: 0.75rem;
   font-weight: 600;
-  color: #ff6200;
+  color: var(--accent-color, #ff6200);
   background: transparent;
   border: none;
   cursor: pointer;

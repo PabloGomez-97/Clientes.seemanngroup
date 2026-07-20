@@ -305,8 +305,8 @@ export default function TarifarioFCL({
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.borderColor =
-                "var(--primary-color, #ff6200)";
-              e.currentTarget.style.color = "var(--primary-color, #ff6200)";
+                "var(--primary-color, #232f3e)";
+              e.currentTarget.style.color = "var(--primary-color, #232f3e)";
               e.currentTarget.style.backgroundColor = "#fff7ed";
             }}
             onMouseLeave={(e) => {
@@ -521,7 +521,7 @@ export default function TarifarioFCL({
                 border: "none",
                 backgroundColor: loading
                   ? "#d1d5db"
-                  : "var(--primary-color, #ff6200)",
+                  : "var(--primary-color, #232f3e)",
                 color: "#fff",
                 fontSize: 14,
                 fontWeight: 600,
@@ -739,7 +739,7 @@ export default function TarifarioFCL({
                                     width: "100%",
                                     padding: "4px 6px",
                                     border:
-                                      "1px solid var(--primary-color, #ff6200)",
+                                      "1px solid var(--primary-color, #232f3e)",
                                     borderRadius: 4,
                                     fontSize: 13,
                                     outline: "none",
@@ -862,7 +862,7 @@ function Field({
           transition: "border-color 0.12s ease",
         }}
         onFocus={(e) =>
-          (e.currentTarget.style.borderColor = "var(--primary-color, #ff6200)")
+          (e.currentTarget.style.borderColor = "var(--primary-color, #232f3e)")
         }
         onBlur={(e) => (e.currentTarget.style.borderColor = "#e5e7eb")}
       />
@@ -1010,7 +1010,7 @@ function FieldWithTooltip({
           transition: "border-color 0.12s ease",
         }}
         onFocus={(e) =>
-          (e.currentTarget.style.borderColor = "var(--primary-color, #ff6200)")
+          (e.currentTarget.style.borderColor = "var(--primary-color, #232f3e)")
         }
         onBlur={(e) => (e.currentTarget.style.borderColor = "#e5e7eb")}
       />

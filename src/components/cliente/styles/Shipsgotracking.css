@@ -73,8 +73,8 @@
 }
 
 .sg-btn-new:hover {
-  background: #e55700;
-  border-color: #e55700;
+  background: var(--primary-hover, #1a2430);
+  border-color: var(--primary-hover, #1a2430);
 }
 
 .sg-btn-new span {
@@ -151,7 +151,7 @@
 }
 
 .sg-status-chip--active {
-  background: rgba(255, 98, 0, 0.04);
+  background: rgba(35, 47, 62, 0.03);
   border-color: rgba(255, 98, 0, 0.35);
   color: #111827;
 }
@@ -234,7 +234,7 @@
 }
 
 .sg-filter-empty-btn:hover {
-  color: #e55700;
+  color: var(--primary-hover, #1a2430);
 }
 
 .sg-deep-link-notice {
@@ -789,8 +789,8 @@
 }
 
 .sg-followers-add:hover:not(:disabled) {
-  background: #e55700;
-  border-color: #e55700;
+  background: var(--primary-hover, #1a2430);
+  border-color: var(--primary-hover, #1a2430);
 }
 
 .sg-followers-add:disabled {
@@ -902,7 +902,7 @@
 }
 
 .sg-link-live:hover {
-  background-color: #e55700;
+  background-color: var(--primary-hover, #1a2430);
 }
 
 /* ====================================
@@ -946,7 +946,7 @@
 }
 
 .sg-empty-btn:hover {
-  background: #e55700;
+  background: var(--primary-hover, #1a2430);
 }
 
 /* ====================================

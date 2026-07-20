@@ -432,7 +432,10 @@ export default function QuoteInternacionalizacion() {
       {/* Title */}
       <div className="mb-4">
         <h4 className="fw-bold" style={{ color: "#1a1a2e" }}>
-          <i className="bi bi-building me-2" style={{ color: "#ff6200" }} />
+          <i
+            className="bi bi-building me-2"
+            style={{ color: "var(--accent-color, #ff6200)" }}
+          />
           {t("QuoteINT.titulo")}
         </h4>
         <p className="text-muted mb-0" style={{ fontSize: "0.9rem" }}>
@@ -602,8 +605,8 @@ export default function QuoteInternacionalizacion() {
                 <div
                   className="p-3 rounded mb-3"
                   style={{
-                    backgroundColor: "rgba(255, 98, 0, 0.04)",
-                    border: "1px solid rgba(255, 98, 0, 0.12)",
+                    backgroundColor: "rgba(35, 47, 62, 0.03)",
+                    border: "1px solid rgba(35, 47, 62, 0.12)",
                   }}
                 >
                   <h6 className="fw-bold mb-2">
@@ -707,7 +710,7 @@ export default function QuoteInternacionalizacion() {
             <button
               className="btn btn-lg w-100"
               style={{
-                backgroundColor: "#ff6200",
+                backgroundColor: "var(--primary-color, #232f3e)",
                 color: "#fff",
                 fontWeight: 600,
               }}

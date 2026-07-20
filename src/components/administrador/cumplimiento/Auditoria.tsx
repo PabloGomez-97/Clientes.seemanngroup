@@ -314,7 +314,7 @@ function Auditoria() {
         padding: "24px",
         maxWidth: "1400px",
         margin: "0 auto",
-        fontFamily: "Inter, system-ui, -apple-system, sans-serif",
+        fontFamily: "var(--portal-font)",
       }}
     >
       {/* Header */}

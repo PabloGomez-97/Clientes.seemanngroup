@@ -915,7 +915,7 @@ export default function ComportamientoDeClientes({
               width: 32,
               height: 32,
               border: "3px solid #f0f0f0",
-              borderTop: "3px solid var(--primary-color, #ff6200)",
+              borderTop: "3px solid var(--accent-color, #ff6200)",
               borderRadius: "50%",
               animation: "cbt-spin 0.8s linear infinite",
               margin: "0 auto 16px",
@@ -1294,7 +1294,10 @@ export default function ComportamientoDeClientes({
                   width: 200,
                   transition: "border-color 0.15s",
                 }}
-                onFocus={(e) => (e.currentTarget.style.borderColor = "#ff6200")}
+                onFocus={(e) =>
+                  (e.currentTarget.style.borderColor =
+                    "var(--accent-color, #ff6200)")
+                }
                 onBlur={(e) => (e.currentTarget.style.borderColor = "#e5e7eb")}
               />
             </div>
@@ -1532,7 +1535,7 @@ export default function ComportamientoDeClientes({
                                     }}
                                     style={{
                                       padding: "3px 10px",
-                                      background: "#ff6200",
+                                      background: "var(--primary-color, #232f3e)",
                                       color: "#fff",
                                       border: "none",
                                       borderRadius: 6,
@@ -2224,7 +2227,10 @@ export default function ComportamientoDeClientes({
             outline: "none",
             transition: "border-color 0.15s",
           }}
-          onFocus={(e) => (e.currentTarget.style.borderColor = "#ff6200")}
+          onFocus={(e) =>
+                  (e.currentTarget.style.borderColor =
+                    "var(--accent-color, #ff6200)")
+                }
           onBlur={(e) => (e.currentTarget.style.borderColor = "#e5e7eb")}
         />
       </div>

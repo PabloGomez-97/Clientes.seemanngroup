@@ -333,7 +333,26 @@ function SidebarAdmin({
     );
   };
 
-  const isActive = (path: string) => pathMatches(path, location.pathname);
+  /** Todas las rutas del menú filtrado (items + subitems) */
+  const allNavPaths = useMemo(() => {
+    const paths: string[] = [];
+    for (const section of filteredSections) {
+      for (const item of section.items) {
+        if (item.path) paths.push(item.path);
+        for (const sub of item.subItems || []) {
+          paths.push(sub.path);
+        }
+      }
+    }
+    return paths;
+  }, [filteredSections]);
+
+  /**
+   * Activo solo si es la ruta más específica que coincide.
+   * Evita que /admin/pricing quede marcado en /admin/pricing/alertas.
+   */
+  const isActive = (path: string) =>
+    getMostSpecificMatchingPath(allNavPaths, location.pathname) === path;
 
   // Auto-expandir el grupo con la ruta activa
   useEffect(() => {

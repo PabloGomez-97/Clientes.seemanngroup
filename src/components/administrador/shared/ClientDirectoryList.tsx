@@ -45,7 +45,7 @@ export function ClientDirectorySortChips({
             padding: "4px 12px",
             background: sortMode === opt.key ? "#fff7ed" : "#fff",
             border:
-              sortMode === opt.key ? "1px solid #ff6200" : "1px solid #e5e7eb",
+              sortMode === opt.key ? "1px solid var(--accent-color, #ff6200)" : "1px solid #e5e7eb",
             borderRadius: 20,
             cursor: "pointer",
             fontSize: 12,
@@ -236,7 +236,7 @@ export function ClientDirectoryList<T extends ClientDirectoryRow>({
               const chevron = e.currentTarget.querySelector(
                 "[data-row-chevron]",
               ) as HTMLElement | null;
-              if (chevron) chevron.style.color = "#ff6200";
+              if (chevron) chevron.style.color = "var(--accent-color, #ff6200)";
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.background = "#fff";
@@ -258,7 +258,7 @@ export function ClientDirectoryList<T extends ClientDirectoryRow>({
                 top: 0,
                 bottom: 0,
                 width: 2,
-                background: "#ff6200",
+                background: "var(--accent-color, #ff6200)",
                 opacity: 0,
                 transition: "opacity 0.12s ease",
               }}

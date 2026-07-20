@@ -11,8 +11,10 @@
   --ej-text: #1a1a2e;
   --ej-text-muted: #8b92a5;
   --ej-text-light: #b1b8c9;
-  --ej-orange: #ff6200;
-  --ej-orange-bg: #fff7ed;
+  --ej-orange: var(--accent-color, #ff6200);
+  --ej-orange-bg: var(--accent-soft, rgba(255, 98, 0, 0.08));
+  --ej-cta: var(--primary-color, #232f3e);
+  --ej-cta-hover: var(--primary-hover, #1a2430);
   --ej-blue: #2563eb;
   --ej-blue-bg: #eff6ff;
   --ej-green: #059669;
@@ -722,9 +724,9 @@
   align-items: center;
   gap: 7px;
   padding: 8px 16px;
-  border: 1px solid var(--ej-orange);
+  border: 1px solid var(--ej-cta);
   border-radius: 8px;
-  background: var(--ej-orange);
+  background: var(--ej-cta);
   color: #fff;
   font-size: 13px;
   font-weight: 600;
@@ -735,14 +737,14 @@
     box-shadow 0.15s ease,
     transform 0.15s ease;
   font-family: var(--ej-font);
-  box-shadow: 0 2px 8px rgba(255, 98, 0, 0.22);
+  box-shadow: 0 2px 8px rgba(35, 47, 62, 0.18);
   white-space: nowrap;
 }
 
 .ej-command-dock__primary:hover {
-  background: #e55800;
-  border-color: #e55800;
-  box-shadow: 0 4px 12px rgba(255, 98, 0, 0.3);
+  background: var(--ej-cta-hover);
+  border-color: var(--ej-cta-hover);
+  box-shadow: 0 4px 12px rgba(35, 47, 62, 0.22);
   transform: translateY(-1px);
 }
 
@@ -1027,7 +1029,7 @@
   width: 34px;
   height: 34px;
   border-radius: 8px;
-  background: var(--ej-orange);
+  background: var(--ej-cta);
   color: #fff;
   font-size: 13px;
   font-weight: 700;
@@ -2110,7 +2112,7 @@
   padding: 1px 6px;
   border-radius: 4px;
   background: #fff0e6;
-  color: #ff6200;
+  color: var(--ej-orange);
 }
 
 .ej-activity-bar__chip-type--delay {

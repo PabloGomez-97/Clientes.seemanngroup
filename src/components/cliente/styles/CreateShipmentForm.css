@@ -332,8 +332,8 @@
 }
 
 .csf-btn--primary:hover:not(:disabled) {
-  background: #e55700;
-  border-color: #e55700;
+  background: var(--primary-hover, #1a2430);
+  border-color: var(--primary-hover, #1a2430);
 }
 
 .csf-btn-spinner {

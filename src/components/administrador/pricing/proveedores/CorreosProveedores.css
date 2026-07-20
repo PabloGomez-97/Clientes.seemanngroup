@@ -141,7 +141,7 @@
 }
 
 .cp-btn--primary:hover:not(:disabled) {
-  background: #e55800;
+  background: var(--primary-hover, #1a2430);
 }
 
 @media (max-width: 640px) {
