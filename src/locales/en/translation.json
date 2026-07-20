@@ -365,47 +365,49 @@
       }
     },
     "cotizador": {
-      "title": "Select your Modality",
-      "subtitle": "Choose the type of quote that best suits your shipping needs",
+      "eyebrow": "New quote",
+      "title": "Select modality",
+      "subtitle": "Choose the service type to start your quotation.",
+      "previewLabel": "Summary",
       "aereo": {
         "title": "Air",
-        "description": "Air freight quotation with rates per kilogram in different weight ranges",
-        "description1": " Early and fast deliveries",
-        "description2": " Ideal for high-value products",
-        "description3": " Rates based on weight",
-        "button": "Select Air →",
-        "badge": "⚡ Fastest",
-        "comparisonDescription": "Perfect for urgent shipments or high-value products. Guaranteed speed with competitive rates based on weight."
+        "description": "Short transit; weight-based rates",
+        "description1": "Reduced transit times",
+        "description2": "Suitable for high-value cargo",
+        "description3": "Priced primarily by kilogram",
+        "button": "Continue — Air",
+        "badge": "Express",
+        "comparisonDescription": "For time-sensitive shipments or high-value cargo. Cost is driven mainly by weight."
       },
       "fcl": {
-        "title": "Maritime FCL",
-        "description": "Full Container Load with rates per complete container (20GP, 40HQ, 40NOR)",
-        "description1": " Exclusive container",
-        "description2": " Ideal for large volumes",
-        "description3": " Delivery in longer times and lower cost",
-        "button": "Select FCL →",
-        "badge": "🔥 Popular",
-        "comparisonDescription": "Ideal for large volumes. Exclusive container for maximum security and better cost per unit transported."
+        "title": "Ocean FCL",
+        "description": "Full container load",
+        "description1": "Exclusive container use",
+        "description2": "High volumes",
+        "description3": "Better unit cost at scale",
+        "button": "Continue — FCL",
+        "badge": "FCL",
+        "comparisonDescription": "Full container for high volumes. Exclusive equipment use with better unit economics at scale."
       },
       "lcl": {
-        "title": "Maritime LCL",
-        "description": "Less than Container Load with rates per maritime consolidation",
-        "description1": " Share container space",
-        "description2": " Medium volumes",
-        "description3": " Multiple suppliers",
-        "button": "Select LCL →",
-        "badge": "💰 Cost-effective",
-        "comparisonDescription": "Economic solution for medium volumes. Share container space optimizing costs without sacrificing quality."
+        "title": "Ocean LCL",
+        "description": "Less than container load (consolidated)",
+        "description1": "Shared container space",
+        "description2": "Intermediate volumes",
+        "description3": "Lower relative cost option",
+        "button": "Continue — LCL",
+        "badge": "LCL",
+        "comparisonDescription": "Consolidates intermediate volumes in a shared container. Efficient when a full container is not required."
       },
       "lastmile": {
-        "title": "Last Mile",
-        "description": "Domestic ground transportation from port to final destination",
-        "description1": " Door-to-door pickup and delivery",
-        "description2": " Nationwide coverage",
-        "description3": " Personalized quote within 48 hours",
-        "button": "Select Last Mile →",
-        "badge": "🚚 Ground",
-        "comparisonDescription": "Ground transportation service to move your cargo from the port to its final destination within the country."
+        "title": "Last mile",
+        "description": "Domestic ground to final destination",
+        "description1": "Door-to-door pickup and delivery",
+        "description2": "Nationwide coverage",
+        "description3": "Custom quote within 48 hours",
+        "button": "Continue — Last mile",
+        "badge": "Ground",
+        "comparisonDescription": "Ground transport from port or origin to the final destination within the country."
       },
       "terrestre": {
         "title": "Ground Transport",

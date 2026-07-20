@@ -365,46 +365,49 @@
       }
     },
     "cotizador": {
-      "title": "Selecciona tu Modalidad",
-      "subtitle": "Escoge el tipo de cotización que mejor se adapte a tus necesidades de envío",
+      "eyebrow": "Nueva cotización",
+      "title": "Seleccionar modalidad",
+      "subtitle": "Indica el tipo de servicio para iniciar la cotización.",
+      "previewLabel": "Resumen",
       "aereo": {
         "title": "Aéreo",
-        "description": "Cotización de carga aérea con tarifas por kilogramo en diferentes rangos de peso",
-        "description1": "Entregas tempranas y rápidas",
-        "description2": "Ideal para productos de alto valor",
-        "description3": "Tarifas basadas en peso",
-        "button": "Seleccionar Aéreo →",
-        "badge": "⚡ Más Rápido"
+        "description": "Tránsito corto; tarifas por peso",
+        "description1": "Tiempos de tránsito reducidos",
+        "description2": "Adecuado para carga de alto valor",
+        "description3": "Tarificación por kilogramo",
+        "button": "Continuar — Aéreo",
+        "badge": "Express",
+        "comparisonDescription": "Modalidad para envíos con prioridad de tiempo o carga de alto valor. El costo se determina principalmente por peso."
       },
       "fcl": {
         "title": "Marítimo FCL",
-        "description": "Full Container Load con tarifas por contenedor completo (20GP, 40HQ, 40NOR)",
-        "description1": "Contenedor exclusivo",
-        "description2": "Ideal para grandes volúmenes",
-        "description3": "Entrega en mayores tiempos y menor costo",
-        "button": "Seleccionar FCL →",
-        "badge": "🔥 Popular",
-        "comparisonDescription": "Ideal para grandes volúmenes. Contenedor exclusivo para máxima seguridad y mejor costo por unidad transportada."
+        "description": "Contenedor completo (Full Container Load)",
+        "description1": "Contenedor de uso exclusivo",
+        "description2": "Volúmenes altos",
+        "description3": "Mejor costo unitario en escala",
+        "button": "Continuar — FCL",
+        "badge": "FCL",
+        "comparisonDescription": "Contenedor completo para volúmenes altos. Uso exclusivo del equipo, con mejor costo por unidad a escala."
       },
       "lcl": {
         "title": "Marítimo LCL",
-        "description": "Less than Container Load con tarifas por consolidación marítima",
-        "description1": "Comparte espacio en contenedor",
-        "description2": "Volúmenes medianos",
-        "description3": "Múltiples proveedores",
-        "button": "Seleccionar LCL →",
-        "badge": "💰 Económico",
-        "comparisonDescription": "Solución económica para volúmenes medianos. Comparte espacio en contenedor optimizando costos sin sacrificar calidad."
+        "description": "Carga consolidada (Less than Container Load)",
+        "description1": "Espacio compartido en contenedor",
+        "description2": "Volúmenes intermedios",
+        "description3": "Opción de menor costo relativo",
+        "button": "Continuar — LCL",
+        "badge": "LCL",
+        "comparisonDescription": "Consolida volúmenes intermedios en un contenedor compartido. Alternativa eficiente cuando no se requiere FCL."
       },
       "lastmile": {
-        "title": "Última Milla",
-        "description": "Transporte terrestre nacional desde puerto a destino final",
+        "title": "Última milla",
+        "description": "Transporte terrestre nacional hasta destino",
         "description1": "Recogida y entrega puerta a puerta",
         "description2": "Cobertura nacional",
         "description3": "Cotización personalizada en 48 horas",
-        "button": "Seleccionar Última Milla →",
-        "badge": "🚚 Terrestre",
-        "comparisonDescription": "Servicio de transporte terrestre para mover tu carga desde el puerto hasta su destino final dentro del país."
+        "button": "Continuar — Última milla",
+        "badge": "Terrestre",
+        "comparisonDescription": "Transporte terrestre desde puerto u origen hasta el destino final dentro del país."
       },
       "terrestre": {
         "title": "Transporte Terrestre",
