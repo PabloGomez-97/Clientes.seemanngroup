@@ -4,7 +4,7 @@ import { useAuth } from "@/auth/AuthContext";
 import { t } from "i18next";
 
 const FONT =
-  '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+  'var(--portal-font)';
 
 type Categoria = "AEREO" | "FCL" | "LCL";
 

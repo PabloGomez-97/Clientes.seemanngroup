@@ -7,7 +7,7 @@
   background-color: #f8f9fa;
   min-height: 10vh;
   padding: 2rem 1rem;
-  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--portal-font);
   color: #111827;
 }
 

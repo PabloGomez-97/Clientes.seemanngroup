@@ -1,0 +1,106 @@
+/* Banner de página — suave, alineado al shell Manrope / #232F3E */
+
+.pbh {
+  position: relative;
+  height: 148px;
+  overflow: hidden;
+  background: #232f3e;
+  border-bottom: 1px solid var(--line-color, #e6e8ec);
+}
+
+.pbh--rounded {
+  border-radius: 12px;
+  margin-bottom: 20px;
+  border: 1px solid var(--line-color, #e6e8ec);
+}
+
+.pbh__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.22;
+}
+
+.pbh__overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    rgba(35, 47, 62, 0.94) 0%,
+    rgba(35, 47, 62, 0.72) 55%,
+    rgba(35, 47, 62, 0.45) 100%
+  );
+  display: flex;
+  align-items: center;
+  padding: 0 28px;
+}
+
+.pbh__badge {
+  display: inline-block;
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 3px 10px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.pbh__badge--caps {
+  letter-spacing: 0.12em;
+}
+
+.pbh__title {
+  color: #fff;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0;
+  line-height: 1.25;
+  font-family: var(--portal-font);
+}
+
+.pbh__desc {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.84rem;
+  letter-spacing: 0.01em;
+  margin: 6px 0 0;
+  max-width: 32rem;
+  line-height: 1.5;
+  font-family: var(--portal-font);
+}
+
+.pbh__desc p {
+  margin: 0 0 6px;
+}
+
+.pbh__desc p:last-child {
+  margin-bottom: 0;
+}
+
+.pbh__highlight {
+  color: var(--accent-color, #ff6200);
+  font-weight: 600;
+}
+
+@media (max-width: 640px) {
+  .pbh {
+    height: auto;
+    min-height: 120px;
+  }
+
+  .pbh__overlay {
+    padding: 18px 16px;
+  }
+
+  .pbh__title {
+    font-size: 1.15rem;
+  }
+
+  .pbh__desc {
+    font-size: 0.8rem;
+  }
+}

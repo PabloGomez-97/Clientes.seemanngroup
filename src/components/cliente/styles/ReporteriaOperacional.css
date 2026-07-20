@@ -5,7 +5,7 @@
    ==================================================== */
 
 .rop-container {
-  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--portal-font);
   color: #111827;
   max-width: 1400px;
   margin: 0 auto;

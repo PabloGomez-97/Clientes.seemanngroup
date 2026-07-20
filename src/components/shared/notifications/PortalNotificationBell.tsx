@@ -298,7 +298,7 @@ export default function PortalNotificationBell({
             overflow: "hidden",
             zIndex: 1000,
             fontFamily:
-              '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+              '"Manrope", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
           }}
         >
           <div

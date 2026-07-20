@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 
 export const CLIENT_DIRECTORY_FONT =
-  '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+  'var(--portal-font)';
 
 export const CLIENT_DIRECTORY_PAGE_SIZE = 12;
 

@@ -3,7 +3,7 @@ import { useAuth } from "@/auth/AuthContext";
 import LoadingTips from "@/components/cliente/embarques/LoadingTips";
 
 const FONT =
-  '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+  'var(--portal-font)';
 
 type Categoria = "AEREO" | "FCL" | "LCL";
 type CategoriaFilter = Categoria | "TODOS";

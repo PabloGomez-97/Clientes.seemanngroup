@@ -904,7 +904,7 @@ function ReporteriaFinanciera() {
   <title>${t("reportFinancial.pdfTitle")} - ${activeUsername}</title>
   <style>
     @media print { @page { margin: 1cm; } body { margin: 0; } .print-button { display: none; } }
-    body { font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 20px; color: #1a1a1a; line-height: 1.6; }
+    body { font-family: "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 20px; color: #1a1a1a; line-height: 1.6; }
     .header { background: #1a1a1a; color: white; padding: 30px; border-radius: 4px; margin-bottom: 30px; }
     .header h1 { margin: 0 0 8px 0; font-size: 1.5rem; }
     .header p { margin: 2px 0; opacity: 0.85; font-size: 0.875rem; }

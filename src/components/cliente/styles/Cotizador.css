@@ -6,8 +6,7 @@
   padding: 40px 24px;
   margin: -24px;
   margin-bottom: 0;
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
-    Arial, sans-serif;
+  font-family: var(--portal-font);
 }
 
 .cotizador-container {
@@ -25,8 +24,7 @@
   font-size: 26px;
   font-weight: 700;
   color: #232f3e;
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
-    Arial, sans-serif;
+  font-family: var(--portal-font);
   margin: 0 0 6px 0;
   letter-spacing: -0.02em;
 }
@@ -34,8 +32,7 @@
 .cotizador-header p {
   font-size: 14px;
   color: #6b7280;
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
-    Arial, sans-serif;
+  font-family: var(--portal-font);
   margin: 0;
   line-height: 1.5;
   letter-spacing: 0.01em;
@@ -94,7 +91,7 @@
 }
 
 .cotizador-card:hover .cotizador-card__indicator {
-  background-color: #ff6200;
+  background-color: var(--accent-color, #ff6200);
 }
 
 .cotizador-card__indicator {
@@ -132,8 +129,7 @@
   font-size: 16px;
   font-weight: 700;
   color: #232f3e;
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
-    Arial, sans-serif;
+  font-family: var(--portal-font);
   margin: 0;
   letter-spacing: -0.01em;
 }
@@ -144,8 +140,7 @@
   border-radius: 4px;
   font-size: 10px;
   font-weight: 500;
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
-    Arial, sans-serif;
+  font-family: var(--portal-font);
   letter-spacing: 0.06em;
   color: #6b7280;
   background-color: #f0f2f4;
@@ -155,8 +150,7 @@
 
 .cotizador-card__desc {
   font-size: 13px;
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
-    Arial, sans-serif;
+  font-family: var(--portal-font);
   color: #6b7280;
   line-height: 1.55;
   letter-spacing: 0.01em;
@@ -176,8 +170,7 @@
 .cotizador-card__features li {
   font-size: 13px;
   color: #4b5563;
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
-    Arial, sans-serif;
+  font-family: var(--portal-font);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -203,8 +196,7 @@
   color: #ffffff;
   font-size: 13px;
   font-weight: 500;
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
-    Arial, sans-serif;
+  font-family: var(--portal-font);
   letter-spacing: 0.04em;
   cursor: pointer;
   transition: background-color 0.15s ease;
@@ -246,8 +238,7 @@
 
 .cotizador-info__text {
   font-size: 13px;
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
-    Arial, sans-serif;
+  font-family: var(--portal-font);
   color: #6b7280;
   line-height: 1.55;
   margin: 0;
@@ -256,8 +247,7 @@
 .cotizador-info__text strong {
   color: #232f3e;
   font-weight: 600;
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
-    Arial, sans-serif;
+  font-family: var(--portal-font);
 }
 
 /* Header Sections (quote forms) */
@@ -389,7 +379,7 @@
   font-weight: 500;
   cursor: pointer;
   transition: all 0.15s ease;
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--portal-font);
   margin-bottom: 20px;
 }
 

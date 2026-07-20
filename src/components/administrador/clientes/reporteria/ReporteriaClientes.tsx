@@ -101,7 +101,7 @@ function setCachedClients(data: Cliente[]) {
 }
 
 const FONT =
-  '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+  'var(--portal-font)';
 
 function ReporteriaClientes() {
   useOutletContext<OutletContext>(); // validate outlet context exists

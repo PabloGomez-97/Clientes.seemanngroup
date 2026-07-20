@@ -44,7 +44,7 @@ const C = {
 };
 
 const FONT =
-  '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+  '"Manrope", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
 
 const SHEET: React.CSSProperties = {
   width: "297mm",

@@ -5,7 +5,7 @@
   width: 100%;
   margin: 0;
   padding: 2px;
-  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--portal-font);
   color: #374151;
   background-color: #f0f0f0;
 }
@@ -111,7 +111,7 @@
 .hal-h0 {
   font-size: 2.25rem;
   font-weight: 700;
-  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--portal-font);
   line-height: 1.15;
   letter-spacing: -0.025em;
   margin: 0 0 0.85rem 0;
@@ -119,7 +119,7 @@
 
 .hal-copy {
   font-size: 1rem;
-  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--portal-font);
   font-weight: 400;
   line-height: 1.65;
   opacity: 0.88;
@@ -212,7 +212,7 @@
 .hal-h4 {
   font-size: 0.7rem;
   font-weight: 600;
-  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--portal-font);
   color: #9ca3af;
   margin: 0 0 10px 0;
   text-transform: uppercase;
@@ -222,7 +222,7 @@
 .hal-h1 {
   font-size: 1.9rem;
   font-weight: 700;
-  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--portal-font);
   line-height: 1.15;
   letter-spacing: -0.02em;
   margin: 0;
@@ -308,7 +308,7 @@
 .hal-label {
   font-size: 0.875rem;
   font-weight: 600;
-  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--portal-font);
   color: #111827;
   letter-spacing: -0.01em;
 }
@@ -343,7 +343,7 @@
   display: block;
   font-size: 0.78rem;
   font-weight: 500;
-  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--portal-font);
   margin-bottom: 8px;
   color: #6b7280;
   letter-spacing: 0.01em;
@@ -356,7 +356,7 @@
   border-bottom: 1px solid #ddd;
   border-radius: 0;
   font-size: 1rem;
-  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--portal-font);
   background: transparent;
   transition: border-color 0.3s ease;
 }
@@ -377,7 +377,7 @@
   border: 1px solid #ddd;
   border-radius: 4px;
   font-size: 0.9rem;
-  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--portal-font);
   transition: border-color 0.3s;
 }
 
@@ -396,7 +396,7 @@
   border-radius: 6px;
   font-size: 0.82rem;
   font-weight: 600;
-  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--portal-font);
   letter-spacing: 0.01em;
   cursor: pointer;
   transition: all 0.2s;
@@ -447,7 +447,7 @@
 
 .hal-contentqat-text {
   font-size: 0.8rem;
-  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--portal-font);
   font-weight: 400;
   line-height: 1.6;
   color: #6b7280;
@@ -511,7 +511,7 @@
 .hal-h3 {
   font-size: 1.35rem;
   font-weight: 700;
-  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--portal-font);
   letter-spacing: -0.02em;
   margin: 0 0 20px 0;
   color: #111827;
@@ -583,7 +583,7 @@
 .hal-meta {
   padding: 10px 15px;
   font-size: 0.75rem;
-  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--portal-font);
   font-weight: 500;
   color: #9ca3af;
   letter-spacing: 0.01em;
@@ -597,7 +597,7 @@
 .hal-teaser-text {
   font-size: 0.875rem;
   font-weight: 600;
-  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--portal-font);
   letter-spacing: -0.01em;
   line-height: 1.45;
   margin: 0;
@@ -607,13 +607,13 @@
 /* Rich text */
 .hal-richtext {
   font-size: 0.875rem;
-  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--portal-font);
   line-height: 1.65;
   color: #6b7280;
 }
 
 .hal-richtext p {
-  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--portal-font);
   margin: 0 0 15px 0;
 }
 
@@ -703,7 +703,7 @@
 .hal-image-with-tiles-headline {
   font-size: 2.25rem;
   font-weight: 700;
-  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--portal-font);
   letter-spacing: -0.03em;
   margin: 0 0 10px 0;
   color: #000;
@@ -712,7 +712,7 @@
 .hal-image-with-tiles-subline {
   font-size: 0.875rem;
   font-weight: 500;
-  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--portal-font);
   margin: 0;
   color: #000;
   opacity: 0.8;

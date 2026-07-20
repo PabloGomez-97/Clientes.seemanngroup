@@ -5,7 +5,7 @@ import PageBannerHeader from "@/components/shared/layout/PageBannerHeader";
 import { imgUrl } from "@/config/images";
 
 const FONT =
-  '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+  'var(--portal-font)';
 
 const API_BASE =
   import.meta.env.MODE === "development"

@@ -126,7 +126,7 @@
   --qf-border-color: #e0e0e0;
   --qf-text-primary: #111827;
   --qf-text-secondary: #6c757d;
-  --qf-font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --qf-font-family: var(--portal-font);
   --qf-radius: 8px;
   /* Radio de borde suave y moderno */
   --qf-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);

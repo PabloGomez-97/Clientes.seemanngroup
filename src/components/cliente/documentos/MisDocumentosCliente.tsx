@@ -5,7 +5,7 @@ import { DocumentosUnificadosView } from "@/components/cliente/documentos/Docume
 import PageBannerHeader from "@/components/shared/layout/PageBannerHeader";
 
 const FONT =
-  '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+  'var(--portal-font)';
 
 function MisDocumentosCliente() {
   const { activeUsername } = useAuth();

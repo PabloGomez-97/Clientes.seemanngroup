@@ -4,7 +4,7 @@ import { useAuth } from "@/auth/AuthContext";
 import LoadingTips from "@/components/cliente/embarques/LoadingTips";
 
 const FONT =
-  '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+  'var(--portal-font)';
 
 const GOOGLE_APPS_SCRIPT_URL =
   "https://script.google.com/macros/s/AKfycbyDcpZT3TmaOmrOq-vJPoMMmwHlUzNf1wBQeZiUjSoPexfZ_IpShAJV2RivzyFLGGk3Jw/exec";
@@ -832,7 +832,7 @@ function Field({
         placeholder={placeholder}
         style={{
           fontFamily:
-            '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+            'var(--portal-font)',
           width: "100%",
           padding: "8px 10px",
           borderRadius: 6,
@@ -880,7 +880,7 @@ function SelectField({
         onChange={(e) => onChange(e.target.value)}
         style={{
           fontFamily:
-            '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+            'var(--portal-font)',
           width: "100%",
           padding: "8px 10px",
           borderRadius: 6,
@@ -980,7 +980,7 @@ function FieldWithTooltip({
         placeholder={placeholder}
         style={{
           fontFamily:
-            '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+            'var(--portal-font)',
           width: "100%",
           padding: "8px 10px",
           borderRadius: 6,
@@ -1014,7 +1014,7 @@ function PagBtn({
       onClick={onClick}
       style={{
         fontFamily:
-          '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+          'var(--portal-font)',
         padding: "6px 14px",
         borderRadius: 6,
         border: "1px solid #e5e7eb",

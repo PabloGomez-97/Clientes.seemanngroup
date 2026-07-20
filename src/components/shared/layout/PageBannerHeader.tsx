@@ -1,5 +1,6 @@
 import { Trans, useTranslation } from "react-i18next";
 import { imgUrl } from "@/config/images";
+import "./PageBannerHeader.css";
 
 export type PageBannerVariant =
   | "airShipments"
@@ -45,88 +46,37 @@ export default function PageBannerHeader({
 
   return (
     <div
-      className={className}
-      style={{
-        position: "relative",
-        height: 220,
-        overflow: "hidden",
-        background: "#1a1a1a",
-        ...(rounded ? { borderRadius: 12, marginBottom: 24 } : {}),
-      }}
+      className={`pbh${rounded ? " pbh--rounded" : ""}${className ? ` ${className}` : ""}`}
     >
       <img
+        className="pbh__img"
         src={imgUrl("/insights1.png")}
-        alt={badge}
-        style={{
-          width: "100%",
-          height: "100%",
-          objectFit: "cover",
-          opacity: 0.75,
-        }}
+        alt=""
+        aria-hidden
         onError={(e) => {
           (e.target as HTMLImageElement).style.display = "none";
         }}
       />
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          background:
-            "linear-gradient(to right, rgba(26,26,26,0.85) 0%, rgba(26,26,26,0.35) 100%)",
-          display: "flex",
-          alignItems: "center",
-          padding: "0 32px",
-        }}
-      >
+      <div className="pbh__overlay">
         <div>
           <div
-            style={{
-              display: "inline-block",
-              background: "var(--primary-color)",
-              color: "#fff",
-              fontSize: 11,
-              fontWeight: isUppercaseBadge ? 700 : 600,
-              letterSpacing: isUppercaseBadge ? 1.2 : "0.06em",
-              textTransform: isUppercaseBadge ? "uppercase" : "none",
-              padding: "3px 10px",
-              borderRadius: 3,
-              marginBottom: 10,
-            }}
+            className={`pbh__badge${isUppercaseBadge ? " pbh__badge--caps" : ""}`}
           >
             {badge}
           </div>
-          <h2
-            style={{
-              color: "#fff",
-              fontSize: 24,
-              fontWeight: 700,
-              letterSpacing: isUppercaseBadge ? undefined : "-0.02em",
-              margin: 0,
-              lineHeight: 1.3,
-            }}
-          >
-            {title}
-          </h2>
-          <div
-            style={{
-              color: "rgba(255,255,255,0.78)",
-              fontSize: 14,
-              letterSpacing: isUppercaseBadge ? undefined : "0.01em",
-              margin: "8px 0 0",
-              maxWidth: 460,
-            }}
-          >
+          <h2 className="pbh__title">{title}</h2>
+          <div className="pbh__desc">
             {hasRichDescription ? (
               <Trans
                 i18nKey={`${baseKey}.description`}
                 components={{
-                  p: <p style={{ margin: "0 0 8px" }} />,
+                  p: <p />,
                   strong: <strong />,
-                  highlight: <strong style={{ color: "#ff6200" }} />,
+                  highlight: <strong className="pbh__highlight" />,
                 }}
               />
             ) : (
-              <p style={{ margin: 0 }}>{t(`${baseKey}.description`)}</p>
+              <p>{t(`${baseKey}.description`)}</p>
             )}
           </div>
         </div>

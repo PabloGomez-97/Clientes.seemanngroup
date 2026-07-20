@@ -26,7 +26,7 @@ interface EXWChargesViewProps {
 }
 
 const FONT =
-  '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+  'var(--portal-font)';
 const CACHE_TTL = 24 * 60 * 60 * 1000;
 const CACHE_KEY_PREFIX = "exw_charges_client_cache";
 

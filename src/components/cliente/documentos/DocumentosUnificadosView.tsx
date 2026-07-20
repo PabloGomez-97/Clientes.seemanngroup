@@ -20,7 +20,7 @@ import "./DocumentosUnificadosView.css";
 import LoadingTips from "@/components/cliente/embarques/LoadingTips";
 
 const FONT =
-  '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+  'var(--portal-font)';
 const DOCS_CACHE_TTL = 3 * 60 * 60 * 1000;
 const DOCS_CACHE_PREFIX = "unifiedDocumentsCache_v1";
 

@@ -81,7 +81,7 @@ function setCachedClients(data: Cliente[]) {
 }
 
 const FONT =
-  '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+  'var(--portal-font)';
 
 function OPReporteriaClientes() {
   useOutletContext<OutletContext>();

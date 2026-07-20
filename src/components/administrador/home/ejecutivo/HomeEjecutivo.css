@@ -4,8 +4,7 @@
 
 /* ── Variables ────────────────────────────────────────────── */
 .ej-home {
-  --ej-font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
-    Arial, sans-serif;
+  --ej-font: var(--portal-font);
   --ej-bg: #f8f9fb;
   --ej-card: #ffffff;
   --ej-border: #e2e6ed;

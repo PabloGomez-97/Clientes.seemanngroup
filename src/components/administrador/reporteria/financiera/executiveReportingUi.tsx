@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import type { PeriodPreset } from "./quoteUtils";
 
 export const FONT =
-  '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+  'var(--portal-font)';
 
 export const C = {
   primary: "#ff6200",

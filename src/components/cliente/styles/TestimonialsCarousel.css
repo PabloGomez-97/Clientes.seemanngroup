@@ -19,8 +19,7 @@
   margin: 0;
   font-size: 0.7rem;
   font-weight: 600;
-  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto,
-    Helvetica, Arial, sans-serif;
+  font-family: var(--portal-font);
   color: #9ca3af;
   text-transform: uppercase;
   letter-spacing: 0.12em;
@@ -32,8 +31,7 @@
   font-weight: 700;
   letter-spacing: -0.02em;
   color: #111827;
-  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto,
-    Helvetica, Arial, sans-serif;
+  font-family: var(--portal-font);
 }
 
 .hal-testimonials-stage {
@@ -80,8 +78,7 @@
   color: #374151;
   font-style: normal;
   font-weight: 400;
-  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto,
-    Helvetica, Arial, sans-serif;
+  font-family: var(--portal-font);
 }
 
 .hal-testimonials-divider {
@@ -108,8 +105,7 @@
   color: #374151;
   background: #f3f4f6;
   flex-shrink: 0;
-  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto,
-    Helvetica, Arial, sans-serif;
+  font-family: var(--portal-font);
 }
 
 .hal-testimonial-meta {
@@ -124,15 +120,13 @@
   font-weight: 700;
   color: #111827;
   letter-spacing: -0.01em;
-  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto,
-    Helvetica, Arial, sans-serif;
+  font-family: var(--portal-font);
 }
 
 .hal-testimonial-meta span {
   font-size: 0.78rem;
   color: #6b7280;
-  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto,
-    Helvetica, Arial, sans-serif;
+  font-family: var(--portal-font);
 }
 
 .hal-testimonial-company {
@@ -183,8 +177,7 @@
   color: #9ca3af;
   cursor: pointer;
   letter-spacing: 0.02em;
-  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto,
-    Helvetica, Arial, sans-serif;
+  font-family: var(--portal-font);
   transition: color 0.2s, border-color 0.2s;
 }
 

@@ -96,7 +96,7 @@ type SortDirection = "asc" | "desc";
 // DESIGN SYSTEM
 // ════════════════════════════════════════════
 const FONT =
-  '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+  'var(--portal-font)';
 
 const C = {
   primary: "#ff6200",

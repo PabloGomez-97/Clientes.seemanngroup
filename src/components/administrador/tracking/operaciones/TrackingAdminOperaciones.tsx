@@ -19,7 +19,7 @@ import {
 } from "@/components/administrador/shared/ClientDirectoryList";
 
 const FONT =
-  '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+  'var(--portal-font)';
 
 const API_BASE_URL =
   import.meta.env.MODE === "development"

@@ -140,7 +140,7 @@ export const PDFTemplateLCL: React.FC<PDFTemplateLCLProps> = ({
     white: "#ffffff",
   };
   const FONT =
-    '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+    '"Manrope", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
 
   const page: React.CSSProperties = {
     width: "210mm",

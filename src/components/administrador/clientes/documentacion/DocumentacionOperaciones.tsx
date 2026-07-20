@@ -37,7 +37,7 @@ const CLIENTS_CACHE_KEY = "op_doc_clients_list_v1";
 const DOCUMENT_COUNTS_CACHE_KEY = "op_doc_client_counts_v1";
 const DOCUMENT_COUNTS_TTL = 3 * 60 * 60 * 1000;
 const FONT =
-  '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+  'var(--portal-font)';
 
 function normalizeAccountName(value?: string) {
   return value?.trim().toLowerCase() || "";

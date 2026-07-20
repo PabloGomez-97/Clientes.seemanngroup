@@ -3,7 +3,7 @@ import { useAuth } from "@/auth/AuthContext";
 import { useTranslation } from "react-i18next";
 
 const FONT =
-  '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+  'var(--portal-font)';
 
 const quickActions = [
   {

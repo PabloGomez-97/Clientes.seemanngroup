@@ -894,7 +894,7 @@ function ShippingOrderView() {
           fontSize: value || isFocused ? "10px" : "12px",
           fontWeight: "bold",
           fontFamily:
-            '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+            'var(--portal-font)',
           color: "#666",
           transition: "all 0.2s ease",
           pointerEvents: "none",
@@ -920,7 +920,7 @@ function ShippingOrderView() {
           padding: "12px 8px 4px 8px",
           fontSize: "12px",
           fontFamily:
-            '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+            'var(--portal-font)',
           backgroundColor: "#fff",
           outline: "none",
           boxSizing: "border-box",
@@ -990,7 +990,7 @@ function ShippingOrderView() {
               alignItems: "center",
               gap: "6px",
               fontFamily:
-                '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+                'var(--portal-font)',
             }}
           >
             <svg
@@ -1099,7 +1099,7 @@ function ShippingOrderView() {
                       fontSize: filterFlow || isFlowFocused ? "10px" : "12px",
                       fontWeight: "bold",
                       fontFamily:
-                        '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+                        'var(--portal-font)',
                       color: "#666",
                       transition: "all 0.2s ease",
                       pointerEvents: "none",
@@ -1123,7 +1123,7 @@ function ShippingOrderView() {
                       padding: "12px 12px 4px",
                       fontSize: "13px",
                       fontFamily:
-                        '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+                        'var(--portal-font)',
                       backgroundColor: "#fff",
                       outline: "none",
                       boxSizing: "border-box",

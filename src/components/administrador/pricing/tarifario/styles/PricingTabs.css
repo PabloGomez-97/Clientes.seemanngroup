@@ -6,7 +6,7 @@
 
 /* ===== CONTAINER ===== */
 .pricing-tabs-container {
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--portal-font);
   background-color: #f9fafb;
   min-height: 100vh;
   padding: 0;
@@ -145,7 +145,7 @@
 
 .pricing-routes-section table.table {
   margin-bottom: 0;
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--portal-font);
   font-size: 0.8125rem !important;
   border-collapse: collapse;
 }
@@ -255,7 +255,7 @@
 }
 
 .pricing-forms-section .accordion-button {
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--portal-font);
   font-size: 0.875rem;
   font-weight: 500;
   color: #1f2937;

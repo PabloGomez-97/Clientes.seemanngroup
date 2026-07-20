@@ -4,8 +4,7 @@
 
 /* ── Variables ────────────────────────────────────────────── */
 .ops-home {
-  --ops-font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
-    Arial, sans-serif;
+  --ops-font: var(--portal-font);
   --ops-bg: #f8f9fb;
   --ops-card: #ffffff;
   --ops-border: #eef0f4;
