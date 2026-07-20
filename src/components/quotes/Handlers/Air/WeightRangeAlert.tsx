@@ -39,18 +39,18 @@ export const WeightRangeAlert: React.FC<WeightRangeAlertProps> = ({
       <div
         className="p-3 rounded border mb-4"
         style={{
-          backgroundColor: "#FDF2E9",
-          borderColor: "#F5CBA7",
-          borderLeft: "4px solid #D35400",
+          backgroundColor: "#fffbeb",
+          borderColor: "#fde68a",
+          borderLeft: "4px solid #b45309",
         }}
       >
         <div className="d-flex align-items-start gap-2">
           <i
             className="bi bi-exclamation-triangle-fill"
-            style={{ fontSize: "1.25rem", marginTop: "2px", color: "#DC3545" }}
+            style={{ fontSize: "1.25rem", marginTop: "2px", color: "#b45309" }}
           ></i>
           <div className="flex-grow-1">
-            <h6 className="fw-bold mb-2" style={{ color: "#D35400" }}>
+            <h6 className="fw-bold mb-2" style={{ color: "#92400e" }}>
               {t("WeightRangeAlert.airFreightPesoMinimo")}
             </h6>
             <p className="mb-2 small" style={{ color: "#1f618d" }}>

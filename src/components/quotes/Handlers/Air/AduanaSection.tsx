@@ -165,8 +165,8 @@ export const AduanaSection: React.FC<AduanaSectionProps> = ({
               <div
                 className="p-2 rounded"
                 style={{
-                  backgroundColor: "rgba(255, 98, 0, 0.04)",
-                  border: "1px solid rgba(255, 98, 0, 0.12)",
+                  backgroundColor: "rgba(35, 47, 62, 0.03)",
+                  border: "1px solid rgba(35, 47, 62, 0.12)",
                 }}
               >
                 <small className="fw-bold d-block mb-1">

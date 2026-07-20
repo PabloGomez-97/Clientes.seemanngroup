@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ArrowRight, Plane, Ship, Package, Truck } from "lucide-react";
 import CotizadorAereo from "@/components/quotes/QuoteAIR";
 import CotizadorFCL from "@/components/quotes/QuoteFCL";
 import CotizadorLCL from "@/components/quotes/QuoteLCL";
@@ -37,26 +36,25 @@ function CotizadorFormLayout({ children }: { children: React.ReactNode }) {
 }
 
 type TipoCotizacion = "AEREO" | "FCL" | "LCL" | "LASTMILE" | null;
-type ModalityKey = Exclude<TipoCotizacion, null>;
 
 interface ServiceType {
-  key: ModalityKey;
-  Icon: typeof Plane;
+  key: "AEREO" | "FCL" | "LCL" | "LASTMILE";
+  icon: string;
   inDevelopment?: boolean;
 }
 
 interface ItineraryState {
-  tipoEnvio: ModalityKey;
+  tipoEnvio: "AEREO" | "FCL" | "LCL" | "LASTMILE";
   origin: { value: string; label: string };
   destination: { value: string; label: string };
   fecha?: string;
 }
 
 const serviceTypes: ServiceType[] = [
-  { key: "AEREO", Icon: Plane },
-  { key: "FCL", Icon: Ship },
-  { key: "LCL", Icon: Package },
-  { key: "LASTMILE", Icon: Truck },
+  { key: "AEREO", icon: "fa fa-plane" },
+  { key: "FCL", icon: "fa fa-ship" },
+  { key: "LCL", icon: "fa fa-cubes" },
+  { key: "LASTMILE", icon: "fa fa-truck" },
 ];
 
 const Cotizador: React.FC = () => {
@@ -67,7 +65,6 @@ const Cotizador: React.FC = () => {
   const [preselectedData, setPreselectedData] = useState<ItineraryState | null>(
     null,
   );
-  const [focusedKey, setFocusedKey] = useState<ModalityKey>("AEREO");
   const quoteAbandonRef = useRef<(() => void) | null>(null);
 
   // Detectar si viene con datos pre-seleccionados desde ItineraryFinder
@@ -86,125 +83,86 @@ const Cotizador: React.FC = () => {
     const tipo = params.get("tipo")?.toUpperCase();
     const valid = ["AEREO", "FCL", "LCL", "LASTMILE"] as const;
     if (valid.includes(tipo as (typeof valid)[number])) {
-      setTipoCotizacion(tipo as ModalityKey);
+      setTipoCotizacion(tipo as Exclude<TipoCotizacion, null>);
       navigate(location.pathname, { replace: true });
     }
   }, [location.search, navigate, location.pathname]);
 
-  const handleSeleccionTipo = (tipo: ModalityKey) => {
+  const handleSeleccionTipo = (tipo: Exclude<TipoCotizacion, null>) => {
     setTipoCotizacion(tipo);
     setPreselectedData(null);
   };
 
   // ── Selection View ──
   if (tipoCotizacion === null) {
-    const active =
-      serviceTypes.find((s) => s.key === focusedKey) ?? serviceTypes[0];
-    const activeKey = active.key.toLowerCase();
-    const ActiveIcon = active.Icon;
-
     return (
       <>
         <ActivityBar />
-        <div className="nq-page">
-          <div className="nq-shell">
-            <header className="nq-hero">
-              <p className="nq-hero__eyebrow">
-                {t("home.cotizador.eyebrow")}
-              </p>
-              <h1 className="nq-hero__title">{t("home.cotizador.title")}</h1>
-              <p className="nq-hero__subtitle">
-                {t("home.cotizador.subtitle")}
-              </p>
-            </header>
+        <div className="cotizador-page">
+          <div className="cotizador-container">
+            <div className="cotizador-header">
+              <h1>{t("home.cotizador.title")}</h1>
+              <p>{t("home.cotizador.subtitle")}</p>
+            </div>
 
-            <div className="nq-panel">
-              <div
-                className="nq-list"
-                role="listbox"
-                aria-label={t("home.cotizador.title")}
-              >
-                {serviceTypes.map(({ key, Icon, inDevelopment }) => {
-                  const k = key.toLowerCase();
-                  const isActive = focusedKey === key;
-                  return (
-                    <button
-                      key={key}
-                      type="button"
-                      role="option"
-                      aria-selected={isActive}
-                      disabled={inDevelopment}
-                      className={`nq-option${isActive ? " nq-option--active" : ""}${inDevelopment ? " nq-option--disabled" : ""}`}
-                      onMouseEnter={() => {
-                        if (!inDevelopment) setFocusedKey(key);
-                      }}
-                      onFocus={() => {
-                        if (!inDevelopment) setFocusedKey(key);
-                      }}
-                      onClick={() => {
-                        if (!inDevelopment) handleSeleccionTipo(key);
-                      }}
-                    >
-                      <span className="nq-option__icon" aria-hidden>
-                        <Icon size={16} strokeWidth={1.5} />
-                      </span>
-                      <span className="nq-option__body">
-                        <span className="nq-option__title">
-                          {t(`home.cotizador.${k}.title`)}
-                        </span>
-                        <span className="nq-option__hint">
-                          {t(`home.cotizador.${k}.description`)}
-                        </span>
-                      </span>
-                      <span className="nq-option__meta">
+            <div className="cotizador-grid">
+              {serviceTypes.map(({ key, icon, inDevelopment }) => {
+                const k = key.toLowerCase();
+                return (
+                  <div
+                    key={key}
+                    className={`cotizador-card${inDevelopment ? " cotizador-card--disabled" : ""}`}
+                    onClick={
+                      inDevelopment
+                        ? undefined
+                        : () =>
+                            handleSeleccionTipo(
+                              key as Exclude<TipoCotizacion, null>,
+                            )
+                    }
+                  >
+                    <span className="cotizador-card__indicator" />
+
+                    <div className="cotizador-card__header">
+                      <div className="cotizador-card__icon">
+                        <i className={icon} />
+                      </div>
+                      <h2 className="cotizador-card__title">
+                        {t(`home.cotizador.${k}.title`)}
+                      </h2>
+                      <span className="cotizador-card__badge">
                         {t(`home.cotizador.${k}.badge`)}
                       </span>
-                    </button>
-                  );
-                })}
-              </div>
+                    </div>
 
-              <aside className="nq-preview" aria-live="polite">
-                <div className="nq-preview__top">
-                  <ActiveIcon
-                    className="nq-preview__glyph"
-                    size={18}
-                    strokeWidth={1.5}
-                    aria-hidden
-                  />
-                  <p className="nq-preview__label">
-                    {t("home.cotizador.previewLabel")}
-                  </p>
-                </div>
-                <h2 className="nq-preview__title">
-                  {t(`home.cotizador.${activeKey}.title`)}
-                </h2>
-                <p className="nq-preview__desc">
-                  {t(`home.cotizador.${activeKey}.comparisonDescription`, {
-                    defaultValue: t(
-                      `home.cotizador.${activeKey}.description`,
-                    ),
-                  })}
-                </p>
-                <ul className="nq-preview__points">
-                  <li>{t(`home.cotizador.${activeKey}.description1`)}</li>
-                  <li>{t(`home.cotizador.${activeKey}.description2`)}</li>
-                  <li>{t(`home.cotizador.${activeKey}.description3`)}</li>
-                </ul>
-                <button
-                  type="button"
-                  className="nq-preview__cta"
-                  disabled={active.inDevelopment}
-                  onClick={() => {
-                    if (!active.inDevelopment) {
-                      handleSeleccionTipo(active.key);
-                    }
-                  }}
-                >
-                  {t(`home.cotizador.${activeKey}.button`)}
-                  <ArrowRight size={15} strokeWidth={1.75} aria-hidden />
-                </button>
-              </aside>
+                    <p className="cotizador-card__desc">
+                      {t(`home.cotizador.${k}.description`)}
+                    </p>
+
+                    <ul className="cotizador-card__features">
+                      <li>{t(`home.cotizador.${k}.description1`)}</li>
+                      <li>{t(`home.cotizador.${k}.description2`)}</li>
+                      <li>{t(`home.cotizador.${k}.description3`)}</li>
+                    </ul>
+
+                    <button
+                      type="button"
+                      className={`cotizador-card__btn${inDevelopment ? " cotizador-card__btn--disabled" : ""}`}
+                      disabled={inDevelopment}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (!inDevelopment) {
+                          handleSeleccionTipo(
+                            key as Exclude<TipoCotizacion, null>,
+                          );
+                        }
+                      }}
+                    >
+                      {t(`home.cotizador.${k}.button`)}
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>

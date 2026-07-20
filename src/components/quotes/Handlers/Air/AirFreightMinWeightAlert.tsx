@@ -22,21 +22,21 @@ export const AirFreightMinWeightAlert: React.FC<
     <div
       className="p-3 rounded border mb-4"
       style={{
-        backgroundColor: "#FDF2E9",
-        borderColor: "#F5CBA7",
-        borderLeft: "4px solid #D35400",
+        backgroundColor: "#fffbeb",
+        borderColor: "#fde68a",
+        borderLeft: "4px solid #b45309",
       }}
     >
       <div className="d-flex align-items-start gap-2">
         <i
           className="bi bi-info-circle-fill"
-          style={{ fontSize: "1.25rem", marginTop: "2px", color: "#D35400" }}
+          style={{ fontSize: "1.25rem", marginTop: "2px", color: "#b45309" }}
         ></i>
         <div className="flex-grow-1">
-          <h6 className="fw-bold mb-2" style={{ color: "#D35400" }}>
+          <h6 className="fw-bold mb-2" style={{ color: "#92400e" }}>
             {t("WeightRangeAlert.avisoPesoMinimoFacturableTitulo")}
           </h6>
-          <p className="mb-0 small" style={{ color: "#6E2C00" }}>
+          <p className="mb-0 small" style={{ color: "#78350f" }}>
             {t("WeightRangeAlert.avisoPesoMinimoFacturable", {
               peso: pesoChargeable.toFixed(2),
               pesoMinimo: pesoAirFreight,

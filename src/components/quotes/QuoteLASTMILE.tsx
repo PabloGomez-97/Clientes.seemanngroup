@@ -1856,7 +1856,7 @@ function QuoteLASTMILE({
                     >
                       <i
                         className="bi bi-shield-check"
-                        style={{ fontSize: "0.9375rem", color: "#ff6200" }}
+                        style={{ fontSize: "0.9375rem", color: "var(--qa-primary)" }}
                       ></i>
                       <span
                         style={{
@@ -1875,8 +1875,8 @@ function QuoteLASTMILE({
                           fontWeight: 600,
                           letterSpacing: "0.05em",
                           textTransform: "uppercase",
-                          color: "#ff6200",
-                          background: "rgba(255,98,0,0.08)",
+                          color: "var(--qa-primary)",
+                          background: "rgba(35, 47, 62, 0.06)",
                           padding: "2px 8px",
                           borderRadius: 4,
                           flexShrink: 0,
@@ -2034,7 +2034,7 @@ function QuoteLASTMILE({
                     >
                       <i
                         className="bi bi-box-seam"
-                        style={{ fontSize: "0.9375rem", color: "#ff6200" }}
+                        style={{ fontSize: "0.9375rem", color: "var(--qa-primary)" }}
                       ></i>
                       <span
                         style={{
@@ -2053,8 +2053,8 @@ function QuoteLASTMILE({
                           fontWeight: 600,
                           letterSpacing: "0.05em",
                           textTransform: "uppercase",
-                          color: "#ff6200",
-                          background: "rgba(255,98,0,0.08)",
+                          color: "var(--qa-primary)",
+                          background: "rgba(35, 47, 62, 0.06)",
                           padding: "2px 8px",
                           borderRadius: 4,
                           flexShrink: 0,

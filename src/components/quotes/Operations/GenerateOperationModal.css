@@ -121,14 +121,14 @@
 }
 
 .go-btn--primary {
-  background: #ff6200;
+  background: #232f3e;
   color: #ffffff;
-  border-color: #ff6200;
+  border-color: #232f3e;
 }
 
 .go-btn--primary:hover:not(:disabled) {
-  background: #e85800;
-  border-color: #e85800;
+  background: #1a2430;
+  border-color: #1a2430;
 }
 
 .go-btn--secondary {

@@ -133,7 +133,8 @@ export const PDFTemplateAIR: React.FC<PDFTemplateAIRProps> = ({
     sub: "#666",
     line: "#e0e0e0",
     bg: "#f7f8fa",
-    accent: "#ff6200",
+    accent: "#232f3e",
+    brand: "#ff6200",
     white: "#ffffff",
   };
   const FONT =
@@ -282,7 +283,7 @@ export const PDFTemplateAIR: React.FC<PDFTemplateAIRProps> = ({
         </div>
         <div
           style={{
-            color: C.accent,
+            color: C.brand,
             fontSize: "14pt",
             fontWeight: 300,
             lineHeight: 1,
@@ -440,9 +441,9 @@ export const PDFTemplateAIR: React.FC<PDFTemplateAIRProps> = ({
             display: "flex",
             alignItems: "center",
             gap: "10px",
-            backgroundColor: "#fff7f0",
-            border: "1px solid #fed7aa",
-            borderLeft: "3px solid #ff6200",
+            backgroundColor: "#f7f8fa",
+            border: "1px solid #e0e0e0",
+            borderLeft: "3px solid #232f3e",
             borderRadius: "3px",
             padding: "7px 12px",
             marginBottom: "10px",
@@ -771,19 +772,19 @@ export const PDFTemplateAIR: React.FC<PDFTemplateAIRProps> = ({
         <div
           role="note"
           style={{
-            backgroundColor: "#FDF2E9",
-            border: "1px solid #F5CBA7",
-            borderLeft: "4px solid #D35400",
+            backgroundColor: "#fffbeb",
+            border: "1px solid #fde68a",
+            borderLeft: "4px solid #b45309",
             borderRadius: "4px",
             padding: "8px 12px",
             marginBottom: "12px",
             fontSize: "7.5pt",
-            color: "#6E2C00",
+            color: "#78350f",
             lineHeight: 1.5,
           }}
         >
           <strong
-            style={{ color: "#D35400", display: "block", marginBottom: "4px" }}
+            style={{ color: "#92400e", display: "block", marginBottom: "4px" }}
           >
             ⓘ Flete Aéreo — Aviso de peso mínimo facturable
           </strong>

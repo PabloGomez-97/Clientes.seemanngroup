@@ -83,23 +83,21 @@ export const routeSelectStyles: StylesConfig<
     ...base,
     borderRadius: "6px",
     backgroundColor: state.isSelected
-      ? "rgba(255,98,0,0.09)"
+      ? "rgba(255, 98, 0, 0.08)"
       : state.isFocused
         ? "#f3f4f6"
         : "transparent",
-    color: state.isSelected
-      ? "var(--qf-select-accent-muted, var(--qa-select-accent-muted, rgba(255, 98, 0, 0.55)))"
-      : "#111827",
+    color: state.isSelected ? "#232f3e" : "#111827",
     fontWeight: state.isSelected ? 600 : 400,
     cursor: "pointer",
     padding: "7px 10px",
-    "&:active": { backgroundColor: "rgba(255,98,0,0.14)" },
+    "&:active": { backgroundColor: "rgba(255, 98, 0, 0.12)" },
   }),
   indicatorSeparator: () => ({ display: "none" }),
   dropdownIndicator: (base, state) => ({
     ...base,
     color: state.isFocused
-      ? "var(--qf-select-accent-muted, var(--qa-select-accent-muted, rgba(255, 98, 0, 0.55)))"
+      ? "var(--qf-select-accent-muted, var(--qa-select-accent-muted, #ff6200))"
       : "#b0b7c3",
     transition: "transform 0.2s ease, color 0.15s ease",
     transform: state.selectProps.menuIsOpen ? "rotate(180deg)" : "rotate(0deg)",

@@ -120,8 +120,8 @@ export const PdfAduanaSection: React.FC<PdfAduanaSectionProps> = ({
       {/* Charges breakdown */}
       <div
         style={{
-          backgroundColor: "rgba(255, 98, 0, 0.04)",
-          border: "1px solid rgba(255, 98, 0, 0.12)",
+          backgroundColor: "rgba(35, 47, 62, 0.04)",
+          border: "1px solid rgba(35, 47, 62, 0.12)",
           borderRadius: "3px",
           padding: "8px 10px",
         }}
@@ -189,7 +189,7 @@ export const PdfAduanaSection: React.FC<PdfAduanaSectionProps> = ({
           />
           <div
             style={{
-              borderTop: "1px solid rgba(255, 98, 0, 0.2)",
+              borderTop: "1px solid rgba(35, 47, 62, 0.14)",
               marginTop: "3px",
               paddingTop: "4px",
             }}

@@ -40,7 +40,8 @@ const C = {
   sub: "#666",
   line: "#e0e0e0",
   bg: "#f7f8fa",
-  accent: "#ff6200",
+  accent: "#232f3e",
+    brand: "#ff6200",
   white: "#ffffff",
 };
 

@@ -43,7 +43,7 @@ const NearbyAirportSelector = ({
           color: "#475569",
         }}
       >
-        <i className="bi bi-airplane" style={{ color: "#ff6200" }} />
+        <i className="bi bi-airplane" style={{ color: "var(--qa-primary)" }} />
         <span>Aeropuerto asignado:</span>
         <span style={{ fontWeight: 700, color: "#1e3a5f" }}>
           {effectiveAirport?.label ?? "—"}
@@ -89,10 +89,12 @@ const NearbyAirportSelector = ({
               style={{
                 flex: 1,
                 minWidth: 100,
-                border: isAlt ? "1.5px solid #ff6200" : "1.5px solid #e2e8f0",
+                border: isAlt
+                  ? "1.5px solid var(--qa-accent, #ff6200)"
+                  : "1.5px solid #e2e8f0",
                 borderRadius: 8,
                 padding: "7px 10px",
-                background: isAlt ? "#fff7f0" : "#fff",
+                background: isAlt ? "#fffaf6" : "#fff",
                 cursor: "pointer",
                 textAlign: "left",
                 transition: "border-color 0.15s, background 0.15s",
@@ -104,7 +106,7 @@ const NearbyAirportSelector = ({
                   fontWeight: 700,
                   textTransform: "uppercase",
                   letterSpacing: "0.04em",
-                  color: isAlt ? "#ff6200" : "#94a3b8",
+                  color: isAlt ? "var(--qa-accent, #ff6200)" : "#94a3b8",
                   marginBottom: 2,
                 }}
               >

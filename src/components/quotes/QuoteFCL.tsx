@@ -3604,7 +3604,7 @@ export default function QuoteFCL({
                               data-bs-placement="top"
                               title="Esta ruta tiene tarifa vigente."
                               style={{
-                                color: "#ff6200",
+                                color: "var(--qa-primary)",
                                 fontSize: "0.85rem",
                                 cursor: "help",
                               }}
@@ -3658,7 +3658,7 @@ export default function QuoteFCL({
                                 : "Esta ruta no cuenta con tarifa inmediata. Tu ejecutivo de cuenta te contactará con el precio a la brevedad."
                             }
                             style={{
-                              color: "#ff6200",
+                              color: "var(--qa-primary)",
                               fontSize: "0.85rem",
                               cursor: "help",
                             }}
@@ -4336,8 +4336,8 @@ export default function QuoteFCL({
                 <div
                   className="p-3 rounded border"
                   style={{
-                    borderColor: "rgba(255, 98, 0, 0.2)",
-                    backgroundColor: "rgba(255, 98, 0, 0.03)", // Un 3% de opacidad del naranja
+                    borderColor: "rgba(35, 47, 62, 0.14)",
+                    backgroundColor: "rgba(35, 47, 62, 0.03)",
                   }}
                 >
                   <div className="d-flex justify-content-between align-items-start gap-3 mb-3">
@@ -4377,8 +4377,8 @@ export default function QuoteFCL({
                     <span
                       className="badge"
                       style={{
-                        backgroundColor: "rgba(255, 98, 0, 0.12)",
-                        color: "#ff6200",
+                        backgroundColor: "rgba(35, 47, 62, 0.08)",
+                        color: "var(--qa-primary)",
                       }}
                     >
                       Válida 5 Días
@@ -4777,7 +4777,7 @@ export default function QuoteFCL({
                         </div>
                         <div
                           className="qa-totals-bar-item"
-                          style={{ background: "rgba(255, 98, 0, 0.06)" }}
+                          style={{ background: "rgba(35, 47, 62, 0.05)" }}
                         >
                           <span className="qa-totals-bar-value">
                             {freeTimeDisplay}

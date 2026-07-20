@@ -102,7 +102,8 @@ export const PDFTemplateLastMile: React.FC<PDFTemplateLastMileProps> = ({
     sub: "#666",
     line: "#e0e0e0",
     bg: "#f7f8fa",
-    accent: "#ff6200",
+    accent: "#232f3e",
+    brand: "#ff6200",
     white: "#ffffff",
   };
   const FONT =
@@ -284,7 +285,7 @@ export const PDFTemplateLastMile: React.FC<PDFTemplateLastMileProps> = ({
         </div>
         <div
           style={{
-            color: C.accent,
+            color: C.brand,
             fontSize: "14pt",
             fontWeight: 300,
             lineHeight: 1,

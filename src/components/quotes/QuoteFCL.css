@@ -116,9 +116,11 @@
   }
 }
 
-/* Variables locales que mapean a las globales */
+/* Variables: chrome/CTA en #232F3E; naranja solo como acento de marca/focus */
 :root {
-  --qf-primary: var(--primary-color, #ff6200);
+  --qf-primary: #232f3e;
+  --qf-accent: #ff6200;
+  --qf-accent-soft: rgba(255, 98, 0, 0.1);
   --qf-secondary: var(--secondary-color, #111827);
   --qf-bg-light: #f8f9fa;
   --qf-border-color: #e0e0e0;
@@ -130,14 +132,14 @@
   --qf-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
   --qf-transition: all 0.2s ease-in-out;
 
-  /* Selectores Origen/Destino — interacción sutil (no alerta) */
+  /* Selectores Origen/Destino — focus con acento de marca */
   --qf-select-border: #d0d5dd;
   --qf-select-border-hover: #b8bec8;
-  --qf-select-border-focus: rgba(255, 98, 0, 0.38);
+  --qf-select-border-focus: rgba(255, 98, 0, 0.42);
   --qf-select-shadow-rest: 0 1px 2px rgba(0, 0, 0, 0.04);
   --qf-select-shadow-hover: 0 1px 3px rgba(15, 23, 42, 0.06);
-  --qf-select-ring-focus: 0 0 0 3px rgba(255, 98, 0, 0.06);
-  --qf-select-accent-muted: rgba(255, 98, 0, 0.55);
+  --qf-select-ring-focus: 0 0 0 3px rgba(255, 98, 0, 0.08);
+  --qf-select-accent-muted: var(--qf-accent);
 }
 
 .qf-container {
@@ -237,7 +239,7 @@
 }
 
 .qf-table tr.selected {
-  background-color: rgba(255, 98, 0, 0.05);
+  background-color: rgba(35, 47, 62, 0.04);
   /* Very light highlight using --primary-color manually converted approx */
   border-left: 3px solid var(--qf-primary);
 }
@@ -306,7 +308,7 @@
 .qf-switch-input {
   width: 1.2rem;
   height: 1.2rem;
-  accent-color: var(--qf-primary);
+  accent-color: var(--qf-accent);
   cursor: pointer;
 }
 
@@ -331,12 +333,12 @@
 }
 
 .qf-btn-primary:hover {
-  background-color: #e55a00;
+  background-color: #1a2430;
   /* Darker shade of primary */
 }
 
 .qf-btn-primary:disabled {
-  background-color: #ffccaa;
+  background-color: #9aa3ad;
   cursor: not-allowed;
 }
 
@@ -464,9 +466,9 @@
 }
 
 .qf-badge-primary {
-  background-color: rgba(255, 98, 0, 0.1);
+  background-color: rgba(35, 47, 62, 0.06);
   color: var(--qf-primary);
-  border-color: rgba(255, 98, 0, 0.2);
+  border-color: rgba(35, 47, 62, 0.14);
 }
 
 /* Alert Boxes Minimalist */
@@ -627,7 +629,7 @@
 }
 
 .qf-addon-card.is-active {
-  border-color: var(--qf-primary);
+  border-color: var(--qf-accent);
   box-shadow: 0 0 0 3px rgba(255, 98, 0, 0.08);
 }
 
@@ -682,8 +684,8 @@
 }
 
 .qf-addon-card.is-active .qf-addon-card__action {
-  background: rgba(255, 98, 0, 0.04);
-  border-left-color: rgba(255, 98, 0, 0.15);
+  background: rgba(35, 47, 62, 0.03);
+  border-left-color: rgba(35, 47, 62, 0.18);
 }
 
 .qf-addon-btn-add {
@@ -703,7 +705,7 @@
 }
 
 .qf-addon-btn-add:hover {
-  background-color: #e55a00;
+  background-color: #1a2430;
 }
 
 .qf-addon-btn-add:disabled {
@@ -790,21 +792,21 @@
 }
 
 .qa-rt-td-container.is-available:hover {
-  background: rgba(255, 98, 0, 0.08);
-  box-shadow: inset 0 0 0 1px rgba(255, 98, 0, 0.25);
+  background: rgba(35, 47, 62, 0.06);
+  box-shadow: inset 0 0 0 1px rgba(35, 47, 62, 0.2);
 }
 
 .qa-rt-td-container.is-available:hover .qa-rt-price-amount {
-  color: var(--qa-primary, #ff6200);
+  color: var(--qf-primary, #232f3e);
 }
 
 .qa-rt-td-container.is-selected {
   background: #fffaf6;
-  box-shadow: inset 0 0 0 1.5px var(--qa-primary, #ff6200);
+  box-shadow: inset 0 0 0 1.5px var(--qf-primary, #232f3e);
 }
 
 .qa-rt-td-container.is-selected .qa-rt-price-amount {
-  color: var(--qa-primary, #ff6200);
+  color: var(--qf-primary, #232f3e);
 }
 
 /* Check de celda seleccionada */
@@ -813,7 +815,7 @@
   top: 6px;
   right: 6px;
   font-size: 11px;
-  color: var(--qa-primary, #ff6200);
+  color: var(--qf-primary, #232f3e);
   line-height: 1;
 }
 
@@ -831,7 +833,7 @@
 }
 
 .qa-rt-hint i {
-  color: var(--qa-primary, #ff6200);
+  color: var(--qf-primary, #232f3e);
   font-size: 13px;
 }
 
@@ -904,7 +906,7 @@
 }
 
 .qa-rt-sort-icon.active {
-  color: var(--qa-primary, #ff6200);
+  color: var(--qf-primary, #232f3e);
 }
 
 /* ============================================================

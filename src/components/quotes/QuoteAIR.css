@@ -117,9 +117,11 @@
   }
 }
 
-/* Variables locales que mapean a las globales */
+/* Variables: chrome/CTA en #232F3E; naranja solo como acento de marca/focus */
 :root {
-  --qa-primary: var(--primary-color, #ff6200);
+  --qa-primary: #232f3e;
+  --qa-accent: #ff6200;
+  --qa-accent-soft: rgba(255, 98, 0, 0.1);
   --qa-secondary: var(--secondary-color, #111827);
   --qa-bg-light: #f8f9fa;
   --qa-border-color: #e0e0e0;
@@ -131,14 +133,14 @@
   --qa-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
   --qa-transition: all 0.2s ease-in-out;
 
-  /* Selectores Origen/Destino — interacción sutil (no alerta) */
+  /* Selectores Origen/Destino — focus con acento de marca */
   --qa-select-border: #d0d5dd;
   --qa-select-border-hover: #b8bec8;
-  --qa-select-border-focus: rgba(255, 98, 0, 0.38);
+  --qa-select-border-focus: rgba(255, 98, 0, 0.42);
   --qa-select-shadow-rest: 0 1px 2px rgba(0, 0, 0, 0.04);
   --qa-select-shadow-hover: 0 1px 3px rgba(15, 23, 42, 0.06);
-  --qa-select-ring-focus: 0 0 0 3px rgba(255, 98, 0, 0.06);
-  --qa-select-accent-muted: rgba(255, 98, 0, 0.55);
+  --qa-select-ring-focus: 0 0 0 3px rgba(255, 98, 0, 0.08);
+  --qa-select-accent-muted: var(--qa-accent);
 }
 
 
@@ -239,7 +241,7 @@
 }
 
 .qa-table tr.selected {
-  background-color: rgba(255, 98, 0, 0.05);
+  background-color: rgba(35, 47, 62, 0.04);
   /* Very light highlight using --primary-color manually converted approx */
   border-left: 3px solid var(--qa-primary);
 }
@@ -410,7 +412,7 @@
 
 .qa-rt-carrier-info-icon {
   font-size: 15px;
-  color: #ff6200;
+  color: var(--qa-primary);
   cursor: help;
   flex-shrink: 0;
   transition: color 0.12s ease;
@@ -469,7 +471,7 @@
 }
 
 .qa-rt-td-agent {
-  color: #ff6200 !important;
+  color: var(--qa-primary) !important;
   font-weight: 600;
 }
 
@@ -726,7 +728,7 @@
 .qa-switch-input {
   width: 1.2rem;
   height: 1.2rem;
-  accent-color: var(--qa-primary);
+  accent-color: var(--qa-accent);
   cursor: pointer;
 }
 
@@ -751,12 +753,12 @@
 }
 
 .qa-btn-primary:hover {
-  background-color: #e55a00;
+  background-color: #1a2430;
   /* Darker shade of primary */
 }
 
 .qa-btn-primary:disabled {
-  background-color: #ffccaa;
+  background-color: #9aa3ad;
   cursor: not-allowed;
 }
 
@@ -884,9 +886,9 @@
 }
 
 .qa-badge-primary {
-  background-color: rgba(255, 98, 0, 0.1);
+  background-color: rgba(35, 47, 62, 0.06);
   color: var(--qa-primary);
-  border-color: rgba(255, 98, 0, 0.2);
+  border-color: rgba(35, 47, 62, 0.14);
 }
 
 /* Alert Boxes Minimalist */
@@ -1276,8 +1278,8 @@
 }
 
 .qa-addon-card.is-active {
-  border-color: var(--qa-primary);
-  box-shadow: 0 0 0 3px rgba(255, 98, 0, 0.08);
+  border-color: var(--qa-accent);
+  box-shadow: 0 0 0 3px rgba(255, 98, 0, 0.1);
 }
 
 .qa-addon-card__image {
@@ -1331,8 +1333,8 @@
 }
 
 .qa-addon-card.is-active .qa-addon-card__action {
-  background: rgba(255, 98, 0, 0.04);
-  border-left-color: rgba(255, 98, 0, 0.15);
+  background: rgba(35, 47, 62, 0.03);
+  border-left-color: rgba(35, 47, 62, 0.18);
 }
 
 .qa-addon-btn-add {
@@ -1352,7 +1354,7 @@
 }
 
 .qa-addon-btn-add:hover {
-  background-color: #e55a00;
+  background-color: #1a2430;
 }
 
 .qa-addon-btn-add:disabled {
@@ -1547,13 +1549,13 @@
   align-items: center;
   gap: 4px;
   font-size: 13px;
-  color: #E87820;
+  color: #232f3e;
   text-decoration: none;
 }
 
 .quote-confirm-download:hover {
   text-decoration: underline;
-  color: #c5651a;
+  color: var(--qa-accent, #ff6200);
 }
 
 /* ============================================================================

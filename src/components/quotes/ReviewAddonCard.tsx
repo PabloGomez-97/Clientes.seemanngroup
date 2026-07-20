@@ -37,10 +37,10 @@ export function ReviewAddonCard({
           style={{
             backgroundColor: "#fff",
             borderColor: active
-              ? "rgba(255, 98, 0, 0.35)"
+              ? "rgba(35, 47, 62, 0.45)"
               : "var(--qa-border-color)",
             boxShadow: active
-              ? "0 0 0 3px rgba(255, 98, 0, 0.08)"
+              ? "0 0 0 3px rgba(255, 98, 0, 0.1)"
               : "0 1px 4px rgba(0, 0, 0, 0.04)",
             opacity: disabled ? 0.65 : 1,
             cursor: disabled ? "not-allowed" : "pointer",
@@ -51,7 +51,7 @@ export function ReviewAddonCard({
             style={{
               width: 56,
               height: 56,
-              backgroundColor: "rgba(255, 98, 0, 0.06)",
+              backgroundColor: "rgba(35, 47, 62, 0.05)",
             }}
           >
             <img
