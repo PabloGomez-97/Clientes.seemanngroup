@@ -1,0 +1,50 @@
+Nombre de la app: Seemann Group
+Subtítulo (máx. 30): Portal de clientes
+Bundle ID: com.seemanngroup.portalclientes
+Categoría primaria: Negocios / Business
+Categoría secundaria: Productividad (opcional)
+
+Descripción corta (promocional, máx. 170):
+Consulta operaciones, cotizaciones, seguimientos y documentos de Seemann Group desde tu iPhone.
+
+Descripción completa (borrador):
+Seemann Group — Portal de Clientes te permite gestionar tu relación logística desde el móvil.
+
+Con la app puedes:
+• Ver el estado de tus operaciones aéreas, marítimas y terrestres
+• Consultar cotizaciones asociadas a tu cuenta
+• Seguir embarques con tracking en tiempo real
+• Revisar reportería financiera y operacional
+• Acceder a documentos y novedades
+• Activar o desactivar notificaciones de seguimiento
+
+Inicia sesión con las mismas credenciales del portal web:
+https://portalclientes.seemanngroup.com
+
+Soporte: soporte@seemanngroup.com
+Privacidad: https://portalclientes.seemanngroup.com/privacy-policy
+Términos: https://portalclientes.seemanngroup.com/terms-of-service
+Eliminación de cuenta: Más → Eliminar cuenta (o privacidad@seemanngroup.com)
+
+Palabras clave (máx. 100 caracteres, separadas por coma, sin espacios de más):
+logistica,flete,embarques,tracking,cotizaciones,seemann,comercio exterior,aduana
+
+URL de marketing: https://portalclientes.seemanngroup.com
+URL de política de privacidad: https://portalclientes.seemanngroup.com/privacy-policy
+URL de soporte: https://portalclientes.seemanngroup.com
+Copyright: © 2026 Seemann y Compañía Limitada
+
+Notas para revisión de Apple (App Review Information):
+Esta app es un portal B2B para clientes existentes de Seemann Group. No hay registro público dentro de la app; las cuentas las crea la empresa.
+
+Credenciales de prueba (REEMPLAZAR antes de enviar):
+Usuario / email: _______________
+Contraseña: _______________
+
+Pasos para probar:
+1. Abrir la app e iniciar sesión con las credenciales indicadas.
+2. Revisar Inicio, Seguimientos, Operaciones y Cotizaciones.
+3. En Más → Notificaciones, verificar el interruptor.
+4. En Más → Eliminar cuenta, ver el flujo de solicitud.
+
+Cifrado: la app solo usa HTTPS estándar (ITSAppUsesNonExemptEncryption = false).

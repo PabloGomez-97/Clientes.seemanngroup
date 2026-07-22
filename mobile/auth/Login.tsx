@@ -22,7 +22,10 @@ import { LAST_LOGIN_EMAIL_KEY, useAuth } from "./AuthContext";
 import { brand, radii, spacing } from "../theme/brand";
 import { fonts } from "../theme/typography";
 
-const TURNSTILE_SITE_KEY = process.env.EXPO_PUBLIC_TURNSTILE_SITE_KEY ?? "";
+const TURNSTILE_SITE_KEY =
+  process.env.EXPO_PUBLIC_TURNSTILE_SITE_KEY ??
+  process.env.VITE_TURNSTILE_SITE_KEY ??
+  "";
 
 type Step = "email" | "password";
 

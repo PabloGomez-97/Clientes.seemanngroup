@@ -18,10 +18,16 @@
       }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "environment": "production",
+      "ios": {
+        "resourceClass": "m-medium"
+      }
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {}
+    }
   }
 }
