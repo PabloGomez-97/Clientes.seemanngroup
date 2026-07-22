@@ -203,15 +203,44 @@ export async function handleUnifiedLogin(
   let mxLookup: {
     user: RemoteUserLean | null;
     ejecutivo: RemoteEjecutivoLean | null;
-  } = { user: null, ejecutivo: null };
+    remoteUnavailable: boolean;
+  } = { user: null, ejecutivo: null, remoteUnavailable: false };
   if (hasRemoteTenantDb()) {
     mxLookup = await findUserInRemoteDb(lookupEmail);
+  } else {
+    console.warn(
+      '[login] MONGODB_URI_MX no configurada: login solo Chile (usuarios MX no podrán entrar)',
+    );
   }
   const mxUser = mxLookup.user;
+  const foundIn = [
+    ...(clUser ? (['cl'] as const) : []),
+    ...(mxUser ? (['mx'] as const) : []),
+  ];
+
+  // DB México caída y el email no está en Chile → no fingir "credenciales inválidas"
+  if (!clUser && mxLookup.remoteUnavailable) {
+    console.error(
+      '[login] remote_mx_unavailable email=%s (login MX temporalmente fuera)',
+      lookupEmail,
+    );
+    return res.status(503).json({
+      error:
+        'El portal de México no está disponible temporalmente. Intenta de nuevo en unos minutos.',
+      code: 'REMOTE_TENANT_UNAVAILABLE',
+    });
+  }
 
   if (!clUser && !mxUser) {
-    console.log('[login] email no encontrado en CL/MX:', lookupEmail);
+    console.log('[login] fail email=%s foundIn=none reason=not_found', lookupEmail);
     return res.status(401).json({ error: 'Credenciales inválidas' });
+  }
+
+  if (mxLookup.remoteUnavailable && clUser) {
+    console.warn(
+      '[login] remote_mx_unavailable email=%s — se continúa solo con Chile',
+      lookupEmail,
+    );
   }
 
   const captchaRequired =
@@ -258,7 +287,11 @@ export async function handleUnifiedLogin(
   }
 
   if (matched.length === 0) {
-    console.log('[login] password incorrecto para', lookupEmail);
+    console.log(
+      '[login] fail email=%s foundIn=%s reason=bad_password',
+      lookupEmail,
+      foundIn.join(',') || 'none',
+    );
     let newFailCount = 1;
     let newCaptchaRequired = false;
 
@@ -306,6 +339,11 @@ export async function handleUnifiedLogin(
   }
 
   if (!chosen) {
+    console.log(
+      '[login] select_tenant email=%s tenants=%s',
+      lookupEmail,
+      matched.join(','),
+    );
     const selectionTokenShort = jwt.sign(
       {
         sub: lookupEmail,
@@ -322,6 +360,8 @@ export async function handleUnifiedLogin(
       tenants: matched.map((id) => TENANT_META[id]),
     });
   }
+
+  console.log('[login] ok email=%s tenant=%s', lookupEmail, chosen);
 
   let userPayload;
   let usernameForToken: string;

@@ -2104,6 +2104,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (path === '/api/me' && method === 'GET') {
       const token = extractBearerToken(req);
       if (!token) {
+        // Esperable: probes, SPA sin sesión, curl de healthcheck.
+        console.log('[me] 401 reason=no_token');
         return res.status(401).json({ error: 'No auth token' });
       }
 
@@ -2111,10 +2113,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const decoded = verifyToken(token);
 
         if (decoded.purpose === 'tenant_selection') {
+          console.log('[me] 401 reason=tenant_selection_token');
           return res.status(401).json({ error: 'Token de selección inválido' });
         }
 
         if (decoded.tenant === 'mx') {
+          // Sesión MX contra API Chile: no es fallo de auth, es handoff.
+          console.log('[me] 409 reason=mx_session_on_chile email=%s', decoded.sub);
           return res.status(409).json({
             error: 'Esta sesión pertenece a Seemann México',
             redirectTo: '/mx',
@@ -2181,6 +2186,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             : {}),
         });
       } catch {
+        console.log('[me] 401 reason=invalid_token');
         return res.status(401).json({ error: 'Invalid token' });
       }
     }

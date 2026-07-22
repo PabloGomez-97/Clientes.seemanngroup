@@ -2010,9 +2010,11 @@ app.get('/api/me', auth, async (req, res) => {
   try {
     const currentUser = (req as any).user as AuthPayload;
     if (currentUser.purpose === 'tenant_selection') {
+      console.log('[me] 401 reason=tenant_selection_token');
       return res.status(401).json({ error: 'Token de selección inválido' });
     }
     if (currentUser.tenant === 'mx') {
+      console.log('[me] 409 reason=mx_session_on_chile email=%s', currentUser.sub);
       return res.status(409).json({
         error: 'Esta sesión pertenece a Seemann México',
         redirectTo: '/mx',

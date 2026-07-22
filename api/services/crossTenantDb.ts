@@ -213,22 +213,33 @@ export async function emailExistsInRemoteDb(email: string): Promise<{
   }
 }
 
-export async function findUserInRemoteDb(
-  email: string,
-): Promise<{
+export type RemoteLookupResult = {
   user: RemoteUserLean | null;
   ejecutivo: RemoteEjecutivoLean | null;
-}> {
+  /** true si la URI remota está configurada pero la consulta falló */
+  remoteUnavailable: boolean;
+};
+
+export async function findUserInRemoteDb(
+  email: string,
+): Promise<RemoteLookupResult> {
+  if (!hasRemoteTenantDb()) {
+    return { user: null, ejecutivo: null, remoteUnavailable: false };
+  }
+
   try {
     const conn = await getRemoteConnection();
-    if (!conn) return { user: null, ejecutivo: null };
+    if (!conn) {
+      console.error('[crossTenant] findUserInRemoteDb: URI configurada pero sin conexión');
+      return { user: null, ejecutivo: null, remoteUnavailable: true };
+    }
 
     const { User, Ejecutivo } = getRemoteModels(conn);
     const user = (await User.findOne({
       email: email.toLowerCase().trim(),
     }).lean()) as RemoteUserLean | null;
 
-    if (!user) return { user: null, ejecutivo: null };
+    if (!user) return { user: null, ejecutivo: null, remoteUnavailable: false };
 
     let ejecutivo: RemoteEjecutivoLean | null = null;
     if (user.ejecutivoId) {
@@ -240,11 +251,11 @@ export async function findUserInRemoteDb(
       }).lean()) as RemoteEjecutivoLean | null;
     }
 
-    return { user, ejecutivo };
+    return { user, ejecutivo, remoteUnavailable: false };
   } catch (e) {
-    // Nunca tumbar el login local si la DB remota falla
-    console.error('[crossTenant] findUserInRemoteDb error (ignored):', e);
-    return { user: null, ejecutivo: null };
+    // No tumbar el login local; el caller decide si devolver 503 a usuarios solo-remotos.
+    console.error('[crossTenant] findUserInRemoteDb error:', e);
+    return { user: null, ejecutivo: null, remoteUnavailable: true };
   }
 }
 
