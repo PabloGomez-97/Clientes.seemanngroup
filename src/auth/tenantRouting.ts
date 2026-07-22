@@ -14,7 +14,7 @@ export function goToTenantApp(redirectTo: string, fallbackPath?: string) {
 }
 
 export function getPostLoginPath(user: AuthUser): string {
-  if (user.tenant === "mx") return "/mx/";
+  if (user.tenant === "mx") return "/mx";
   if (user.username === "Ejecutivo") {
     if (user.roles?.proveedor) return "/proveedor/home";
     return "/admin/home";

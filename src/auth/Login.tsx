@@ -43,7 +43,7 @@ export default function Login() {
   }, redirectTo: string) => {
     if (redirectTo.startsWith("/mx") || user.tenant === "mx") {
       window.location.replace(
-        redirectTo.startsWith("/mx") ? redirectTo : "/mx/",
+        redirectTo.startsWith("/mx") ? redirectTo.replace(/\/$/, "") || "/mx" : "/mx",
       );
       return;
     }

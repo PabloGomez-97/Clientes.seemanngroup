@@ -39,6 +39,10 @@
       "destination": "https://clientes-seemannmexico.vercel.app/api/:path*"
     },
     {
+      "source": "/mx/",
+      "destination": "https://clientes-seemannmexico.vercel.app/mx/"
+    },
+    {
       "source": "/mx",
       "destination": "https://clientes-seemannmexico.vercel.app/mx"
     },

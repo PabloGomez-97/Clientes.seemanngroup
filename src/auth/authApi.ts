@@ -134,7 +134,7 @@ export async function loginRequest(
   return {
     token: data.token,
     tenant: data.tenant === "mx" ? "mx" : "cl",
-    redirectTo: String(data.redirectTo || (data.tenant === "mx" ? "/mx/" : "/")),
+    redirectTo: String(data.redirectTo || (data.tenant === "mx" ? "/mx" : "/")),
     user: normalizeUser({ ...data.user, tenant: data.tenant }),
   };
 }

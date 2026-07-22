@@ -17,6 +17,13 @@ import {
   misClientesRequest,
   todosClientesRequest,
 } from "./authApi";
+import {
+  AUTH_TENANT_KEY,
+  AUTH_TOKEN_KEY,
+  AUTH_USERNAME_KEY,
+  clearAuthStorage,
+  resolveChileMxSession,
+} from "./sessionHandoff";
 
 export type User = AuthUser | null;
 
@@ -52,26 +59,29 @@ type AuthCtx = {
 const AuthContext = createContext<AuthCtx | null>(null);
 
 function persistSession(token: string, user: AuthUser) {
-  localStorage.setItem("auth_token", token);
-  localStorage.setItem("active_username", user.usernames[0] || user.username);
-  if (user.tenant) localStorage.setItem("auth_tenant", user.tenant);
+  localStorage.setItem(AUTH_TOKEN_KEY, token);
+  localStorage.setItem(
+    AUTH_USERNAME_KEY,
+    user.usernames[0] || user.username,
+  );
+  if (user.tenant) localStorage.setItem(AUTH_TENANT_KEY, user.tenant);
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(() =>
-    localStorage.getItem("auth_token"),
+    localStorage.getItem(AUTH_TOKEN_KEY),
   );
   const [user, setUser] = useState<User>(null);
   const [loading, setLoading] = useState<boolean>(
-    !!localStorage.getItem("auth_token"),
+    !!localStorage.getItem(AUTH_TOKEN_KEY),
   );
   const [activeUsername, setActiveUsernameState] = useState<string>(
-    () => localStorage.getItem("active_username") || "",
+    () => localStorage.getItem(AUTH_USERNAME_KEY) || "",
   );
 
   const setActiveUsername = useCallback((username: string) => {
     setActiveUsernameState(username);
-    localStorage.setItem("active_username", username);
+    localStorage.setItem(AUTH_USERNAME_KEY, username);
   }, []);
 
   useEffect(() => {
@@ -80,13 +90,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // Sesión México: no validar contra la API Chile (evita 409 + loop /login ↔ /mx).
-    const storedTenant = localStorage.getItem("auth_tenant");
-    if (storedTenant === "mx" || window.location.pathname.startsWith("/mx")) {
-      if (!window.location.pathname.startsWith("/mx")) {
-        window.location.replace("/mx/");
-        return;
-      }
+    const handoff = resolveChileMxSession();
+    if (handoff.action === "clear_for_login") {
+      // En /login* con sesión mx: limpiar para mostrar el formulario (rompe loops).
+      setToken(null);
+      setUser(null);
+      clearAuthStorage();
+      setLoading(false);
+      return;
+    }
+    if (handoff.action === "redirect_mx") {
+      window.location.replace("/mx");
+      return;
+    }
+    if (handoff.action === "stay") {
+      // SPA Chile sirviendo /mx (rewrite roto): no validar ni redirigir.
       setLoading(false);
       return;
     }
@@ -95,28 +113,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     meRequest("", token)
       .then(({ user: userData }) => {
         setUser(userData);
-        const stored = localStorage.getItem("active_username");
+        if (userData.tenant) {
+          localStorage.setItem(AUTH_TENANT_KEY, userData.tenant);
+        } else {
+          localStorage.setItem(AUTH_TENANT_KEY, "cl");
+        }
+        const stored = localStorage.getItem(AUTH_USERNAME_KEY);
         if (!stored || !userData.usernames.includes(stored)) {
           setActiveUsername(userData.usernames[0]);
         }
       })
       .catch((err: Error & { redirectTo?: string }) => {
         if (err.redirectTo?.startsWith("/mx")) {
-          if (window.location.pathname.startsWith("/mx")) {
-            setToken(null);
-            localStorage.removeItem("auth_token");
-            localStorage.removeItem("active_username");
-            localStorage.removeItem("auth_tenant");
-            window.location.replace("/login?error=mx_portal");
-            return;
-          }
+          localStorage.setItem(AUTH_TENANT_KEY, "mx");
           window.location.replace(err.redirectTo);
           return;
         }
         setToken(null);
-        localStorage.removeItem("auth_token");
-        localStorage.removeItem("active_username");
-        localStorage.removeItem("auth_tenant");
+        setUser(null);
+        clearAuthStorage();
       })
       .finally(() => {
         setLoading(false);
@@ -128,16 +143,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     user: AuthUser;
     redirectTo: string;
   }): LoginOutcome => {
-    persistSession(data.token, data.user);
+    const goingToMx =
+      data.redirectTo.startsWith("/mx") || data.user.tenant === "mx";
 
-    // Ir a México con hard navigation sin dejar la SPA Chile validando el JWT mx.
-    if (data.redirectTo.startsWith("/mx") || data.user.tenant === "mx") {
+    if (goingToMx) {
+      // Persistir y salir de la SPA Chile sin setState (evita /api/me Chile + 409).
+      localStorage.setItem(AUTH_TOKEN_KEY, data.token);
+      localStorage.setItem(AUTH_TENANT_KEY, "mx");
+      localStorage.setItem(
+        AUTH_USERNAME_KEY,
+        data.user.usernames[0] || data.user.username,
+      );
       window.location.replace(
-        data.redirectTo.startsWith("/mx") ? data.redirectTo : "/mx/",
+        data.redirectTo.startsWith("/mx") ? data.redirectTo.replace(/\/$/, "") || "/mx" : "/mx",
       );
       return { status: "ok", user: data.user, redirectTo: data.redirectTo };
     }
 
+    persistSession(data.token, { ...data.user, tenant: data.user.tenant || "cl" });
     setToken(data.token);
     setUser(data.user);
     setActiveUsername(data.user.usernames[0]);
@@ -178,6 +201,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     setToken(null);
     setActiveUsernameState("");
+    clearAuthStorage();
     localStorage.clear();
   };
 

@@ -2117,7 +2117,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (decoded.tenant === 'mx') {
           return res.status(409).json({
             error: 'Esta sesión pertenece a Seemann México',
-            redirectTo: '/mx/',
+            redirectTo: '/mx',
             tenant: 'mx',
           });
         }

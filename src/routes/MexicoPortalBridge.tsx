@@ -1,8 +1,40 @@
+import { useEffect, useState } from "react";
+
 /**
- * Si llegamos aquí, Vercel está sirviendo la SPA de Chile en /mx
- * (el rewrite al proyecto México no funcionó). Evita el loop con /login.
+ * Si React Router de Chile atrapa /mx, el rewrite de Vercel no se aplicó
+ * (p. ej. soft-nav o /mx/ mal enrutado). Intentamos un hard reload a /mx
+ * una vez; si sigue fallando, mostramos el mensaje de diagnóstico.
  */
 export default function MexicoPortalBridge() {
+  const [showFallback, setShowFallback] = useState(false);
+
+  useEffect(() => {
+    const key = "mx_bridge_reload";
+    if (sessionStorage.getItem(key) === "1") {
+      setShowFallback(true);
+      return;
+    }
+    sessionStorage.setItem(key, "1");
+    // Sin barra final: /mx/ historicamente caía en el SPA de Chile.
+    window.location.replace("/mx");
+  }, []);
+
+  if (!showFallback) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "grid",
+          placeItems: "center",
+          fontFamily: "system-ui, sans-serif",
+          color: "#555",
+        }}
+      >
+        Redirigiendo a México…
+      </div>
+    );
+  }
+
   return (
     <div
       style={{
@@ -27,6 +59,12 @@ export default function MexicoPortalBridge() {
         </p>
         <a
           href="/login"
+          onClick={() => {
+            sessionStorage.removeItem("mx_bridge_reload");
+            localStorage.removeItem("auth_token");
+            localStorage.removeItem("auth_tenant");
+            localStorage.removeItem("active_username");
+          }}
           style={{
             display: "inline-block",
             background: "#ff6200",

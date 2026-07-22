@@ -38,7 +38,7 @@ export default function LoginAdmin() {
     // México: hard redirect inmediato (AuthContext ya persistió el token).
     if (redirectTo.startsWith("/mx") || loggedUser.tenant === "mx") {
       window.location.replace(
-        redirectTo.startsWith("/mx") ? redirectTo : "/mx/",
+        redirectTo.startsWith("/mx") ? redirectTo.replace(/\/$/, "") || "/mx" : "/mx",
       );
       return;
     }

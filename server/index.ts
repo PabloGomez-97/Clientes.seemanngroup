@@ -2015,7 +2015,7 @@ app.get('/api/me', auth, async (req, res) => {
     if (currentUser.tenant === 'mx') {
       return res.status(409).json({
         error: 'Esta sesión pertenece a Seemann México',
-        redirectTo: '/mx/',
+        redirectTo: '/mx',
         tenant: 'mx',
       });
     }
