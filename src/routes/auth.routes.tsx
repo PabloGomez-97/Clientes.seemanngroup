@@ -1,4 +1,5 @@
 import { Route, Navigate } from "react-router-dom";
+import { useEffect } from "react";
 import { useAuth } from "@/auth/AuthContext";
 import Login from "@/auth/Login";
 import LoginAdmin from "@/auth/LoginAdmin";
@@ -7,8 +8,19 @@ import { getHomeRoute } from "./getHomeRoute";
 
 function AuthRedirect({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
+  const home = user ? getHomeRoute(user) : null;
+
+  useEffect(() => {
+    if (home?.startsWith("/mx")) {
+      window.location.assign(home);
+    }
+  }, [home]);
+
   if (loading) return null;
-  if (user) return <Navigate to={getHomeRoute(user)} replace />;
+  if (user) {
+    if (home?.startsWith("/mx")) return null;
+    return <Navigate to={home!} replace />;
+  }
   return <>{children}</>;
 }
 

@@ -34,6 +34,18 @@
     }
   ],
   "rewrites": [
+    {
+      "source": "/mx/api/:path*",
+      "destination": "https://clientes-seemannmexico.vercel.app/api/:path*"
+    },
+    {
+      "source": "/mx",
+      "destination": "https://clientes-seemannmexico.vercel.app/mx"
+    },
+    {
+      "source": "/mx/:path*",
+      "destination": "https://clientes-seemannmexico.vercel.app/mx/:path*"
+    },
     { "source": "/api/:path*", "destination": "/api" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]

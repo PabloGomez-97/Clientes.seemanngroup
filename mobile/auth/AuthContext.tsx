@@ -116,8 +116,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       email,
       password,
       turnstileToken,
-      { client: "mobile" },
+      { client: "mobile", tenant: "cl" },
     );
+    if (data.requiresTenantSelection) {
+      throw new Error(
+        "Esta cuenta tiene acceso a varios países. Usa el portal web para elegir.",
+      );
+    }
     setToken(data.token);
     await SecureStore.setItemAsync(TOKEN_KEY, data.token);
     await SecureStore.setItemAsync(LAST_LOGIN_EMAIL_KEY, email.trim());

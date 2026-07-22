@@ -1,4 +1,3 @@
-// src/auth/LoginAdmin.tsx
 import { useRef, useState } from "react";
 import { useAuth } from "./AuthContext";
 import { useNavigate, Link } from "react-router-dom";
@@ -7,6 +6,8 @@ import logoSeemann from "./logoseemann.png";
 import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCloudflare } from "@fortawesome/free-brands-svg-icons";
+import TenantPicker from "./TenantPicker";
+import type { TenantId, TenantOption } from "./authApi";
 
 const FONT =
   'var(--portal-font)';
@@ -15,7 +16,7 @@ const DARK = "#1a1a1a";
 const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as string;
 
 export default function LoginAdmin() {
-  const { login, logout } = useAuth();
+  const { login, logout, completeTenantLogin } = useAuth();
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [email, setEmail] = useState("");
@@ -26,6 +27,39 @@ export default function LoginAdmin() {
   const [captchaRequired, setCaptchaRequired] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const turnstileRef = useRef<TurnstileInstance>(null);
+  const [tenantOptions, setTenantOptions] = useState<TenantOption[] | null>(null);
+  const [selectionToken, setSelectionToken] = useState<string | null>(null);
+
+  const finishAdminLogin = (loggedUser: {
+    username: string;
+    roles?: { proveedor?: boolean } | null;
+    tenant?: TenantId;
+  }, redirectTo: string) => {
+    if (loggedUser.username !== "Ejecutivo") {
+      logout();
+      setErr(
+        "Acceso denegado. Esta área es exclusiva para ejecutivos. Por favor, ingresa como cliente usando el enlace de abajo.",
+      );
+      setLoading(false);
+      return;
+    }
+
+    if (loggedUser.roles?.proveedor) {
+      logout();
+      setErr(
+        "Acceso denegado. Tu cuenta es de proveedor. Por favor, ingresa a través del portal de proveedores.",
+      );
+      setLoading(false);
+      return;
+    }
+
+    if (redirectTo.startsWith("/mx") || loggedUser.tenant === "mx") {
+      window.location.assign(redirectTo.startsWith("/mx") ? redirectTo : "/mx/");
+      return;
+    }
+
+    navigate("/admin/home", { replace: true });
+  };
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,31 +73,20 @@ export default function LoginAdmin() {
     setLoading(true);
 
     try {
-      const loggedUser = await login(
+      const outcome = await login(
         email,
         password,
         turnstileToken ?? undefined,
       );
 
-      if (loggedUser.username !== "Ejecutivo") {
-        logout();
-        setErr(
-          "Acceso denegado. Esta área es exclusiva para ejecutivos. Por favor, ingresa como cliente usando el enlace de abajo.",
-        );
+      if (outcome.status === "select_tenant") {
+        setTenantOptions(outcome.tenants);
+        setSelectionToken(outcome.selectionToken);
         setLoading(false);
         return;
       }
 
-      if (loggedUser.roles?.proveedor) {
-        logout();
-        setErr(
-          "Acceso denegado. Tu cuenta es de proveedor. Por favor, ingresa a través del portal de proveedores.",
-        );
-        setLoading(false);
-        return;
-      }
-
-      navigate("/admin/home", { replace: true });
+      finishAdminLogin(outcome.user, outcome.redirectTo);
     } catch (e: unknown) {
       const error = e as { message?: string; requiresCaptcha?: boolean };
       if (error.requiresCaptcha) {
@@ -75,6 +98,22 @@ export default function LoginAdmin() {
         setTurnstileToken(null);
       }
       setErr((error as any).message || "No se pudo iniciar sesión");
+      setLoading(false);
+    }
+  };
+
+  const onSelectTenant = async (tenant: TenantId) => {
+    if (!selectionToken) return;
+    setErr(null);
+    setLoading(true);
+    try {
+      const outcome = await completeTenantLogin(selectionToken, tenant);
+      finishAdminLogin(outcome.user, outcome.redirectTo);
+    } catch (e: unknown) {
+      const error = e as { message?: string };
+      setErr(error.message || "No se pudo iniciar sesión");
+      setTenantOptions(null);
+      setSelectionToken(null);
       setLoading(false);
     }
   };
@@ -191,6 +230,18 @@ export default function LoginAdmin() {
               </div>
             )}
 
+            {tenantOptions && selectionToken ? (
+              <TenantPicker
+                tenants={tenantOptions}
+                loading={loading}
+                onSelect={onSelectTenant}
+                onCancel={() => {
+                  setTenantOptions(null);
+                  setSelectionToken(null);
+                  setLoading(false);
+                }}
+              />
+            ) : (
             <form onSubmit={onSubmit}>
               {/* Email */}
               <div style={{ marginBottom: "20px" }}>
@@ -372,6 +423,7 @@ export default function LoginAdmin() {
                 </span>
               </div>
             </form>
+            )}
 
             {/* Divider + link */}
             <div

@@ -45,6 +45,11 @@ import {
   getDevicePushTokenModel,
   sendTrackingPushToClient,
 } from '../lib/expo-push.js';
+import {
+  type TenantId,
+  emailExistsInRemoteDb,
+} from './services/crossTenantDb.js';
+import { handleUnifiedLogin } from './services/unifiedLoginHandler.js';
 
 /** =========================
  *  Entorno + JWT
@@ -63,6 +68,9 @@ const MONGODB_URI = requireEnv('MONGODB_URI');
 interface AuthPayload extends jwt.JwtPayload {
   sub: string;
   username: string;
+  tenant?: TenantId;
+  purpose?: 'tenant_selection';
+  tenants?: TenantId[];
 }
 
 function signToken(
@@ -1975,8 +1983,18 @@ function requireAuth(req: VercelRequest): AuthPayload {
   const token = extractBearerToken(req);
   if (!token) throw new Error('No auth token');
   try {
-    return verifyToken(token);
-  } catch {
+    const payload = verifyToken(token);
+    if (payload.purpose === 'tenant_selection') {
+      throw new Error('Invalid token');
+    }
+    // Tokens legacy sin tenant siguen válidos en Chile.
+    // Tokens de México no deben usarse contra la API Chile.
+    if (payload.tenant === 'mx') {
+      throw new Error('Invalid token');
+    }
+    return payload;
+  } catch (e) {
+    if (e instanceof Error && e.message === 'Invalid token') throw e;
     throw new Error('Invalid token');
   }
 }
@@ -2024,121 +2042,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // RUTAS DE AUTENTICACIÓN
     // ============================================================
 
-    // POST /api/login
+    // POST /api/login  (gateway unificado Chile + México)
     if (path === '/api/login' && method === 'POST') {
-      const { email, password, turnstileToken } = (req.body as any) || {};
-      const persistent = isMobileClient(req, req.body);
-
-      if (!email || !password) {
-        return res.status(400).json({ error: 'Faltan campos' });
-      }
-
-      const lookupEmail = String(email).toLowerCase().trim();
-      const user = await User.findOne({ email: lookupEmail }).populate('ejecutivoId');
-
-      if (!user) {
-        console.log('[login] email no encontrado:', lookupEmail);
-        return res.status(401).json({ error: 'Credenciales inválidas' });
-      }
-
-      if (!user.passwordHash) {
-        console.error('[login] passwordHash ausente para', user.email);
-        return res.status(500).json({ error: 'Usuario mal configurado' });
-      }
-
-      // --- Verificación Turnstile ---
-      if (user.loginCaptchaRequired) {
-        if (!turnstileToken) {
-          return res.status(403).json({
-            error: 'Se requiere verificación de seguridad. Por favor completa el captcha.',
-            requiresCaptcha: true,
-          });
-        }
-        const remoteip = String(req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '');
-        const captchaOk = await verifyTurnstile(String(turnstileToken), remoteip);
-        if (!captchaOk) {
-          return res.status(400).json({
-            error: 'Verificación de seguridad inválida. Por favor, inténtalo de nuevo.',
-            requiresCaptcha: true,
-          });
-        }
-        // Token válido: reiniciar contador para dar ventana fresca de 3 intentos
-        user.loginFailCount = 0;
-        user.loginCaptchaRequired = false;
-        await User.updateOne(
-          { email: lookupEmail },
-          { $set: { loginFailCount: 0, loginCaptchaRequired: false } }
-        );
-      }
-
-      const ok = bcrypt.compareSync(String(password), user.passwordHash);
-      if (!ok) {
-        console.log('[login] password incorrecto para', user.email);
-        const newFailCount = (user.loginFailCount ?? 0) + 1;
-        const newCaptchaRequired = newFailCount >= 3;
-        await User.updateOne(
-          { email: lookupEmail },
-          { $set: { loginFailCount: newFailCount, loginCaptchaRequired: newCaptchaRequired } }
-        );
-        return res.status(401).json({
-          error: 'Credenciales inválidas',
-          requiresCaptcha: newCaptchaRequired,
-          failCount: newFailCount,
-        });
-      }
-
-      const token = signToken(
-        { sub: user.email, username: user.username },
-        { persistent },
-      );
-
-      // Login exitoso: reiniciar contador de fallos
-      await User.updateOne(
-        { email: lookupEmail },
-        { $set: { loginFailCount: 0, loginCaptchaRequired: false } }
-      );
-      
-      const ejecutivo = user.ejecutivoId as any;
-
-      // Buscar roles del ejecutivo
-      let roles = null;
-      if (user.username === 'Ejecutivo') {
-        let ejDoc = ejecutivo;
-        if (!ejDoc || !ejDoc._id) {
-          ejDoc = await Ejecutivo.findOne({ email: user.email });
-        }
-        if (ejDoc) {
-          roles = {
-            administrador: ejDoc.roles?.administrador || false,
-            pricing: ejDoc.roles?.pricing || false,
-            ejecutivo: ejDoc.roles?.ejecutivo !== false,
-            proveedor: ejDoc.roles?.proveedor || false,
-            operaciones: ejDoc.roles?.operaciones || false,
-          };
-        }
-      }
-
-      // Construir usernames
-      const usernames = (user.usernames && user.usernames.length > 0)
-        ? user.usernames
-        : [user.username];
-
-      return res.json({
-        token,
-        user: { 
-          email: user.email, 
-          username: user.username,
-          usernames,
-          nombreuser: user.nombreuser,
-          ejecutivo: ejecutivo ? {
-            id: ejecutivo._id,
-            nombre: ejecutivo.nombre,
-            email: ejecutivo.email,
-            telefono: ejecutivo.telefono
-          } : null,
-          roles,
+      return await handleUnifiedLogin(
+        (req.body as Record<string, unknown>) || {},
+        res as any,
+        {
+          jwtSecret: JWT_SECRET,
+          signToken,
+          verifyTurnstile,
+          isMobileClient: isMobileClient(req, req.body),
+          getRemoteIp: () =>
+            String(req.headers['x-forwarded-for'] || req.socket?.remoteAddress || ''),
+          findChileUser: async (email) => {
+            const user = await User.findOne({ email }).populate('ejecutivoId');
+            return user as any;
+          },
+          findChileEjecutivoByEmail: async (email) => Ejecutivo.findOne({ email }) as any,
+          updateChileLoginCounters: async (email, data) => {
+            await User.updateOne({ email }, { $set: data });
+          },
         },
-      });
+      );
     }
 
     // POST /api/change-password
@@ -2184,6 +2109,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       try {
         const decoded = verifyToken(token);
+
+        if (decoded.purpose === 'tenant_selection') {
+          return res.status(401).json({ error: 'Token de selección inválido' });
+        }
+
+        if (decoded.tenant === 'mx') {
+          return res.status(409).json({
+            error: 'Esta sesión pertenece a Seemann México',
+            redirectTo: '/mx/',
+            tenant: 'mx',
+          });
+        }
+
         const user = await User.findOne({ email: decoded.sub }).populate('ejecutivoId');
         
         if (!user) {
@@ -2215,6 +2153,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           ? user.usernames
           : [user.username];
 
+        const tenant: TenantId = decoded.tenant === 'cl' ? 'cl' : 'cl';
+
         return res.json({ 
           user: {
             sub: user.email,
@@ -2229,11 +2169,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             } : null,
             roles,
             mobilePushEnabled: user.mobilePushEnabled !== false,
+            tenant,
           },
           ...(isMobileClient(req)
             ? {
                 token: signToken(
-                  { sub: user.email, username: user.username },
+                  { sub: user.email, username: user.username, tenant },
                   { persistent: true },
                 ),
               }
@@ -2999,6 +2940,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const existingUser = await User.findOne({ email: normalizedEmail });
         if (existingUser) {
           return res.status(400).json({ error: 'El email ya está registrado' });
+        }
+
+        const remoteCheck = await emailExistsInRemoteDb(normalizedEmail);
+        if (remoteCheck.exists) {
+          return res.status(400).json({
+            error: 'El email ya está registrado en Seemann México',
+          });
+        }
+        if (!remoteCheck.checked) {
+          // Fail-open: no bloquear altas de Chile si MX no está configurado o cae.
+          console.warn(
+            '[admin] Unicidad cross-tenant no verificada (Chile sigue):',
+            remoteCheck.error,
+          );
         }
 
         // Use provided password (executive accounts) or server-side default for clients

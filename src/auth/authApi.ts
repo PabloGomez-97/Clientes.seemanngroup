@@ -1,5 +1,13 @@
 export const MOBILE_API_BASE = "https://portalclientes.seemanngroup.com";
 
+export type TenantId = "cl" | "mx";
+
+export type TenantOption = {
+  id: TenantId;
+  label: string;
+  redirectTo: string;
+};
+
 export type Ejecutivo = {
   id: string;
   nombre: string;
@@ -22,6 +30,7 @@ export type AuthUser = {
   nombreuser: string;
   ejecutivo?: Ejecutivo;
   roles?: Roles;
+  tenant?: TenantId;
 };
 
 export type Cliente = {
@@ -33,9 +42,43 @@ export type Cliente = {
   createdAt: string;
 };
 
+export type LoginSuccess = {
+  requiresTenantSelection?: false;
+  token: string;
+  user: AuthUser;
+  tenant: TenantId;
+  redirectTo: string;
+};
+
+export type LoginTenantSelection = {
+  requiresTenantSelection: true;
+  selectionToken: string;
+  tenants: TenantOption[];
+};
+
+export type LoginResponse = LoginSuccess | LoginTenantSelection;
+
 function apiUrl(apiBase: string, path: string): string {
   if (!apiBase) return path;
   return `${apiBase.replace(/\/$/, "")}${path}`;
+}
+
+function normalizeUser(raw: Record<string, unknown>): AuthUser {
+  const username = String(raw.username || "");
+  const usernames =
+    Array.isArray(raw.usernames) && raw.usernames.length > 0
+      ? (raw.usernames as string[])
+      : [username];
+
+  return {
+    email: String(raw.email || raw.sub || ""),
+    username,
+    usernames,
+    nombreuser: String(raw.nombreuser || ""),
+    ejecutivo: (raw.ejecutivo as Ejecutivo) || null,
+    roles: (raw.roles as Roles) || null,
+    tenant: raw.tenant === "mx" || raw.tenant === "cl" ? raw.tenant : undefined,
+  };
 }
 
 export async function loginRequest(
@@ -43,10 +86,22 @@ export async function loginRequest(
   email: string,
   password: string,
   turnstileToken?: string,
-  options?: { client?: "mobile" | "web" },
-): Promise<{ token: string; user: AuthUser }> {
-  const body: Record<string, unknown> = { email, password };
-  if (turnstileToken) body.turnstileToken = turnstileToken;
+  options?: {
+    client?: "mobile" | "web";
+    tenant?: TenantId;
+    selectionToken?: string;
+  },
+): Promise<LoginResponse> {
+  const body: Record<string, unknown> = {};
+  if (options?.selectionToken && options.tenant) {
+    body.selectionToken = options.selectionToken;
+    body.tenant = options.tenant;
+  } else {
+    body.email = email;
+    body.password = password;
+    if (turnstileToken) body.turnstileToken = turnstileToken;
+    if (options?.tenant) body.tenant = options.tenant;
+  }
   if (options?.client) body.client = options.client;
 
   const r = await fetch(apiUrl(apiBase, "/api/login"), {
@@ -67,17 +122,20 @@ export async function loginRequest(
   }
 
   const data = await r.json();
-  const usernames =
-    data.user.usernames && data.user.usernames.length > 0
-      ? data.user.usernames
-      : [data.user.username];
+
+  if (data.requiresTenantSelection) {
+    return {
+      requiresTenantSelection: true,
+      selectionToken: String(data.selectionToken),
+      tenants: (data.tenants || []) as TenantOption[],
+    };
+  }
 
   return {
     token: data.token,
-    user: {
-      ...data.user,
-      usernames,
-    },
+    tenant: data.tenant === "mx" ? "mx" : "cl",
+    redirectTo: String(data.redirectTo || (data.tenant === "mx" ? "/mx/" : "/")),
+    user: normalizeUser({ ...data.user, tenant: data.tenant }),
   };
 }
 
@@ -85,7 +143,7 @@ export async function meRequest(
   apiBase: string,
   token: string,
   options?: { client?: "mobile" | "web" },
-): Promise<{ user: AuthUser; token?: string }> {
+): Promise<{ user: AuthUser; token?: string; redirectTo?: string }> {
   const headers: Record<string, string> = {
     Authorization: `Bearer ${token}`,
   };
@@ -95,23 +153,20 @@ export async function meRequest(
 
   const r = await fetch(apiUrl(apiBase, "/api/me"), { headers });
 
+  if (r.status === 409) {
+    const d = await r.json().catch(() => ({}));
+    const err = new Error(d.error || "Sesión de otro país") as Error & {
+      redirectTo?: string;
+    };
+    err.redirectTo = d.redirectTo;
+    throw err;
+  }
+
   if (!r.ok) throw new Error("Sesión inválida");
 
   const d = await r.json();
-  const usernames =
-    d.user.usernames && d.user.usernames.length > 0
-      ? d.user.usernames
-      : [d.user.username];
-
   return {
-    user: {
-      email: d.user.sub,
-      username: d.user.username,
-      usernames,
-      nombreuser: d.user.nombreuser,
-      ejecutivo: d.user.ejecutivo || null,
-      roles: d.user.roles || null,
-    },
+    user: normalizeUser(d.user),
     token: typeof d.token === "string" ? d.token : undefined,
   };
 }

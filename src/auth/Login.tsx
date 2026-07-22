@@ -7,6 +7,9 @@ import { Link, useNavigate } from "react-router-dom";
 import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCloudflare } from "@fortawesome/free-brands-svg-icons";
+import TenantPicker from "./TenantPicker";
+import type { TenantId, TenantOption } from "./authApi";
+import { getPostLoginPath } from "./tenantRouting";
 
 const FONT =
   'var(--portal-font)';
@@ -15,7 +18,7 @@ const DARK = "#1a1a1a";
 const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as string;
 
 export default function Login() {
-  const { login } = useAuth();
+  const { login, completeTenantLogin } = useAuth();
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
@@ -26,9 +29,25 @@ export default function Login() {
   const [captchaRequired, setCaptchaRequired] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const turnstileRef = useRef<TurnstileInstance>(null);
+  const [tenantOptions, setTenantOptions] = useState<TenantOption[] | null>(null);
+  const [selectionToken, setSelectionToken] = useState<string | null>(null);
 
   const changeLanguage = (language: string) => {
     i18n.changeLanguage(language);
+  };
+
+  const finishLogin = (user: {
+    username: string;
+    roles?: { proveedor?: boolean } | null;
+    tenant?: TenantId;
+  }, redirectTo: string) => {
+    if (redirectTo.startsWith("/mx") || user.tenant === "mx") {
+      window.location.assign(redirectTo.startsWith("/mx") ? redirectTo : "/mx/");
+      return;
+    }
+    navigate(getPostLoginPath({ ...user, email: "", usernames: [], nombreuser: "" } as any), {
+      replace: true,
+    });
   };
 
   const onSubmit = async (e: React.FormEvent) => {
@@ -43,21 +62,20 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const loggedUser = await login(
+      const outcome = await login(
         email,
         password,
         turnstileToken ?? undefined,
       );
 
-      if (loggedUser.username === "Ejecutivo") {
-        // Redirigir automáticamente al portal correspondiente
-        if (loggedUser.roles?.proveedor) {
-          navigate("/proveedor/home", { replace: true });
-        } else {
-          navigate("/admin/home", { replace: true });
-        }
+      if (outcome.status === "select_tenant") {
+        setTenantOptions(outcome.tenants);
+        setSelectionToken(outcome.selectionToken);
+        setLoading(false);
         return;
       }
+
+      finishLogin(outcome.user, outcome.redirectTo);
     } catch (e: unknown) {
       const error = e as { message?: string; requiresCaptcha?: boolean };
       if (error.requiresCaptcha) {
@@ -65,11 +83,26 @@ export default function Login() {
         setTurnstileToken(null);
         turnstileRef.current?.reset();
       } else {
-        // El captcha fue verificado o no era necesario: ocultar widget
         setCaptchaRequired(false);
         setTurnstileToken(null);
       }
       setErr(error.message || t("home.login.loginError"));
+      setLoading(false);
+    }
+  };
+
+  const onSelectTenant = async (tenant: TenantId) => {
+    if (!selectionToken) return;
+    setErr(null);
+    setLoading(true);
+    try {
+      const outcome = await completeTenantLogin(selectionToken, tenant);
+      finishLogin(outcome.user, outcome.redirectTo);
+    } catch (e: unknown) {
+      const error = e as { message?: string };
+      setErr(error.message || t("home.login.loginError"));
+      setTenantOptions(null);
+      setSelectionToken(null);
       setLoading(false);
     }
   };
@@ -322,6 +355,18 @@ export default function Login() {
             </div>
           )}
 
+          {tenantOptions && selectionToken ? (
+            <TenantPicker
+              tenants={tenantOptions}
+              loading={loading}
+              onSelect={onSelectTenant}
+              onCancel={() => {
+                setTenantOptions(null);
+                setSelectionToken(null);
+                setLoading(false);
+              }}
+            />
+          ) : (
           <form onSubmit={onSubmit}>
             {/* Email */}
             <div className="login-field-group" style={{ marginBottom: "20px" }}>
@@ -504,6 +549,7 @@ export default function Login() {
               </span>
             </div>
           </form>
+          )}
 
           {/* Divider + links */}
           <div

@@ -15,8 +15,19 @@ export default defineConfig({
     proxy: {
       '/api': {
         target: 'http://localhost:4000',
-        changeOrigin: true
-      }
-    }
-  }
+        changeOrigin: true,
+      },
+      // API México (más específico primero)
+      '/mx/api': {
+        target: 'http://localhost:4001',
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/mx/, ''),
+      },
+      // SPA México (npm run dev en Clientes.seemannmexico → :5174)
+      '/mx': {
+        target: 'http://localhost:5174',
+        changeOrigin: true,
+      },
+    },
+  },
 })

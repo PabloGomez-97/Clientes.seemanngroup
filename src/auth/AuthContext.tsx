@@ -9,6 +9,8 @@ import {
   type AuthUser,
   type Cliente,
   type Ejecutivo,
+  type TenantId,
+  type TenantOption,
   ejecutivosRequest,
   loginRequest,
   meRequest,
@@ -18,17 +20,29 @@ import {
 
 export type User = AuthUser | null;
 
+export type LoginOutcome =
+  | { status: "ok"; user: AuthUser; redirectTo: string }
+  | {
+      status: "select_tenant";
+      selectionToken: string;
+      tenants: TenantOption[];
+    };
+
 type AuthCtx = {
   user: User;
   token: string | null;
-  loading: boolean; // true while verifying token on mount
-  activeUsername: string; // Empresa activa seleccionada
-  setActiveUsername: (username: string) => void; // Cambiar empresa activa
+  loading: boolean;
+  activeUsername: string;
+  setActiveUsername: (username: string) => void;
   login: (
     email: string,
     password: string,
     turnstileToken?: string,
-  ) => Promise<AuthUser>;
+  ) => Promise<LoginOutcome>;
+  completeTenantLogin: (
+    selectionToken: string,
+    tenant: TenantId,
+  ) => Promise<LoginOutcome & { status: "ok" }>;
   logout: () => void;
   getEjecutivos: () => Promise<Ejecutivo[]>;
   getMisClientes: () => Promise<Cliente[]>;
@@ -36,6 +50,12 @@ type AuthCtx = {
 };
 
 const AuthContext = createContext<AuthCtx | null>(null);
+
+function persistSession(token: string, user: AuthUser) {
+  localStorage.setItem("auth_token", token);
+  localStorage.setItem("active_username", user.usernames[0] || user.username);
+  if (user.tenant) localStorage.setItem("auth_tenant", user.tenant);
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(() =>
@@ -49,7 +69,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     () => localStorage.getItem("active_username") || "",
   );
 
-  // Setter que persiste en localStorage
   const setActiveUsername = useCallback((username: string) => {
     setActiveUsernameState(username);
     localStorage.setItem("active_username", username);
@@ -64,33 +83,66 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     meRequest("", token)
       .then(({ user: userData }) => {
         setUser(userData);
-
         const stored = localStorage.getItem("active_username");
         if (!stored || !userData.usernames.includes(stored)) {
           setActiveUsername(userData.usernames[0]);
         }
       })
-      .catch(() => {
+      .catch((err: Error & { redirectTo?: string }) => {
+        if (err.redirectTo?.startsWith("/mx")) {
+          window.location.assign(err.redirectTo);
+          return;
+        }
         setToken(null);
         localStorage.removeItem("auth_token");
         localStorage.removeItem("active_username");
+        localStorage.removeItem("auth_tenant");
       })
       .finally(() => {
         setLoading(false);
       });
-  }, [token]);
+  }, [token, setActiveUsername]);
+
+  const applySuccess = (data: {
+    token: string;
+    user: AuthUser;
+    redirectTo: string;
+  }): LoginOutcome => {
+    setToken(data.token);
+    setUser(data.user);
+    persistSession(data.token, data.user);
+    setActiveUsername(data.user.usernames[0]);
+    return { status: "ok", user: data.user, redirectTo: data.redirectTo };
+  };
 
   const login = async (
     email: string,
     password: string,
     turnstileToken?: string,
-  ) => {
+  ): Promise<LoginOutcome> => {
     const data = await loginRequest("", email, password, turnstileToken);
-    setToken(data.token);
-    localStorage.setItem("auth_token", data.token);
-    setUser(data.user);
-    setActiveUsername(data.user.usernames[0]);
-    return data.user;
+    if (data.requiresTenantSelection) {
+      return {
+        status: "select_tenant",
+        selectionToken: data.selectionToken,
+        tenants: data.tenants,
+      };
+    }
+    return applySuccess(data);
+  };
+
+  const completeTenantLogin = async (
+    selectionToken: string,
+    tenant: TenantId,
+  ) => {
+    const data = await loginRequest("", "", "", undefined, {
+      selectionToken,
+      tenant,
+    });
+    if (data.requiresTenantSelection) {
+      throw new Error("No se pudo completar la selección de país");
+    }
+    return applySuccess(data) as LoginOutcome & { status: "ok" };
   };
 
   const logout = () => {
@@ -101,28 +153,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const getEjecutivos = async (): Promise<Ejecutivo[]> => {
-    if (!token) {
-      throw new Error("No hay sesión activa");
-    }
-
+    if (!token) throw new Error("No hay sesión activa");
     return ejecutivosRequest("", token);
   };
 
-  // ✅ NUEVA FUNCIÓN: Obtener clientes asignados al ejecutivo autenticado
   const getMisClientes = useCallback(async (): Promise<Cliente[]> => {
-    if (!token) {
-      throw new Error("No hay sesión activa");
-    }
-
+    if (!token) throw new Error("No hay sesión activa");
     return misClientesRequest("", token);
   }, [token]);
 
-  // Obtener TODOS los clientes del sistema (para rol pricing)
   const getTodosClientes = useCallback(async (): Promise<Cliente[]> => {
-    if (!token) {
-      throw new Error("No hay sesión activa");
-    }
-
+    if (!token) throw new Error("No hay sesión activa");
     return todosClientesRequest("", token);
   }, [token]);
 
@@ -135,6 +176,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         activeUsername,
         setActiveUsername,
         login,
+        completeTenantLogin,
         logout,
         getEjecutivos,
         getMisClientes,
