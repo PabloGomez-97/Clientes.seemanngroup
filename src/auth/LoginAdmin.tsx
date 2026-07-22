@@ -35,6 +35,14 @@ export default function LoginAdmin() {
     roles?: { proveedor?: boolean } | null;
     tenant?: TenantId;
   }, redirectTo: string) => {
+    // México: hard redirect inmediato (AuthContext ya persistió el token).
+    if (redirectTo.startsWith("/mx") || loggedUser.tenant === "mx") {
+      window.location.replace(
+        redirectTo.startsWith("/mx") ? redirectTo : "/mx/",
+      );
+      return;
+    }
+
     if (loggedUser.username !== "Ejecutivo") {
       logout();
       setErr(
@@ -50,11 +58,6 @@ export default function LoginAdmin() {
         "Acceso denegado. Tu cuenta es de proveedor. Por favor, ingresa a través del portal de proveedores.",
       );
       setLoading(false);
-      return;
-    }
-
-    if (redirectTo.startsWith("/mx") || loggedUser.tenant === "mx") {
-      window.location.assign(redirectTo.startsWith("/mx") ? redirectTo : "/mx/");
       return;
     }
 

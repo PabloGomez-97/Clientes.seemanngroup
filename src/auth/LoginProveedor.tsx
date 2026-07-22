@@ -40,15 +40,17 @@ export default function LoginProveedor() {
     roles?: { proveedor?: boolean } | null;
     tenant?: TenantId;
   }, redirectTo: string) => {
+    if (redirectTo.startsWith("/mx") || loggedUser.tenant === "mx") {
+      window.location.replace(
+        redirectTo.startsWith("/mx") ? redirectTo : "/mx/",
+      );
+      return;
+    }
+
     if (loggedUser.username !== "Ejecutivo" || !loggedUser.roles?.proveedor) {
       logout();
       setErr(t("proveedor.login.accessDenied"));
       setLoading(false);
-      return;
-    }
-
-    if (redirectTo.startsWith("/mx") || loggedUser.tenant === "mx") {
-      window.location.assign(redirectTo.startsWith("/mx") ? redirectTo : "/mx/");
       return;
     }
 

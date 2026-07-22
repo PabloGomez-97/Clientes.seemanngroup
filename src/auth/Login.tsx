@@ -42,7 +42,9 @@ export default function Login() {
     tenant?: TenantId;
   }, redirectTo: string) => {
     if (redirectTo.startsWith("/mx") || user.tenant === "mx") {
-      window.location.assign(redirectTo.startsWith("/mx") ? redirectTo : "/mx/");
+      window.location.replace(
+        redirectTo.startsWith("/mx") ? redirectTo : "/mx/",
+      );
       return;
     }
     navigate(getPostLoginPath({ ...user, email: "", usernames: [], nombreuser: "" } as any), {

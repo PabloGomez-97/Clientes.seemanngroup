@@ -6,6 +6,7 @@ import { adminRoutes } from "./admin.routes";
 import { providerRoutes } from "./provider.routes";
 import { clientRoutes } from "./client.routes";
 import { publicRoutes } from "./public.routes";
+import MexicoPortalBridge from "./MexicoPortalBridge";
 
 export default function AppRoutes() {
   const { user } = useAuth();
@@ -17,6 +18,9 @@ export default function AppRoutes() {
       {providerRoutes}
       {clientRoutes}
       {publicRoutes}
+      {/* Si el rewrite de Vercel falla, /mx cae en la SPA Chile: no redirigir a /login */}
+      <Route path="/mx" element={<MexicoPortalBridge />} />
+      <Route path="/mx/*" element={<MexicoPortalBridge />} />
       <Route path="*" element={<Navigate to={getHomeRoute(user)} replace />} />
     </Routes>
   );

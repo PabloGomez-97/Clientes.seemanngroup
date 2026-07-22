@@ -79,6 +79,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
       return;
     }
+
+    // Sesión México: no validar contra la API Chile (evita 409 + loop /login ↔ /mx).
+    const storedTenant = localStorage.getItem("auth_tenant");
+    if (storedTenant === "mx" || window.location.pathname.startsWith("/mx")) {
+      if (!window.location.pathname.startsWith("/mx")) {
+        window.location.replace("/mx/");
+        return;
+      }
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     meRequest("", token)
       .then(({ user: userData }) => {
@@ -90,7 +102,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       })
       .catch((err: Error & { redirectTo?: string }) => {
         if (err.redirectTo?.startsWith("/mx")) {
-          window.location.assign(err.redirectTo);
+          if (window.location.pathname.startsWith("/mx")) {
+            setToken(null);
+            localStorage.removeItem("auth_token");
+            localStorage.removeItem("active_username");
+            localStorage.removeItem("auth_tenant");
+            window.location.replace("/login?error=mx_portal");
+            return;
+          }
+          window.location.replace(err.redirectTo);
           return;
         }
         setToken(null);
@@ -108,9 +128,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     user: AuthUser;
     redirectTo: string;
   }): LoginOutcome => {
+    persistSession(data.token, data.user);
+
+    // Ir a México con hard navigation sin dejar la SPA Chile validando el JWT mx.
+    if (data.redirectTo.startsWith("/mx") || data.user.tenant === "mx") {
+      window.location.replace(
+        data.redirectTo.startsWith("/mx") ? data.redirectTo : "/mx/",
+      );
+      return { status: "ok", user: data.user, redirectTo: data.redirectTo };
+    }
+
     setToken(data.token);
     setUser(data.user);
-    persistSession(data.token, data.user);
     setActiveUsername(data.user.usernames[0]);
     return { status: "ok", user: data.user, redirectTo: data.redirectTo };
   };
