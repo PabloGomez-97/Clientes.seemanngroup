@@ -23,11 +23,11 @@ export type LegalDocument = {
 
 export const privacyPolicyDocument: LegalDocument = {
   title: "Política de Privacidad",
-  lastUpdated: "14 de julio de 2026",
+  lastUpdated: "22 de julio de 2026",
   effectiveDate: "1 de enero de 2024",
   introTitle: "Resumen ejecutivo",
   introText:
-    "En Seemann Group S.A. tratamos sus datos personales con la máxima responsabilidad, de conformidad con el ordenamiento jurídico de la República de Chile. Esta Política explica qué datos recabamos, con qué finalidad, bajo qué supuestos jurídicos, qué derechos le asisten y cómo puede ejercerlos. Le recomendamos leerla íntegramente antes de utilizar nuestros servicios.",
+    "En Seemann Group S.A. tratamos sus datos personales con la máxima responsabilidad, de conformidad con el ordenamiento jurídico de la República de Chile. Esta Política explica qué datos recabamos, con qué finalidad, bajo qué supuestos jurídicos, qué derechos le asisten y cómo puede ejercerlos —incluyendo el uso del Portal de Clientes y de la aplicación móvil Seemann Group—. Le recomendamos leerla íntegramente antes de utilizar nuestros servicios. La versión pública actualizada también está disponible en https://www.seemanngroup.com/privacidad.",
   sections: [
     {
       id: "s1",
@@ -383,17 +383,78 @@ export const privacyPolicyDocument: LegalDocument = {
       blocks: [
         {
           type: "para",
-          text: "Nuestra plataforma utiliza cookies y tecnologías similares para garantizar el funcionamiento correcto del sitio, analizar el uso de la plataforma y, con su consentimiento cuando corresponda, ofrecer contenido personalizado. Para información detallada sobre los tipos de cookies que utilizamos, su duración, proveedores y cómo gestionar sus preferencias, consulte nuestra Política de Cookies.",
+          text: "Nuestra plataforma digital y sitio web pueden utilizar cookies y tecnologías similares para garantizar el funcionamiento correcto, analizar el uso y, con su consentimiento cuando corresponda, ofrecer contenido personalizado. En el Portal de Clientes encontrará el detalle de cookies y podrá gestionar sus preferencias desde el pie de página, una vez autenticado.",
         },
         {
           type: "para",
-          text: "Puede modificar sus preferencias de cookies en cualquier momento accediendo a la Configuración de Cookies disponible en el pie de página de nuestra plataforma.",
+          text: "En el sitio corporativo www.seemanngroup.com únicamente se emplean cookies técnicas o de terceros estrictamente necesarias para el funcionamiento, medición o seguridad, según la configuración vigente del sitio. La aplicación móvil no utiliza cookies de navegador; puede almacenar preferencias y tokens de sesión de forma segura en el dispositivo.",
         },
       ],
     },
     {
       id: "s12",
       number: "Artículo 12",
+      title: "Aplicación Móvil «Seemann Group»",
+      blocks: [
+        {
+          type: "para",
+          text: "Esta sección complementa la presente Política respecto de la aplicación móvil oficial de Seemann Group para iOS (y, en su caso, Android), disponible en las tiendas de aplicaciones correspondientes. El responsable del tratamiento es el mismo indicado en el Artículo 01.",
+        },
+        {
+          type: "para",
+          text: "La app es un canal B2B del Portal de Clientes. No ofrece registro público: las cuentas son creadas por Seemann Group para clientes existentes. El inicio de sesión utiliza las mismas credenciales del portal web (portalclientes.seemanngroup.com).",
+        },
+        {
+          type: "table",
+          headers: ["Dato / categoría", "Finalidad en la app", "Fundamento"],
+          rows: [
+            [
+              "Credenciales de acceso (email / usuario)",
+              "Autenticación y mantenimiento de sesión segura en el dispositivo",
+              "Ejecución de contrato / servicios",
+            ],
+            [
+              "Token de sesión y preferencias locales (almacenamiento seguro del dispositivo)",
+              "Mantener la sesión iniciada y recordar el último correo utilizado en el login",
+              "Ejecución de contrato / servicios",
+            ],
+            [
+              "Datos operativos de la cuenta (embarques, cotizaciones, documentos, reportería)",
+              "Visualización y gestión del servicio logístico ya contratado",
+              "Ejecución de contrato / servicios",
+            ],
+            [
+              "Token de notificaciones push e identificadores de dispositivo asociados",
+              "Enviar avisos operativos (p. ej. cambios de estado en seguimientos), si usted habilita las notificaciones",
+              "Consentimiento / ejecución de contrato (preferencia configurable en la app)",
+            ],
+            [
+              "Datos técnicos del dispositivo (sistema operativo, versión de app)",
+              "Compatibilidad, seguridad y diagnóstico de fallos",
+              "Interés legítimo compatible / seguridad",
+            ],
+          ],
+        },
+        {
+          type: "bullets",
+          items: [
+            "Notificaciones push: puede activarlas o desactivarlas en Más → Notificaciones. Al desactivarlas, dejaremos de asociar el token de su dispositivo para esos envíos, sin perjuicio de otras comunicaciones por correo u otros canales operativos.",
+            "Permisos del sistema: la app solicita únicamente los permisos necesarios (p. ej. notificaciones). No solicitamos acceso a la cámara, contactos, micrófono ni ubicación continua para el funcionamiento habitual del portal.",
+            "Eliminación de cuenta: puede solicitar la baja desde Más → Eliminar cuenta, o escribiendo a privacidad@seemanngroup.com. Atenderemos la solicitud en un plazo de hasta 30 días hábiles, salvo obligaciones legales de conservación (p. ej. documentación aduanera o tributaria).",
+            "Proveedores: la app se comunica con los mismos sistemas y encargados descritos en esta Política (infraestructura cloud, servicios de correo, plataformas de tracking, etc.). No vendemos datos obtenidos a través de la app.",
+            "Menores: la app, al igual que los demás servicios, está dirigida a mayores de 18 años en contexto empresarial.",
+          ],
+        },
+        {
+          type: "callout",
+          title: "App Store / Google Play",
+          text: "La versión pública de esta Política en https://www.seemanngroup.com/privacidad es la URL de privacidad aplicable a la aplicación móvil Seemann Group. Si tiene consultas específicas sobre la app, escriba a privacidad@seemanngroup.com.",
+        },
+      ],
+    },
+    {
+      id: "s13",
+      number: "Artículo 13",
       title: "Cambios a esta Política de Privacidad",
       blocks: [
         {
@@ -402,11 +463,11 @@ export const privacyPolicyDocument: LegalDocument = {
         },
         {
           type: "para",
-          text: "Cuando realicemos cambios materiales, le notificaremos con al menos 15 días de antelación mediante uno o varios de los siguientes mecanismos: aviso prominente en la plataforma, notificación por correo electrónico a la dirección registrada en su cuenta, o banner informativo en el acceso a la plataforma.",
+          text: "Cuando realicemos cambios materiales, le notificaremos con al menos 15 días de antelación mediante uno o varios de los siguientes mecanismos: aviso prominente en la plataforma o sitio web, notificación por correo electrónico a la dirección registrada en su cuenta, o banner informativo en el acceso a la plataforma o aplicación.",
         },
         {
           type: "para",
-          text: 'La fecha de la "Última actualización" al inicio de este documento refleja cuándo se realizó la revisión más reciente. El uso continuado de la plataforma tras la entrada en vigor de los cambios constituirá su aceptación de la nueva versión. Si no está de acuerdo con los cambios, deberá cesar el uso de la plataforma y puede solicitar la eliminación de su cuenta.',
+          text: 'La fecha de la "Última actualización" al inicio de este documento refleja cuándo se realizó la revisión más reciente. El uso continuado de la plataforma, el sitio o la app tras la entrada en vigor de los cambios constituirá su aceptación de la nueva versión. Si no está de acuerdo con los cambios, deberá cesar el uso de los servicios y puede solicitar la eliminación de su cuenta.',
         },
         {
           type: "para",
@@ -415,8 +476,8 @@ export const privacyPolicyDocument: LegalDocument = {
       ],
     },
     {
-      id: "s13",
-      number: "Artículo 13",
+      id: "s14",
+      number: "Artículo 14",
       title: "Contacto y Reclamaciones",
       blocks: [
         {
@@ -442,6 +503,10 @@ export const privacyPolicyDocument: LegalDocument = {
             {
               label: "Dirección Postal",
               value: "Av. Libertad #1405, of. 1203, Viña del Mar, Chile",
+            },
+            {
+              label: "Versión pública web",
+              value: "https://www.seemanngroup.com/privacidad",
             },
           ],
         },
