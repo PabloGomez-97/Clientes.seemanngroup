@@ -710,85 +710,85 @@ function ReportExecutive() {
     () =>
       doubleData.length === 2
         ? [
-            {
-              label: t("executiveReporting.quotes.metricTotalQuotes"),
-              v1: doubleData[0].stats.totalQuotes,
-              v2: doubleData[1].stats.totalQuotes,
-              format: (v: number) => String(v),
-            },
-            {
-              label: t("executiveReporting.quotes.metricCompleted"),
-              v1: doubleData[0].stats.completedQuotes,
-              v2: doubleData[1].stats.completedQuotes,
-              format: (v: number) => String(v),
-            },
-            {
-              label: t("executiveReporting.quotes.metricCompletionRate"),
-              v1: doubleData[0].stats.completionRate,
-              v2: doubleData[1].stats.completionRate,
-              format: fmtPct,
-            },
-            {
-              label: t("executiveReporting.shared.transport.air"),
-              v1: doubleData[0].stats.airQuotes,
-              v2: doubleData[1].stats.airQuotes,
-              format: (v: number) => String(v),
-            },
-            {
-              label: t("executiveReporting.shared.transport.sea"),
-              v1: doubleData[0].stats.seaQuotes,
-              v2: doubleData[1].stats.seaQuotes,
-              format: (v: number) => String(v),
-            },
-            {
-              label: t("executiveReporting.shared.transport.truck"),
-              v1: doubleData[0].stats.truckQuotes,
-              v2: doubleData[1].stats.truckQuotes,
-              format: (v: number) => String(v),
-            },
-            {
-              label: t("executiveReporting.billing.kpiUniqueClients"),
-              v1: doubleData[0].stats.uniqueConsignees,
-              v2: doubleData[1].stats.uniqueConsignees,
-              format: (v: number) => String(v),
-            },
-            {
-              label: t("executiveReporting.quotes.metricIncome"),
-              v1: doubleData[0].stats.totalIncome,
-              v2: doubleData[1].stats.totalIncome,
-              format: fmt,
-            },
-            {
-              label: t("executiveReporting.quotes.metricExpense"),
-              v1: doubleData[0].stats.totalExpense,
-              v2: doubleData[1].stats.totalExpense,
-              format: fmt,
-            },
-            {
-              label: t("executiveReporting.quotes.metricProfit"),
-              v1: doubleData[0].stats.totalProfit,
-              v2: doubleData[1].stats.totalProfit,
-              format: fmt,
-            },
-            {
-              label: t("executiveReporting.quotes.metricMargin"),
-              v1: doubleData[0].stats.profitMargin,
-              v2: doubleData[1].stats.profitMargin,
-              format: fmtPct,
-            },
-            {
-              label: t("executiveReporting.quotes.metricAvgIncomeQuote"),
-              v1: doubleData[0].stats.averagePerQuote,
-              v2: doubleData[1].stats.averagePerQuote,
-              format: fmt,
-            },
-            {
-              label: t("executiveReporting.quotes.metricAvgProfitQuote"),
-              v1: doubleData[0].stats.averageProfitPerQuote,
-              v2: doubleData[1].stats.averageProfitPerQuote,
-              format: fmt,
-            },
-          ]
+          {
+            label: t("executiveReporting.quotes.metricTotalQuotes"),
+            v1: doubleData[0].stats.totalQuotes,
+            v2: doubleData[1].stats.totalQuotes,
+            format: (v: number) => String(v),
+          },
+          {
+            label: t("executiveReporting.quotes.metricCompleted"),
+            v1: doubleData[0].stats.completedQuotes,
+            v2: doubleData[1].stats.completedQuotes,
+            format: (v: number) => String(v),
+          },
+          {
+            label: t("executiveReporting.quotes.metricCompletionRate"),
+            v1: doubleData[0].stats.completionRate,
+            v2: doubleData[1].stats.completionRate,
+            format: fmtPct,
+          },
+          {
+            label: t("executiveReporting.shared.transport.air"),
+            v1: doubleData[0].stats.airQuotes,
+            v2: doubleData[1].stats.airQuotes,
+            format: (v: number) => String(v),
+          },
+          {
+            label: t("executiveReporting.shared.transport.sea"),
+            v1: doubleData[0].stats.seaQuotes,
+            v2: doubleData[1].stats.seaQuotes,
+            format: (v: number) => String(v),
+          },
+          {
+            label: t("executiveReporting.shared.transport.truck"),
+            v1: doubleData[0].stats.truckQuotes,
+            v2: doubleData[1].stats.truckQuotes,
+            format: (v: number) => String(v),
+          },
+          {
+            label: t("executiveReporting.billing.kpiUniqueClients"),
+            v1: doubleData[0].stats.uniqueConsignees,
+            v2: doubleData[1].stats.uniqueConsignees,
+            format: (v: number) => String(v),
+          },
+          {
+            label: t("executiveReporting.quotes.metricIncome"),
+            v1: doubleData[0].stats.totalIncome,
+            v2: doubleData[1].stats.totalIncome,
+            format: fmt,
+          },
+          {
+            label: t("executiveReporting.quotes.metricExpense"),
+            v1: doubleData[0].stats.totalExpense,
+            v2: doubleData[1].stats.totalExpense,
+            format: fmt,
+          },
+          {
+            label: t("executiveReporting.quotes.metricProfit"),
+            v1: doubleData[0].stats.totalProfit,
+            v2: doubleData[1].stats.totalProfit,
+            format: fmt,
+          },
+          {
+            label: t("executiveReporting.quotes.metricMargin"),
+            v1: doubleData[0].stats.profitMargin,
+            v2: doubleData[1].stats.profitMargin,
+            format: fmtPct,
+          },
+          {
+            label: t("executiveReporting.quotes.metricAvgIncomeQuote"),
+            v1: doubleData[0].stats.averagePerQuote,
+            v2: doubleData[1].stats.averagePerQuote,
+            format: fmt,
+          },
+          {
+            label: t("executiveReporting.quotes.metricAvgProfitQuote"),
+            v1: doubleData[0].stats.averageProfitPerQuote,
+            v2: doubleData[1].stats.averageProfitPerQuote,
+            format: fmt,
+          },
+        ]
         : [],
     [doubleData, t],
   );
