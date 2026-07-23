@@ -22,16 +22,16 @@ Inicia sesión con las mismas credenciales del portal web:
 https://portalclientes.seemanngroup.com
 
 Soporte: soporte@seemanngroup.com
-Privacidad: https://portalclientes.seemanngroup.com/privacy-policy
+Privacidad: https://www.seemanngroup.com/privacidad
 Términos: https://portalclientes.seemanngroup.com/terms-of-service
 Eliminación de cuenta: Más → Eliminar cuenta (o privacidad@seemanngroup.com)
 
 Palabras clave (máx. 100 caracteres, separadas por coma, sin espacios de más):
 logistica,flete,embarques,tracking,cotizaciones,seemann,comercio exterior,aduana
 
-URL de marketing: https://portalclientes.seemanngroup.com
-URL de política de privacidad: https://portalclientes.seemanngroup.com/privacy-policy
-URL de soporte: https://portalclientes.seemanngroup.com
+URL de marketing: https://www.seemanngroup.com
+URL de política de privacidad: https://www.seemanngroup.com/privacidad
+URL de soporte: https://www.seemanngroup.com/contacto
 Copyright: © 2026 Seemann y Compañía Limitada
 
 Notas para revisión de Apple (App Review Information):
