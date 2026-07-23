@@ -35,6 +35,7 @@ type EjecutivoLike = {
   nombre?: string;
   email?: string;
   telefono?: string;
+  idInterno?: number | null;
   roles?: {
     administrador?: boolean;
     pricing?: boolean;
@@ -84,6 +85,8 @@ export function buildLoginUserPayload(
           nombre: ejecutivo.nombre,
           email: ejecutivo.email,
           telefono: ejecutivo.telefono,
+          idInterno:
+            typeof ejecutivo.idInterno === 'number' ? ejecutivo.idInterno : null,
         }
       : null,
     roles,

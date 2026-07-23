@@ -207,6 +207,12 @@ function QuoteLASTMILE({
   const salesRepName = isEjecutivoMode
     ? user?.nombreuser || user?.username || ""
     : ejecutivo?.nombre?.trim() || "";
+  const salesRepId =
+    typeof user?.ejecutivo?.idInterno === "number"
+      ? user.ejecutivo.idInterno
+      : null;
+  const salesRepPayload =
+    salesRepId != null ? { id: salesRepId } : { name: salesRepName };
 
   // Rutas
   const [rutas, setRutas] = useState<RutaLastMile[]>([]);
@@ -1241,7 +1247,7 @@ function QuoteLASTMILE({
       consignee: { name: effectiveUsername },
       issuingCompany: { name: "X" },
       serviceType: { name: "TERRESTRE" },
-      salesRep: { name: salesRepName },
+      salesRep: salesRepPayload,
       PaymentTerms: { name: "Collect" },
       commodities,
       charges,

@@ -11,6 +11,7 @@ interface Ejecutivo {
   nombre: string;
   email: string;
   telefono: string;
+  idInterno?: number | null;
   roles?: {
     administrador: boolean;
     pricing: boolean;
@@ -159,6 +160,7 @@ function UsersManagement() {
     "cliente",
   );
   const [telefono, setTelefono] = useState("");
+  const [idInterno, setIdInterno] = useState("");
 
   // Estado de roles para edición de ejecutivos
   const [isEditingEjecutivo, setIsEditingEjecutivo] = useState(false);
@@ -436,6 +438,7 @@ function UsersManagement() {
     setAccountType("cliente");
     setNewAccountInfo(null);
     setTelefono("");
+    setIdInterno("");
     setCrossTenant(null);
     setEditRoles({
       administrador: false,
@@ -521,6 +524,9 @@ function UsersManagement() {
       setIsEditingEjecutivo(true);
       const matchingEj = ejecutivos.find((e) => e.email === user.email);
       setTelefono(matchingEj?.telefono || "");
+      setIdInterno(
+        matchingEj?.idInterno != null ? String(matchingEj.idInterno) : "",
+      );
       if (matchingEj?.roles) {
         setEditRoles({
           ...matchingEj.roles,
@@ -539,6 +545,7 @@ function UsersManagement() {
       void loadCrossTenantAccess(user.email);
     } else {
       setIsEditingEjecutivo(false);
+      setIdInterno("");
       setCrossTenant(null);
     }
 
@@ -569,6 +576,18 @@ function UsersManagement() {
         setFormLoading(false);
         return;
       }
+      const parsedIdInterno = Number(String(idInterno).trim());
+      if (
+        !String(idInterno).trim() ||
+        !Number.isInteger(parsedIdInterno) ||
+        parsedIdInterno <= 0
+      ) {
+        setError(
+          "El ID interno de Linbis es obligatorio (número entero positivo)",
+        );
+        setFormLoading(false);
+        return;
+      }
 
       try {
         // 1. Crear el documento Ejecutivo
@@ -582,6 +601,7 @@ function UsersManagement() {
             nombre: nombreuser,
             email,
             telefono: telefono.trim(),
+            idInterno: parsedIdInterno,
             roles: editRoles,
           }),
         });
@@ -718,6 +738,18 @@ function UsersManagement() {
         setFormLoading(false);
         return;
       }
+      const parsedIdInterno = Number(String(idInterno).trim());
+      if (
+        !String(idInterno).trim() ||
+        !Number.isInteger(parsedIdInterno) ||
+        parsedIdInterno <= 0
+      ) {
+        setError(
+          "El ID interno de Linbis es obligatorio (número entero positivo)",
+        );
+        setFormLoading(false);
+        return;
+      }
     }
 
     try {
@@ -728,6 +760,7 @@ function UsersManagement() {
             nombreuser,
             roles: editRoles,
             telefono: telefono.trim(),
+            idInterno: Number(String(idInterno).trim()),
           }
         : {
             username: cleanUsernames[0] || "",
@@ -1979,6 +2012,90 @@ function UsersManagement() {
                         (e.currentTarget.style.borderColor = "#d1d5db")
                       }
                     />
+                  </div>
+                )}
+
+                {/* ID interno Linbis (solo ejecutivos) */}
+                {(isEditingEjecutivo ||
+                  (!editingUserId && accountType === "ejecutivo")) && (
+                  <div style={{ marginBottom: "16px" }}>
+                    <label
+                      style={{
+                        display: "block",
+                        fontSize: "13px",
+                        fontWeight: "500",
+                        color: "#374151",
+                        marginBottom: "6px",
+                      }}
+                    >
+                      ID interno (Linbis) *
+                    </label>
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      min={1}
+                      step={1}
+                      value={idInterno}
+                      onChange={(e) => setIdInterno(e.target.value)}
+                      required
+                      placeholder="Ej: 42"
+                      style={{
+                        width: "100%",
+                        padding: "9px 12px",
+                        fontSize: "14px",
+                        border: "1px solid #d1d5db",
+                        borderRadius: "6px",
+                        outline: "none",
+                        transition: "border-color 0.15s",
+                        color: "#111827",
+                      }}
+                      onFocus={(e) =>
+                        (e.currentTarget.style.borderColor = "#2563eb")
+                      }
+                      onBlur={(e) =>
+                        (e.currentTarget.style.borderColor = "#d1d5db")
+                      }
+                    />
+                    <p
+                      style={{
+                        margin: "6px 0 0",
+                        fontSize: "12px",
+                        color: "#6b7280",
+                      }}
+                    >
+                      ID del sales rep en Linbis. Puede repetirse en varias
+                      cuentas de la misma persona (por ejemplo ejecutiva y
+                      administradora).
+                    </p>
+                    {(() => {
+                      const parsed = Number(String(idInterno).trim());
+                      if (!Number.isInteger(parsed) || parsed <= 0) return null;
+                      const others = ejecutivos.filter(
+                        (ej) =>
+                          ej.idInterno === parsed &&
+                          ej.email.toLowerCase() !== email.toLowerCase(),
+                      );
+                      if (others.length === 0) return null;
+                      return (
+                        <p
+                          style={{
+                            margin: "8px 0 0",
+                            fontSize: "12px",
+                            color: "#92400e",
+                            background: "#fffbeb",
+                            border: "1px solid #fde68a",
+                            borderRadius: "6px",
+                            padding: "8px 10px",
+                          }}
+                        >
+                          Este ID ya está en:{" "}
+                          {others
+                            .map((ej) => `${ej.nombre} (${ej.email})`)
+                            .join(", ")}
+                          . Está permitido si es la misma persona.
+                        </p>
+                      );
+                    })()}
                   </div>
                 )}
 

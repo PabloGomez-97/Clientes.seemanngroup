@@ -225,6 +225,12 @@ export default function QuoteFCL({
   const salesRepName = isEjecutivoMode
     ? user?.nombreuser || user?.username || ""
     : ejecutivo?.nombre?.trim() || "";
+  const salesRepId =
+    typeof user?.ejecutivo?.idInterno === "number"
+      ? user.ejecutivo.idInterno
+      : null;
+  const salesRepPayload =
+    salesRepId != null ? { id: salesRepId } : { name: salesRepName };
 
   // ============================================================================
   // ESTADOS PARA RUTAS FCL
@@ -3028,9 +3034,7 @@ export default function QuoteFCL({
       serviceType: {
         name: "FCL",
       },
-      salesRep: {
-        name: salesRepName,
-      },
+      salesRep: salesRepPayload,
       PaymentTerms: {
         name: "Collect",
       },

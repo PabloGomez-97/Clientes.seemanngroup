@@ -278,6 +278,12 @@ export default function QuoteLCL({
   const salesRepName = isEjecutivoMode
     ? user?.nombreuser || user?.username || ""
     : ejecutivo?.nombre?.trim() || "";
+  const salesRepId =
+    typeof user?.ejecutivo?.idInterno === "number"
+      ? user.ejecutivo.idInterno
+      : null;
+  const salesRepPayload =
+    salesRepId != null ? { id: salesRepId } : { name: salesRepName };
 
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<any>(null);
@@ -3530,9 +3536,7 @@ export default function QuoteLCL({
       PaymentTerms: {
         name: "Collect",
       },
-      salesRep: {
-        name: salesRepName,
-      },
+      salesRep: salesRepPayload,
       commodities: overallDimsAndWeight
         ? overallPiecesData.map((piece) => ({
           commodityType: "Standard",

@@ -34,6 +34,7 @@ export interface RemoteEjecutivoLean {
   email?: string;
   nombre?: string;
   telefono?: string;
+  idInterno?: number | null;
   roles?: {
     administrador?: boolean;
     pricing?: boolean;
@@ -63,6 +64,7 @@ const RemoteEjecutivoSchema = new mongoose.Schema(
     email: String,
     nombre: String,
     telefono: String,
+    idInterno: { type: Number, default: null },
     activo: { type: Boolean, default: true },
     roles: {
       administrador: Boolean,
@@ -341,6 +343,7 @@ export type ProvisionRemoteEjecutivoInput = {
   email: string;
   nombreuser: string;
   telefono: string;
+  idInterno?: number | null;
   roles: {
     administrador?: boolean;
     pricing?: boolean;
@@ -433,9 +436,20 @@ export async function provisionRemoteEjecutivo(
         nombre: input.nombreuser.trim(),
         email,
         telefono: String(input.telefono || '').trim() || '—',
+        idInterno:
+          typeof input.idInterno === 'number' && input.idInterno > 0
+            ? input.idInterno
+            : null,
         activo: true,
         roles,
       });
+    } else if (
+      typeof input.idInterno === 'number' &&
+      input.idInterno > 0 &&
+      ej.idInterno !== input.idInterno
+    ) {
+      ej.idInterno = input.idInterno;
+      await ej.save();
     }
 
     await User.create({

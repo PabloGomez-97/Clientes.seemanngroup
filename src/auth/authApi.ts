@@ -13,6 +13,7 @@ export type Ejecutivo = {
   nombre: string;
   email: string;
   telefono: string;
+  idInterno?: number | null;
 } | null;
 
 export type Roles = {

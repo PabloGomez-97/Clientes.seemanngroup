@@ -3,7 +3,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import mongoose from 'mongoose';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import { Ejecutivo, type IEjecutivo, type IEjecutivoDoc } from './models/Ejecutivo.js';
+import { Ejecutivo, parseIdInterno, type IEjecutivo, type IEjecutivoDoc } from './models/Ejecutivo.js';
 import { buildOversizeEmailHTML, getOversizeEmailSubject, type OversizeEmailData } from './emails/oversizeEmailTemplate.js';
 import { buildOceanOversizeEmailHTML, getOceanOversizeEmailSubject, type OceanOversizeEmailData } from './emails/oversizeEmailTemplateOcean.js';
 import { buildDocumentUploadEmailHTML, getDocumentUploadEmailSubject, type DocumentUploadEmailData } from './emails/documentUploadEmailTemplate.js';
@@ -2138,22 +2138,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           return res.status(404).json({ error: 'Usuario no encontrado' });
         }
 
-        const ejecutivo = user.ejecutivoId as any;
-
-        // Buscar roles del ejecutivo
+        let ejecutivoDoc = user.ejecutivoId as any;
         let roles = null;
+
         if (user.username === 'Ejecutivo') {
-          let ejDoc = ejecutivo;
-          if (!ejDoc || !ejDoc._id) {
-            ejDoc = await Ejecutivo.findOne({ email: user.email });
+          if (!ejecutivoDoc || !ejecutivoDoc._id) {
+            ejecutivoDoc = await Ejecutivo.findOne({ email: user.email });
           }
-          if (ejDoc) {
+          if (ejecutivoDoc) {
             roles = {
-              administrador: ejDoc.roles?.administrador || false,
-              pricing: ejDoc.roles?.pricing || false,
-              ejecutivo: ejDoc.roles?.ejecutivo !== false,
-              proveedor: ejDoc.roles?.proveedor || false,
-              operaciones: ejDoc.roles?.operaciones || false,
+              administrador: ejecutivoDoc.roles?.administrador || false,
+              pricing: ejecutivoDoc.roles?.pricing || false,
+              ejecutivo: ejecutivoDoc.roles?.ejecutivo !== false,
+              proveedor: ejecutivoDoc.roles?.proveedor || false,
+              operaciones: ejecutivoDoc.roles?.operaciones || false,
             };
           }
         }
@@ -2171,12 +2169,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             username: user.username,
             usernames,
             nombreuser: user.nombreuser,
-            ejecutivo: ejecutivo ? {
-              id: ejecutivo._id,
-              nombre: ejecutivo.nombre,
-              email: ejecutivo.email,
-              telefono: ejecutivo.telefono
-            } : null,
+            ejecutivo: ejecutivoDoc
+              ? {
+                  id: ejecutivoDoc._id,
+                  nombre: ejecutivoDoc.nombre,
+                  email: ejecutivoDoc.email,
+                  telefono: ejecutivoDoc.telefono,
+                  idInterno:
+                    typeof ejecutivoDoc.idInterno === 'number'
+                      ? ejecutivoDoc.idInterno
+                      : null,
+                }
+              : null,
             roles,
             mobilePushEnabled: user.mobilePushEnabled !== false,
             tenant,
@@ -2731,6 +2735,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               nombre: ej.nombre,
               email: ej.email,
               telefono: ej.telefono,
+              idInterno:
+                typeof ej.idInterno === 'number' ? ej.idInterno : null,
               activo: ej.activo,
               roles: {
                 administrador: ej.roles?.administrador || false,
@@ -2766,9 +2772,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           return res.status(403).json({ error: 'No tienes permisos' });
         }
 
-        const { nombre, email, telefono, roles } = (req.body as any) || {};
+        const { nombre, email, telefono, idInterno, roles } = (req.body as any) || {};
         if (!nombre || !email || !telefono) {
           return res.status(400).json({ error: 'Faltan campos requeridos' });
+        }
+
+        const parsedIdInterno = parseIdInterno(idInterno);
+        if (parsedIdInterno == null) {
+          return res.status(400).json({
+            error: 'El ID interno de Linbis es obligatorio para ejecutivos',
+          });
         }
 
         // Validar roles si se envían
@@ -2798,6 +2811,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           nombre: String(nombre).trim(),
           email: normalizedEmail,
           telefono: String(telefono).trim(),
+          idInterno: parsedIdInterno,
           activo: true,
           ...(roles ? { roles } : {})
         });
@@ -2811,12 +2825,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             id: newEjecutivo._id,
             nombre: newEjecutivo.nombre,
             email: newEjecutivo.email,
-            telefono: newEjecutivo.telefono
+            telefono: newEjecutivo.telefono,
+            idInterno: newEjecutivo.idInterno,
           }
         });
       } catch (e: any) {
         if (e?.message === 'No auth token' || e?.message === 'Invalid token') {
           return res.status(401).json({ error: e.message });
+        }
+        if (e?.code === 11000) {
+          return res.status(400).json({
+            error: 'Ya existe un ejecutivo con ese email',
+          });
         }
         console.error('[admin] Error creando ejecutivo:', e);
         return res.status(500).json({ error: 'Error al crear ejecutivo' });
@@ -2832,10 +2852,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         const id = path.split('/').pop();
-        const { nombre, email, telefono, activo, roles } = (req.body as any) || {};
+        const { nombre, email, telefono, activo, roles, idInterno } = (req.body as any) || {};
 
         if (!nombre || !email || !telefono) {
           return res.status(400).json({ error: 'Faltan campos requeridos' });
+        }
+
+        const parsedIdInterno = parseIdInterno(idInterno);
+        if (parsedIdInterno == null) {
+          return res.status(400).json({
+            error: 'El ID interno de Linbis es obligatorio para ejecutivos',
+          });
         }
 
         // Validar roles si se envían
@@ -2861,6 +2888,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             nombre: String(nombre).trim(),
             email: String(email).toLowerCase().trim(),
             telefono: String(telefono).trim(),
+            idInterno: parsedIdInterno,
             activo: activo !== undefined ? activo : true,
             ...(roles ? { roles } : {}),
           },
@@ -2879,6 +2907,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             nombre: ejecutivo.nombre,
             email: ejecutivo.email,
             telefono: ejecutivo.telefono,
+            idInterno: ejecutivo.idInterno ?? null,
             activo: ejecutivo.activo,
             roles: {
               administrador: ejecutivo.roles?.administrador || false,
@@ -2892,6 +2921,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       } catch (e: any) {
         if (e?.message === 'No auth token' || e?.message === 'Invalid token') {
           return res.status(401).json({ error: e.message });
+        }
+        if (e?.code === 11000) {
+          return res.status(400).json({
+            error: 'Ya existe un ejecutivo con ese email',
+          });
         }
         console.error('[admin] Error actualizando ejecutivo:', e);
         return res.status(500).json({ error: 'Error al actualizar ejecutivo' });
@@ -2996,6 +3030,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           email,
           nombreuser: localUser.nombreuser || ejDoc?.nombre || email,
           telefono: ejDoc?.telefono || '',
+          idInterno:
+            typeof ejDoc?.idInterno === 'number' ? ejDoc.idInterno : null,
           roles: ejDoc?.roles || {
             administrador: false,
             pricing: false,
@@ -3228,14 +3264,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             }
           }
 
-          // Actualizar teléfono en el documento Ejecutivo
-          const { telefono } = (req.body as any) || {};
-          if (telefono !== undefined) {
+          // Actualizar teléfono e ID interno en el documento Ejecutivo
+          const { telefono, idInterno } = (req.body as any) || {};
+          const parsedIdInterno =
+            idInterno !== undefined ? parseIdInterno(idInterno) : undefined;
+          if (idInterno !== undefined && parsedIdInterno == null) {
+            return res.status(400).json({
+              error: 'El ID interno de Linbis es obligatorio para ejecutivos',
+            });
+          }
+
+          if (telefono !== undefined || parsedIdInterno != null || nombreuser) {
             let ejDocTel = userToUpdate.ejecutivoId
               ? await Ejecutivo.findById(userToUpdate.ejecutivoId)
               : await Ejecutivo.findOne({ email: userToUpdate.email });
             if (ejDocTel) {
-              ejDocTel.telefono = String(telefono).trim();
+              if (telefono !== undefined) {
+                ejDocTel.telefono = String(telefono).trim();
+              }
+              if (nombreuser) {
+                ejDocTel.nombre = String(nombreuser).trim();
+              }
+              if (parsedIdInterno != null) {
+                ejDocTel.idInterno = parsedIdInterno;
+              }
               await ejDocTel.save();
             }
           }

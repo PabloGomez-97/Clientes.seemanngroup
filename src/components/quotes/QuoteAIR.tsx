@@ -414,6 +414,12 @@ function QuoteAPITester({
   const salesRepName = isEjecutivoMode
     ? user?.nombreuser || user?.username || ""
     : ejecutivo?.nombre?.trim() || "";
+  const salesRepId =
+    typeof user?.ejecutivo?.idInterno === "number"
+      ? user.ejecutivo.idInterno
+      : null;
+  const salesRepPayload =
+    salesRepId != null ? { id: salesRepId } : { name: salesRepName };
 
   // ============================================================================
   // ESTADOS PARA RUTAS AÉREAS
@@ -2712,7 +2718,7 @@ function QuoteAPITester({
       consignee: { name: effectiveUsername },
       issuingCompany: { name: airlineLabel },
       serviceType: { name: "Normal" },
-      salesRep: { name: salesRepName },
+      salesRep: salesRepPayload,
       commodities: buildAirConnectLinbisCommodities(),
       charges: [
         {
@@ -4680,9 +4686,7 @@ function QuoteAPITester({
         serviceType: {
           name: "Normal",
         },
-        salesRep: {
-          name: salesRepName,
-        },
+        salesRep: salesRepPayload,
         commodities: piecesData.map((piece) => ({
           commodityType: "Standard",
           packageType: {
@@ -5261,9 +5265,7 @@ function QuoteAPITester({
         serviceType: {
           name: "Overall Dims & Weight",
         },
-        salesRep: {
-          name: salesRepName,
-        },
+        salesRep: salesRepPayload,
         commodities: overallPiecesData.map((piece) => ({
           commodityType: "Standard",
           packageType: {
