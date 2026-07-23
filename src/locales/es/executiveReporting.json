@@ -185,6 +185,8 @@
       "emptyDoubleSub": "Compara el desempeño entre dos ejecutivos específicos",
       "kpiTotalQuotes": "Total Cotizaciones",
       "kpiCompletedSub": "{{completed}} completadas · {{rate}}",
+      "kpiCompletedApproved": "Completadas / Aprobadas",
+      "kpiCompletedRateSub": "{{rate}} del total",
       "kpiIncomeTotal": "Income Total",
       "kpiAvgPerQuote": "Promedio {{amount}} / cotización",
       "kpiExpenseTotal": "Expense Total",

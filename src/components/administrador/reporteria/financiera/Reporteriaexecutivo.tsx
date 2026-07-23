@@ -92,6 +92,66 @@ type SortField =
   | "uniqueConsignees";
 type SortDirection = "asc" | "desc";
 
+const EXEC_QUOTES_CACHE_TTL_MS = 5 * 60 * 1000;
+const EXEC_QUOTES_CACHE_PREFIXES = [
+  "quotesExecutive_",
+  "quotesComparative_",
+  "quotesDouble_",
+] as const;
+
+function isExecutiveQuotesCacheKey(key: string): boolean {
+  return EXEC_QUOTES_CACHE_PREFIXES.some((prefix) => key.startsWith(prefix));
+}
+
+function clearExpiredExecutiveQuotesCache(
+  ttlMs = EXEC_QUOTES_CACHE_TTL_MS,
+): void {
+  const now = Date.now();
+  const toRemove: string[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (!key || !isExecutiveQuotesCacheKey(key) || key.endsWith("_timestamp")) {
+      continue;
+    }
+    const ts = localStorage.getItem(`${key}_timestamp`);
+    if (!ts || now - parseInt(ts, 10) >= ttlMs) {
+      toRemove.push(key, `${key}_timestamp`);
+    }
+  }
+  for (const key of toRemove) localStorage.removeItem(key);
+}
+
+function clearAllExecutiveQuotesCache(): void {
+  const toRemove: string[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && isExecutiveQuotesCacheKey(key)) toRemove.push(key);
+  }
+  for (const key of toRemove) localStorage.removeItem(key);
+}
+
+function setExecutiveQuotesCache(
+  key: string,
+  value: string,
+  now = Date.now().toString(),
+): void {
+  clearExpiredExecutiveQuotesCache();
+  const write = () => {
+    localStorage.setItem(key, value);
+    localStorage.setItem(`${key}_timestamp`, now);
+  };
+  try {
+    write();
+  } catch {
+    clearAllExecutiveQuotesCache();
+    try {
+      write();
+    } catch {
+      // Quota still exceeded (other app data). Skip cache; UI keeps in-memory data.
+    }
+  }
+}
+
 // ════════════════════════════════════════════
 // DESIGN SYSTEM
 // ════════════════════════════════════════════
@@ -840,7 +900,7 @@ function ReportExecutive() {
     const cacheKey = `quotesExecutive_${selectedEjecutivo}_${startDate}_${endDate}`;
     const cached = localStorage.getItem(cacheKey);
     const ts = localStorage.getItem(`${cacheKey}_timestamp`);
-    if (cached && ts && Date.now() - parseInt(ts) < 5 * 60 * 1000) {
+    if (cached && ts && Date.now() - parseInt(ts, 10) < EXEC_QUOTES_CACHE_TTL_MS) {
       setQuotes(JSON.parse(cached));
       setIndividualFetchedAt(ts);
       setHasSearched(true);
@@ -861,8 +921,7 @@ function ReportExecutive() {
       const now = Date.now().toString();
       setQuotes(sorted);
       setIndividualFetchedAt(now);
-      localStorage.setItem(cacheKey, JSON.stringify(sorted));
-      localStorage.setItem(`${cacheKey}_timestamp`, now);
+      setExecutiveQuotesCache(cacheKey, JSON.stringify(sorted), now);
     } catch (err) {
       setError(err instanceof Error ? err.message : t("executiveReporting.shared.errors.unknown"));
     } finally {
@@ -874,7 +933,7 @@ function ReportExecutive() {
     const cacheKey = `quotesComparative_${compStartDate}_${compEndDate}`;
     const cached = localStorage.getItem(cacheKey);
     const ts = localStorage.getItem(`${cacheKey}_timestamp`);
-    if (cached && ts && Date.now() - parseInt(ts) < 5 * 60 * 1000) {
+    if (cached && ts && Date.now() - parseInt(ts, 10) < EXEC_QUOTES_CACHE_TTL_MS) {
       const parsed = JSON.parse(cached);
       setComparativeData(parsed.comparisons);
       setAllComparativeQuotes(parsed.allQuotes || []);
@@ -914,11 +973,11 @@ function ReportExecutive() {
       setAllComparativeQuotes(allQuotes);
       const now = Date.now().toString();
       setCompFetchedAt(now);
-      localStorage.setItem(
+      setExecutiveQuotesCache(
         cacheKey,
         JSON.stringify({ comparisons, allQuotes }),
+        now,
       );
-      localStorage.setItem(`${cacheKey}_timestamp`, now);
 
       if (failures.length > 0) {
         setErrorComparative(
@@ -942,11 +1001,15 @@ function ReportExecutive() {
     const cacheKey = `quotesDouble_${ejecutivo1}_${ejecutivo2}_${doubleStartDate}_${doubleEndDate}`;
     const cached = localStorage.getItem(cacheKey);
     const ts = localStorage.getItem(`${cacheKey}_timestamp`);
-    if (cached && ts && Date.now() - parseInt(ts) < 5 * 60 * 1000) {
+    if (cached && ts && Date.now() - parseInt(ts, 10) < EXEC_QUOTES_CACHE_TTL_MS) {
       const parsed = JSON.parse(cached);
+      const quotesByExec: Record<string, Quote[]> = parsed.quotesByExec || {};
+      const allQuotes: Quote[] =
+        parsed.allQuotes ||
+        (Object.values(quotesByExec) as Quote[][]).flat();
       setDoubleData(parsed.comparisons);
-      setDoubleQuotesByExec(parsed.quotesByExec || {});
-      setAllDoubleQuotes(parsed.allQuotes || []);
+      setDoubleQuotesByExec(quotesByExec);
+      setAllDoubleQuotes(allQuotes);
       setDoubleFetchedAt(ts);
       setHasSearchedDouble(true);
       setErrorDouble(null);
@@ -976,11 +1039,12 @@ function ReportExecutive() {
       setAllDoubleQuotes(allQuotes);
       const now = Date.now().toString();
       setDoubleFetchedAt(now);
-      localStorage.setItem(
+      // No duplicar allQuotes: se reconstruye desde quotesByExec al leer.
+      setExecutiveQuotesCache(
         cacheKey,
-        JSON.stringify({ comparisons, allQuotes, quotesByExec }),
+        JSON.stringify({ comparisons, quotesByExec }),
+        now,
       );
-      localStorage.setItem(`${cacheKey}_timestamp`, now);
     } catch (err) {
       setErrorDouble(err instanceof Error ? err.message : t("executiveReporting.shared.errors.unknown"));
     } finally {
@@ -1339,7 +1403,14 @@ function ReportExecutive() {
                 <Metric
                   label={t("executiveReporting.quotes.kpiTotalQuotes")}
                   value={stats.totalQuotes}
-                  sub={t("executiveReporting.quotes.kpiCompletedSub", { completed: stats.completedQuotes, rate: fmtPct(stats.completionRate) })}
+                />
+                <Metric
+                  label={t("executiveReporting.quotes.kpiCompletedApproved")}
+                  value={stats.completedQuotes}
+                  sub={t("executiveReporting.quotes.kpiCompletedRateSub", {
+                    rate: fmtPct(stats.completionRate),
+                  })}
+                  color={C.positive}
                 />
                 <Metric
                   label={t("executiveReporting.quotes.kpiIncomeTotal")}
@@ -1375,211 +1446,306 @@ function ReportExecutive() {
                 />
               </div>
 
-              {/* Revenue by Transport Type */}
-              {transportData.length > 0 && (
+              {/* Revenue by Transport Type & Monthly Breakdown */}
+              {(transportData.length > 0 || monthlyData.length > 0) && (
                 <div
                   style={{
-                    ...styles.card,
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: 16,
                     marginBottom: 20,
-                    overflow: "hidden",
                   }}
                 >
-                  <div
-                    style={{
-                      padding: "14px 20px",
-                      borderBottom: `1px solid ${C.border}`,
-                    }}
-                  >
-                    <div style={styles.sectionTitle}>
-                      {t("executiveReporting.quotes.sectionRevenueTransport")}
+                  {transportData.length > 0 && (
+                    <div style={{ ...styles.card, overflow: "hidden" }}>
+                      <div
+                        style={{
+                          padding: "14px 20px",
+                          borderBottom: `1px solid ${C.border}`,
+                        }}
+                      >
+                        <div style={styles.sectionTitle}>
+                          {t(
+                            "executiveReporting.quotes.sectionRevenueTransport",
+                          )}
+                        </div>
+                      </div>
+                      <div style={{ overflowX: "auto" }}>
+                        <table
+                          style={{
+                            width: "100%",
+                            borderCollapse: "collapse",
+                          }}
+                        >
+                          <thead>
+                            <tr>
+                              <th style={styles.th}>
+                                {t("executiveReporting.shared.thType")}
+                              </th>
+                              <th
+                                style={{ ...styles.th, textAlign: "center" }}
+                              >
+                                {t("executiveReporting.shared.thQuotes")}
+                              </th>
+                              <th
+                                style={{ ...styles.th, textAlign: "right" }}
+                              >
+                                {t("executiveReporting.shared.thIncome")}
+                              </th>
+                              <th
+                                style={{ ...styles.th, textAlign: "right" }}
+                              >
+                                {t("executiveReporting.shared.thExpense")}
+                              </th>
+                              <th
+                                style={{ ...styles.th, textAlign: "right" }}
+                              >
+                                {t("executiveReporting.shared.thProfit")}
+                              </th>
+                              <th
+                                style={{ ...styles.th, textAlign: "right" }}
+                              >
+                                {t("executiveReporting.shared.thMargin")}
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {transportData.map((row) => (
+                              <tr key={row.type}>
+                                <td
+                                  style={{ ...styles.td, fontWeight: 600 }}
+                                >
+                                  {row.type}
+                                </td>
+                                <td
+                                  style={{
+                                    ...styles.td,
+                                    textAlign: "center",
+                                  }}
+                                >
+                                  {row.quotes}
+                                </td>
+                                <td
+                                  style={{
+                                    ...styles.td,
+                                    textAlign: "right",
+                                    color: C.positive,
+                                  }}
+                                >
+                                  {fmt(row.income)}
+                                </td>
+                                <td
+                                  style={{
+                                    ...styles.td,
+                                    textAlign: "right",
+                                    color: C.negative,
+                                  }}
+                                >
+                                  {fmt(row.expense)}
+                                </td>
+                                <td
+                                  style={{
+                                    ...styles.td,
+                                    textAlign: "right",
+                                    fontWeight: 600,
+                                  }}
+                                >
+                                  {fmt(row.profit)}
+                                </td>
+                                <td
+                                  style={{
+                                    ...styles.td,
+                                    textAlign: "right",
+                                  }}
+                                >
+                                  {fmtPct(row.margin)}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
-                  </div>
-                  <div style={{ overflowX: "auto" }}>
-                    <table
-                      style={{ width: "100%", borderCollapse: "collapse" }}
-                    >
-                      <thead>
-                        <tr>
-                          <th style={styles.th}>{t("executiveReporting.shared.thType")}</th>
-                          <th style={{ ...styles.th, textAlign: "center" }}>
-                            {t("executiveReporting.shared.thQuotes")}
-                          </th>
-                          <th style={{ ...styles.th, textAlign: "right" }}>
-                            {t("executiveReporting.shared.thIncome")}
-                          </th>
-                          <th style={{ ...styles.th, textAlign: "right" }}>
-                            {t("executiveReporting.shared.thExpense")}
-                          </th>
-                          <th style={{ ...styles.th, textAlign: "right" }}>
-                            {t("executiveReporting.shared.thProfit")}
-                          </th>
-                          <th style={{ ...styles.th, textAlign: "right" }}>
-                            {t("executiveReporting.shared.thMargin")}
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {transportData.map((t) => (
-                          <tr key={t.type}>
-                            <td style={{ ...styles.td, fontWeight: 600 }}>
-                              {t.type}
-                            </td>
-                            <td style={{ ...styles.td, textAlign: "center" }}>
-                              {t.quotes}
-                            </td>
-                            <td
-                              style={{
-                                ...styles.td,
-                                textAlign: "right",
-                                color: C.positive,
-                              }}
-                            >
-                              {fmt(t.income)}
-                            </td>
-                            <td
-                              style={{
-                                ...styles.td,
-                                textAlign: "right",
-                                color: C.negative,
-                              }}
-                            >
-                              {fmt(t.expense)}
-                            </td>
-                            <td
-                              style={{
-                                ...styles.td,
-                                textAlign: "right",
-                                fontWeight: 600,
-                              }}
-                            >
-                              {fmt(t.profit)}
-                            </td>
-                            <td style={{ ...styles.td, textAlign: "right" }}>
-                              {fmtPct(t.margin)}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
+                  )}
 
-              {/* Monthly Breakdown */}
-              {monthlyData.length > 0 && (
-                <div
-                  style={{
-                    ...styles.card,
-                    marginBottom: 20,
-                    overflow: "hidden",
-                  }}
-                >
-                  <div
-                    style={{
-                      padding: "14px 20px",
-                      borderBottom: `1px solid ${C.border}`,
-                    }}
-                  >
-                    <div style={styles.sectionTitle}>{t("executiveReporting.quotes.sectionMonthly")}</div>
-                  </div>
-                  <div style={{ overflowX: "auto" }}>
-                    <table
-                      style={{ width: "100%", borderCollapse: "collapse" }}
-                    >
-                      <thead>
-                        <tr>
-                          <th style={styles.th}>{t("executiveReporting.shared.thMonth")}</th>
-                          <th style={{ ...styles.th, textAlign: "center" }}>
-                            {t("executiveReporting.shared.thQuotes")}
-                          </th>
-                          <th style={{ ...styles.th, textAlign: "center" }}>
-                            {t("executiveReporting.quotes.metricCompleted")}
-                          </th>
-                          <th style={{ ...styles.th, textAlign: "center" }}>
-                            {t("executiveReporting.shared.transport.air")}
-                          </th>
-                          <th style={{ ...styles.th, textAlign: "center" }}>
-                            {t("executiveReporting.shared.transport.sea")}
-                          </th>
-                          <th style={{ ...styles.th, textAlign: "center" }}>
-                            {t("executiveReporting.shared.transport.truck")}
-                          </th>
-                          <th style={{ ...styles.th, textAlign: "center" }}>
-                            Clients
-                          </th>
-                          <th style={{ ...styles.th, textAlign: "right" }}>
-                            {t("executiveReporting.shared.thIncome")}
-                          </th>
-                          <th style={{ ...styles.th, textAlign: "right" }}>
-                            {t("executiveReporting.shared.thExpense")}
-                          </th>
-                          <th style={{ ...styles.th, textAlign: "right" }}>
-                            {t("executiveReporting.shared.thProfit")}
-                          </th>
-                          <th style={{ ...styles.th, textAlign: "right" }}>
-                            {t("executiveReporting.shared.thMargin")}
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {monthlyData.map((m) => (
-                          <tr key={m.month}>
-                            <td style={{ ...styles.td, fontWeight: 600 }}>
-                              {m.label}
-                            </td>
-                            <td style={{ ...styles.td, textAlign: "center" }}>
-                              {m.quotes}
-                            </td>
-                            <td style={{ ...styles.td, textAlign: "center" }}>
-                              {m.completed}
-                            </td>
-                            <td style={{ ...styles.td, textAlign: "center" }}>
-                              {m.air}
-                            </td>
-                            <td style={{ ...styles.td, textAlign: "center" }}>
-                              {m.sea}
-                            </td>
-                            <td style={{ ...styles.td, textAlign: "center" }}>
-                              {m.truck}
-                            </td>
-                            <td style={{ ...styles.td, textAlign: "center" }}>
-                              {m.clients}
-                            </td>
-                            <td
-                              style={{
-                                ...styles.td,
-                                textAlign: "right",
-                                color: C.positive,
-                              }}
-                            >
-                              {fmt(m.income)}
-                            </td>
-                            <td
-                              style={{
-                                ...styles.td,
-                                textAlign: "right",
-                                color: C.negative,
-                              }}
-                            >
-                              {fmt(m.expense)}
-                            </td>
-                            <td
-                              style={{
-                                ...styles.td,
-                                textAlign: "right",
-                                fontWeight: 600,
-                              }}
-                            >
-                              {fmt(m.profit)}
-                            </td>
-                            <td style={{ ...styles.td, textAlign: "right" }}>
-                              {fmtPct(m.margin)}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                  {monthlyData.length > 0 && (
+                    <div style={{ ...styles.card, overflow: "hidden" }}>
+                      <div
+                        style={{
+                          padding: "14px 20px",
+                          borderBottom: `1px solid ${C.border}`,
+                        }}
+                      >
+                        <div style={styles.sectionTitle}>
+                          {t("executiveReporting.quotes.sectionMonthly")}
+                        </div>
+                      </div>
+                      <div style={{ overflowX: "auto" }}>
+                        <table
+                          style={{
+                            width: "100%",
+                            borderCollapse: "collapse",
+                          }}
+                        >
+                          <thead>
+                            <tr>
+                              <th style={styles.th}>
+                                {t("executiveReporting.shared.thMonth")}
+                              </th>
+                              <th
+                                style={{ ...styles.th, textAlign: "center" }}
+                              >
+                                {t("executiveReporting.shared.thQuotes")}
+                              </th>
+                              <th
+                                style={{ ...styles.th, textAlign: "center" }}
+                              >
+                                {t(
+                                  "executiveReporting.quotes.metricCompleted",
+                                )}
+                              </th>
+                              <th
+                                style={{ ...styles.th, textAlign: "center" }}
+                              >
+                                {t("executiveReporting.shared.transport.air")}
+                              </th>
+                              <th
+                                style={{ ...styles.th, textAlign: "center" }}
+                              >
+                                {t("executiveReporting.shared.transport.sea")}
+                              </th>
+                              <th
+                                style={{ ...styles.th, textAlign: "center" }}
+                              >
+                                {t(
+                                  "executiveReporting.shared.transport.truck",
+                                )}
+                              </th>
+                              <th
+                                style={{ ...styles.th, textAlign: "center" }}
+                              >
+                                Clients
+                              </th>
+                              <th
+                                style={{ ...styles.th, textAlign: "right" }}
+                              >
+                                {t("executiveReporting.shared.thIncome")}
+                              </th>
+                              <th
+                                style={{ ...styles.th, textAlign: "right" }}
+                              >
+                                {t("executiveReporting.shared.thExpense")}
+                              </th>
+                              <th
+                                style={{ ...styles.th, textAlign: "right" }}
+                              >
+                                {t("executiveReporting.shared.thProfit")}
+                              </th>
+                              <th
+                                style={{ ...styles.th, textAlign: "right" }}
+                              >
+                                {t("executiveReporting.shared.thMargin")}
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {monthlyData.map((m) => (
+                              <tr key={m.month}>
+                                <td
+                                  style={{ ...styles.td, fontWeight: 600 }}
+                                >
+                                  {m.label}
+                                </td>
+                                <td
+                                  style={{
+                                    ...styles.td,
+                                    textAlign: "center",
+                                  }}
+                                >
+                                  {m.quotes}
+                                </td>
+                                <td
+                                  style={{
+                                    ...styles.td,
+                                    textAlign: "center",
+                                  }}
+                                >
+                                  {m.completed}
+                                </td>
+                                <td
+                                  style={{
+                                    ...styles.td,
+                                    textAlign: "center",
+                                  }}
+                                >
+                                  {m.air}
+                                </td>
+                                <td
+                                  style={{
+                                    ...styles.td,
+                                    textAlign: "center",
+                                  }}
+                                >
+                                  {m.sea}
+                                </td>
+                                <td
+                                  style={{
+                                    ...styles.td,
+                                    textAlign: "center",
+                                  }}
+                                >
+                                  {m.truck}
+                                </td>
+                                <td
+                                  style={{
+                                    ...styles.td,
+                                    textAlign: "center",
+                                  }}
+                                >
+                                  {m.clients}
+                                </td>
+                                <td
+                                  style={{
+                                    ...styles.td,
+                                    textAlign: "right",
+                                    color: C.positive,
+                                  }}
+                                >
+                                  {fmt(m.income)}
+                                </td>
+                                <td
+                                  style={{
+                                    ...styles.td,
+                                    textAlign: "right",
+                                    color: C.negative,
+                                  }}
+                                >
+                                  {fmt(m.expense)}
+                                </td>
+                                <td
+                                  style={{
+                                    ...styles.td,
+                                    textAlign: "right",
+                                    fontWeight: 600,
+                                  }}
+                                >
+                                  {fmt(m.profit)}
+                                </td>
+                                <td
+                                  style={{
+                                    ...styles.td,
+                                    textAlign: "right",
+                                  }}
+                                >
+                                  {fmtPct(m.margin)}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 

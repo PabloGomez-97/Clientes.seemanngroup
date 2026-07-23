@@ -264,8 +264,9 @@ export function normalizeExecutiveQuote(
     parseCurrencyFromDisplayValue(raw.totalCharge_ExpenseDisplayValue) ??
     parseCurrencyFromDisplayValue(raw.totalCharge_ProfitDisplayValue);
 
+  // Solo campos usados en reportería. Evitar `...raw` (chargeDetails y ~70
+  // campos extra) para no saturar localStorage al cachear por ejecutivo/rango.
   return {
-    ...raw,
     number: String(raw.number ?? ""),
     customer: typeof raw.customer === "string" ? raw.customer : undefined,
     salesRep: getSalesRepName(raw),

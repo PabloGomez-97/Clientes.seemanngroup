@@ -185,6 +185,8 @@
       "emptyDoubleSub": "Compare performance between two specific executives",
       "kpiTotalQuotes": "Total Quotes",
       "kpiCompletedSub": "{{completed}} completed · {{rate}}",
+      "kpiCompletedApproved": "Completed / Approved",
+      "kpiCompletedRateSub": "{{rate}} of total",
       "kpiIncomeTotal": "Total Income",
       "kpiAvgPerQuote": "Average {{amount}} / quote",
       "kpiExpenseTotal": "Total Expense",
