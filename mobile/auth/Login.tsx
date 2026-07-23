@@ -6,6 +6,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -65,15 +66,21 @@ export default function Login() {
   const animateStep = (next: () => void) => {
     Animated.timing(fade, {
       toValue: 0,
-      duration: 120,
+      duration: 100,
       useNativeDriver: true,
-    }).start(() => {
+    }).start(({ finished }) => {
       next();
+      if (!finished) {
+        fade.setValue(1);
+        return;
+      }
       Animated.timing(fade, {
         toValue: 1,
-        duration: 180,
+        duration: 160,
         useNativeDriver: true,
-      }).start();
+      }).start(({ finished: fadeInDone }) => {
+        if (!fadeInDone) fade.setValue(1);
+      });
     });
   };
 
@@ -86,9 +93,10 @@ export default function Login() {
     const trimmed = email.trim();
     if (!trimmed) return;
     setErr(null);
+    setFocused(false);
+    emailRef.current?.blur();
     animateStep(() => {
       setStep("password");
-      setTimeout(() => passwordRef.current?.focus(), 100);
     });
   };
 
@@ -98,9 +106,10 @@ export default function Login() {
     setErr(null);
     setCaptchaRequired(false);
     setTurnstileToken(null);
+    setFocused(false);
+    passwordRef.current?.blur();
     animateStep(() => {
       setStep("email");
-      setTimeout(() => emailRef.current?.focus(), 100);
     });
   };
 
@@ -218,199 +227,211 @@ export default function Login() {
         <KeyboardAvoidingView
           style={styles.flex}
           behavior={Platform.OS === "ios" ? "padding" : undefined}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
         >
-          <Animated.View style={[styles.body, { opacity: fade }]}>
-            <View style={styles.brandBlock}>
-              <Image
-                source={require("../../src/auth/logoseemann.png")}
-                style={styles.logo}
-                resizeMode="contain"
-              />
-              <View style={styles.brandAccent} />
-              <Text style={styles.brandLine}>Portal Cliente</Text>
-            </View>
+          <ScrollView
+            style={styles.flex}
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+          >
+            <Animated.View style={[styles.body, { opacity: fade }]}>
+              <View style={styles.brandBlock}>
+                <Image
+                  source={require("../../src/auth/logoseemann.png")}
+                  style={styles.logo}
+                  resizeMode="contain"
+                />
+                <View style={styles.brandAccent} />
+                <Text style={styles.brandLine}>Portal Cliente</Text>
+              </View>
 
-            <View style={styles.formBlock}>
-              {step === "email" ? (
-                <>
-                  <Text style={styles.fieldLabel}>
-                    {t("home.login.emailLabel")}
-                  </Text>
-
-                  {err ? (
-                    <View style={styles.errorBox}>
-                      <Text style={styles.errorText}>{err}</Text>
-                    </View>
-                  ) : null}
-
-                  <View
-                    style={[
-                      styles.inputShell,
-                      focused && styles.inputShellFocused,
-                    ]}
-                  >
-                    <Ionicons
-                      name="mail-outline"
-                      size={18}
-                      color={focused ? brand.primary : brand.mutedLight}
-                      style={styles.inputIcon}
-                    />
-                    <TextInput
-                      ref={emailRef}
-                      value={email}
-                      onChangeText={setEmail}
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                      keyboardType="email-address"
-                      textContentType="username"
-                      autoComplete="username"
-                      importantForAutofill="yes"
-                      returnKeyType="go"
-                      enablesReturnKeyAutomatically
-                      placeholder={t("home.login.emailPlaceholder", {
-                        defaultValue: "email@seemanngroup.com",
-                      })}
-                      placeholderTextColor={brand.mutedLight}
-                      onFocus={() => setFocused(true)}
-                      onBlur={() => setFocused(false)}
-                      onSubmitEditing={goToPassword}
-                      style={styles.input}
-                    />
-                  </View>
-
-                  <Pressable
-                    onPress={goToPassword}
-                    disabled={!emailReady}
-                    style={({ pressed }) => [
-                      styles.primaryButton,
-                      !emailReady && styles.primaryButtonDisabled,
-                      pressed && emailReady && styles.primaryButtonPressed,
-                    ]}
-                  >
-                    <Text style={styles.primaryButtonText}>
-                      {t("home.login.continueButton", {
-                        defaultValue: "Continuar",
-                      })}
+              <View style={styles.formBlock}>
+                {step === "email" ? (
+                  <>
+                    <Text style={styles.fieldLabel}>
+                      {t("home.login.emailLabel")}
                     </Text>
-                  </Pressable>
-                </>
-              ) : (
-                <>
-                  <Text style={styles.fieldLabel}>
-                    {t("home.login.passwordLabel")}
-                  </Text>
-                  <View style={styles.emailChip}>
-                    <Ionicons
-                      name="person-outline"
-                      size={14}
-                      color={brand.navy}
-                    />
-                    <Text style={styles.emailChipText} numberOfLines={1}>
-                      {email.trim()}
-                    </Text>
-                  </View>
 
-                  {err ? (
-                    <View style={styles.errorBox}>
-                      <Text style={styles.errorText}>{err}</Text>
-                    </View>
-                  ) : null}
+                    {err ? (
+                      <View style={styles.errorBox}>
+                        <Text style={styles.errorText}>{err}</Text>
+                      </View>
+                    ) : null}
 
-                  <TextInput
-                    value={email}
-                    editable={false}
-                    caretHidden
-                    importantForAutofill="yes"
-                    textContentType="username"
-                    autoComplete="username"
-                    style={styles.autofillAnchor}
-                  />
-
-                  <View
-                    style={[
-                      styles.inputShell,
-                      focused && styles.inputShellFocused,
-                    ]}
-                  >
-                    <Ionicons
-                      name="lock-closed-outline"
-                      size={18}
-                      color={focused ? brand.primary : brand.mutedLight}
-                      style={styles.inputIcon}
-                    />
-                    <TextInput
-                      ref={passwordRef}
-                      value={password}
-                      onChangeText={setPassword}
-                      secureTextEntry={!showPassword}
-                      textContentType="password"
-                      autoComplete="password"
-                      importantForAutofill="yes"
-                      returnKeyType="go"
-                      enablesReturnKeyAutomatically
-                      placeholder={t("home.login.passwordPlaceholder")}
-                      placeholderTextColor={brand.mutedLight}
-                      onFocus={() => setFocused(true)}
-                      onBlur={() => setFocused(false)}
-                      onSubmitEditing={tryLogin}
-                      style={styles.input}
-                    />
-                    <Pressable
-                      onPress={() => setShowPassword((v) => !v)}
-                      hitSlop={8}
-                      style={styles.eyeBtn}
+                    <View
+                      style={[
+                        styles.inputShell,
+                        focused && styles.inputShellFocused,
+                      ]}
                     >
                       <Ionicons
-                        name={showPassword ? "eye-off-outline" : "eye-outline"}
-                        size={20}
-                        color={brand.muted}
+                        name="mail-outline"
+                        size={18}
+                        color={focused ? brand.primary : brand.mutedLight}
+                        style={styles.inputIcon}
                       />
-                    </Pressable>
-                  </View>
-
-                  {captchaRequired && turnstileHtml ? (
-                    <View style={styles.captchaBox}>
-                      <Text style={styles.captchaLabel}>
-                        {t("home.login.captchaLabel")}
-                      </Text>
-                      <WebView
-                        key={turnstileKeyRef.current}
-                        originWhitelist={["*"]}
-                        source={{ html: turnstileHtml }}
-                        onMessage={(event) =>
-                          setTurnstileToken(event.nativeEvent.data)
-                        }
-                        style={styles.captchaWebView}
+                      <TextInput
+                        ref={emailRef}
+                        value={email}
+                        onChangeText={setEmail}
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        keyboardType="email-address"
+                        textContentType="username"
+                        autoComplete="username"
+                        importantForAutofill="yes"
+                        returnKeyType="go"
+                        enablesReturnKeyAutomatically
+                        placeholder={t("home.login.emailPlaceholder", {
+                          defaultValue: "email@seemanngroup.com",
+                        })}
+                        placeholderTextColor={brand.mutedLight}
+                        onFocus={() => setFocused(true)}
+                        onBlur={() => setFocused(false)}
+                        onSubmitEditing={goToPassword}
+                        style={styles.input}
                       />
                     </View>
-                  ) : null}
 
-                  <Pressable
-                    onPress={tryLogin}
-                    disabled={submitDisabled}
-                    style={({ pressed }) => [
-                      styles.primaryButton,
-                      submitDisabled && styles.primaryButtonDisabled,
-                      pressed && !submitDisabled && styles.primaryButtonPressed,
-                    ]}
-                  >
-                    {loading ? (
-                      <View style={styles.loadingRow}>
-                        <ActivityIndicator color="#fff" />
-                        <Text style={styles.primaryButtonText}>
-                          {t("home.login.loggingIn")}
-                        </Text>
-                      </View>
-                    ) : (
+                    <Pressable
+                      onPress={goToPassword}
+                      disabled={!emailReady}
+                      style={({ pressed }) => [
+                        styles.primaryButton,
+                        !emailReady && styles.primaryButtonDisabled,
+                        pressed && emailReady && styles.primaryButtonPressed,
+                      ]}
+                    >
                       <Text style={styles.primaryButtonText}>
-                        {t("home.login.loginButton")}
+                        {t("home.login.continueButton", {
+                          defaultValue: "Continuar",
+                        })}
                       </Text>
-                    )}
-                  </Pressable>
-                </>
-              )}
-            </View>
-          </Animated.View>
+                    </Pressable>
+                  </>
+                ) : (
+                  <>
+                    <Text style={styles.fieldLabel}>
+                      {t("home.login.passwordLabel")}
+                    </Text>
+                    <View style={styles.emailChip}>
+                      <Ionicons
+                        name="person-outline"
+                        size={14}
+                        color={brand.navy}
+                      />
+                      <Text style={styles.emailChipText} numberOfLines={1}>
+                        {email.trim()}
+                      </Text>
+                    </View>
+
+                    {err ? (
+                      <View style={styles.errorBox}>
+                        <Text style={styles.errorText}>{err}</Text>
+                      </View>
+                    ) : null}
+
+                    <TextInput
+                      value={email}
+                      editable={false}
+                      caretHidden
+                      importantForAutofill="yes"
+                      textContentType="username"
+                      autoComplete="username"
+                      style={styles.autofillAnchor}
+                    />
+
+                    <View
+                      style={[
+                        styles.inputShell,
+                        focused && styles.inputShellFocused,
+                      ]}
+                    >
+                      <Ionicons
+                        name="lock-closed-outline"
+                        size={18}
+                        color={focused ? brand.primary : brand.mutedLight}
+                        style={styles.inputIcon}
+                      />
+                      <TextInput
+                        ref={passwordRef}
+                        value={password}
+                        onChangeText={setPassword}
+                        secureTextEntry={!showPassword}
+                        textContentType="password"
+                        autoComplete="password"
+                        importantForAutofill="yes"
+                        returnKeyType="go"
+                        enablesReturnKeyAutomatically
+                        placeholder={t("home.login.passwordPlaceholder")}
+                        placeholderTextColor={brand.mutedLight}
+                        onFocus={() => setFocused(true)}
+                        onBlur={() => setFocused(false)}
+                        onSubmitEditing={tryLogin}
+                        style={styles.input}
+                      />
+                      <Pressable
+                        onPress={() => setShowPassword((v) => !v)}
+                        hitSlop={8}
+                        style={styles.eyeBtn}
+                      >
+                        <Ionicons
+                          name={showPassword ? "eye-off-outline" : "eye-outline"}
+                          size={20}
+                          color={brand.muted}
+                        />
+                      </Pressable>
+                    </View>
+
+                    {captchaRequired && turnstileHtml ? (
+                      <View style={styles.captchaBox}>
+                        <Text style={styles.captchaLabel}>
+                          {t("home.login.captchaLabel")}
+                        </Text>
+                        <WebView
+                          key={turnstileKeyRef.current}
+                          originWhitelist={["*"]}
+                          source={{ html: turnstileHtml }}
+                          onMessage={(event) =>
+                            setTurnstileToken(event.nativeEvent.data)
+                          }
+                          style={styles.captchaWebView}
+                        />
+                      </View>
+                    ) : null}
+
+                    <Pressable
+                      onPress={tryLogin}
+                      disabled={submitDisabled}
+                      style={({ pressed }) => [
+                        styles.primaryButton,
+                        submitDisabled && styles.primaryButtonDisabled,
+                        pressed &&
+                          !submitDisabled &&
+                          styles.primaryButtonPressed,
+                      ]}
+                    >
+                      {loading ? (
+                        <View style={styles.loadingRow}>
+                          <ActivityIndicator color="#fff" />
+                          <Text style={styles.primaryButtonText}>
+                            {t("home.login.loggingIn")}
+                          </Text>
+                        </View>
+                      ) : (
+                        <Text style={styles.primaryButtonText}>
+                          {t("home.login.loginButton")}
+                        </Text>
+                      )}
+                    </Pressable>
+                  </>
+                )}
+              </View>
+            </Animated.View>
+          </ScrollView>
         </KeyboardAvoidingView>
 
         <Text style={styles.footer}>
@@ -473,10 +494,14 @@ const styles = StyleSheet.create({
     color: brand.navy,
     fontFamily: fonts.medium,
   },
-  body: {
-    flex: 1,
-    paddingHorizontal: 28,
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: "center",
+    paddingBottom: 24,
+  },
+  body: {
+    paddingHorizontal: 28,
+    paddingTop: 12,
     paddingBottom: 12,
   },
   brandBlock: {
