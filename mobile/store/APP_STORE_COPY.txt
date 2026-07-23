@@ -34,17 +34,70 @@ URL de política de privacidad: https://www.seemanngroup.com/privacidad
 URL de soporte: https://www.seemanngroup.com/contacto
 Copyright: © 2026 Seemann y Compañía Limitada
 
-Notas para revisión de Apple (App Review Information):
-Esta app es un portal B2B para clientes existentes de Seemann Group. No hay registro público dentro de la app; las cuentas las crea la empresa.
+==============================================================================
+NOTAS PARA REVISIÓN DE APPLE (App Review Information → Notes)
+Pegar en: "Información adicional sobre tu app..."
+Reemplazar EMAIL_PRUEBA y PASSWORD_PRUEBA antes de enviar.
+==============================================================================
 
-Credenciales de prueba (REEMPLAZAR antes de enviar):
-Usuario / email: _______________
-Contraseña: _______________
+ENGLISH (recommended for App Review):
 
-Pasos para probar:
-1. Abrir la app e iniciar sesión con las credenciales indicadas.
-2. Revisar Inicio, Seguimientos, Operaciones y Cotizaciones.
-3. En Más → Notificaciones, verificar el interruptor.
-4. En Más → Eliminar cuenta, ver el flujo de solicitud.
+Thank you for reviewing Seemann Group.
 
-Cifrado: la app solo usa HTTPS estándar (ITSAppUsesNonExemptEncryption = false).
+WHAT THIS APP IS
+This is a B2B client portal for existing Seemann Group logistics customers. There is NO public sign-up inside the app. User accounts are created by Seemann Group for contracted clients only. Login uses the same credentials as the web portal: https://portalclientes.seemanngroup.com
+
+DEMO ACCOUNT (required to access all features)
+Username / Email: EMAIL_PRUEBA
+Password: PASSWORD_PRUEBA
+
+If a Cloudflare Turnstile captcha appears after failed attempts or on first login, please complete the captcha widget and try again.
+
+HOW TO TEST
+1. Open the app → enter the demo email → Continue → enter the password → Log in.
+2. Home (Inicio): welcome header, shipment/document counters, shortcuts.
+3. Bottom tabs: Seguimientos (tracking), Operaciones (air/ocean/ground shipments), Cotizaciones (quotes), Más (more).
+4. Operaciones: browse shipment lists and open a detail if available for this account.
+5. Cotizaciones: browse quotes and open a detail if available.
+6. Seguimientos: view tracking list / map embed when the account has trackings.
+7. Más → Notificaciones: toggle push notification preference (optional; may request system permission).
+8. Más → Política de Privacidad / Términos de Servicio: in-app legal documents.
+9. Más → Eliminar cuenta: opens a mailto request flow to privacidad@seemanngroup.com (account deletion is processed manually within ~30 business days; no public self-serve signup).
+
+NOTES
+- Some modules may show empty states if the demo account has no data in that module; that is expected.
+- The app requires network access to portalclientes.seemanngroup.com and related APIs.
+- Push notifications are optional and can be disabled in Más → Notificaciones.
+- Privacy Policy (public URL): https://www.seemanngroup.com/privacidad
+- Support: https://www.seemanngroup.com/contacto
+- Encryption: standard HTTPS only (no non-exempt encryption). ITSAppUsesNonExemptEncryption = false.
+
+Contact for review questions: Pablo Gómez — pablofgomez@alumnos.uai.cl
+
+------------------------------------------------------------------------------
+
+ESPAÑOL (opcional / respaldo):
+
+Gracias por revisar Seemann Group.
+
+QUÉ ES LA APP
+Portal B2B para clientes existentes de Seemann Group. NO hay registro público en la app; las cuentas las crea la empresa. Se usa el mismo login del portal web: https://portalclientes.seemanngroup.com
+
+CUENTA DE PRUEBA
+Usuario / Email: EMAIL_PRUEBA
+Contraseña: PASSWORD_PRUEBA
+
+Si aparece captcha Cloudflare Turnstile, complételo e intente de nuevo.
+
+CÓMO PROBAR
+1. Abrir app → correo → Continuar → clave → Ingresar.
+2. Inicio: bienvenida, contadores, accesos directos.
+3. Pestañas: Seguimientos, Operaciones, Cotizaciones, Más.
+4. Operaciones / Cotizaciones / Seguimientos: listar y abrir detalle si hay datos.
+5. Más → Notificaciones: preferencia de push.
+6. Más → Política de Privacidad / Términos.
+7. Más → Eliminar cuenta: solicitud por correo a privacidad@seemanngroup.com (plazo ~30 días hábiles).
+
+Notas: algunos módulos pueden verse vacíos según la cuenta demo. Requiere red. Privacidad: https://www.seemanngroup.com/privacidad. Solo HTTPS estándar.
+
+Contacto revisión: Pablo Gómez — pablofgomez@alumnos.uai.cl
