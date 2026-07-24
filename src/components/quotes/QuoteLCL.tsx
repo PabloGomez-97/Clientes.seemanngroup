@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useMemo, type MutableRefObject } from "rea
 import { useOutletContext } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { useAuditLog } from "../../hooks/useAuditLog";
+import { useEffectiveProfitMarkup } from "../../hooks/useProfitMarkup";
+import { profitMarkupEquals } from "../../types/profitMarkup";
 import * as XLSX from "xlsx";
 import Select from "react-select";
 import EjecutivoClienteSelector from "./EjecutivoClienteSelector";
@@ -250,6 +252,20 @@ export default function QuoteLCL({
   const [errorClientes, setErrorClientes] = useState<string | null>(null);
   const { requireCliente, clienteEjecutivoPendiente } =
     useClienteEjecutivoGuard(isEjecutivoMode, clienteSeleccionado);
+  const {
+    markup: profitMarkup,
+    multipliers: profitMultipliers,
+    loading: profitLoading,
+    error: profitError,
+    ready: profitReady,
+    ensureFresh: ensureFreshProfit,
+  } =
+    useEffectiveProfitMarkup({
+      clientUserId: isEjecutivoMode
+        ? (clienteSeleccionado?.id ?? null)
+        : null,
+      forSelf: !isEjecutivoMode,
+    });
 
   const quoteTrackingSubject = useMemo(
     () =>
@@ -2011,8 +2027,12 @@ export default function QuoteLCL({
   );
 
   const simulatedOceanFreightIncomeRate = useMemo(
-    () => getSimulationIncomeRate(simulatedOceanFreightExpenseRate),
-    [simulatedOceanFreightExpenseRate],
+    () =>
+      getSimulationIncomeRate(
+        simulatedOceanFreightExpenseRate,
+        profitMultipliers.lcl,
+      ),
+    [simulatedOceanFreightExpenseRate, profitMultipliers.lcl],
   );
 
   const calcularOceanFreight = () => {
@@ -2033,13 +2053,13 @@ export default function QuoteLCL({
     }
 
     const expense = rutaSeleccionada.ofWM * chargeableVolume;
-    const income = expense * 1.35;
+    const income = expense * profitMultipliers.lcl;
 
     return {
       expense,
       income,
       expenseRate: rutaSeleccionada.ofWM,
-      incomeRate: rutaSeleccionada.ofWM * 1.35,
+      incomeRate: rutaSeleccionada.ofWM * profitMultipliers.lcl,
       currency: rutaSeleccionada.currency,
     };
   };
@@ -2264,6 +2284,29 @@ export default function QuoteLCL({
 
     if (isEjecutivoMode && !clienteSeleccionado) {
       setError("Debes seleccionar un cliente antes de generar la cotización");
+      return;
+    }
+
+    if (profitLoading || !profitReady) {
+      setError(
+        profitError
+          ? `No se pudo cargar el profit: ${profitError}. Reintenta antes de cotizar.`
+          : "Espera a que se cargue el profit del cliente antes de generar la cotización",
+      );
+      return;
+    }
+
+    const freshProfit = await ensureFreshProfit();
+    if (!freshProfit.ok) {
+      setError(
+        `No se pudo verificar el profit: ${freshProfit.error}. Reintenta antes de cotizar.`,
+      );
+      return;
+    }
+    if (!profitMarkupEquals(profitMarkup, freshProfit.markup)) {
+      setError(
+        "El profit se actualizó. Revisa los montos en pantalla y vuelve a generar la cotización.",
+      );
       return;
     }
 
@@ -4917,7 +4960,7 @@ export default function QuoteLCL({
                       </div>
                       <small className="text-muted">
                         Ingresa el rate base por W/M. El valor venta se calcula
-                        automáticamente con +15%.
+                        automáticamente con +{profitMarkup.lcl}%.
                       </small>
                     </div>
                     <span

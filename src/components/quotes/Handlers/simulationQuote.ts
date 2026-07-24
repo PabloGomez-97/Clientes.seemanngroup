@@ -24,8 +24,10 @@ export const parseSimulationRateInput = (value: string): number => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
-export const getSimulationIncomeRate = (expenseRate: number): number =>
-  roundSimulationAmount(expenseRate * SIMULATION_INCOME_MARKUP);
+export const getSimulationIncomeRate = (
+  expenseRate: number,
+  markupMultiplier: number = SIMULATION_INCOME_MARKUP,
+): number => roundSimulationAmount(expenseRate * markupMultiplier);
 
 export const getSimulationValidUntilDate = (): Date => {
   const validUntil = new Date();

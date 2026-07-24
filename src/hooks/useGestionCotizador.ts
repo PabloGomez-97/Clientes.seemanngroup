@@ -6,6 +6,7 @@ import type {
   ILclDeliveryBracket,
   IAereoCotizadorConfig,
   IAereoTtBracket,
+  IProfitMarkupConfig,
 } from "../types/gestionCotizador";
 import { DEFAULT_GESTION_COTIZADOR_CONFIG } from "../types/gestionCotizador";
 import { useAuth } from "../auth/AuthContext";
@@ -17,9 +18,11 @@ export type {
   ILclDeliveryBracket,
   IAereoCotizadorConfig,
   IAereoTtBracket,
+  IProfitMarkupConfig,
 };
 export {
   DEFAULT_GESTION_COTIZADOR_CONFIG,
+  DEFAULT_PROFIT_MARKUP,
   getFclTtRate,
   getVespucioExtendedMultiplier,
   findLclDeliveryBracket,
@@ -34,6 +37,7 @@ function normalizeConfig(data: Record<string, unknown>): IGestionCotizadorConfig
   const fclRaw = data.fcl as Partial<IFclCotizadorConfig> | undefined;
   const lclRaw = data.lcl as Partial<ILclCotizadorConfig> | undefined;
   const aereoRaw = data.aereo as Partial<IAereoCotizadorConfig> | undefined;
+  const profitRaw = data.profitMarkup as Partial<IProfitMarkupConfig> | undefined;
   return {
     fcl: {
       ttRate20GP:
@@ -63,6 +67,17 @@ function normalizeConfig(data: Record<string, unknown>): IGestionCotizadorConfig
       vespucioExtendedSurchargePct:
         aereoRaw?.vespucioExtendedSurchargePct ??
         DEFAULT_GESTION_COTIZADOR_CONFIG.aereo.vespucioExtendedSurchargePct,
+    },
+    profitMarkup: {
+      air:
+        profitRaw?.air ??
+        DEFAULT_GESTION_COTIZADOR_CONFIG.profitMarkup.air,
+      fcl:
+        profitRaw?.fcl ??
+        DEFAULT_GESTION_COTIZADOR_CONFIG.profitMarkup.fcl,
+      lcl:
+        profitRaw?.lcl ??
+        DEFAULT_GESTION_COTIZADOR_CONFIG.profitMarkup.lcl,
     },
     updatedBy: (data.updatedBy as string) ?? "system",
   };
@@ -102,6 +117,7 @@ export function useGestionCotizador() {
       fcl?: Partial<IFclCotizadorConfig>;
       lcl?: Partial<ILclCotizadorConfig>;
       aereo?: Partial<IAereoCotizadorConfig>;
+      profitMarkup?: Partial<IProfitMarkupConfig>;
     }) => {
       const res = await fetch("/api/gestion-cotizador/config", {
         method: "PUT",
@@ -172,6 +188,23 @@ export function useGestionCotizador() {
     [putConfig],
   );
 
+  const updateProfitMarkup = useCallback(
+    async (updates: Partial<IProfitMarkupConfig>) => {
+      try {
+        setSaving(true);
+        setError(null);
+        await putConfig({ profitMarkup: updates });
+      } catch (e) {
+        console.error("[useGestionCotizador] update profitMarkup error:", e);
+        setError((e as Error).message);
+        throw e;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [putConfig],
+  );
+
   return {
     config,
     loading,
@@ -180,6 +213,7 @@ export function useGestionCotizador() {
     updateFcl,
     updateLcl,
     updateAereo,
+    updateProfitMarkup,
     refetch: fetchConfig,
   };
 }

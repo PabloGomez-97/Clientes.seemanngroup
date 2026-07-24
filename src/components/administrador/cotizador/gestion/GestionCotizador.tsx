@@ -4,15 +4,42 @@ import {
   type IFclCotizadorConfig,
   type ILclDeliveryBracket,
   type IAereoTtBracket,
+  type IProfitMarkupConfig,
 } from "@/hooks/useGestionCotizador";
 import { useFclExwConfig } from "@/hooks/useFclExwConfig";
 import { useAirConnectSpainConfig } from "@/hooks/useAirConnectSpainConfig";
 import { airConnectProfitMultiplier } from "@/types/airConnectSpainConfig";
 import type { IFclExwConfig } from "@/types/fclExwConfig";
+import { profitMultiplier } from "@/types/profitMarkup";
 
-type CotizadorTab = "FCL" | "LCL" | "AÉREO" | "ÚLTIMA MILLA";
+type CotizadorTab = "PROFIT" | "FCL" | "LCL" | "AÉREO" | "ÚLTIMA MILLA";
 
-const TABS: CotizadorTab[] = ["FCL", "LCL", "AÉREO", "ÚLTIMA MILLA"];
+const TABS: CotizadorTab[] = ["PROFIT", "FCL", "LCL", "AÉREO", "ÚLTIMA MILLA"];
+
+const PROFIT_FIELDS: {
+  key: keyof IProfitMarkupConfig;
+  label: string;
+  description: string;
+}[] = [
+  {
+    key: "air",
+    label: "Aéreo",
+    description:
+      "Markup % sobre la tarifa del sheet al calcular el income de Air Freight.",
+  },
+  {
+    key: "fcl",
+    label: "FCL",
+    description:
+      "Markup % sobre el precio del contenedor del sheet al calcular el income de Ocean Freight.",
+  },
+  {
+    key: "lcl",
+    label: "LCL",
+    description:
+      "Markup % sobre el rate W/M del sheet al calcular el income de Ocean Freight.",
+  },
+];
 
 const FCL_FIELDS: {
   key: keyof IFclCotizadorConfig;
@@ -52,8 +79,16 @@ const FCL_FIELDS: {
   ];
 
 export default function GestionCotizador() {
-  const { config, loading, error, saving, updateFcl, updateLcl, updateAereo } =
-    useGestionCotizador();
+  const {
+    config,
+    loading,
+    error,
+    saving,
+    updateFcl,
+    updateLcl,
+    updateAereo,
+    updateProfitMarkup,
+  } = useGestionCotizador();
   const {
     config: exwConfig,
     loading: exwLoading,
@@ -68,7 +103,7 @@ export default function GestionCotizador() {
     saving: airConnectSpainSaving,
     updateConfig: updateAirConnectSpain,
   } = useAirConnectSpainConfig();
-  const [activeTab, setActiveTab] = useState<CotizadorTab>("FCL");
+  const [activeTab, setActiveTab] = useState<CotizadorTab>("PROFIT");
   const [editingFcl, setEditingFcl] = useState<Partial<IFclCotizadorConfig>>({});
   const [editingExw, setEditingExw] = useState<
     Partial<Pick<IFclExwConfig, "exwRate20GP" | "exwRate40">>
@@ -96,6 +131,9 @@ export default function GestionCotizador() {
     vespucioExtendedSurchargePct?: number;
     brackets?: IAereoTtBracket[];
   }>({});
+  const [editingProfit, setEditingProfit] = useState<
+    Partial<IProfitMarkupConfig>
+  >({});
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -263,6 +301,39 @@ export default function GestionCotizador() {
     }
   };
 
+  const handleProfitChange = (
+    key: keyof IProfitMarkupConfig,
+    value: string,
+  ) => {
+    if (value === "") {
+      setEditingProfit((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+      return;
+    }
+    const num = Number.parseInt(value, 10);
+    if (!Number.isFinite(num) || !Number.isInteger(num) || num < 1) {
+      return;
+    }
+    setEditingProfit((prev) => ({ ...prev, [key]: num }));
+  };
+
+  const handleSaveProfit = async () => {
+    if (Object.keys(editingProfit).length === 0) return;
+    try {
+      setSaveError(null);
+      setSuccessMsg(null);
+      await updateProfitMarkup(editingProfit);
+      setEditingProfit({});
+      setSuccessMsg("Profit general actualizado correctamente");
+      setTimeout(() => setSuccessMsg(null), 3000);
+    } catch (e) {
+      setSaveError((e as Error).message);
+    }
+  };
+
   const handleAirConnectFcaMarkupChange = (value: string) => {
     const num = parseFloat(value);
     if (value === "" || isNaN(num)) {
@@ -386,6 +457,75 @@ export default function GestionCotizador() {
           </li>
         ))}
       </ul>
+
+      {activeTab === "PROFIT" && (
+        <div className="card shadow-sm border-0">
+          <div className="card-body p-4">
+            <h5 className="fw-semibold mb-2">Profit general del cotizador</h5>
+            <p className="text-muted small mb-4">
+              Valores por defecto para todos los clientes. Un ejecutivo puede
+              sobreescribir por cliente desde el directorio; si borra el
+              override, vuelve a estos porcentajes. Solo enteros ≥ 1.
+            </p>
+            <div className="row g-4">
+              {PROFIT_FIELDS.map((field) => {
+                const display =
+                  editingProfit[field.key] ?? config.profitMarkup[field.key];
+                const dirty = editingProfit[field.key] !== undefined;
+                return (
+                  <div className="col-md-4" key={field.key}>
+                    <label className="form-label fw-semibold">
+                      {field.label}
+                    </label>
+                    <div className="input-group" style={{ maxWidth: 180 }}>
+                      <input
+                        type="number"
+                        className={`form-control ${dirty ? "border-warning" : ""}`}
+                        value={display}
+                        onChange={(e) =>
+                          handleProfitChange(field.key, e.target.value)
+                        }
+                        step="1"
+                        min="1"
+                      />
+                      <span className="input-group-text">%</span>
+                    </div>
+                    <small className="text-muted d-block mt-1">
+                      Multiplicador:{" "}
+                      <strong>
+                        {profitMultiplier(Number(display) || 0).toFixed(2)}×
+                      </strong>
+                    </small>
+                    <small className="text-muted d-block mt-1">
+                      {field.description}
+                    </small>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="d-flex justify-content-end mt-4 pt-3 border-top">
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={Object.keys(editingProfit).length === 0 || saving}
+                onClick={handleSaveProfit}
+              >
+                {saving ? (
+                  <>
+                    <span className="spinner-border spinner-border-sm me-2" />
+                    Guardando...
+                  </>
+                ) : (
+                  <>
+                    <i className="bi bi-save me-2" />
+                    Guardar profit general
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {activeTab === "FCL" && (
         <div

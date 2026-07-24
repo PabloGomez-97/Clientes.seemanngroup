@@ -376,6 +376,8 @@ export const getWeightRangeValidation = (
 export const seleccionarTarifaPorPeso = (
   ruta: RutaAerea,
   pesoChargeable: number,
+  /** Markup % sobre costo sheet (default 15) */
+  profitMarkupPct: number = 15,
 ): TarifaSeleccionada | null => {
   // Definir los rangos en orden ascendente
   const rangos = [
@@ -406,7 +408,8 @@ export const seleccionarTarifaPorPeso = (
 
   const precio = extractPrice(rangoSeleccionado.tarifa);
   const moneda = ruta.currency; // 🆕 Usar la moneda de la ruta (columna [14])
-  const precioConMarkup = precio * 1.15; // 15% adicional para income
+  const multiplier = 1 + profitMarkupPct / 100;
+  const precioConMarkup = precio * multiplier;
 
   return {
     precio,

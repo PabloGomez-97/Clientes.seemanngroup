@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo, useRef, type MutableRefObject } from "rea
 import { useOutletContext } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { useAuditLog } from "../../hooks/useAuditLog";
+import { useEffectiveProfitMarkup } from "../../hooks/useProfitMarkup";
+import { profitMarkupEquals } from "../../types/profitMarkup";
 import Select from "react-select";
 import EjecutivoClienteSelector from "./EjecutivoClienteSelector";
 import { useClienteEjecutivoGuard } from "./useClienteEjecutivoGuard";
@@ -386,6 +388,20 @@ function QuoteAPITester({
   const [errorClientes, setErrorClientes] = useState<string | null>(null);
   const { requireCliente, clienteEjecutivoPendiente } =
     useClienteEjecutivoGuard(isEjecutivoMode, clienteSeleccionado);
+  const {
+    markup: profitMarkup,
+    multipliers: profitMultipliers,
+    loading: profitLoading,
+    error: profitError,
+    ready: profitReady,
+    ensureFresh: ensureFreshProfit,
+  } =
+    useEffectiveProfitMarkup({
+      clientUserId: isEjecutivoMode
+        ? (clienteSeleccionado?.id ?? null)
+        : null,
+      forSelf: !isEjecutivoMode,
+    });
 
   const quoteTrackingSubject = useMemo(
     () =>
@@ -2215,7 +2231,11 @@ function QuoteAPITester({
 
   // Calcular tarifa AIR FREIGHT si hay ruta seleccionada
   const tarifaAirFreight = rutaSeleccionada
-    ? seleccionarTarifaPorPeso(rutaSeleccionada, pesoAirFreight)
+    ? seleccionarTarifaPorPeso(
+        rutaSeleccionada,
+        pesoAirFreight,
+        profitMarkup.air,
+      )
     : null;
 
   const simulatedAirFreightExpenseRate = useMemo(
@@ -2225,8 +2245,12 @@ function QuoteAPITester({
   );
 
   const simulatedAirFreightIncomeRate = useMemo(
-    () => getSimulationIncomeRate(simulatedAirFreightExpenseRate),
-    [simulatedAirFreightExpenseRate],
+    () =>
+      getSimulationIncomeRate(
+        simulatedAirFreightExpenseRate,
+        profitMultipliers.air,
+      ),
+    [simulatedAirFreightExpenseRate, profitMultipliers.air],
   );
 
   const airFreightQuoteValues = useMemo(() => {
@@ -3167,6 +3191,29 @@ function QuoteAPITester({
       return;
     }
 
+    if (profitLoading || !profitReady) {
+      setError(
+        profitError
+          ? `No se pudo cargar el profit: ${profitError}. Reintenta antes de cotizar.`
+          : "Espera a que se cargue el profit del cliente antes de generar la cotización",
+      );
+      return;
+    }
+
+    const freshProfit = await ensureFreshProfit();
+    if (!freshProfit.ok) {
+      setError(
+        `No se pudo verificar el profit: ${freshProfit.error}. Reintenta antes de cotizar.`,
+      );
+      return;
+    }
+    if (!profitMarkupEquals(profitMarkup, freshProfit.markup)) {
+      setError(
+        "El profit se actualizó. Revisa los montos en pantalla y vuelve a generar la cotización.",
+      );
+      return;
+    }
+
     if (authLoading) {
       setError(
         "Espera a que termine de cargarse la sesión antes de generar la cotización",
@@ -3280,6 +3327,29 @@ function QuoteAPITester({
 
     if (isEjecutivoMode && !clienteSeleccionado) {
       setError("Debes seleccionar un cliente antes de generar la cotización");
+      return;
+    }
+
+    if (profitLoading || !profitReady) {
+      setError(
+        profitError
+          ? `No se pudo cargar el profit: ${profitError}. Reintenta antes de cotizar.`
+          : "Espera a que se cargue el profit del cliente antes de generar la cotización",
+      );
+      return;
+    }
+
+    const freshProfit = await ensureFreshProfit();
+    if (!freshProfit.ok) {
+      setError(
+        `No se pudo verificar el profit: ${freshProfit.error}. Reintenta antes de cotizar.`,
+      );
+      return;
+    }
+    if (!profitMarkupEquals(profitMarkup, freshProfit.markup)) {
+      setError(
+        "El profit se actualizó. Revisa los montos en pantalla y vuelve a generar la cotización.",
+      );
       return;
     }
 
@@ -4261,7 +4331,7 @@ function QuoteAPITester({
           showOnDocument: true,
           notes: isSimulationMode
             ? `AIR FREIGHT charge - Tarifa simulada: ${afMoneda} ${afPrecioConMarkup.toFixed(2)}/kg${pesoAirFreight !== pesoChargeable ? ` (cobrado por ${pesoAirFreight}kg, peso m\u00ednimo del rango)` : ""}`
-            : `AIR FREIGHT charge - Tarifa: ${afMoneda} ${afPrecio.toFixed(2)}/kg + 15%${pesoAirFreight !== pesoChargeable ? ` (cobrado por ${pesoAirFreight}kg, peso m\u00ednimo del rango)` : ""}`,
+            : `AIR FREIGHT charge - Tarifa: ${afMoneda} ${afPrecio.toFixed(2)}/kg + ${profitMarkup.air}%${pesoAirFreight !== pesoChargeable ? ` (cobrado por ${pesoAirFreight}kg, peso m\u00ednimo del rango)` : ""}`,
         },
         expense: {
           quantity: pesoAirFreight,
@@ -4875,7 +4945,7 @@ function QuoteAPITester({
           showOnDocument: true,
           notes: isSimulationMode
             ? `AIR FREIGHT charge (Overall) - Tarifa simulada: ${afMoneda} ${afPrecioConMarkup.toFixed(2)}/${chargeableUnit} - Cobrado por ${chargeableUnit === "kg" ? "peso" : "volumen"}${pesoAirFreight !== pesoChargeable ? ` (cobrado por ${pesoAirFreight}kg, peso m\u00ednimo del rango)` : ""}`
-            : `AIR FREIGHT charge (Overall) - Tarifa: ${afMoneda} ${afPrecio.toFixed(2)}/${chargeableUnit} + 15% - Cobrado por ${chargeableUnit === "kg" ? "peso" : "volumen"}${pesoAirFreight !== pesoChargeable ? ` (cobrado por ${pesoAirFreight}kg, peso m\u00ednimo del rango)` : ""}`,
+            : `AIR FREIGHT charge (Overall) - Tarifa: ${afMoneda} ${afPrecio.toFixed(2)}/${chargeableUnit} + ${profitMarkup.air}% - Cobrado por ${chargeableUnit === "kg" ? "peso" : "volumen"}${pesoAirFreight !== pesoChargeable ? ` (cobrado por ${pesoAirFreight}kg, peso m\u00ednimo del rango)` : ""}`,
         },
         expense: {
           quantity: pesoAirFreight,
@@ -6847,7 +6917,7 @@ function QuoteAPITester({
                     </div>
                     <small className="text-muted">
                       Ingresa el valor costo, la venta se calcula
-                      automáticamente con un markup del 15%
+                      automáticamente con un markup del {profitMarkup.air}%
                     </small>
                   </div>
                   <span

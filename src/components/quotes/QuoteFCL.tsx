@@ -3,6 +3,8 @@ import { Modal, Button, OverlayTrigger, Tooltip } from "react-bootstrap";
 import { useOutletContext } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { useAuditLog } from "../../hooks/useAuditLog";
+import { useEffectiveProfitMarkup } from "../../hooks/useProfitMarkup";
+import { profitMarkupEquals } from "../../types/profitMarkup";
 import * as XLSX from "xlsx";
 import Select from "react-select";
 import EjecutivoClienteSelector from "./EjecutivoClienteSelector";
@@ -197,6 +199,20 @@ export default function QuoteFCL({
   const [errorClientes, setErrorClientes] = useState<string | null>(null);
   const { requireCliente, clienteEjecutivoPendiente } =
     useClienteEjecutivoGuard(isEjecutivoMode, clienteSeleccionado);
+  const {
+    markup: profitMarkup,
+    multipliers: profitMultipliers,
+    loading: profitLoading,
+    error: profitError,
+    ready: profitReady,
+    ensureFresh: ensureFreshProfit,
+  } =
+    useEffectiveProfitMarkup({
+      clientUserId: isEjecutivoMode
+        ? (clienteSeleccionado?.id ?? null)
+        : null,
+      forSelf: !isEjecutivoMode,
+    });
 
   const quoteTrackingSubject = useMemo(
     () =>
@@ -1641,14 +1657,20 @@ export default function QuoteFCL({
   );
 
   const simulatedContainerIncomeRate = useMemo(
-    () => getSimulationIncomeRate(simulatedContainerExpenseRate),
-    [simulatedContainerExpenseRate],
+    () =>
+      getSimulationIncomeRate(
+        simulatedContainerExpenseRate,
+        profitMultipliers.fcl,
+      ),
+    [simulatedContainerExpenseRate, profitMultipliers.fcl],
   );
 
   const oceanFreightValues = useMemo(() => {
     const incomeRate = isSimulationMode
       ? simulatedContainerIncomeRate
-      : roundSimulationAmount((containerSeleccionado?.price ?? 0) * 1.15);
+      : roundSimulationAmount(
+          (containerSeleccionado?.price ?? 0) * profitMultipliers.fcl,
+        );
     const expenseRate = isSimulationMode
       ? simulatedContainerExpenseRate
       : (containerSeleccionado?.price ?? 0);
@@ -1667,6 +1689,7 @@ export default function QuoteFCL({
     containerSeleccionado?.price,
     cantidadContenedores,
     rutaSeleccionada?.currency,
+    profitMultipliers.fcl,
   ]);
 
   const hasSimulationContainerRate =
@@ -1861,6 +1884,29 @@ export default function QuoteFCL({
 
     if (isEjecutivoMode && !clienteSeleccionado) {
       setError("Debes seleccionar un cliente antes de generar la cotización");
+      return;
+    }
+
+    if (profitLoading || !profitReady) {
+      setError(
+        profitError
+          ? `No se pudo cargar el profit: ${profitError}. Reintenta antes de cotizar.`
+          : "Espera a que se cargue el profit del cliente antes de generar la cotización",
+      );
+      return;
+    }
+
+    const freshProfit = await ensureFreshProfit();
+    if (!freshProfit.ok) {
+      setError(
+        `No se pudo verificar el profit: ${freshProfit.error}. Reintenta antes de cotizar.`,
+      );
+      return;
+    }
+    if (!profitMarkupEquals(profitMarkup, freshProfit.markup)) {
+      setError(
+        "El profit se actualizó. Revisa los montos en pantalla y vuelve a generar la cotización.",
+      );
       return;
     }
 
@@ -4375,7 +4421,7 @@ export default function QuoteFCL({
                       </div>
                       <small className="text-muted">
                         Ingresa el valor base del contenedor. El valor venta se
-                        calcula automáticamente con +15%.
+                        calcula automáticamente con +{profitMarkup.fcl}%.
                       </small>
                     </div>
                     <span

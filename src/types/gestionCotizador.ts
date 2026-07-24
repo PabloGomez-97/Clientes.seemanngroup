@@ -33,10 +33,18 @@ export interface IAereoCotizadorConfig {
   vespucioExtendedSurchargePct: number;
 }
 
+/** Markup % del flete principal (sheet → income) por modo */
+export interface IProfitMarkupConfig {
+  air: number;
+  fcl: number;
+  lcl: number;
+}
+
 export interface IGestionCotizadorConfig {
   fcl: IFclCotizadorConfig;
   lcl: ILclCotizadorConfig;
   aereo: IAereoCotizadorConfig;
+  profitMarkup: IProfitMarkupConfig;
   updatedBy: string;
 }
 
@@ -78,10 +86,17 @@ export const DEFAULT_AEREO_COTIZADOR: IAereoCotizadorConfig = {
   vespucioExtendedSurchargePct: 45,
 };
 
+export const DEFAULT_PROFIT_MARKUP: IProfitMarkupConfig = {
+  air: 15,
+  fcl: 15,
+  lcl: 35,
+};
+
 export const DEFAULT_GESTION_COTIZADOR_CONFIG: IGestionCotizadorConfig = {
   fcl: DEFAULT_FCL_COTIZADOR,
   lcl: DEFAULT_LCL_COTIZADOR,
   aereo: DEFAULT_AEREO_COTIZADOR,
+  profitMarkup: DEFAULT_PROFIT_MARKUP,
   updatedBy: "system",
 };
 

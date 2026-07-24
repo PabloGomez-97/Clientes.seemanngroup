@@ -21,6 +21,15 @@ import {
   ClientDirectorySortChips,
   type ClientDirectorySortMode,
 } from "@/components/administrador/shared/ClientDirectoryList";
+import {
+  ClientProfitEditModal,
+  ProfitDirectoryCell,
+} from "@/components/administrador/clientes/reporteria/ClientProfitEditModal";
+import { useClientProfitOverrides } from "@/hooks/useProfitMarkup";
+import {
+  formatProfitColumnSummary,
+  type ProfitMode,
+} from "@/types/profitMarkup";
 
 interface OutletContext {
   accessToken: string;
@@ -149,6 +158,20 @@ function ReporteriaClientes() {
     );
   const [opsOpen, setOpsOpen] = useState(false);
   const [sortMode, setSortMode] = useState<ClientDirectorySortMode>("az");
+  const [profitModalClient, setProfitModalClient] = useState<Cliente | null>(
+    null,
+  );
+  const {
+    overrides: profitOverrides,
+    globalMarkup,
+    loading: profitLoading,
+    error: profitListError,
+    ready: profitDataReady,
+    saving: profitSaving,
+    getEffectiveForClient,
+    saveOverride,
+    clearOverride,
+  } = useClientProfitOverrides();
 
   // ── Fetch clients list (with cache) ──
   useEffect(() => {
@@ -1022,6 +1045,52 @@ function ReporteriaClientes() {
         onSelect={handleSelectClient}
         font={FONT}
         pageResetKey={`${searchQuery}-${sortMode}`}
+        metaColumns={[
+          {
+            header: "Profit",
+            width: "200px",
+            align: "right",
+            render: (client) => {
+              if (!client.id) return "—";
+              const effective = getEffectiveForClient(client.id);
+              const ov = profitOverrides[client.id];
+              const hasCustom = !!(
+                ov &&
+                (ov.air != null || ov.fcl != null || ov.lcl != null)
+              );
+              return (
+                <ProfitDirectoryCell
+                  summary={
+                    profitLoading
+                      ? "…"
+                      : formatProfitColumnSummary(effective)
+                  }
+                  hasCustom={hasCustom}
+                  disabled={!profitDataReady}
+                  disabledReason={
+                    profitListError
+                      ? `Error al cargar profit: ${profitListError}`
+                      : "Cargando profit…"
+                  }
+                  onEdit={() => setProfitModalClient(client as Cliente)}
+                />
+              );
+            },
+          },
+          {
+            header: "Registro",
+            width: "120px",
+            align: "right",
+            render: (client) =>
+              client.createdAt
+                ? new Date(client.createdAt).toLocaleDateString("es-CL", {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                  })
+                : "—",
+          },
+        ]}
         emptyState={
           <div
             style={{
@@ -1039,6 +1108,25 @@ function ReporteriaClientes() {
           </div>
         }
       />
+
+      {profitModalClient?.id && (
+        <ClientProfitEditModal
+          open={!!profitModalClient}
+          onClose={() => setProfitModalClient(null)}
+          clientUserId={profitModalClient.id}
+          clientUsername={profitModalClient.username}
+          clientEmail={profitModalClient.email}
+          globalMarkup={globalMarkup}
+          override={profitOverrides[profitModalClient.id] ?? null}
+          dataReady={profitDataReady}
+          saving={profitSaving}
+          onSave={(fields) => saveOverride(profitModalClient.id, fields)}
+          onClearMode={(mode: ProfitMode) =>
+            clearOverride(profitModalClient.id, mode)
+          }
+          onClearAll={() => clearOverride(profitModalClient.id)}
+        />
+      )}
 
     </div>
   );

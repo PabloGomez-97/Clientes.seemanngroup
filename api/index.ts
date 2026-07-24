@@ -1787,6 +1787,7 @@ const AgenciaAduanaLclConfig = (
 import {
   GestionCotizadorConfigSchema,
   DEFAULT_GESTION_COTIZADOR_CONFIG,
+  DEFAULT_PROFIT_MARKUP,
   type IGestionCotizadorConfigDoc,
   type GestionCotizadorConfigModel,
   type IFclCotizadorConfig,
@@ -1794,6 +1795,7 @@ import {
   type IAereoCotizadorConfig,
   type IAereoTtBracket,
   type ILclDeliveryBracket,
+  type IProfitMarkupConfig,
 } from './models/GestionCotizadorConfig.js';
 
 const GestionCotizadorConfig = (
@@ -1803,6 +1805,176 @@ const GestionCotizadorConfig = (
     GestionCotizadorConfigSchema,
   )
 ) as GestionCotizadorConfigModel;
+
+import {
+  ClientProfitOverrideSchema,
+  ClientProfitAuditSchema,
+  type IClientProfitOverrideDoc,
+  type ClientProfitOverrideModel,
+  type IClientProfitAuditDoc,
+  type ClientProfitAuditModel,
+  type ProfitMode,
+} from './models/ClientProfitOverride.js';
+
+const ClientProfitOverride = (
+  mongoose.models.ClientProfitOverride ||
+  mongoose.model<IClientProfitOverrideDoc>(
+    'ClientProfitOverride',
+    ClientProfitOverrideSchema,
+  )
+) as ClientProfitOverrideModel;
+
+const ClientProfitAudit = (
+  mongoose.models.ClientProfitAudit ||
+  mongoose.model<IClientProfitAuditDoc>(
+    'ClientProfitAudit',
+    ClientProfitAuditSchema,
+  )
+) as ClientProfitAuditModel;
+
+function isPositiveIntegerProfit(value: unknown): value is number {
+  return (
+    typeof value === 'number' &&
+    Number.isFinite(value) &&
+    Number.isInteger(value) &&
+    value >= 1
+  );
+}
+
+function normalizeGlobalProfitMarkup(
+  raw: Partial<IProfitMarkupConfig> | null | undefined,
+): IProfitMarkupConfig {
+  return {
+    air: isPositiveIntegerProfit(raw?.air) ? raw!.air : DEFAULT_PROFIT_MARKUP.air,
+    fcl: isPositiveIntegerProfit(raw?.fcl) ? raw!.fcl : DEFAULT_PROFIT_MARKUP.fcl,
+    lcl: isPositiveIntegerProfit(raw?.lcl) ? raw!.lcl : DEFAULT_PROFIT_MARKUP.lcl,
+  };
+}
+
+function resolveEffectiveProfitMarkupApi(
+  globalMarkup: IProfitMarkupConfig,
+  override: { air?: number | null; fcl?: number | null; lcl?: number | null } | null,
+) {
+  const modes: ProfitMode[] = ['air', 'fcl', 'lcl'];
+  const sources: Record<ProfitMode, 'override' | 'global'> = {
+    air: 'global',
+    fcl: 'global',
+    lcl: 'global',
+  };
+  const effective: IProfitMarkupConfig = { ...globalMarkup };
+  for (const mode of modes) {
+    const ov = override?.[mode];
+    if (isPositiveIntegerProfit(ov)) {
+      effective[mode] = ov;
+      sources[mode] = 'override';
+    }
+  }
+  return { ...effective, sources };
+}
+
+async function getOrCreateGestionConfig() {
+  let config = await GestionCotizadorConfig.findOne();
+  if (!config) {
+    config = await GestionCotizadorConfig.create(DEFAULT_GESTION_COTIZADOR_CONFIG);
+  } else if (!config.profitMarkup) {
+    config.profitMarkup = DEFAULT_PROFIT_MARKUP;
+    await config.save();
+  }
+  return config;
+}
+
+async function resolveEjecutivoContext(email: string) {
+  const me = await User.findOne({ email }).populate('ejecutivoId');
+  if (!me) return null;
+
+  let ejecutivoDoc: any = me.ejecutivoId;
+  if (!ejecutivoDoc || !ejecutivoDoc._id) {
+    ejecutivoDoc = await Ejecutivo.findOne({ email: String(me.email).toLowerCase().trim() });
+  }
+
+  const isAdmin = !!ejecutivoDoc?.roles?.administrador;
+  const isOperaciones = !!ejecutivoDoc?.roles?.operaciones;
+  const canManageAllClients = isAdmin || isOperaciones;
+  const ejecutivoObjectId = ejecutivoDoc?._id ?? null;
+
+  return { me, ejecutivoDoc, isAdmin, isOperaciones, canManageAllClients, ejecutivoObjectId };
+}
+
+async function assertCanManageClientProfit(
+  currentUserEmail: string,
+  clientUserId: string,
+) {
+  if (!mongoose.Types.ObjectId.isValid(clientUserId)) {
+    const err: any = new Error('clientUserId inválido');
+    err.status = 400;
+    throw err;
+  }
+
+  const ctx = await resolveEjecutivoContext(currentUserEmail);
+  if (!ctx) {
+    const err: any = new Error('Usuario no encontrado');
+    err.status = 404;
+    throw err;
+  }
+
+  const client = await User.findById(clientUserId);
+  if (!client) {
+    const err: any = new Error('Cliente no encontrado');
+    err.status = 404;
+    throw err;
+  }
+
+  if (ctx.canManageAllClients) {
+    return { ...ctx, client };
+  }
+
+  if (!ctx.ejecutivoObjectId) {
+    const err: any = new Error('No autorizado');
+    err.status = 403;
+    throw err;
+  }
+
+  const clientEjId = (client as any).ejecutivoId;
+  if (String(clientEjId) !== String(ctx.ejecutivoObjectId)) {
+    const err: any = new Error('Solo puedes gestionar profit de tus clientes asignados');
+    err.status = 403;
+    throw err;
+  }
+
+  return { ...ctx, client };
+}
+
+function serializeOverrideDoc(doc: IClientProfitOverrideDoc | null) {
+  if (!doc) return null;
+  return {
+    clientUserId: String(doc.clientUserId),
+    air: doc.air ?? null,
+    fcl: doc.fcl ?? null,
+    lcl: doc.lcl ?? null,
+    updatedBy: doc.updatedBy,
+    updatedAt: doc.updatedAt,
+  };
+}
+
+async function writeProfitAudit(params: {
+  clientUserId?: mongoose.Types.ObjectId | null;
+  scope: 'global' | 'client';
+  mode: ProfitMode;
+  previousValue: number | null;
+  newValue: number | null;
+  changedByEmail: string;
+  changedByName?: string;
+}) {
+  await ClientProfitAudit.create({
+    clientUserId: params.clientUserId ?? null,
+    scope: params.scope,
+    mode: params.mode,
+    previousValue: params.previousValue,
+    newValue: params.newValue,
+    changedByEmail: params.changedByEmail,
+    changedByName: params.changedByName,
+  });
+}
 
 // ============================================================
 // MODELO FCL EXW - CONFIG (Singleton, colección fcl_exw_config)
@@ -7431,11 +7603,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // GET /api/gestion-cotizador/config
     if (path === '/api/gestion-cotizador/config' && method === 'GET') {
       try {
-        let config = await GestionCotizadorConfig.findOne();
-        if (!config) {
-          config = await GestionCotizadorConfig.create(DEFAULT_GESTION_COTIZADOR_CONFIG);
-        }
-        return res.json(config);
+        const config = await getOrCreateGestionConfig();
+        const json = config.toObject ? config.toObject() : config;
+        return res.json({
+          ...json,
+          profitMarkup: normalizeGlobalProfitMarkup(
+            (json as any).profitMarkup,
+          ),
+        });
       } catch (e) {
         console.error('[gestion-cotizador] Error GET config:', e);
         return res.status(500).json({ error: 'Error al obtener configuración del cotizador' });
@@ -7454,21 +7629,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-        const { fcl, lcl, aereo } = body as {
+        const { fcl, lcl, aereo, profitMarkup } = body as {
           fcl?: Partial<IFclCotizadorConfig>;
           lcl?: Partial<ILclCotizadorConfig>;
           aereo?: Partial<IAereoCotizadorConfig>;
+          profitMarkup?: Partial<IProfitMarkupConfig>;
         };
         if (
           (!fcl || typeof fcl !== 'object') &&
           (!lcl || typeof lcl !== 'object') &&
-          (!aereo || typeof aereo !== 'object')
+          (!aereo || typeof aereo !== 'object') &&
+          (!profitMarkup || typeof profitMarkup !== 'object')
         ) {
           return res.status(400).json({
-            error: 'Debe enviar el objeto fcl, lcl y/o aereo con los valores a actualizar',
+            error: 'Debe enviar el objeto fcl, lcl, aereo y/o profitMarkup con los valores a actualizar',
           });
         }
 
+        const existing = await getOrCreateGestionConfig();
         const updateData: Record<string, unknown> = { updatedBy: currentUser.sub };
 
         if (fcl && typeof fcl === 'object') {
@@ -7580,6 +7758,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           }
         }
 
+        const profitAuditPending: Array<{
+          mode: ProfitMode;
+          previousValue: number;
+          newValue: number;
+        }> = [];
+
+        if (profitMarkup && typeof profitMarkup === 'object') {
+          const currentProfit = normalizeGlobalProfitMarkup(
+            (existing as any).profitMarkup,
+          );
+          for (const mode of ['air', 'fcl', 'lcl'] as ProfitMode[]) {
+            if (profitMarkup[mode] === undefined) continue;
+            if (!isPositiveIntegerProfit(profitMarkup[mode])) {
+              return res.status(400).json({
+                error: `Profit ${mode.toUpperCase()} inválido: debe ser entero ≥ 1`,
+              });
+            }
+            if (profitMarkup[mode] !== currentProfit[mode]) {
+              updateData[`profitMarkup.${mode}`] = profitMarkup[mode];
+              profitAuditPending.push({
+                mode,
+                previousValue: currentProfit[mode],
+                newValue: profitMarkup[mode]!,
+              });
+            }
+          }
+        }
+
         if (Object.keys(updateData).length <= 1) {
           return res.status(400).json({ error: 'No hay campos válidos para actualizar' });
         }
@@ -7590,10 +7796,356 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           { new: true, upsert: true },
         );
 
-        return res.json(config);
+        for (const entry of profitAuditPending) {
+          await writeProfitAudit({
+            clientUserId: null,
+            scope: 'global',
+            mode: entry.mode,
+            previousValue: entry.previousValue,
+            newValue: entry.newValue,
+            changedByEmail: currentUser.sub,
+            changedByName: ejecutivoDoc.nombre,
+          });
+        }
+
+        const json = config?.toObject ? config.toObject() : config;
+        return res.json({
+          ...json,
+          profitMarkup: normalizeGlobalProfitMarkup(
+            (json as any)?.profitMarkup,
+          ),
+        });
       } catch (e) {
         console.error('[gestion-cotizador] Error PUT config:', e);
         return res.status(500).json({ error: 'Error al actualizar configuración del cotizador' });
+      }
+    }
+
+    // GET /api/profit-markup/effective?clientUserId=
+    if (path === '/api/profit-markup/effective' && method === 'GET') {
+      try {
+        const currentUser = requireAuth(req);
+        const rawQs = (url || '').includes('?') ? (url || '').split('?')[1] : '';
+        const qs = new URLSearchParams(rawQs);
+        const clientUserIdParam = qs.get('clientUserId');
+
+        const config = await getOrCreateGestionConfig();
+        const global = normalizeGlobalProfitMarkup((config as any).profitMarkup);
+
+        let overrideDoc: IClientProfitOverrideDoc | null = null;
+        let targetClientId: string | null = clientUserIdParam;
+
+        if (!targetClientId) {
+          // Portal cliente: usar el usuario autenticado si no es ejecutivo
+          const me = await User.findOne({ email: currentUser.sub });
+          if (me && me.username !== 'Ejecutivo') {
+            targetClientId = String(me._id);
+          }
+        } else {
+          // Lectura para cotizar: cualquier ejecutivo autenticado puede resolver
+          // el markup efectivo de un cliente (la mutación sigue restringida).
+          const me = await User.findOne({ email: currentUser.sub });
+          if (!me || me.username !== 'Ejecutivo') {
+            return res.status(403).json({ error: 'No autorizado' });
+          }
+        }
+
+        if (targetClientId && mongoose.Types.ObjectId.isValid(targetClientId)) {
+          overrideDoc = await ClientProfitOverride.findOne({
+            clientUserId: targetClientId,
+          });
+        }
+
+        const override = serializeOverrideDoc(overrideDoc);
+        const effective = resolveEffectiveProfitMarkupApi(global, override);
+
+        return res.json({
+          global,
+          override,
+          effective,
+          clientUserId: targetClientId,
+        });
+      } catch (e: any) {
+        if (e?.message === 'No auth token' || e?.message === 'Invalid token') {
+          return res.status(401).json({ error: e.message });
+        }
+        if (e?.status) return res.status(e.status).json({ error: e.message });
+        console.error('[profit-markup/effective] error:', e);
+        return res.status(500).json({ error: 'Error al resolver profit markup' });
+      }
+    }
+
+    // GET /api/client-profit-overrides — listado (ejecutivo: sus clientes; admin: todos)
+    if (path === '/api/client-profit-overrides' && method === 'GET') {
+      try {
+        const currentUser = requireAuth(req);
+        const ctx = await resolveEjecutivoContext(currentUser.sub);
+        if (!ctx || (!ctx.canManageAllClients && !ctx.ejecutivoObjectId)) {
+          return res.status(403).json({ error: 'No autorizado' });
+        }
+
+        const config = await getOrCreateGestionConfig();
+        const global = normalizeGlobalProfitMarkup((config as any).profitMarkup);
+
+        let clientFilter: Record<string, unknown> = {
+          username: { $ne: 'Ejecutivo' },
+        };
+        if (!ctx.canManageAllClients) {
+          clientFilter = {
+            ...clientFilter,
+            ejecutivoId: ctx.ejecutivoObjectId,
+          };
+        }
+
+        const clients = await User.find(clientFilter, { _id: 1 }).lean();
+        const clientIds = clients.map((c: any) => c._id);
+
+        const overrides = await ClientProfitOverride.find({
+          clientUserId: { $in: clientIds },
+        });
+
+        return res.json({
+          global,
+          overrides: overrides.map((o) => serializeOverrideDoc(o)),
+        });
+      } catch (e: any) {
+        if (e?.message === 'No auth token' || e?.message === 'Invalid token') {
+          return res.status(401).json({ error: e.message });
+        }
+        console.error('[client-profit-overrides] GET list error:', e);
+        return res.status(500).json({ error: 'Error al listar overrides de profit' });
+      }
+    }
+
+    // GET /api/client-profit-overrides/:clientUserId/audit
+    {
+      const auditMatch = path.match(
+        /^\/api\/client-profit-overrides\/([^/]+)\/audit$/,
+      );
+      if (auditMatch && method === 'GET') {
+        try {
+          const currentUser = requireAuth(req);
+          const clientUserId = decodeURIComponent(auditMatch[1]);
+          await assertCanManageClientProfit(currentUser.sub, clientUserId);
+
+          const entries = await ClientProfitAudit.find({
+            clientUserId,
+            scope: 'client',
+          })
+            .sort({ createdAt: -1 })
+            .limit(100)
+            .lean();
+
+          return res.json({
+            audits: entries.map((e: any) => ({
+              id: String(e._id),
+              clientUserId: e.clientUserId ? String(e.clientUserId) : null,
+              scope: e.scope,
+              mode: e.mode,
+              previousValue: e.previousValue,
+              newValue: e.newValue,
+              changedByEmail: e.changedByEmail,
+              changedByName: e.changedByName,
+              createdAt: e.createdAt,
+            })),
+          });
+        } catch (e: any) {
+          if (e?.message === 'No auth token' || e?.message === 'Invalid token') {
+            return res.status(401).json({ error: e.message });
+          }
+          if (e?.status) return res.status(e.status).json({ error: e.message });
+          console.error('[client-profit-overrides] GET audit error:', e);
+          return res.status(500).json({ error: 'Error al obtener auditoría' });
+        }
+      }
+    }
+
+    // PUT /api/client-profit-overrides/:clientUserId
+    // DELETE /api/client-profit-overrides/:clientUserId
+    // DELETE /api/client-profit-overrides/:clientUserId/:mode
+    {
+      const overrideMatch = path.match(
+        /^\/api\/client-profit-overrides\/([^/]+)(?:\/(air|fcl|lcl))?$/,
+      );
+      if (
+        overrideMatch &&
+        (method === 'PUT' || method === 'DELETE' || method === 'GET')
+      ) {
+        try {
+          const currentUser = requireAuth(req);
+          const clientUserId = decodeURIComponent(overrideMatch[1]);
+          const modeParam = overrideMatch[2] as ProfitMode | undefined;
+          const { client, isAdmin, ejecutivoDoc } =
+            await assertCanManageClientProfit(currentUser.sub, clientUserId);
+
+          const config = await getOrCreateGestionConfig();
+          const global = normalizeGlobalProfitMarkup((config as any).profitMarkup);
+          const changedByName = ejecutivoDoc?.nombre || currentUser.sub;
+
+          if (method === 'GET') {
+            const doc = await ClientProfitOverride.findOne({ clientUserId });
+            const override = serializeOverrideDoc(doc);
+            return res.json({
+              global,
+              override,
+              effective: resolveEffectiveProfitMarkupApi(global, override),
+              client: {
+                id: String(client._id),
+                username: client.username,
+                email: client.email,
+              },
+            });
+          }
+
+          if (method === 'DELETE') {
+            const existing = await ClientProfitOverride.findOne({ clientUserId });
+            if (!existing) {
+              return res.json({
+                global,
+                override: null,
+                effective: resolveEffectiveProfitMarkupApi(global, null),
+              });
+            }
+
+            const modesToClear: ProfitMode[] = modeParam
+              ? [modeParam]
+              : (['air', 'fcl', 'lcl'] as ProfitMode[]);
+
+            for (const mode of modesToClear) {
+              const prev = existing[mode] ?? null;
+              if (prev === null) continue;
+              existing[mode] = null;
+              await writeProfitAudit({
+                clientUserId: existing.clientUserId,
+                scope: 'client',
+                mode,
+                previousValue: prev,
+                newValue: null,
+                changedByEmail: currentUser.sub,
+                changedByName,
+              });
+            }
+
+            existing.updatedBy = currentUser.sub;
+
+            if (
+              existing.air === null &&
+              existing.fcl === null &&
+              existing.lcl === null
+            ) {
+              await existing.deleteOne();
+              return res.json({
+                global,
+                override: null,
+                effective: resolveEffectiveProfitMarkupApi(global, null),
+              });
+            }
+
+            await existing.save();
+            const override = serializeOverrideDoc(existing);
+            return res.json({
+              global,
+              override,
+              effective: resolveEffectiveProfitMarkupApi(global, override),
+            });
+          }
+
+          // PUT
+          if (modeParam) {
+            return res.status(400).json({
+              error: 'Usa PUT sobre /api/client-profit-overrides/:clientUserId sin modo',
+            });
+          }
+
+          const body =
+            typeof req.body === 'string' ? JSON.parse(req.body) : req.body || {};
+          const incoming = body as {
+            air?: number | null;
+            fcl?: number | null;
+            lcl?: number | null;
+          };
+
+          if (
+            incoming.air === undefined &&
+            incoming.fcl === undefined &&
+            incoming.lcl === undefined
+          ) {
+            return res.status(400).json({
+              error: 'Debe enviar air, fcl y/o lcl (número ≥ 1 o null para general)',
+            });
+          }
+
+          for (const mode of ['air', 'fcl', 'lcl'] as ProfitMode[]) {
+            if (incoming[mode] === undefined) continue;
+            if (incoming[mode] !== null && !isPositiveIntegerProfit(incoming[mode])) {
+              return res.status(400).json({
+                error: `Profit ${mode.toUpperCase()} inválido: entero ≥ 1 o null`,
+              });
+            }
+          }
+
+          let doc = await ClientProfitOverride.findOne({ clientUserId });
+          if (!doc) {
+            doc = new ClientProfitOverride({
+              clientUserId,
+              air: null,
+              fcl: null,
+              lcl: null,
+              updatedBy: currentUser.sub,
+            });
+          }
+
+          for (const mode of ['air', 'fcl', 'lcl'] as ProfitMode[]) {
+            if (incoming[mode] === undefined) continue;
+            const nextVal = incoming[mode] as number | null;
+            const prevVal = doc[mode] ?? null;
+            if (prevVal === nextVal) continue;
+            doc[mode] = nextVal;
+            await writeProfitAudit({
+              clientUserId: doc.clientUserId,
+              scope: 'client',
+              mode,
+              previousValue: prevVal,
+              newValue: nextVal,
+              changedByEmail: currentUser.sub,
+              changedByName,
+            });
+          }
+
+          doc.updatedBy = currentUser.sub;
+
+          if (doc.air === null && doc.fcl === null && doc.lcl === null) {
+            if (doc.isNew) {
+              return res.json({
+                global,
+                override: null,
+                effective: resolveEffectiveProfitMarkupApi(global, null),
+              });
+            }
+            await doc.deleteOne();
+            return res.json({
+              global,
+              override: null,
+              effective: resolveEffectiveProfitMarkupApi(global, null),
+            });
+          }
+
+          await doc.save();
+          const override = serializeOverrideDoc(doc);
+          return res.json({
+            global,
+            override,
+            effective: resolveEffectiveProfitMarkupApi(global, override),
+            isAdmin,
+          });
+        } catch (e: any) {
+          if (e?.message === 'No auth token' || e?.message === 'Invalid token') {
+            return res.status(401).json({ error: e.message });
+          }
+          if (e?.status) return res.status(e.status).json({ error: e.message });
+          console.error('[client-profit-overrides] mutate error:', e);
+          return res.status(500).json({ error: 'Error al actualizar profit del cliente' });
+        }
       }
     }
 
