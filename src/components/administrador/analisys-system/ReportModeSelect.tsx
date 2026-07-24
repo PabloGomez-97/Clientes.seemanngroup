@@ -1,43 +1,71 @@
 import { useTranslation } from "react-i18next";
 import {
   type AppliedComparisonSuggestion,
+  REPORT_MODE_CUSTOM_COMPARISON,
+  REPORT_MODE_CUSTOM_RANGE,
   SUGGESTION_CATEGORY_LABEL_KEYS,
   SUGGESTION_CATEGORY_ORDER,
   type ComparisonSuggestion,
 } from "./comparisonSuggestions";
 import {
   C,
-  base,
   inputStyle,
 } from "@/components/administrador/reporteria/financiera/executiveReportingUi";
 
 type Props = {
   suggestions: ComparisonSuggestion[];
   activeSuggestion: AppliedComparisonSuggestion | null;
-  onSelect: (suggestionId: string) => void;
+  value: string;
+  onChange: (value: string) => void;
   disabled?: boolean;
 };
 
-export default function QuickSuggestionsPanel({
+export default function ReportModeSelect({
   suggestions,
   activeSuggestion,
-  onSelect,
+  value,
+  onChange,
   disabled = false,
 }: Props) {
   const { t } = useTranslation();
 
+  const selectValue =
+    value ||
+    (activeSuggestion?.id === REPORT_MODE_CUSTOM_COMPARISON
+      ? REPORT_MODE_CUSTOM_COMPARISON
+      : activeSuggestion?.id) ||
+    "";
+
   return (
-    <div>
-      <select
-        value={activeSuggestion?.id ?? ""}
-        onChange={(event) => {
-          const { value } = event.target;
-          if (value) onSelect(value);
+    <div style={{ flex: "1 1 320px", minWidth: 240, maxWidth: 440 }}>
+      <label
+        style={{
+          display: "block",
+          fontSize: 11,
+          fontWeight: 600,
+          letterSpacing: "0.04em",
+          textTransform: "uppercase",
+          color: C.textMuted,
+          marginBottom: 6,
         }}
+      >
+        {t("analisysSystem.suggestions.selectLabel")}
+      </label>
+      <select
+        value={selectValue}
+        onChange={(event) => onChange(event.target.value)}
         disabled={disabled}
         style={{ ...inputStyle, width: "100%", maxWidth: "100%" }}
       >
-        <option value="">{t("analisysSystem.suggestions.placeholder")}</option>
+        <option value="" disabled>
+          {t("analisysSystem.suggestions.placeholder")}
+        </option>
+        <option value={REPORT_MODE_CUSTOM_RANGE}>
+          {t("analisysSystem.suggestions.items.customRange")}
+        </option>
+        <option value={REPORT_MODE_CUSTOM_COMPARISON}>
+          {t("analisysSystem.suggestions.items.customComparison")}
+        </option>
         {SUGGESTION_CATEGORY_ORDER.map((category) => {
           const items = suggestions.filter((item) => item.category === category);
           if (items.length === 0) return null;
@@ -52,9 +80,6 @@ export default function QuickSuggestionsPanel({
           );
         })}
       </select>
-      <p style={{ ...base, fontSize: 12, color: C.textMuted, margin: "12px 0 0", lineHeight: 1.5 }}>
-        {t("analisysSystem.suggestions.lead")}
-      </p>
     </div>
   );
 }

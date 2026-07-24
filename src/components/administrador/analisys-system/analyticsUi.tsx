@@ -105,10 +105,12 @@ export function ComparisonModeBanner({
   label,
   periodALabel,
   periodBLabel,
+  explanation,
 }: {
   label: string;
   periodALabel: string;
   periodBLabel: string;
+  explanation?: string;
 }) {
   const { t } = useTranslation();
 
@@ -147,6 +149,9 @@ export function ComparisonModeBanner({
           <div style={{ ...base, fontSize: 14, fontWeight: 700, color: C.secondary }}>
             {periodALabel}
           </div>
+          <div style={{ ...base, fontSize: 12, color: C.textMuted, marginTop: 4, lineHeight: 1.4 }}>
+            {t("analisysSystem.analytics.periodComparison.periodAHint")}
+          </div>
         </div>
         <div
           style={{
@@ -162,8 +167,16 @@ export function ComparisonModeBanner({
           <div style={{ ...base, fontSize: 14, fontWeight: 700, color: C.secondary }}>
             {periodBLabel}
           </div>
+          <div style={{ ...base, fontSize: 12, color: C.textMuted, marginTop: 4, lineHeight: 1.4 }}>
+            {t("analisysSystem.analytics.periodComparison.periodBHint")}
+          </div>
         </div>
       </div>
+      {explanation && (
+        <p style={{ ...base, fontSize: 12, color: C.textMuted, margin: "0 0 8px", lineHeight: 1.5 }}>
+          {explanation}
+        </p>
+      )}
       <p style={{ ...base, fontSize: 12, color: C.textMuted, margin: 0, lineHeight: 1.5 }}>
         {t("analisysSystem.analytics.comparisonMode.periodLegend")}
       </p>

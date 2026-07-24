@@ -222,6 +222,14 @@ export default function PeriodComparisonTab({
         label={t(suggestion.labelKey)}
         periodALabel={suggestion.periodA.label}
         periodBLabel={suggestion.periodB.label}
+        explanation={
+          suggestion.explanationKey
+            ? t(suggestion.explanationKey, {
+                periodA: suggestion.periodA.label,
+                periodB: suggestion.periodB.label,
+              })
+            : undefined
+        }
       />
 
       <div
@@ -263,12 +271,12 @@ export default function PeriodComparisonTab({
       >
         <PeriodColumn
           title={t("analisysSystem.analytics.periodComparison.periodA")}
-          subtitle={result.periodA.label}
+          subtitle={`${result.periodA.label} — ${t("analisysSystem.analytics.periodComparison.periodAHint")}`}
           metrics={result.periodA}
         />
         <PeriodColumn
           title={t("analisysSystem.analytics.periodComparison.periodB")}
-          subtitle={result.periodB.label}
+          subtitle={`${result.periodB.label} — ${t("analisysSystem.analytics.periodComparison.periodBHint")}`}
           metrics={result.periodB}
         />
       </div>

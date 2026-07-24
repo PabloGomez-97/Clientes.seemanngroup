@@ -15,7 +15,8 @@ export type ComparisonSuggestionCategory =
   | "month"
   | "quarterSemester"
   | "year"
-  | "teamTrends";
+  | "teamTrends"
+  | "custom";
 
 export type ComparisonSuggestion = {
   id: string;
@@ -26,11 +27,17 @@ export type ComparisonSuggestion = {
   periodB: ComparisonPeriod;
   targetSection: AnalisysSectionId;
   trendsGranularity?: TimeGranularity;
+  /** Optional explanation key shown under the period labels */
+  explanationKey?: string;
 };
 
 export type AppliedComparisonSuggestion = ComparisonSuggestion & {
   appliedAt: number;
 };
+
+/** Sentinel values for the report-mode select (not real suggestion ids). */
+export const REPORT_MODE_CUSTOM_RANGE = "custom-range";
+export const REPORT_MODE_CUSTOM_COMPARISON = "custom-comparison";
 
 function minDate(a: string, b: string): string {
   return a <= b ? a : b;
@@ -60,30 +67,15 @@ function startOfQuarter(date: Date): Date {
   return new Date(date.getFullYear(), quarterMonth, 1);
 }
 
-function endOfQuarter(date: Date): Date {
-  const quarterMonth = Math.floor(date.getMonth() / 3) * 3;
-  return new Date(date.getFullYear(), quarterMonth + 3, 0);
-}
-
 function startOfSemester(date: Date): Date {
   const semesterMonth = date.getMonth() < 6 ? 0 : 6;
   return new Date(date.getFullYear(), semesterMonth, 1);
-}
-
-function endOfSemester(date: Date): Date {
-  const semesterMonth = date.getMonth() < 6 ? 5 : 11;
-  return new Date(date.getFullYear(), semesterMonth + 1, 0);
 }
 
 function addDays(date: Date, days: number): Date {
   const next = new Date(date);
   next.setDate(next.getDate() + days);
   return next;
-}
-
-function daysBetweenInclusive(start: Date, end: Date): number {
-  const ms = end.getTime() - start.getTime();
-  return Math.max(0, Math.floor(ms / 86400000));
 }
 
 function formatRangeLabel(start: Date, end: Date, locale: string): string {
@@ -102,12 +94,24 @@ function formatRangeLabel(start: Date, end: Date, locale: string): string {
 
   if (sameYear) {
     const from = start.toLocaleDateString(locale, { day: "numeric", month: "short" });
-    const to = end.toLocaleDateString(locale, { day: "numeric", month: "short", year: "numeric" });
+    const to = end.toLocaleDateString(locale, {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
     return `${from} – ${to}`;
   }
 
-  const from = start.toLocaleDateString(locale, { day: "numeric", month: "short", year: "numeric" });
-  const to = end.toLocaleDateString(locale, { day: "numeric", month: "short", year: "numeric" });
+  const from = start.toLocaleDateString(locale, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+  const to = end.toLocaleDateString(locale, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
   return `${from} – ${to}`;
 }
 
@@ -119,52 +123,41 @@ function makePeriod(start: Date, end: Date, locale: string): ComparisonPeriod {
   };
 }
 
-function getMtdRange(reference: Date): ComparisonPeriod {
-  return makePeriod(startOfMonth(reference), reference, "es");
+function makePeriodFromIso(range: DateRange, locale: string): ComparisonPeriod {
+  const start = new Date(`${range.startDate}T12:00:00`);
+  const end = new Date(`${range.endDate}T12:00:00`);
+  return {
+    startDate: range.startDate,
+    endDate: range.endDate,
+    label: formatRangeLabel(start, end, locale),
+  };
 }
 
-function getSameDayPreviousMonth(reference: Date): ComparisonPeriod {
-  const start = startOfMonth(new Date(reference.getFullYear(), reference.getMonth() - 1, 1));
-  const day = Math.min(
-    reference.getDate(),
-    endOfMonth(new Date(reference.getFullYear(), reference.getMonth() - 1, 1)).getDate(),
-  );
-  const end = new Date(reference.getFullYear(), reference.getMonth() - 1, day);
-  return makePeriod(start, end, "es");
+/** Current calendar period closed at today (start → today). */
+function getCurrentMonthToToday(reference: Date, locale: string): ComparisonPeriod {
+  return makePeriod(startOfMonth(reference), reference, locale);
 }
 
-function getSameDayPreviousYear(reference: Date): ComparisonPeriod {
-  const start = new Date(reference.getFullYear() - 1, reference.getMonth(), 1);
-  const day = Math.min(
-    reference.getDate(),
-    endOfMonth(new Date(reference.getFullYear() - 1, reference.getMonth(), 1)).getDate(),
-  );
-  const end = new Date(reference.getFullYear() - 1, reference.getMonth(), day);
-  return makePeriod(start, end, "es");
+function getCurrentQuarterToToday(reference: Date, locale: string): ComparisonPeriod {
+  return makePeriod(startOfQuarter(reference), reference, locale);
 }
 
-function getClosedMonth(offsetMonthsFromLast = 0): ComparisonPeriod {
+function getCurrentSemesterToToday(reference: Date, locale: string): ComparisonPeriod {
+  return makePeriod(startOfSemester(reference), reference, locale);
+}
+
+function getCurrentYearToToday(reference: Date, locale: string): ComparisonPeriod {
+  return makePeriod(new Date(reference.getFullYear(), 0, 1), reference, locale);
+}
+
+function getClosedMonth(offsetMonthsFromLast = 0, locale = "es"): ComparisonPeriod {
   const today = new Date();
   const monthStart = new Date(today.getFullYear(), today.getMonth() - 1 - offsetMonthsFromLast, 1);
   const monthEnd = endOfMonth(monthStart);
-  return makePeriod(monthStart, monthEnd, "es");
+  return makePeriod(monthStart, monthEnd, locale);
 }
 
-function getQuarterToDate(reference: Date): ComparisonPeriod {
-  return makePeriod(startOfQuarter(reference), reference, "es");
-}
-
-function getPreviousQuarterSamePoint(reference: Date): ComparisonPeriod {
-  const quarterStart = startOfQuarter(reference);
-  const offsetDays = daysBetweenInclusive(quarterStart, reference);
-  const prevQuarterEnd = addDays(startOfQuarter(reference), -1);
-  const prevQuarterStart = startOfQuarter(prevQuarterEnd);
-  const end = addDays(prevQuarterStart, offsetDays);
-  const cappedEnd = end > prevQuarterEnd ? prevQuarterEnd : end;
-  return makePeriod(prevQuarterStart, cappedEnd, "es");
-}
-
-function getClosedQuarter(offsetQuartersFromLast = 0): ComparisonPeriod {
+function getClosedQuarter(offsetQuartersFromLast = 0, locale = "es"): ComparisonPeriod {
   const today = new Date();
   const currentQuarterStart = startOfQuarter(today);
   const targetQuarterEnd = addDays(currentQuarterStart, -1);
@@ -173,66 +166,34 @@ function getClosedQuarter(offsetQuartersFromLast = 0): ComparisonPeriod {
     quarterEnd = addDays(startOfQuarter(quarterEnd), -1);
   }
   const quarterStart = startOfQuarter(quarterEnd);
-  return makePeriod(quarterStart, quarterEnd, "es");
+  return makePeriod(quarterStart, quarterEnd, locale);
 }
 
-function getSemesterToDate(reference: Date): ComparisonPeriod {
-  return makePeriod(startOfSemester(reference), reference, "es");
-}
-
-function getPreviousSemesterSamePoint(reference: Date): ComparisonPeriod {
-  const semesterStart = startOfSemester(reference);
-  const offsetDays = daysBetweenInclusive(semesterStart, reference);
-  const prevSemesterEnd = addDays(semesterStart, -1);
-  const prevSemesterStart = startOfSemester(prevSemesterEnd);
-  const end = addDays(prevSemesterStart, offsetDays);
-  const cappedEnd = end > prevSemesterEnd ? prevSemesterEnd : end;
-  return makePeriod(prevSemesterStart, cappedEnd, "es");
-}
-
-function getClosedSemester(): ComparisonPeriod {
+function getClosedSemester(offsetSemestersFromLast = 0, locale = "es"): ComparisonPeriod {
   const today = new Date();
   const currentSemesterStart = startOfSemester(today);
-  const prevSemesterEnd = addDays(currentSemesterStart, -1);
-  const prevSemesterStart = startOfSemester(prevSemesterEnd);
-  return makePeriod(prevSemesterStart, prevSemesterEnd, "es");
+  let semesterEnd = addDays(currentSemesterStart, -1);
+  for (let i = 0; i < offsetSemestersFromLast; i += 1) {
+    semesterEnd = addDays(startOfSemester(semesterEnd), -1);
+  }
+  const semesterStart = startOfSemester(semesterEnd);
+  return makePeriod(semesterStart, semesterEnd, locale);
 }
 
-function getSemesterBeforeClosed(): ComparisonPeriod {
-  const closed = getClosedSemester();
-  const closedEnd = new Date(closed.endDate);
-  const beforeEnd = addDays(startOfSemester(closedEnd), -1);
-  const beforeStart = startOfSemester(beforeEnd);
-  return makePeriod(beforeStart, beforeEnd, "es");
-}
-
-function getYtdRange(reference: Date): ComparisonPeriod {
-  const start = new Date(reference.getFullYear(), 0, 1);
-  return makePeriod(start, reference, "es");
-}
-
-function getPreviousYtdSameDay(reference: Date): ComparisonPeriod {
-  const start = new Date(reference.getFullYear() - 1, 0, 1);
-  const end = new Date(
-    reference.getFullYear() - 1,
-    reference.getMonth(),
-    Math.min(
-      reference.getDate(),
-      endOfMonth(new Date(reference.getFullYear() - 1, reference.getMonth(), 1)).getDate(),
-    ),
-  );
-  return makePeriod(start, end, "es");
-}
-
-function getClosedYear(offsetYearsFromLast = 0): ComparisonPeriod {
+function getClosedYear(offsetYearsFromLast = 0, locale = "es"): ComparisonPeriod {
   const year = new Date().getFullYear() - 1 - offsetYearsFromLast;
-  return makePeriod(new Date(year, 0, 1), new Date(year, 11, 31), "es");
+  return makePeriod(new Date(year, 0, 1), new Date(year, 11, 31), locale);
 }
 
-function getRollingDays(reference: Date, days: number, offsetDays = 0): ComparisonPeriod {
+function getRollingDays(
+  reference: Date,
+  days: number,
+  offsetDays = 0,
+  locale = "es",
+): ComparisonPeriod {
   const end = addDays(reference, -offsetDays);
   const start = addDays(end, -(days - 1));
-  return makePeriod(start, end, "es");
+  return makePeriod(start, end, locale);
 }
 
 function localizePeriod(period: ComparisonPeriod, locale: string): ComparisonPeriod {
@@ -247,50 +208,54 @@ function localizePeriod(period: ComparisonPeriod, locale: string): ComparisonPer
 export function buildComparisonSuggestions(locale = "es"): ComparisonSuggestion[] {
   const today = new Date();
   const es = locale.startsWith("es") ? "es" : "en";
+  const localize = (p: ComparisonPeriod) => localizePeriod(p, es);
 
-  const mtd = getMtdRange(today);
-  const prevMonthSameDay = getSameDayPreviousMonth(today);
-  const prevYearSameDay = getSameDayPreviousYear(today);
-  const closedMonth = getClosedMonth(0);
-  const prevClosedMonth = getClosedMonth(1);
-  const qtd = getQuarterToDate(today);
-  const prevQuarterSamePoint = getPreviousQuarterSamePoint(today);
-  const closedQuarter = getClosedQuarter(0);
-  const prevClosedQuarter = getClosedQuarter(1);
-  const std = getSemesterToDate(today);
-  const prevSemesterSamePoint = getPreviousSemesterSamePoint(today);
-  const closedSemester = getClosedSemester();
-  const prevClosedSemester = getSemesterBeforeClosed();
-  const ytd = getYtdRange(today);
-  const prevYtd = getPreviousYtdSameDay(today);
-  const closedYear = getClosedYear(0);
-  const prevClosedYear = getClosedYear(1);
-  const last30 = getRollingDays(today, 30, 0);
-  const prev30 = getRollingDays(today, 30, 30);
+  const monthToToday = getCurrentMonthToToday(today, es);
+  const prevClosedMonth = getClosedMonth(0, es);
+  const closedMonth = getClosedMonth(0, es);
+  const prevPrevClosedMonth = getClosedMonth(1, es);
+
+  const quarterToToday = getCurrentQuarterToToday(today, es);
+  const prevClosedQuarter = getClosedQuarter(0, es);
+  const closedQuarter = getClosedQuarter(0, es);
+  const prevPrevClosedQuarter = getClosedQuarter(1, es);
+
+  const semesterToToday = getCurrentSemesterToToday(today, es);
+  const prevClosedSemester = getClosedSemester(0, es);
+  const closedSemester = getClosedSemester(0, es);
+  const prevPrevClosedSemester = getClosedSemester(1, es);
+
+  const yearToToday = getCurrentYearToToday(today, es);
+  const prevClosedYear = getClosedYear(0, es);
+  const closedYear = getClosedYear(0, es);
+  const prevPrevClosedYear = getClosedYear(1, es);
+
+  const last30 = getRollingDays(today, 30, 0, es);
+  const prev30 = getRollingDays(today, 30, 30, es);
   const last12Start = new Date(today);
   last12Start.setFullYear(last12Start.getFullYear() - 1);
   const trend12 = makePeriod(last12Start, today, es);
 
-  const localize = (p: ComparisonPeriod) => localizePeriod(p, es);
-
   return [
     {
-      id: "mtd-vs-prev-month-same-day",
-      labelKey: "analisysSystem.suggestions.items.mtdVsPrevMonthSameDay",
+      id: "month-to-today-vs-prev-closed",
+      labelKey: "analisysSystem.suggestions.items.monthToTodayVsPrevClosed",
       category: "month",
-      loadRange: unionRange(mtd, prevMonthSameDay),
-      periodA: localize(mtd),
-      periodB: localize(prevMonthSameDay),
+      loadRange: unionRange(monthToToday, prevClosedMonth),
+      periodA: localize(monthToToday),
+      periodB: localize(prevClosedMonth),
       targetSection: "periodComparison",
+      explanationKey: "analisysSystem.suggestions.explanations.currentVsPrevClosed",
     },
     {
-      id: "mtd-vs-prev-year-same-day",
-      labelKey: "analisysSystem.suggestions.items.mtdVsPrevYearSameDay",
+      id: "closed-month-vs-prev",
+      labelKey: "analisysSystem.suggestions.items.closedMonthVsPrev",
       category: "month",
-      loadRange: unionRange(mtd, prevYearSameDay),
-      periodA: localize(mtd),
-      periodB: localize(prevYearSameDay),
+      loadRange: unionRange(closedMonth, prevPrevClosedMonth),
+      periodA: localize(closedMonth),
+      periodB: localize(prevPrevClosedMonth),
       targetSection: "periodComparison",
+      explanationKey: "analisysSystem.suggestions.explanations.closedVsClosed",
     },
     {
       id: "last-30-vs-prev-30",
@@ -300,69 +265,67 @@ export function buildComparisonSuggestions(locale = "es"): ComparisonSuggestion[
       periodA: localize(last30),
       periodB: localize(prev30),
       targetSection: "periodComparison",
+      explanationKey: "analisysSystem.suggestions.explanations.rolling30",
     },
     {
-      id: "closed-month-vs-prev",
-      labelKey: "analisysSystem.suggestions.items.closedMonthVsPrev",
-      category: "month",
-      loadRange: unionRange(closedMonth, prevClosedMonth),
-      periodA: localize(closedMonth),
-      periodB: localize(prevClosedMonth),
-      targetSection: "periodComparison",
-    },
-    {
-      id: "qtd-vs-prev-quarter-same-point",
-      labelKey: "analisysSystem.suggestions.items.qtdVsPrevQuarterSamePoint",
+      id: "quarter-to-today-vs-prev-closed",
+      labelKey: "analisysSystem.suggestions.items.quarterToTodayVsPrevClosed",
       category: "quarterSemester",
-      loadRange: unionRange(qtd, prevQuarterSamePoint),
-      periodA: localize(qtd),
-      periodB: localize(prevQuarterSamePoint),
+      loadRange: unionRange(quarterToToday, prevClosedQuarter),
+      periodA: localize(quarterToToday),
+      periodB: localize(prevClosedQuarter),
       targetSection: "periodComparison",
+      explanationKey: "analisysSystem.suggestions.explanations.currentVsPrevClosed",
     },
     {
       id: "closed-quarter-vs-prev",
       labelKey: "analisysSystem.suggestions.items.closedQuarterVsPrev",
       category: "quarterSemester",
-      loadRange: unionRange(closedQuarter, prevClosedQuarter),
+      loadRange: unionRange(closedQuarter, prevPrevClosedQuarter),
       periodA: localize(closedQuarter),
-      periodB: localize(prevClosedQuarter),
+      periodB: localize(prevPrevClosedQuarter),
       targetSection: "periodComparison",
+      explanationKey: "analisysSystem.suggestions.explanations.closedVsClosed",
     },
     {
-      id: "std-vs-prev-semester-same-point",
-      labelKey: "analisysSystem.suggestions.items.stdVsPrevSemesterSamePoint",
+      id: "semester-to-today-vs-prev-closed",
+      labelKey: "analisysSystem.suggestions.items.semesterToTodayVsPrevClosed",
       category: "quarterSemester",
-      loadRange: unionRange(std, prevSemesterSamePoint),
-      periodA: localize(std),
-      periodB: localize(prevSemesterSamePoint),
+      loadRange: unionRange(semesterToToday, prevClosedSemester),
+      periodA: localize(semesterToToday),
+      periodB: localize(prevClosedSemester),
       targetSection: "periodComparison",
+      explanationKey: "analisysSystem.suggestions.explanations.currentVsPrevClosed",
     },
     {
       id: "closed-semester-vs-prev",
       labelKey: "analisysSystem.suggestions.items.closedSemesterVsPrev",
       category: "quarterSemester",
-      loadRange: unionRange(closedSemester, prevClosedSemester),
+      loadRange: unionRange(closedSemester, prevPrevClosedSemester),
       periodA: localize(closedSemester),
-      periodB: localize(prevClosedSemester),
+      periodB: localize(prevPrevClosedSemester),
       targetSection: "periodComparison",
+      explanationKey: "analisysSystem.suggestions.explanations.closedVsClosed",
     },
     {
-      id: "ytd-vs-prev-ytd",
-      labelKey: "analisysSystem.suggestions.items.ytdVsPrevYtd",
+      id: "year-to-today-vs-prev-closed",
+      labelKey: "analisysSystem.suggestions.items.yearToTodayVsPrevClosed",
       category: "year",
-      loadRange: unionRange(ytd, prevYtd),
-      periodA: localize(ytd),
-      periodB: localize(prevYtd),
+      loadRange: unionRange(yearToToday, prevClosedYear),
+      periodA: localize(yearToToday),
+      periodB: localize(prevClosedYear),
       targetSection: "periodComparison",
+      explanationKey: "analisysSystem.suggestions.explanations.currentVsPrevClosed",
     },
     {
       id: "closed-year-vs-prev",
       labelKey: "analisysSystem.suggestions.items.closedYearVsPrev",
       category: "year",
-      loadRange: unionRange(closedYear, prevClosedYear),
+      loadRange: unionRange(closedYear, prevPrevClosedYear),
       periodA: localize(closedYear),
-      periodB: localize(prevClosedYear),
+      periodB: localize(prevPrevClosedYear),
       targetSection: "periodComparison",
+      explanationKey: "analisysSystem.suggestions.explanations.closedVsClosed",
     },
     {
       id: "trend-12-months",
@@ -378,9 +341,9 @@ export function buildComparisonSuggestions(locale = "es"): ComparisonSuggestion[
       id: "team-comparison-ytd",
       labelKey: "analisysSystem.suggestions.items.teamComparisonYtd",
       category: "teamTrends",
-      loadRange: ytd,
-      periodA: localize(ytd),
-      periodB: localize(ytd),
+      loadRange: yearToToday,
+      periodA: localize(yearToToday),
+      periodB: localize(yearToToday),
       targetSection: "comparison",
     },
     {
@@ -395,14 +358,35 @@ export function buildComparisonSuggestions(locale = "es"): ComparisonSuggestion[
   ];
 }
 
-export const SUGGESTION_CATEGORY_ORDER: ComparisonSuggestionCategory[] = [
-  "month",
-  "quarterSemester",
-  "year",
-  "teamTrends",
-];
+export function buildCustomComparisonSuggestion(
+  periodARange: DateRange,
+  periodBRange: DateRange,
+  locale = "es",
+): ComparisonSuggestion {
+  const es = locale.startsWith("es") ? "es" : "en";
+  const periodA = makePeriodFromIso(periodARange, es);
+  const periodB = makePeriodFromIso(periodBRange, es);
 
-export const SUGGESTION_CATEGORY_LABEL_KEYS: Record<ComparisonSuggestionCategory, string> = {
+  return {
+    id: REPORT_MODE_CUSTOM_COMPARISON,
+    labelKey: "analisysSystem.suggestions.items.customComparison",
+    category: "custom",
+    loadRange: unionRange(periodA, periodB),
+    periodA,
+    periodB,
+    targetSection: "periodComparison",
+    explanationKey: "analisysSystem.suggestions.explanations.customComparison",
+  };
+}
+
+export const SUGGESTION_CATEGORY_ORDER: Array<
+  Exclude<ComparisonSuggestionCategory, "custom">
+> = ["month", "quarterSemester", "year", "teamTrends"];
+
+export const SUGGESTION_CATEGORY_LABEL_KEYS: Record<
+  Exclude<ComparisonSuggestionCategory, "custom">,
+  string
+> = {
   month: "analisysSystem.suggestions.categories.month",
   quarterSemester: "analisysSystem.suggestions.categories.quarterSemester",
   year: "analisysSystem.suggestions.categories.year",

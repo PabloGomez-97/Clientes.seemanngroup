@@ -13,7 +13,9 @@ import {
 import type { AnalisysSectionId } from "./AnalisysSectionNav";
 import AnalisysSectionNav from "./AnalisysSectionNav";
 import AnalisysSimpleModal from "./AnalisysSimpleModal";
-import QuickSuggestionsPanel from "./QuickSuggestionsPanel";
+import CustomComparisonModal from "./CustomComparisonModal";
+import CustomRangeModal from "./CustomRangeModal";
+import ReportModeSelect from "./ReportModeSelect";
 import type { CommissionAnalysisOperation, CommissionAnalysisReport } from "./types";
 import ComparisonTab from "./tabs/ComparisonTab";
 import PeriodComparisonTab from "./tabs/PeriodComparisonTab";
@@ -22,7 +24,11 @@ import TopCustomersTab from "./tabs/TopCustomersTab";
 import TrendsTab from "./tabs/TrendsTab";
 import {
   type AppliedComparisonSuggestion,
+  type DateRange,
+  REPORT_MODE_CUSTOM_COMPARISON,
+  REPORT_MODE_CUSTOM_RANGE,
   buildComparisonSuggestions,
+  buildCustomComparisonSuggestion,
   findSuggestionById,
 } from "./comparisonSuggestions";
 import {
@@ -85,8 +91,12 @@ export default function AnalisysSystem() {
     useState<CommissionAnalysisOperation | null>(null);
   const [activeSuggestion, setActiveSuggestion] =
     useState<AppliedComparisonSuggestion | null>(null);
-  const [suggestionsModalOpen, setSuggestionsModalOpen] = useState(false);
-  const [resultsFilterModalOpen, setResultsFilterModalOpen] = useState(false);
+  const [reportMode, setReportMode] = useState<string>("");
+  const [customRangeModalOpen, setCustomRangeModalOpen] = useState(false);
+  const [customComparisonModalOpen, setCustomComparisonModalOpen] = useState(false);
+  const [salesRepsModalOpen, setSalesRepsModalOpen] = useState(false);
+  const [consigneeModalOpen, setConsigneeModalOpen] = useState(false);
+  const [customRangeApplied, setCustomRangeApplied] = useState(false);
 
   const generationIdRef = useRef(0);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -401,41 +411,98 @@ export default function AnalisysSystem() {
     }
   };
 
-  const applySuggestion = (suggestionId: string) => {
-    const suggestion = findSuggestionById(suggestionId, i18n.language);
-    if (!suggestion) return;
-
-    setSuggestionsModalOpen(false);
+  const applySuggestion = (suggestion: AppliedComparisonSuggestion) => {
+    setReportMode(suggestion.id);
     setStartDate(suggestion.loadRange.startDate);
     setEndDate(suggestion.loadRange.endDate);
-
-    const applied: AppliedComparisonSuggestion = {
-      ...suggestion,
-      appliedAt: Date.now(),
-    };
-
-    setActiveSuggestion(applied);
+    setActiveSuggestion(suggestion);
+    setCustomRangeApplied(false);
+    setCustomComparisonModalOpen(false);
+    setCustomRangeModalOpen(false);
 
     void handleGenerate(false, {
       overrideRange: suggestion.loadRange,
-      suggestion: applied,
+      suggestion,
     });
   };
 
-  const hasResultsFilters = Boolean(
-    (salesRepsFilter.length > 0 &&
+  const applyPresetSuggestion = (suggestionId: string) => {
+    const suggestion = findSuggestionById(suggestionId, i18n.language);
+    if (!suggestion) return;
+    applySuggestion({
+      ...suggestion,
+      appliedAt: Date.now(),
+    });
+  };
+
+  const applyCustomComparison = (periodA: DateRange, periodB: DateRange) => {
+    const suggestion = buildCustomComparisonSuggestion(periodA, periodB, i18n.language);
+    applySuggestion({
+      ...suggestion,
+      appliedAt: Date.now(),
+    });
+  };
+
+  const applyCustomRange = (range: DateRange) => {
+    setReportMode(REPORT_MODE_CUSTOM_RANGE);
+    setActiveSuggestion(null);
+    setCustomRangeApplied(true);
+    setStartDate(range.startDate);
+    setEndDate(range.endDate);
+    setCustomRangeModalOpen(false);
+
+    void handleGenerate(false, {
+      overrideRange: range,
+    });
+  };
+
+  const handleReportModeChange = (value: string) => {
+    if (value === REPORT_MODE_CUSTOM_COMPARISON) {
+      setCustomComparisonModalOpen(true);
+      return;
+    }
+
+    if (value === REPORT_MODE_CUSTOM_RANGE) {
+      setCustomRangeModalOpen(true);
+      return;
+    }
+
+    applyPresetSuggestion(value);
+  };
+
+  const hasSalesRepFilter = Boolean(
+    salesRepsFilter.length > 0 &&
       !(
         salesRepOptions.length > 0 &&
         salesRepsFilter.length >= salesRepOptions.length &&
         salesRepOptions.every((rep) => salesRepsFilter.includes(rep))
-      )) ||
-      consigneeFilter.trim(),
+      ),
   );
-  const showResultsFilterButton = Boolean(baseReport) && !loading;
+  const hasConsigneeFilter = Boolean(consigneeFilter.trim());
+  const hasResultsFilters = hasSalesRepFilter || hasConsigneeFilter;
+  const showResultFilters = Boolean(baseReport) && !loading;
 
   useEffect(() => {
-    if (!showResultsFilterButton) setResultsFilterModalOpen(false);
-  }, [showResultsFilterButton]);
+    if (!showResultFilters) {
+      setSalesRepsModalOpen(false);
+      setConsigneeModalOpen(false);
+    }
+  }, [showResultFilters]);
+
+  const salesRepsSummary = hasSalesRepFilter
+    ? t("analisysSystem.filters.selectedRepsCount", { count: salesRepsFilter.length })
+    : t("analisysSystem.filters.all");
+  const consigneeSummary = hasConsigneeFilter
+    ? consigneeFilter.trim()
+    : t("analisysSystem.filters.all");
+
+  const customRangeLabel =
+    customRangeApplied && startDate && endDate
+      ? formatReportDateRange(startDate, endDate)
+      : "";
+
+  const canGenerate =
+    Boolean(activeSuggestion) || (reportMode === REPORT_MODE_CUSTOM_RANGE && customRangeApplied);
 
   useEffect(() => {
     const available = new Set(salesRepOptions);
@@ -475,36 +542,59 @@ export default function AnalisysSystem() {
           style={{
             display: "flex",
             flexWrap: "wrap",
-            gap: 16,
+            gap: 12,
             alignItems: "flex-end",
           }}
         >
-          <div>
-            <label style={styles.label}>{t("analisysSystem.filters.from")}</label>
-            <input
-              type="date"
-              value={startDate}
-              onChange={(event) => setStartDate(event.target.value)}
-              style={inputStyle}
+          <ReportModeSelect
+            suggestions={comparisonSuggestions}
+            activeSuggestion={activeSuggestion}
+            value={reportMode}
+            onChange={handleReportModeChange}
+            disabled={busy}
+          />
+
+          {customRangeLabel && reportMode === REPORT_MODE_CUSTOM_RANGE && (
+            <button
+              type="button"
+              onClick={() => setCustomRangeModalOpen(true)}
               disabled={busy}
-            />
-          </div>
-          <div>
-            <label style={styles.label}>{t("analisysSystem.filters.to")}</label>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(event) => setEndDate(event.target.value)}
-              style={inputStyle}
-              disabled={busy}
-            />
-          </div>
+              style={{
+                ...btnOutline,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                maxWidth: "100%",
+              }}
+              title={t("analisysSystem.suggestions.editCustomRange")}
+            >
+              <span style={{ color: C.textMuted, fontSize: 12 }}>
+                {t("analisysSystem.filters.dateRange")}
+              </span>
+              <span style={{ fontWeight: 600 }}>{customRangeLabel}</span>
+            </button>
+          )}
 
           <button
             type="button"
-            style={{ ...btnPrimary, opacity: loading ? 0.7 : 1 }}
-            disabled={busy}
-            onClick={() => handleGenerate(false)}
+            style={{ ...btnPrimary, opacity: loading || !canGenerate ? 0.7 : 1 }}
+            disabled={busy || !canGenerate}
+            onClick={() => {
+              if (activeSuggestion) {
+                void handleGenerate(false, {
+                  overrideRange: activeSuggestion.loadRange,
+                  suggestion: activeSuggestion,
+                });
+                return;
+              }
+              if (reportMode === REPORT_MODE_CUSTOM_RANGE && customRangeApplied) {
+                void handleGenerate(false, {
+                  overrideRange: { startDate, endDate },
+                });
+                return;
+              }
+              setCustomRangeModalOpen(true);
+            }}
           >
             {loading ? t("analisysSystem.actions.generating") : t("analisysSystem.actions.generate")}
           </button>
@@ -518,34 +608,6 @@ export default function AnalisysSystem() {
           >
             {t("analisysSystem.actions.refresh")}
           </button>
-          <button
-            type="button"
-            style={{
-              ...btnOutline,
-              borderColor: activeSuggestion ? C.primary : C.border,
-              color: activeSuggestion ? C.primary : undefined,
-            }}
-            disabled={busy}
-            onClick={() => setSuggestionsModalOpen(true)}
-          >
-            {t("analisysSystem.suggestions.title")}
-          </button>
-          {showResultsFilterButton && (
-            <button
-              type="button"
-              style={{
-                ...btnOutline,
-                borderColor: hasResultsFilters ? C.primary : C.border,
-                color: hasResultsFilters ? C.primary : undefined,
-              }}
-              onClick={() => setResultsFilterModalOpen(true)}
-            >
-              {t("analisysSystem.filters.resultsTitle")}
-              {hasResultsFilters
-                ? ` (${t("analisysSystem.filters.active")})`
-                : ""}
-            </button>
-          )}
           {busy && (
             <button type="button" style={btnOutline} onClick={cancelGenerate}>
               {t("analisysSystem.actions.cancel")}
@@ -558,20 +620,140 @@ export default function AnalisysSystem() {
             {t("analisysSystem.analytics.periodComparison.activeSuggestion", {
               label: t(activeSuggestion.labelKey),
             })}
-          </p>
-        )}
-        {hasResultsFilters && (
-          <p style={{ ...base, fontSize: 12, color: C.textMuted, margin: "12px 0 0" }}>
-            {t("analisysSystem.analytics.filtersActiveHint", {
-              reps:
-                salesRepsFilter.length > 0
-                  ? salesRepsFilter.join(", ")
-                  : t("analisysSystem.filters.all"),
-              consignee: consigneeFilter.trim() || t("analisysSystem.filters.all"),
+            {" · "}
+            {t("analisysSystem.analytics.periodComparison.rangeSummary", {
+              periodA: activeSuggestion.periodA.label,
+              periodB: activeSuggestion.periodB.label,
             })}
           </p>
         )}
       </CardSection>
+
+      {showResultFilters && (
+        <div
+          style={{
+            marginTop: 12,
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "center",
+            gap: 8,
+          }}
+        >
+          <span
+            style={{
+              ...base,
+              fontSize: 11,
+              fontWeight: 600,
+              letterSpacing: "0.04em",
+              textTransform: "uppercase",
+              color: C.textMuted,
+              marginRight: 4,
+            }}
+          >
+            {t("analisysSystem.filters.scopeLabel")}
+          </span>
+
+          <button
+            type="button"
+            onClick={() => setSalesRepsModalOpen(true)}
+            style={{
+              ...base,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              maxWidth: "100%",
+              padding: "6px 10px",
+              borderRadius: 4,
+              border: `1px solid ${hasSalesRepFilter ? C.primary : C.border}`,
+              backgroundColor: hasSalesRepFilter ? C.primaryLight : C.white,
+              color: C.text,
+              cursor: "pointer",
+              fontSize: 13,
+              lineHeight: 1.2,
+            }}
+          >
+            <span style={{ color: C.textMuted }}>
+              {t("analisysSystem.filters.salesRepShort")}
+            </span>
+            <span
+              style={{
+                fontWeight: 600,
+                color: C.secondary,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                maxWidth: 180,
+              }}
+            >
+              {salesRepsSummary}
+            </span>
+            <span style={{ color: C.textLight, fontSize: 11 }} aria-hidden>
+              ▾
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setConsigneeModalOpen(true)}
+            style={{
+              ...base,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              maxWidth: "100%",
+              padding: "6px 10px",
+              borderRadius: 4,
+              border: `1px solid ${hasConsigneeFilter ? C.primary : C.border}`,
+              backgroundColor: hasConsigneeFilter ? C.primaryLight : C.white,
+              color: C.text,
+              cursor: "pointer",
+              fontSize: 13,
+              lineHeight: 1.2,
+            }}
+          >
+            <span style={{ color: C.textMuted }}>
+              {t("analisysSystem.filters.consignee")}
+            </span>
+            <span
+              style={{
+                fontWeight: 600,
+                color: C.secondary,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                maxWidth: 200,
+              }}
+            >
+              {consigneeSummary}
+            </span>
+            <span style={{ color: C.textLight, fontSize: 11 }} aria-hidden>
+              ▾
+            </span>
+          </button>
+
+          {hasResultsFilters && (
+            <button
+              type="button"
+              onClick={() => {
+                setSalesRepsFilter([]);
+                setConsigneeFilter("");
+              }}
+              style={{
+                ...base,
+                border: "none",
+                background: "transparent",
+                color: C.textMuted,
+                fontSize: 12,
+                cursor: "pointer",
+                padding: "4px 6px",
+                textDecoration: "underline",
+              }}
+            >
+              {t("analisysSystem.filters.clearAll")}
+            </button>
+          )}
+        </div>
+      )}
 
       {sessionNotice && (
         <div style={{ marginTop: 12 }}>
@@ -579,98 +761,109 @@ export default function AnalisysSystem() {
         </div>
       )}
 
-      {suggestionsModalOpen && (
+      {customRangeModalOpen && (
+        <CustomRangeModal
+          initialRange={
+            customRangeApplied
+              ? { startDate, endDate }
+              : undefined
+          }
+          onClose={() => setCustomRangeModalOpen(false)}
+          onApply={applyCustomRange}
+        />
+      )}
+
+      {customComparisonModalOpen && (
+        <CustomComparisonModal
+          initialPeriodA={
+            activeSuggestion?.id === REPORT_MODE_CUSTOM_COMPARISON
+              ? activeSuggestion.periodA
+              : undefined
+          }
+          initialPeriodB={
+            activeSuggestion?.id === REPORT_MODE_CUSTOM_COMPARISON
+              ? activeSuggestion.periodB
+              : undefined
+          }
+          onClose={() => setCustomComparisonModalOpen(false)}
+          onApply={applyCustomComparison}
+        />
+      )}
+
+      {salesRepsModalOpen && showResultFilters && (
         <AnalisysSimpleModal
-          title={t("analisysSystem.suggestions.title")}
-          onClose={() => setSuggestionsModalOpen(false)}
+          title={t("analisysSystem.filters.multipleSalesReps")}
+          description={t("analisysSystem.filters.multipleSalesRepsHint")}
+          onClose={() => setSalesRepsModalOpen(false)}
+          maxWidth={720}
         >
-          <QuickSuggestionsPanel
-            suggestions={comparisonSuggestions}
-            activeSuggestion={activeSuggestion}
-            onSelect={applySuggestion}
-            disabled={busy}
-          />
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button
+                type="button"
+                style={{ ...btnOutline, padding: "4px 10px", fontSize: 12 }}
+                onClick={() => setSalesRepsFilter([...salesRepOptions])}
+              >
+                {t("analisysSystem.filters.selectAll")}
+              </button>
+              <button
+                type="button"
+                style={{ ...btnOutline, padding: "4px 10px", fontSize: 12 }}
+                onClick={() => setSalesRepsFilter([])}
+              >
+                {t("analisysSystem.filters.clearReps")}
+              </button>
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+              {salesRepOptions.map((rep) => {
+                const checked = salesRepsFilter.includes(rep);
+                return (
+                  <label
+                    key={rep}
+                    style={{
+                      ...base,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      fontSize: 13,
+                      cursor: "pointer",
+                      padding: "6px 10px",
+                      borderRadius: 6,
+                      border: `1px solid ${checked ? C.primary : C.border}`,
+                      backgroundColor: checked ? C.primaryLight : C.white,
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleSalesRepFilter(rep)}
+                    />
+                    {rep}
+                  </label>
+                );
+              })}
+            </div>
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>
+              <button
+                type="button"
+                style={btnPrimary}
+                onClick={() => setSalesRepsModalOpen(false)}
+              >
+                {t("analisysSystem.filters.apply")}
+              </button>
+            </div>
+          </div>
         </AnalisysSimpleModal>
       )}
 
-      {resultsFilterModalOpen && showResultsFilterButton && (
+      {consigneeModalOpen && showResultFilters && (
         <AnalisysSimpleModal
-          title={t("analisysSystem.filters.resultsTitle")}
-          description={t("analisysSystem.analytics.filtersScopeHint")}
-          onClose={() => setResultsFilterModalOpen(false)}
-          maxWidth={720}
+          title={t("analisysSystem.filters.consignee")}
+          description={t("analisysSystem.filters.consigneeModalHint")}
+          onClose={() => setConsigneeModalOpen(false)}
+          maxWidth={520}
         >
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 20,
-            }}
-          >
-            <div>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  gap: 12,
-                  marginBottom: 8,
-                }}
-              >
-                <label style={{ ...styles.label, marginBottom: 0 }}>
-                  {t("analisysSystem.filters.multipleSalesReps")}
-                </label>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button
-                    type="button"
-                    style={{ ...btnOutline, padding: "4px 10px", fontSize: 12 }}
-                    onClick={() => setSalesRepsFilter([...salesRepOptions])}
-                  >
-                    {t("analisysSystem.filters.selectAll")}
-                  </button>
-                  <button
-                    type="button"
-                    style={{ ...btnOutline, padding: "4px 10px", fontSize: 12 }}
-                    onClick={() => setSalesRepsFilter([])}
-                  >
-                    {t("analisysSystem.filters.clearReps")}
-                  </button>
-                </div>
-              </div>
-              <p style={{ ...base, fontSize: 12, color: C.textMuted, margin: "0 0 12px" }}>
-                {t("analisysSystem.filters.multipleSalesRepsHint")}
-              </p>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-                {salesRepOptions.map((rep) => {
-                  const checked = salesRepsFilter.includes(rep);
-                  return (
-                    <label
-                      key={rep}
-                      style={{
-                        ...base,
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 6,
-                        fontSize: 13,
-                        cursor: "pointer",
-                        padding: "6px 10px",
-                        borderRadius: 6,
-                        border: `1px solid ${checked ? C.primary : C.border}`,
-                        backgroundColor: checked ? C.primaryLight : C.white,
-                      }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() => toggleSalesRepFilter(rep)}
-                      />
-                      {rep}
-                    </label>
-                  );
-                })}
-              </div>
-            </div>
-
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             <div>
               <label style={styles.label}>{t("analisysSystem.filters.consignee")}</label>
               <input
@@ -686,16 +879,12 @@ export default function AnalisysSystem() {
                 ))}
               </datalist>
             </div>
-
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-              {hasResultsFilters && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "flex-end" }}>
+              {hasConsigneeFilter && (
                 <button
                   type="button"
                   style={btnOutline}
-                  onClick={() => {
-                    setSalesRepsFilter([]);
-                    setConsigneeFilter("");
-                  }}
+                  onClick={() => setConsigneeFilter("")}
                 >
                   {t("analisysSystem.filters.clear")}
                 </button>
@@ -703,7 +892,7 @@ export default function AnalisysSystem() {
               <button
                 type="button"
                 style={btnPrimary}
-                onClick={() => setResultsFilterModalOpen(false)}
+                onClick={() => setConsigneeModalOpen(false)}
               >
                 {t("analisysSystem.filters.apply")}
               </button>
