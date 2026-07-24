@@ -1,11 +1,13 @@
 // src/layouts/Navbar-admin.tsx — Chrome Enterprise Dark (admin + proveedor)
 import { useState, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { useTranslation } from "react-i18next";
 import i18n from "../i18n";
 import { imgUrl } from "../config/images";
 import PortalNotificationBell from "@/components/shared/notifications/PortalNotificationBell";
 import { useChatbotContext } from "../contexts/ChatbotContext";
+import { adminPaths } from "@/config/adminPaths";
 
 /* Paleta oscura para la campana de notificaciones (prop compartida) */
 const bellColors = {
@@ -34,11 +36,17 @@ function NavbarAdmin({
   const { user, logout } = useAuth();
   const { toggleChat } = useChatbotContext();
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [showProfile, setShowProfile] = useState(false);
   const [showLanguage, setShowLanguage] = useState(false);
   const [darkMode, setDarkMode] = useState(
     () => localStorage.getItem("darkMode") === "true",
   );
+
+  const settingsPath = location.pathname.startsWith("/proveedor")
+    ? "/proveedor/settings"
+    : adminPaths.settings;
 
   useEffect(() => {
     const root = document.documentElement;
@@ -369,6 +377,35 @@ function NavbarAdmin({
                   <div className="cnav-profile-name">{username}</div>
                   <div className="cnav-profile-email">{email}</div>
                 </div>
+              </div>
+
+              {/* Configuración */}
+              <div className="cnav-profile-section">
+                <button
+                  type="button"
+                  className="cnav-settings-btn"
+                  onClick={() => {
+                    setShowProfile(false);
+                    navigate(settingsPath);
+                  }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
+                    <path
+                      d="M9.392 1.523a1.5 1.5 0 0 0-2.784 0l-.18.44a1.5 1.5 0 0 1-1.083.874l-.472.102a1.5 1.5 0 0 0-.79 2.482l.32.335c.31.326.432.789.327 1.228l-.11.463a1.5 1.5 0 0 0 2.07 1.729l.43-.193a1.5 1.5 0 0 1 1.23 0l.43.193a1.5 1.5 0 0 0 2.07-1.73l-.11-.462a1.5 1.5 0 0 1 .327-1.228l.32-.335a1.5 1.5 0 0 0-.79-2.482l-.472-.102a1.5 1.5 0 0 1-1.083-.875l-.18-.439ZM8 10.25a2.25 2.25 0 1 1 0-4.5 2.25 2.25 0 0 1 0 4.5Z"
+                      stroke="#6b7280"
+                      strokeWidth="1.2"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                  <div style={{ flex: 1 }}>
+                    <div className="cnav-settings-btn__title">
+                      {t("home.navbar.profile.settingsTitle")}
+                    </div>
+                    <div className="cnav-settings-btn__desc">
+                      {t("admin.navbar.settingsDesc")}
+                    </div>
+                  </div>
+                </button>
               </div>
 
               {/* Cerrar sesión */}

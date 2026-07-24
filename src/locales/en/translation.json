@@ -1317,6 +1317,7 @@
       "audit": "Audit",
       "badgeChief": "CHIEF",
       "badgeAudit": "AUDIT",
+      "settings": "Settings",
       "closeMenu": "Close menu",
       "collapseMenu": "Collapse menu",
       "closeNavAria": "Close navigation menu",
@@ -1324,6 +1325,9 @@
       "collapseSidebarAria": "Collapse sidebar",
       "expand": "Expand",
       "collapse": "Collapse"
+    },
+    "navbar": {
+      "settingsDesc": "Change your account password"
     },
     "pricingAlerts": {
       "title": "Tariff Expiry Alerts",

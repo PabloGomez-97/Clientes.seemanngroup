@@ -13,6 +13,7 @@ import ConsultaTarifas from "@/components/cliente/tarifas/rateConsult/ConsultaTa
 import Novedades from "@/components/cliente/novedades/Novedades";
 import PromesasPage from "@/components/cliente/home/promesas/PromesasPage";
 import UltimaMillaCotizador from "@/components/proveedores/cotizaciones/UltimaMillaCotizador";
+import SettingsAdmin from "@/components/administrador/cuentas/SettingsAdmin";
 
 export const providerRoutes = (
   <Route
@@ -36,5 +37,6 @@ export const providerRoutes = (
     <Route path="historico-precios" element={<PriceHistoryExplorer />} />
     <Route path="novedades" element={<Novedades />} />
     <Route path="promesas" element={<PromesasPage />} />
+    <Route path="settings" element={<SettingsAdmin />} />
   </Route>
 );

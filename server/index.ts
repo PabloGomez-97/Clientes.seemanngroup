@@ -6,7 +6,7 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import 'dotenv/config';
 import { Ejecutivo, parseIdInterno, type IEjecutivo, type IEjecutivoDoc } from '../api/models/Ejecutivo.ts';
-import chatHandler from '../api/chat.ts'; 
+import chatHandler from '../api/chat.ts';
 import { fetchAllExpiring } from '../api/services/pricingExpiryService.ts';
 import {
   runPricingAlerts,
@@ -377,7 +377,7 @@ interface ITrackingEmailPreference {
 
 interface ITrackingEmailPreferenceDoc
   extends ITrackingEmailPreference,
-    mongoose.Document {
+  mongoose.Document {
   createdAt: Date;
   updatedAt: Date;
 }
@@ -504,10 +504,10 @@ async function canDeleteShipsgoShipment(
     return canManageReference
       ? { allowed: true, status: 200 }
       : {
-          allowed: false,
-          status: 403,
-          error: 'No tienes permisos para eliminar este tracking',
-        };
+        allowed: false,
+        status: 403,
+        error: 'No tienes permisos para eliminar este tracking',
+      };
   }
 
   const me = await User.findOne({ email: currentUser.sub });
@@ -970,7 +970,7 @@ const DocumentoSchema = new mongoose.Schema<IDocumentoDoc>(
 DocumentoSchema.index({ quoteId: 1, usuarioId: 1 });
 DocumentoSchema.index({ quoteId: 1, usuarioId: 1, scope: 1, modoOperacional: 1 });
 
-const Documento = (mongoose.models.Documento || 
+const Documento = (mongoose.models.Documento ||
   mongoose.model<IDocumentoDoc>('Documento', DocumentoSchema)) as DocumentoModel;
 
 // ============================================================
@@ -1054,10 +1054,10 @@ const QuotePDFSchema = new mongoose.Schema<IQuotePDFDoc>(
 
 QuotePDFSchema.index({ quoteNumber: 1, usuarioId: 1 }, { unique: true });
 
-const QuotePDF = (mongoose.models.QuotePDF || 
+const QuotePDF = (mongoose.models.QuotePDF ||
   mongoose.model<IQuotePDFDoc>('QuotePDF', QuotePDFSchema)) as QuotePDFModel;
 
-  // ============================================================
+// ============================================================
 // CONSTANTES PARA DOCUMENTOS
 // ============================================================
 
@@ -2205,7 +2205,7 @@ app.get('/api/me', auth, async (req, res) => {
       });
     }
     const user = await User.findOne({ email: currentUser.sub }).populate('ejecutivoId');
-    
+
     if (!user) {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
@@ -2232,7 +2232,7 @@ app.get('/api/me', auth, async (req, res) => {
       ? user.usernames
       : [user.username];
 
-    res.json({ 
+    res.json({
       user: {
         sub: user.email,
         username: user.username,
@@ -2240,26 +2240,26 @@ app.get('/api/me', auth, async (req, res) => {
         nombreuser: user.nombreuser,
         ejecutivo: ejecutivoDoc
           ? {
-              id: ejecutivoDoc._id,
-              nombre: ejecutivoDoc.nombre,
-              email: ejecutivoDoc.email,
-              telefono: ejecutivoDoc.telefono,
-              idInterno:
-                typeof ejecutivoDoc.idInterno === 'number'
-                  ? ejecutivoDoc.idInterno
-                  : null,
-            }
+            id: ejecutivoDoc._id,
+            nombre: ejecutivoDoc.nombre,
+            email: ejecutivoDoc.email,
+            telefono: ejecutivoDoc.telefono,
+            idInterno:
+              typeof ejecutivoDoc.idInterno === 'number'
+                ? ejecutivoDoc.idInterno
+                : null,
+          }
           : null,
         roles,
         mobilePushEnabled: user.mobilePushEnabled !== false,
       },
       ...(isMobileClient(req)
         ? {
-            token: signToken(
-              { sub: user.email, username: user.username },
-              { persistent: true },
-            ),
-          }
+          token: signToken(
+            { sub: user.email, username: user.username },
+            { persistent: true },
+          ),
+        }
         : {}),
     });
   } catch (e) {
@@ -2942,8 +2942,8 @@ app.delete('/api/admin/ejecutivos/:id', auth, async (req, res) => {
     // Verificar si hay usuarios asignados
     const clientesAsignados = await User.countDocuments({ ejecutivoId: id });
     if (clientesAsignados > 0) {
-      return res.status(400).json({ 
-        error: `No se puede eliminar. Hay ${clientesAsignados} cliente(s) asignado(s) a este ejecutivo.` 
+      return res.status(400).json({
+        error: `No se puede eliminar. Hay ${clientesAsignados} cliente(s) asignado(s) a este ejecutivo.`
       });
     }
 
@@ -3274,8 +3274,8 @@ app.delete('/api/admin/users/:id', auth, async (req, res) => {
       if (ejDoc) {
         const clientesAsignados = await User.countDocuments({ ejecutivoId: ejDoc._id });
         if (clientesAsignados > 0) {
-          return res.status(400).json({ 
-            error: `No se puede eliminar. Hay ${clientesAsignados} cliente(s) asignado(s) a este ejecutivo.` 
+          return res.status(400).json({
+            error: `No se puede eliminar. Hay ${clientesAsignados} cliente(s) asignado(s) a este ejecutivo.`
           });
         }
         // Eliminar también el documento Ejecutivo
@@ -3319,21 +3319,21 @@ app.get('/api/linbis-token', async (req, res) => {
     const OAUTH_REFRESH_TIMEOUT_MS = 15_000;
 
     if (!LINBIS_CLIENT_ID || !LINBIS_TOKEN_URL) {
-      return res.status(500).json({ 
-        error: 'Missing Linbis configuration. Set LINBIS_CLIENT_ID and LINBIS_TOKEN_URL in .env' 
+      return res.status(500).json({
+        error: 'Missing Linbis configuration. Set LINBIS_CLIENT_ID and LINBIS_TOKEN_URL in .env'
       });
     }
 
     if (!linbisTokenCache.refresh_token) {
-      return res.status(500).json({ 
-        error: 'No refresh token found. Please initialize it first with POST /api/admin/init-linbis-token' 
+      return res.status(500).json({
+        error: 'No refresh token found. Please initialize it first with POST /api/admin/init-linbis-token'
       });
     }
 
     const now = Date.now();
-    if (linbisTokenCache.access_token && 
-        linbisTokenCache.access_token_expiry && 
-        linbisTokenCache.access_token_expiry > now + 300000) {
+    if (linbisTokenCache.access_token &&
+      linbisTokenCache.access_token_expiry &&
+      linbisTokenCache.access_token_expiry > now + 300000) {
       console.log('[linbis-token] Using cached access token');
       return res.json({
         token: linbisTokenCache.access_token,
@@ -3425,9 +3425,9 @@ app.post('/api/admin/init-linbis-token', (req, res) => {
 
     console.log('[init-linbis-token] Refresh token initialized successfully');
 
-    return res.json({ 
-      success: true, 
-      message: 'Refresh token initialized successfully' 
+    return res.json({
+      success: true,
+      message: 'Refresh token initialized successfully'
     });
   } catch (error) {
     console.error('[init-linbis-token] Error:', error);
@@ -3447,8 +3447,8 @@ app.get('/api/shipsgo/shipments', async (req, res) => {
     const SHIPSGO_API_URL = 'https://api.shipsgo.com/v2/air/shipments';
 
     if (!SHIPSGO_API_TOKEN) {
-      return res.status(500).json({ 
-        error: 'Missing ShipsGo API token. Set SHIPSGO_API_TOKEN in .env' 
+      return res.status(500).json({
+        error: 'Missing ShipsGo API token. Set SHIPSGO_API_TOKEN in .env'
       });
     }
 
@@ -3463,14 +3463,14 @@ app.get('/api/shipsgo/shipments', async (req, res) => {
     if (!response.ok) {
       const errorText = await response.text();
       console.error('[shipsgo] API Error:', errorText);
-      return res.status(response.status).json({ 
-        error: 'Failed to fetch shipments from ShipsGo' 
+      return res.status(response.status).json({
+        error: 'Failed to fetch shipments from ShipsGo'
       });
     }
 
     const data = await response.json() as { shipments?: Array<any> };
     console.log(`[shipsgo] Successfully fetched ${data.shipments?.length || 0} shipments`);
-    
+
     return res.json(data);
 
   } catch (error) {
@@ -3484,13 +3484,13 @@ app.post('/api/shipsgo/shipments', auth, async (req, res) => {
   console.log('🚢 [shipsgo] Creating new shipment...');
   try {
     const currentUser = (req as any).user as AuthPayload;
-    
+
     const SHIPSGO_API_TOKEN = process.env.SHIPSGO_API_TOKEN;
     const SHIPSGO_API_URL = 'https://api.shipsgo.com/v2/air/shipments';
 
     if (!SHIPSGO_API_TOKEN) {
-      return res.status(500).json({ 
-        error: 'Missing ShipsGo API token. Set SHIPSGO_API_TOKEN in environment variables' 
+      return res.status(500).json({
+        error: 'Missing ShipsGo API token. Set SHIPSGO_API_TOKEN in environment variables'
       });
     }
 
@@ -3499,8 +3499,8 @@ app.post('/api/shipsgo/shipments', auth, async (req, res) => {
 
     // Validaciones básicas
     if (!reference || !awb_number) {
-      return res.status(400).json({ 
-        error: 'reference y awb_number son campos requeridos' 
+      return res.status(400).json({
+        error: 'reference y awb_number son campos requeridos'
       });
     }
 
@@ -3511,16 +3511,16 @@ app.post('/api/shipsgo/shipments', auth, async (req, res) => {
 
     if (!canManageReference) {
       console.error(`[shipsgo] Security violation: User ${currentUser.username} tried to create shipment with reference ${reference}`);
-      return res.status(403).json({ 
-        error: 'No puedes crear trackeos para otros usuarios' 
+      return res.status(403).json({
+        error: 'No puedes crear trackeos para otros usuarios'
       });
     }
 
     // Validar formato de AWB (11 dígitos, con o sin guion)
     const awbClean = awb_number.replace(/-/g, '');
     if (!/^\d{11}$/.test(awbClean)) {
-      return res.status(400).json({ 
-        error: 'El AWB debe contener exactamente 11 dígitos' 
+      return res.status(400).json({
+        error: 'El AWB debe contener exactamente 11 dígitos'
       });
     }
 
@@ -3529,29 +3529,29 @@ app.post('/api/shipsgo/shipments', auth, async (req, res) => {
 
     // Validar followers (opcional, pero si existe debe ser array)
     if (followers && !Array.isArray(followers)) {
-      return res.status(400).json({ 
-        error: 'followers debe ser un array de emails' 
+      return res.status(400).json({
+        error: 'followers debe ser un array de emails'
       });
     }
 
     // Validar máximo 10 followers visibles + 1 correo interno de operaciones
     if (followers && followers.length > MAX_VISIBLE_TRACK_FOLLOWERS) {
-      return res.status(400).json({ 
-        error: 'Máximo 10 emails visibles permitidos en followers' 
+      return res.status(400).json({
+        error: 'Máximo 10 emails visibles permitidos en followers'
       });
     }
 
     // Validar tags (opcional, pero si existe debe ser array)
     if (tags && !Array.isArray(tags)) {
-      return res.status(400).json({ 
-        error: 'tags debe ser un array' 
+      return res.status(400).json({
+        error: 'tags debe ser un array'
       });
     }
 
     // Validar máximo 10 tags
     if (tags && tags.length > 10) {
-      return res.status(400).json({ 
-        error: 'Máximo 10 tags permitidos' 
+      return res.status(400).json({
+        error: 'Máximo 10 tags permitidos'
       });
     }
 
@@ -3581,7 +3581,7 @@ app.post('/api/shipsgo/shipments', auth, async (req, res) => {
     if (response.status === 409) {
       // Shipment ya existe
       console.log('[shipsgo] Shipment already exists:', data);
-      return res.status(409).json({ 
+      return res.status(409).json({
         error: 'Ya existe un trackeo con este AWB para tu cuenta',
         code: 'ALREADY_EXISTS',
         existingShipment: data.shipment || null
@@ -3591,7 +3591,7 @@ app.post('/api/shipsgo/shipments', auth, async (req, res) => {
     if (response.status === 402) {
       // Sin créditos
       console.error('[shipsgo] Insufficient credits');
-      return res.status(402).json({ 
+      return res.status(402).json({
         error: 'No hay créditos disponibles. Por favor contacta a tu ejecutivo de cuenta.',
         code: 'INSUFFICIENT_CREDITS'
       });
@@ -3600,7 +3600,7 @@ app.post('/api/shipsgo/shipments', auth, async (req, res) => {
     if (!response.ok) {
       const errorText = await response.text();
       console.error('[shipsgo] API Error:', response.status, errorText);
-      return res.status(response.status).json({ 
+      return res.status(response.status).json({
         error: 'Error al crear el shipment en ShipsGo',
         details: errorText
       });
@@ -4057,7 +4057,7 @@ app.post('/api/shipsgo/ocean/shipments', auth, async (req, res) => {
       body: JSON.stringify(shipmentData)
     });
 
-    const data = await response.json() as { shipment?: any; [key: string]: any };
+    const data = await response.json() as { shipment?: any;[key: string]: any };
 
     if (response.status === 409) {
       console.log('[shipsgo-ocean] Shipment already exists:', data);
@@ -4457,7 +4457,7 @@ app.get('/api/documents/all', auth, async (req, res) => {
 app.post('/api/documentos/upload', auth, async (req, res) => {
   try {
     const currentUser = (req as any).user;
-    
+
     if (!currentUser || !currentUser.sub || !currentUser.username) {
       return res.status(401).json({ error: 'Usuario no autenticado' });
     }
@@ -4466,35 +4466,35 @@ app.post('/api/documentos/upload', auth, async (req, res) => {
     const quoteNumber = String(quoteId);
 
     if (!quoteId || !tipo || !nombreArchivo || !contenidoBase64) {
-      return res.status(400).json({ 
-        error: 'Faltan campos requeridos: quoteId, tipo, nombreArchivo, contenidoBase64' 
+      return res.status(400).json({
+        error: 'Faltan campos requeridos: quoteId, tipo, nombreArchivo, contenidoBase64'
       });
     }
 
     const tiposPermitidos = [...TIPOS_DOCUMENTO_COTIZACION];
     if (!tiposPermitidos.includes(tipo)) {
-      return res.status(400).json({ 
-        error: `Tipo de documento inválido. Debe ser uno de: ${tiposPermitidos.join(', ')}` 
+      return res.status(400).json({
+        error: `Tipo de documento inválido. Debe ser uno de: ${tiposPermitidos.join(', ')}`
       });
     }
 
     if (!validateBase64(contenidoBase64)) {
-      return res.status(400).json({ 
-        error: 'El archivo debe estar en formato base64 válido' 
+      return res.status(400).json({
+        error: 'El archivo debe estar en formato base64 válido'
       });
     }
 
     const mimeType = getMimeTypeFromBase64(contenidoBase64);
     if (!mimeType || !ALLOWED_MIME_TYPES.includes(mimeType)) {
-      return res.status(400).json({ 
-        error: 'Tipo de archivo no permitido. Solo PDF, Excel y Word' 
+      return res.status(400).json({
+        error: 'Tipo de archivo no permitido. Solo PDF, Excel y Word'
       });
     }
 
     const fileSize = getBase64Size(contenidoBase64);
     if (fileSize > MAX_FILE_SIZE) {
-      return res.status(400).json({ 
-        error: `El archivo excede el tamaño máximo de 5MB. Tamaño: ${(fileSize / 1024 / 1024).toFixed(2)}MB` 
+      return res.status(400).json({
+        error: `El archivo excede el tamaño máximo de 5MB. Tamaño: ${(fileSize / 1024 / 1024).toFixed(2)}MB`
       });
     }
 
@@ -4542,7 +4542,7 @@ app.post('/api/documentos/upload', auth, async (req, res) => {
       tipoOperacion: 'Cotización',
       tipoDocumento: tipo,
       nombreArchivo: String(nombreArchivo),
-    }).catch(() => {});
+    }).catch(() => { });
 
     return res.status(201).json({
       success: true,
@@ -4560,7 +4560,7 @@ app.post('/api/documentos/upload', auth, async (req, res) => {
 
   } catch (error: any) {
     console.error('[documentos] Error al subir:', error);
-    return res.status(500).json({ 
+    return res.status(500).json({
       error: 'Error interno al subir documento',
       details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
@@ -4571,7 +4571,7 @@ app.post('/api/documentos/upload', auth, async (req, res) => {
 app.get('/api/documentos/:quoteId', auth, async (req, res) => {
   try {
     const currentUser = (req as any).user;
-    
+
     if (!currentUser || !currentUser.username) {
       return res.status(401).json({ error: 'Usuario no autenticado' });
     }
@@ -4588,8 +4588,8 @@ app.get('/api/documentos/:quoteId', auth, async (req, res) => {
     );
 
     const documentos = await Documento.find(buildCotizacionDocumentQuery(String(quoteId), ownerUsername))
-    .select('-contenidoBase64')
-    .sort({ createdAt: -1 });
+      .select('-contenidoBase64')
+      .sort({ createdAt: -1 });
 
     console.log(`[documentos] Encontrados ${documentos.length} documentos para quote ${quoteId}`);
 
@@ -4608,7 +4608,7 @@ app.get('/api/documentos/:quoteId', auth, async (req, res) => {
 
   } catch (error: any) {
     console.error('[documentos] Error al obtener:', error);
-    return res.status(500).json({ 
+    return res.status(500).json({
       error: 'Error interno al obtener documentos'
     });
   }
@@ -4618,7 +4618,7 @@ app.get('/api/documentos/:quoteId', auth, async (req, res) => {
 app.get('/api/documentos/download/:documentoId', auth, async (req, res) => {
   try {
     const currentUser = (req as any).user;
-    
+
     if (!currentUser || !currentUser.username) {
       return res.status(401).json({ error: 'Usuario no autenticado' });
     }
@@ -4677,7 +4677,7 @@ app.get('/api/documentos/download/:documentoId', auth, async (req, res) => {
 
   } catch (error: any) {
     console.error('[documentos] Error al descargar:', error);
-    return res.status(500).json({ 
+    return res.status(500).json({
       error: 'Error interno al descargar documento'
     });
   }
@@ -4687,7 +4687,7 @@ app.get('/api/documentos/download/:documentoId', auth, async (req, res) => {
 app.delete('/api/documentos/:documentoId', auth, async (req, res) => {
   try {
     const currentUser = (req as any).user;
-    
+
     if (!currentUser || !currentUser.username) {
       return res.status(401).json({ error: 'Usuario no autenticado' });
     }
@@ -4733,7 +4733,7 @@ app.delete('/api/documentos/:documentoId', auth, async (req, res) => {
 
   } catch (error: any) {
     console.error('[documentos] Error al eliminar:', error);
-    return res.status(500).json({ 
+    return res.status(500).json({
       error: 'Error interno al eliminar documento'
     });
   }
@@ -4827,7 +4827,7 @@ app.post('/api/documentos/operacionales/upload', auth, async (req, res) => {
       tipoOperacion: modo === 'aereo' ? 'Cotización Aérea' : 'Cotización Marítima',
       tipoDocumento: tipo,
       nombreArchivo: String(nombreArchivo),
-    }).catch(() => {});
+    }).catch(() => { });
 
     return res.status(201).json({
       success: true,
@@ -5099,7 +5099,7 @@ app.post('/api/ground-shipments/documentos/upload', auth, async (req, res) => {
       tipoOperacion: 'Operación Terrestre',
       tipoDocumento: tipo,
       nombreArchivo: String(nombreArchivo),
-    }).catch(() => {});
+    }).catch(() => { });
 
     return res.status(201).json({
       success: true,
@@ -5271,23 +5271,23 @@ app.post('/api/google-sheets/append', auth, async (req, res) => {
     });
 
     if (!response.ok) {
-      return res.status(response.status).json({ 
-        error: 'Failed to append to Google Sheets' 
+      return res.status(response.status).json({
+        error: 'Failed to append to Google Sheets'
       });
     }
 
     const data = await response.json();
-    res.status(200).json({ 
-      success: true, 
+    res.status(200).json({
+      success: true,
       message: 'Data appended successfully',
-      data 
+      data
     });
 
   } catch (error: any) {
     console.error('❌ Error appending to Google Sheets:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Internal server error',
-      details: error.message 
+      details: error.message
     });
   }
 });
@@ -5803,8 +5803,8 @@ app.post('/api/operaciones', auth, async (req, res) => {
       if (ejecutivoEmail && process.env.BREVO_API_KEY) {
         const tipoServicioLabel =
           tipoServicio === 'FCL' ? 'Marítimo FCL'
-          : tipoServicio === 'LCL' ? 'Marítimo LCL'
-          : 'Aéreo';
+            : tipoServicio === 'LCL' ? 'Marítimo LCL'
+              : 'Aéreo';
 
         let subject: string;
         let htmlContent: string;
@@ -6266,7 +6266,7 @@ app.get('/api/quote-pdf/list', auth, async (req, res) => {
       getRequestedDocumentOwnerUsername(req),
     );
 
-    const pdfs = await QuotePDF.find({ 
+    const pdfs = await QuotePDF.find({
       usuarioId: ownerUsername,
       quoteNumber: { $exists: true, $nin: ['', null] }
     })
@@ -6521,7 +6521,7 @@ app.post('/api/audit', auth, async (req, res) => {
 app.get('/api/audit', auth, async (req, res) => {
   try {
     const currentUser = (req as any).user as AuthPayload;
-    
+
     // Solo ejecutivos pueden ver la auditoría
     if (currentUser.username !== 'Ejecutivo') {
       return res.status(403).json({ error: 'No autorizado' });
@@ -6718,7 +6718,7 @@ app.get('/api/alumnos/ranking', auth, async (req, res) => {
         puntajeTotal: a.puntajeTotal,
       };
     })
-    .sort((a, b) => b.puntajePeriodo - a.puntajePeriodo);
+      .sort((a, b) => b.puntajePeriodo - a.puntajePeriodo);
 
     return res.json({ ranking, periodo, fechaInicio, fechaFin });
   } catch (error) {

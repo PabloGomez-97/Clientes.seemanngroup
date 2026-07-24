@@ -1318,6 +1318,7 @@
       "audit": "Auditoría",
       "badgeChief": "CHIEF",
       "badgeAudit": "AUDIT",
+      "settings": "Configuración",
       "closeMenu": "Cerrar menú",
       "collapseMenu": "Colapsar menú",
       "closeNavAria": "Cerrar menú de navegación",
@@ -1325,6 +1326,9 @@
       "collapseSidebarAria": "Colapsar barra lateral",
       "expand": "Expandir",
       "collapse": "Colapsar"
+    },
+    "navbar": {
+      "settingsDesc": "Cambia la contraseña de tu cuenta"
     },
     "pricingAlerts": {
       "title": "Alertas de Vencimiento de Tarifas",

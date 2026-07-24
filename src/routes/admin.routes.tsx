@@ -2,7 +2,7 @@ import { Route, Navigate } from "react-router-dom";
 import ProtectedRoute from "@/auth/ProtectedRoute";
 import AdminLayout from "@/layouts/AdminLayout";
 import UsersManagement from "@/components/administrador/cuentas/users-management";
-import SettingsAdmin from "@/components/administrador/cuentas/clientes-ejecutivos";
+import SettingsAdmin from "@/components/administrador/cuentas/SettingsAdmin";
 import ReporteriaLayout from "@/components/administrador/reporteria/ReporteriaLayout";
 import ReportExecutive from "@/components/administrador/reporteria/financiera/Reporteriaexecutivo";
 import Cotizadoradministrador from "@/components/administrador/cotizador/administrador/Cotizador-administrador";

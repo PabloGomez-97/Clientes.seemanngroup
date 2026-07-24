@@ -288,6 +288,17 @@ function SidebarAdmin({
     [t],
   );
 
+  const bottomMenuItems = useMemo(
+    () => [
+      {
+        path: "/admin/settings",
+        name: t("admin.sidebar.settings"),
+        icon: "fa fa-cog",
+      },
+    ],
+    [t],
+  );
+
   // Filtro por permisos (restrictedTo + roles + hiddenForAdmin)
   const isAdmin = !!user?.roles?.administrador;
 
@@ -594,6 +605,38 @@ function SidebarAdmin({
             </div>
           ))}
         </nav>
+
+        {/* Configuración */}
+        {canSeeByRole("/admin/settings") && (
+          <div className="csb-footer">
+            <ul className="csb-list">
+              {bottomMenuItems.map((item) => {
+                const isItemActive = isActive(item.path);
+                return (
+                  <li key={item.path}>
+                    <a
+                      href={item.path}
+                      className={[
+                        "csb-item",
+                        isItemActive ? "csb-item--active" : "",
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
+                      onClick={(e) => navigateFromSidebar(e, item.path)}
+                      title={isRail ? item.name : undefined}
+                      aria-current={isItemActive ? "page" : undefined}
+                    >
+                      <i className={`csb-item__icon ${item.icon}`} aria-hidden />
+                      {!isRail && (
+                        <span className="csb-item__label">{item.name}</span>
+                      )}
+                    </a>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
 
         {/* Colapsar / cerrar */}
         <div className="csb-collapse">
