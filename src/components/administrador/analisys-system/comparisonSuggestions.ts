@@ -18,6 +18,9 @@ export type ComparisonSuggestionCategory =
   | "teamTrends"
   | "custom";
 
+/** Categories shown in the report-mode select (excludes custom dual-range). */
+export type SuggestionPresetCategory = Exclude<ComparisonSuggestionCategory, "custom">;
+
 export type ComparisonSuggestion = {
   id: string;
   labelKey: string;
@@ -379,14 +382,14 @@ export function buildCustomComparisonSuggestion(
   };
 }
 
-export const SUGGESTION_CATEGORY_ORDER: Array<
-  Exclude<ComparisonSuggestionCategory, "custom">
-> = ["month", "quarterSemester", "year", "teamTrends"];
+export const SUGGESTION_CATEGORY_ORDER: SuggestionPresetCategory[] = [
+  "month",
+  "quarterSemester",
+  "year",
+  "teamTrends",
+];
 
-export const SUGGESTION_CATEGORY_LABEL_KEYS: Record<
-  Exclude<ComparisonSuggestionCategory, "custom">,
-  string
-> = {
+export const SUGGESTION_CATEGORY_LABEL_KEYS: Record<SuggestionPresetCategory, string> = {
   month: "analisysSystem.suggestions.categories.month",
   quarterSemester: "analisysSystem.suggestions.categories.quarterSemester",
   year: "analisysSystem.suggestions.categories.year",

@@ -69,8 +69,9 @@ export default function ReportModeSelect({
         {SUGGESTION_CATEGORY_ORDER.map((category) => {
           const items = suggestions.filter((item) => item.category === category);
           if (items.length === 0) return null;
+          const labelKey = SUGGESTION_CATEGORY_LABEL_KEYS[category];
           return (
-            <optgroup key={category} label={t(SUGGESTION_CATEGORY_LABEL_KEYS[category])}>
+            <optgroup key={category} label={t(labelKey)}>
               {items.map((item) => (
                 <option key={item.id} value={item.id}>
                   {t(item.labelKey)}
