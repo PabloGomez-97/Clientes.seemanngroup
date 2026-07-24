@@ -26,9 +26,9 @@ type Props = {
   /** false mientras carga el listado de overrides — bloquea guardar */
   dataReady?: boolean;
   saving?: boolean;
-  onSave: (fields: Partial<IClientProfitOverrideFields>) => Promise<void>;
-  onClearMode: (mode: ProfitMode) => Promise<void>;
-  onClearAll: () => Promise<void>;
+  onSave: (fields: Partial<IClientProfitOverrideFields>) => Promise<unknown>;
+  onClearMode: (mode: ProfitMode) => Promise<unknown>;
+  onClearAll: () => Promise<unknown>;
 };
 
 function parsePositiveInt(value: string): number | null {
