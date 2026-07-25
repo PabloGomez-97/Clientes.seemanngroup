@@ -3194,8 +3194,8 @@ function QuoteAPITester({
     if (profitLoading || !profitReady) {
       setError(
         profitError
-          ? `No se pudo cargar el profit: ${profitError}. Reintenta antes de cotizar.`
-          : "Espera a que se cargue el profit del cliente antes de generar la cotización",
+          ? "No se pudieron cargar las tarifas. Reintenta antes de cotizar."
+          : "Espera a que terminen de cargar las tarifas antes de generar la cotización",
       );
       return;
     }
@@ -3203,13 +3203,13 @@ function QuoteAPITester({
     const freshProfit = await ensureFreshProfit();
     if (!freshProfit.ok) {
       setError(
-        `No se pudo verificar el profit: ${freshProfit.error}. Reintenta antes de cotizar.`,
+        "No se pudieron verificar las tarifas. Reintenta antes de cotizar.",
       );
       return;
     }
     if (!profitMarkupEquals(profitMarkup, freshProfit.markup)) {
       setError(
-        "El profit se actualizó. Revisa los montos en pantalla y vuelve a generar la cotización.",
+        "Las tarifas se actualizaron. Revisa los montos en pantalla y vuelve a generar la cotización.",
       );
       return;
     }
@@ -3333,8 +3333,8 @@ function QuoteAPITester({
     if (profitLoading || !profitReady) {
       setError(
         profitError
-          ? `No se pudo cargar el profit: ${profitError}. Reintenta antes de cotizar.`
-          : "Espera a que se cargue el profit del cliente antes de generar la cotización",
+          ? "No se pudieron cargar las tarifas. Reintenta antes de cotizar."
+          : "Espera a que terminen de cargar las tarifas antes de generar la cotización",
       );
       return;
     }
@@ -3342,13 +3342,13 @@ function QuoteAPITester({
     const freshProfit = await ensureFreshProfit();
     if (!freshProfit.ok) {
       setError(
-        `No se pudo verificar el profit: ${freshProfit.error}. Reintenta antes de cotizar.`,
+        "No se pudieron verificar las tarifas. Reintenta antes de cotizar.",
       );
       return;
     }
     if (!profitMarkupEquals(profitMarkup, freshProfit.markup)) {
       setError(
-        "El profit se actualizó. Revisa los montos en pantalla y vuelve a generar la cotización.",
+        "Las tarifas se actualizaron. Revisa los montos en pantalla y vuelve a generar la cotización.",
       );
       return;
     }
@@ -4331,7 +4331,7 @@ function QuoteAPITester({
           showOnDocument: true,
           notes: isSimulationMode
             ? `AIR FREIGHT charge - Tarifa simulada: ${afMoneda} ${afPrecioConMarkup.toFixed(2)}/kg${pesoAirFreight !== pesoChargeable ? ` (cobrado por ${pesoAirFreight}kg, peso m\u00ednimo del rango)` : ""}`
-            : `AIR FREIGHT charge - Tarifa: ${afMoneda} ${afPrecio.toFixed(2)}/kg + ${profitMarkup.air}%${pesoAirFreight !== pesoChargeable ? ` (cobrado por ${pesoAirFreight}kg, peso m\u00ednimo del rango)` : ""}`,
+            : `AIR FREIGHT charge - Tarifa: ${afMoneda} ${afPrecio.toFixed(2)}/kg${pesoAirFreight !== pesoChargeable ? ` (cobrado por ${pesoAirFreight}kg, peso m\u00ednimo del rango)` : ""}`,
         },
         expense: {
           quantity: pesoAirFreight,
@@ -4380,7 +4380,7 @@ function QuoteAPITester({
               },
               reference: "Amount to FCA Charges",
               showOnDocument: true,
-              notes: `FCA Local Charges - Base: ${rutaSeleccionada.localCharges} + ${((FCA_MARKUP - 1) * 100).toFixed(0)}% markup`,
+              notes: `FCA Local Charges - Base: ${rutaSeleccionada.localCharges}`,
             },
             expense: {
               currency: {
@@ -4414,7 +4414,7 @@ function QuoteAPITester({
               },
               reference: "Amount to Gastos x kg",
               showOnDocument: true,
-              notes: `Gastos x kg - Rate: ${rutaSeleccionada.gastosXKg}/kg + ${((FCA_MARKUP - 1) * 100).toFixed(0)}% markup${rutaSeleccionada.minGastosXKg > 0 ? ` (min: ${rutaSeleccionada.minGastosXKg})` : ""}`,
+              notes: `Gastos x kg - Rate: ${rutaSeleccionada.gastosXKg}/kg${rutaSeleccionada.minGastosXKg > 0 ? ` (min: ${rutaSeleccionada.minGastosXKg})` : ""}`,
             },
             expense: {
               currency: {
@@ -4945,7 +4945,7 @@ function QuoteAPITester({
           showOnDocument: true,
           notes: isSimulationMode
             ? `AIR FREIGHT charge (Overall) - Tarifa simulada: ${afMoneda} ${afPrecioConMarkup.toFixed(2)}/${chargeableUnit} - Cobrado por ${chargeableUnit === "kg" ? "peso" : "volumen"}${pesoAirFreight !== pesoChargeable ? ` (cobrado por ${pesoAirFreight}kg, peso m\u00ednimo del rango)` : ""}`
-            : `AIR FREIGHT charge (Overall) - Tarifa: ${afMoneda} ${afPrecio.toFixed(2)}/${chargeableUnit} + ${profitMarkup.air}% - Cobrado por ${chargeableUnit === "kg" ? "peso" : "volumen"}${pesoAirFreight !== pesoChargeable ? ` (cobrado por ${pesoAirFreight}kg, peso m\u00ednimo del rango)` : ""}`,
+            : `AIR FREIGHT charge (Overall) - Tarifa: ${afMoneda} ${afPrecio.toFixed(2)}/${chargeableUnit} - Cobrado por ${chargeableUnit === "kg" ? "peso" : "volumen"}${pesoAirFreight !== pesoChargeable ? ` (cobrado por ${pesoAirFreight}kg, peso m\u00ednimo del rango)` : ""}`,
         },
         expense: {
           quantity: pesoAirFreight,
@@ -4994,7 +4994,7 @@ function QuoteAPITester({
               },
               reference: "Amount to FCA Charges to OVERALL",
               showOnDocument: true,
-              notes: `FCA Local Charges (Overall) - Base: ${rutaSeleccionada.localCharges} + ${((FCA_MARKUP - 1) * 100).toFixed(0)}% markup`,
+              notes: `FCA Local Charges (Overall) - Base: ${rutaSeleccionada.localCharges}`,
             },
             expense: {
               currency: {
@@ -5028,7 +5028,7 @@ function QuoteAPITester({
               },
               reference: "Amount to Gastos x kg to OVERALL",
               showOnDocument: true,
-              notes: `Gastos x kg (Overall) - Rate: ${rutaSeleccionada.gastosXKg}/kg + ${((FCA_MARKUP - 1) * 100).toFixed(0)}% markup${rutaSeleccionada.minGastosXKg > 0 ? ` (min: ${rutaSeleccionada.minGastosXKg})` : ""}`,
+              notes: `Gastos x kg (Overall) - Rate: ${rutaSeleccionada.gastosXKg}/kg${rutaSeleccionada.minGastosXKg > 0 ? ` (min: ${rutaSeleccionada.minGastosXKg})` : ""}`,
             },
             expense: {
               currency: {
@@ -6917,7 +6917,7 @@ function QuoteAPITester({
                     </div>
                     <small className="text-muted">
                       Ingresa el valor costo, la venta se calcula
-                      automáticamente con un markup del {profitMarkup.air}%
+                      automáticamente a partir del costo
                     </small>
                   </div>
                   <span

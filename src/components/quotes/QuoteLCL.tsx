@@ -2290,8 +2290,8 @@ export default function QuoteLCL({
     if (profitLoading || !profitReady) {
       setError(
         profitError
-          ? `No se pudo cargar el profit: ${profitError}. Reintenta antes de cotizar.`
-          : "Espera a que se cargue el profit del cliente antes de generar la cotización",
+          ? "No se pudieron cargar las tarifas. Reintenta antes de cotizar."
+          : "Espera a que terminen de cargar las tarifas antes de generar la cotización",
       );
       return;
     }
@@ -2299,13 +2299,13 @@ export default function QuoteLCL({
     const freshProfit = await ensureFreshProfit();
     if (!freshProfit.ok) {
       setError(
-        `No se pudo verificar el profit: ${freshProfit.error}. Reintenta antes de cotizar.`,
+        "No se pudieron verificar las tarifas. Reintenta antes de cotizar.",
       );
       return;
     }
     if (!profitMarkupEquals(profitMarkup, freshProfit.markup)) {
       setError(
-        "El profit se actualizó. Revisa los montos en pantalla y vuelve a generar la cotización.",
+        "Las tarifas se actualizaron. Revisa los montos en pantalla y vuelve a generar la cotización.",
       );
       return;
     }
@@ -4960,7 +4960,7 @@ export default function QuoteLCL({
                       </div>
                       <small className="text-muted">
                         Ingresa el rate base por W/M. El valor venta se calcula
-                        automáticamente con +{profitMarkup.lcl}%.
+                        automáticamente a partir del costo.
                       </small>
                     </div>
                     <span
