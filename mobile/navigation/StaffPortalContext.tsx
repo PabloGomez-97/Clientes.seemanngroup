@@ -1,6 +1,10 @@
 import { createContext, useContext } from "react";
 
-export type StaffPortalKind = "executive" | "operaciones";
+export type StaffPortalKind =
+  | "executive"
+  | "operaciones"
+  | "pricing"
+  | "proveedor";
 
 const StaffPortalContext = createContext<StaffPortalKind>("executive");
 

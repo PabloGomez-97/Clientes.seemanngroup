@@ -8,13 +8,7 @@ import { fonts } from "../../theme/typography";
 export default function StaffEmptyHomeScreen() {
   const { user, logout } = useAuth();
 
-  const roleLabel = user?.roles?.proveedor
-    ? "Proveedor"
-    : user?.roles?.pricing
-      ? "Pricing"
-      : user?.roles?.administrador
-        ? "Administrador"
-        : "Staff";
+  const roleLabel = user?.roles?.administrador ? "Administrador" : "Staff";
 
   const confirmLogout = () => {
     Alert.alert("Cerrar sesión", "¿Deseas cerrar tu sesión?", [

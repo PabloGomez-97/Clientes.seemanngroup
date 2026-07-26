@@ -17,6 +17,8 @@ import { usePushNotifications } from "./hooks/usePushNotifications";
 import ClientTabs from "./navigation/ClientTabs";
 import ExecutiveTabs from "./navigation/ExecutiveTabs";
 import OperacionesTabs from "./navigation/OperacionesTabs";
+import PricingTabs from "./navigation/PricingTabs";
+import ProveedorTabs from "./navigation/ProveedorTabs";
 import StaffEmptyHomeScreen from "./screens/executive/StaffEmptyHomeScreen";
 import { brand } from "./theme/brand";
 import { applyGlobalFonts } from "./theme/typography";
@@ -50,6 +52,24 @@ function OperacionesAuthenticatedApp() {
   );
 }
 
+function PricingAuthenticatedApp() {
+  usePushNotifications();
+  return (
+    <LinbisTokenProvider>
+      <PricingTabs />
+    </LinbisTokenProvider>
+  );
+}
+
+function ProveedorAuthenticatedApp() {
+  usePushNotifications();
+  return (
+    <LinbisTokenProvider>
+      <ProveedorTabs />
+    </LinbisTokenProvider>
+  );
+}
+
 function RootApp() {
   const { user, loading } = useAuth();
 
@@ -71,8 +91,16 @@ function RootApp() {
     return <OperacionesAuthenticatedApp />;
   }
 
+  if (portal === "pricing") {
+    return <PricingAuthenticatedApp />;
+  }
+
   if (portal === "executive") {
     return <ExecutiveAuthenticatedApp />;
+  }
+
+  if (portal === "proveedor") {
+    return <ProveedorAuthenticatedApp />;
   }
 
   if (portal === "staff-empty") {
