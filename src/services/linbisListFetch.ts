@@ -26,8 +26,14 @@ export function buildLinbisListParams(
   page: number,
   itemsPerPage = LINBIS_PAGE_SIZE,
 ): URLSearchParams {
+  const name = consigneeName.trim();
+  if (!name) {
+    throw new Error(
+      "ConsigneeName es obligatorio para consultar air/ocean en Linbis.",
+    );
+  }
   return new URLSearchParams({
-    ConsigneeName: consigneeName,
+    ConsigneeName: name,
     Page: page.toString(),
     ItemsPerPage: itemsPerPage.toString(),
     SortBy: "newest",

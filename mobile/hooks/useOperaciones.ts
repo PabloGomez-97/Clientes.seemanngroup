@@ -9,6 +9,7 @@ import {
   type GroundOperacionesFilters,
   type OperacionesTab,
 } from "../../src/services/operacionesFiltersLogic";
+import { paginateList } from "../../src/services/operacionesPagination";
 import {
   buildTrackedAwbSet,
   buildTrackedOceanKeySet,
@@ -20,7 +21,7 @@ import { useLinbisToken } from "./useLinbisToken";
 import {
   enrichAirOperacionesRoutes,
   fetchAirOperacionesPage,
-  fetchGroundOperacionesPage,
+  fetchGroundOperacionesCatalog,
   fetchOceanOperacionesPage,
   fetchOperacionesTrackingIndex,
   type OceanListItem,
@@ -71,8 +72,9 @@ export function useOperaciones() {
   const oceanLoadedRef = useRef(false);
 
   const [groundPage, setGroundPage] = useState(1);
-  const [groundPageItems, setGroundPageItems] = useState<GroundShipment[]>([]);
-  const [groundHasMore, setGroundHasMore] = useState(false);
+  const [groundCatalog, setGroundCatalog] = useState<GroundShipment[] | null>(
+    null,
+  );
   const [groundLoading, setGroundLoading] = useState(false);
   const [groundError, setGroundError] = useState<string | null>(null);
   const [groundLoaded, setGroundLoaded] = useState(false);
@@ -250,46 +252,40 @@ export function useOperaciones() {
     [accessToken, activeUsername, linbisOptions],
   );
 
-  const loadGroundPage = useCallback(
-    async (page: number) => {
-      if (!accessToken || !activeUsername) {
-        setGroundPageItems([]);
-        setGroundHasMore(false);
-        setGroundLoading(false);
-        groundLoadedRef.current = false;
-        return;
-      }
+  const loadGroundCatalog = useCallback(async () => {
+    if (!accessToken || !activeUsername) {
+      setGroundCatalog([]);
+      setGroundLoading(false);
+      groundLoadedRef.current = false;
+      setGroundLoaded(false);
+      return;
+    }
 
-      setGroundLoading(true);
-      setGroundError(null);
+    setGroundLoading(true);
+    setGroundError(null);
 
-      try {
-        const result = await fetchGroundOperacionesPage(
-          activeUsername,
-          page,
-          linbisOptions,
-        );
-        setGroundPage(page);
-        setGroundPageItems(result.items);
-        setGroundHasMore(result.hasMore);
-        groundLoadedRef.current = true;
-        setGroundLoaded(true);
-      } catch (error) {
-        setGroundPageItems([]);
-        setGroundHasMore(false);
-        groundLoadedRef.current = true;
-        setGroundLoaded(true);
-        setGroundError(
-          error instanceof Error
-            ? error.message
-            : "No se pudieron cargar las operaciones terrestres.",
-        );
-      } finally {
-        setGroundLoading(false);
-      }
-    },
-    [accessToken, activeUsername, linbisOptions],
-  );
+    try {
+      const catalog = await fetchGroundOperacionesCatalog(
+        activeUsername,
+        linbisOptions,
+      );
+      setGroundCatalog(catalog);
+      setGroundPage(1);
+      groundLoadedRef.current = true;
+      setGroundLoaded(true);
+    } catch (error) {
+      setGroundCatalog([]);
+      groundLoadedRef.current = true;
+      setGroundLoaded(true);
+      setGroundError(
+        error instanceof Error
+          ? error.message
+          : "No se pudieron cargar las operaciones terrestres.",
+      );
+    } finally {
+      setGroundLoading(false);
+    }
+  }, [accessToken, activeUsername, linbisOptions]);
 
   const ensureTabData = useCallback(
     (tab: OperacionesTab) => {
@@ -308,7 +304,7 @@ export function useOperaciones() {
       }
 
       if (tab === "ground" && !groundLoadedRef.current && !groundLoading) {
-        void loadGroundPage(1);
+        void loadGroundCatalog();
       }
     },
     [
@@ -317,7 +313,7 @@ export function useOperaciones() {
       airLoading,
       groundLoading,
       loadAirPage,
-      loadGroundPage,
+      loadGroundCatalog,
       loadOceanPage,
       oceanLoading,
       tokenLoading,
@@ -344,13 +340,12 @@ export function useOperaciones() {
       return;
     }
     groundLoadedRef.current = false;
-    await loadGroundPage(groundPage);
+    await loadGroundCatalog();
   }, [
     activeTab,
     airPage,
-    groundPage,
     loadAirPage,
-    loadGroundPage,
+    loadGroundCatalog,
     loadOceanPage,
     loadTrackingData,
     oceanPage,
@@ -373,13 +368,13 @@ export function useOperaciones() {
     } else if (activeTab === "ocean") {
       await loadOceanPage(1);
     } else {
-      await loadGroundPage(1);
+      await loadGroundCatalog();
     }
     void loadTrackingData();
   }, [
     activeTab,
     loadAirPage,
-    loadGroundPage,
+    loadGroundCatalog,
     loadOceanPage,
     loadTrackingData,
     refreshAccessToken,
@@ -426,10 +421,9 @@ export function useOperaciones() {
     setGroundPage(1);
     setAirPageItems([]);
     setOceanPageItems([]);
-    setGroundPageItems([]);
+    setGroundCatalog(null);
     setAirHasMore(false);
     setOceanHasMore(false);
-    setGroundHasMore(false);
     setOceanLoaded(false);
     setGroundLoaded(false);
     setTrackingIndex({});
@@ -447,9 +441,14 @@ export function useOperaciones() {
     [oceanFilters, oceanPageItems],
   );
 
-  const filteredGroundPage = useMemo(
-    () => applyGroundOperacionesFilters(groundPageItems, groundFilters),
-    [groundFilters, groundPageItems],
+  const filteredGroundAll = useMemo(
+    () => applyGroundOperacionesFilters(groundCatalog ?? [], groundFilters),
+    [groundCatalog, groundFilters],
+  );
+
+  const groundPagination = useMemo(
+    () => paginateList(filteredGroundAll, groundPage),
+    [filteredGroundAll, groundPage],
   );
 
   const goToNextAirPage = useCallback(() => {
@@ -473,14 +472,14 @@ export function useOperaciones() {
   }, [loadOceanPage, oceanLoading, oceanPage]);
 
   const goToNextGroundPage = useCallback(() => {
-    if (!groundHasMore || groundLoading) return;
-    void loadGroundPage(groundPage + 1);
-  }, [groundHasMore, groundLoading, groundPage, loadGroundPage]);
+    if (!groundPagination.hasNext) return;
+    setGroundPage((page) => page + 1);
+  }, [groundPagination.hasNext]);
 
   const goToPreviousGroundPage = useCallback(() => {
-    if (groundPage <= 1 || groundLoading) return;
-    void loadGroundPage(groundPage - 1);
-  }, [groundLoading, groundPage, loadGroundPage]);
+    if (!groundPagination.hasPrevious) return;
+    setGroundPage((page) => Math.max(1, page - 1));
+  }, [groundPagination.hasPrevious]);
 
   const getAirTrackingStatus = useCallback(
     (shipment: AirShipment) =>
@@ -513,8 +512,7 @@ export function useOperaciones() {
   const clearGroundFilters = useCallback(() => {
     setGroundFilters(EMPTY_GROUND_FILTERS);
     setGroundPage(1);
-    void loadGroundPage(1);
-  }, [loadGroundPage]);
+  }, []);
 
   const handleSetActiveTab = useCallback((tab: OperacionesTab) => {
     setActiveTab(tab);
@@ -542,9 +540,8 @@ export function useOperaciones() {
     (filters: GroundOperacionesFilters) => {
       setGroundFilters(filters);
       setGroundPage(1);
-      void loadGroundPage(1);
     },
-    [loadGroundPage],
+    [],
   );
 
   const pagination = useMemo(() => {
@@ -571,11 +568,11 @@ export function useOperaciones() {
       };
     }
     return {
-      page: groundPage,
-      totalPages: undefined as number | undefined,
-      totalItems: undefined as number | undefined,
-      hasPrevious: groundPage > 1,
-      hasNext: groundHasMore,
+      page: groundPagination.page,
+      totalPages: groundPagination.totalPages,
+      totalItems: groundPagination.totalItems,
+      hasPrevious: groundPagination.hasPrevious,
+      hasNext: groundPagination.hasNext,
       goNext: goToNextGroundPage,
       goPrevious: goToPreviousGroundPage,
     };
@@ -589,8 +586,7 @@ export function useOperaciones() {
     goToPreviousAirPage,
     goToPreviousGroundPage,
     goToPreviousOceanPage,
-    groundHasMore,
-    groundPage,
+    groundPagination,
     oceanHasMore,
     oceanPage,
   ]);
@@ -599,9 +595,9 @@ export function useOperaciones() {
     () => ({
       air: null as number | null,
       ocean: null as number | null,
-      ground: null as number | null,
+      ground: groundCatalog?.length ?? null,
     }),
-    [],
+    [groundCatalog],
   );
 
   return {
@@ -612,13 +608,13 @@ export function useOperaciones() {
     tokenError,
     displayedAir: filteredAirPage,
     displayedOcean: filteredOceanPage,
-    displayedGround: filteredGroundPage,
+    displayedGround: groundPagination.items,
     filteredAir: filteredAirPage,
     filteredOcean: filteredOceanPage,
-    filteredGround: filteredGroundPage,
+    filteredGround: groundPagination.items,
     airShipments: airPageItems,
     oceanShipments: oceanPageItems,
-    groundShipments: groundPageItems,
+    groundShipments: groundCatalog ?? [],
     airLoading,
     oceanLoading,
     groundLoading,

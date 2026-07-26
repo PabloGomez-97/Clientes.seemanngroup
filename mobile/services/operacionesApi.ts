@@ -25,7 +25,8 @@ import { OPERACIONES_PAGE_SIZE } from "../../src/services/operacionesPagination"
 
 const LINBIS_AIR_URL = "https://api.linbis.com/air-shipments";
 const LINBIS_OCEAN_URL = "https://api.linbis.com/ocean-shipments";
-const LINBIS_GROUND_URL = "https://api.linbis.com/ground-shipments";
+/** Terrestre no acepta ConsigneeName (400). Misma estrategia que la web: /all + filtro local. */
+const LINBIS_GROUND_ALL_URL = "https://api.linbis.com/ground-shipments/all";
 
 export { OPERACIONES_PAGE_SIZE };
 
@@ -43,7 +44,6 @@ export type OperacionesPageResult<T> = {
 
 export type AirOperacionesPageResult = OperacionesPageResult<AirShipment>;
 export type OceanOperacionesPageResult = OperacionesPageResult<OceanListItem>;
-export type GroundOperacionesPageResult = OperacionesPageResult<GroundShipment>;
 
 function extractArrayPayload(data: unknown): unknown[] {
   if (Array.isArray(data)) return data;
@@ -61,8 +61,20 @@ async function fetchLinbisPage(
   pageSize: number,
   options: LinbisOptions,
 ): Promise<unknown[]> {
-  const params = buildLinbisListParams(consigneeName, page, pageSize);
-  const url = `${baseUrl}?${params}`;
+  const name = consigneeName.trim();
+  // Sin ConsigneeName Linbis puede devolver el catálogo completo (muy lento).
+  if (!name) {
+    throw new Error(
+      "Falta ConsigneeName: no se puede consultar operaciones aéreas/marítimas.",
+    );
+  }
+
+  const params = buildLinbisListParams(name, page, pageSize);
+  if (!params.get("ConsigneeName")?.trim()) {
+    throw new Error("ConsigneeName ausente en la consulta a Linbis.");
+  }
+
+  const url = `${baseUrl}?${params.toString()}`;
 
   const response = await linbisFetch(
     url,
@@ -159,32 +171,64 @@ export async function fetchOceanOperacionesPage(
   };
 }
 
-export async function fetchGroundOperacionesPage(
+/**
+ * Terrestre: Linbis /ground-shipments rechaza ConsigneeName con 400.
+ * Igual que la web → GET /ground-shipments/all y filtrar por consignatario.
+ */
+export async function fetchGroundOperacionesCatalog(
   consigneeName: string,
-  page: number,
   options: LinbisOptions,
-  pageSize = OPERACIONES_PAGE_SIZE,
-): Promise<GroundOperacionesPageResult> {
-  const records = await fetchLinbisPage(
-    LINBIS_GROUND_URL,
-    consigneeName,
-    page,
-    pageSize,
-    options,
+): Promise<GroundShipment[]> {
+  const response = await linbisFetch(
+    LINBIS_GROUND_ALL_URL,
+    {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      signal: options.signal,
+    },
+    options.accessToken,
+    options.refreshAccessToken,
   );
-  const mapped = records
-    .map((record) =>
-      mapLinbisGroundToGroundShipment(record as Record<string, unknown>),
-    )
-    .filter((record) => consigneeMatches(record.consignee, consigneeName));
-  const items = sortGroundOperaciones(mapped as GroundShipment[]);
 
-  return {
-    items,
-    page,
-    // hasMore según respuesta cruda de Linbis (antes del filtro local).
-    hasMore: records.length >= pageSize,
-  };
+  if (!response.ok) {
+    throw new Error(
+      `Error al obtener operaciones terrestres (${response.status})`,
+    );
+  }
+
+  const data = await response.json();
+  const records = Array.isArray(data) ? data : [];
+  const mapped = records.map((record) => {
+    if (!record || typeof record !== "object") {
+      return {} as GroundShipment;
+    }
+    const raw = record as Record<string, unknown>;
+    // /all suele venir ya en shape GroundShipment; normalizamos consignee por si viene como objeto.
+    if ("from" in raw || "to" in raw || typeof raw.consignee === "string") {
+      return {
+        ...(raw as GroundShipment),
+        consignee: getConsigneeNameFallback(raw.consignee) ?? undefined,
+      };
+    }
+    return mapLinbisGroundToGroundShipment(raw) as GroundShipment;
+  });
+
+  const filtered = mapped.filter((record) =>
+    consigneeMatches(record.consignee, consigneeName),
+  );
+  return sortGroundOperaciones(filtered);
+}
+
+function getConsigneeNameFallback(consignee: unknown): string | undefined {
+  if (typeof consignee === "string") return consignee;
+  if (consignee && typeof consignee === "object") {
+    const name = (consignee as { name?: unknown }).name;
+    if (typeof name === "string") return name;
+  }
+  return undefined;
 }
 
 export async function fetchOperacionesTrackingIndex(
