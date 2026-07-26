@@ -15,7 +15,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.seemanngroup.portalclientes",
-      "buildNumber": "7",
+      "buildNumber": "8",
       "usesAppleSignIn": false,
       "config": {
         "usesNonExemptEncryption": false
