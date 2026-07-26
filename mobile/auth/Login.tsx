@@ -32,7 +32,7 @@ type Step = "email" | "password";
 
 export default function Login() {
   const insets = useSafeAreaInsets();
-  const { login, logout } = useAuth();
+  const { login } = useAuth();
   const { t } = useTranslation();
   const emailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
@@ -129,17 +129,8 @@ export default function Login() {
         turnstileToken ?? undefined,
       );
 
-      if (loggedUser.username === "Ejecutivo") {
-        logout();
-        setErr(
-          loggedUser.roles?.proveedor
-            ? t("home.login.proveedorMessage")
-            : t("home.login.executiveMessage"),
-        );
-        setLoading(false);
-        return;
-      }
-
+      // Staff entra al portal correspondiente (App.tsx). Solo bloqueamos aquí si hace falta captcha/error.
+      void loggedUser;
       setLoading(false);
     } catch (e: unknown) {
       const error = e as { message?: string; requiresCaptcha?: boolean };

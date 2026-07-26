@@ -15,6 +15,7 @@ import type { ClientQuote } from "../../../src/services/cotizacionesLogic";
 import QuoteCard from "../../components/cotizaciones/QuoteCard";
 import OperacionesPaginationBar from "../../components/operaciones/OperacionesPaginationBar";
 import { useCotizaciones } from "../../hooks/useCotizaciones";
+import { useEmbeddedChrome } from "../../navigation/EmbeddedChromeContext";
 import type { CotizacionesStackParamList } from "../../navigation/CotizacionesStack";
 import { brand, radii, spacing } from "../../theme/brand";
 import { fonts } from "../../theme/typography";
@@ -26,6 +27,7 @@ type NavigationProp = NativeStackNavigationProp<
 
 export default function CotizacionesListScreen() {
   const navigation = useNavigation<NavigationProp>();
+  const embedded = useEmbeddedChrome();
   const { activeUsername, items, loading, error, pagination, refresh } =
     useCotizaciones();
 
@@ -40,7 +42,7 @@ export default function CotizacionesListScreen() {
   const isEmpty = !loading && items.length === 0 && pagination.totalItems === 0;
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top"]}>
+    <SafeAreaView style={styles.safe} edges={embedded ? [] : ["top"]}>
       <View style={styles.header}>
         <View>
           <Text style={styles.title}>Cotizaciones</Text>

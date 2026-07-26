@@ -9,7 +9,7 @@ import {
   Text,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
 import type { RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -26,6 +26,7 @@ import {
 import ShipmentCard from "../../components/tracking/ShipmentCard";
 import TrackingStatusStrip from "../../components/tracking/TrackingStatusStrip";
 import { useShipsgoTracking } from "../../hooks/useShipsgoTracking";
+import { useEmbeddedChrome } from "../../navigation/EmbeddedChromeContext";
 import type { TrackeosStackParamList } from "../../navigation/TrackeosStack";
 import { brand, radii, spacing } from "../../theme/brand";
 import { fonts } from "../../theme/typography";
@@ -39,6 +40,8 @@ type RouteProps = RouteProp<TrackeosStackParamList, "TrackeosList">;
 export default function TrackeosListScreen() {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteProps>();
+  const insets = useSafeAreaInsets();
+  const embedded = useEmbeddedChrome();
   const {
     activeUsername,
     activeTab,
@@ -63,6 +66,20 @@ export default function TrackeosListScreen() {
     removeAirShipment,
     removeOceanShipment,
   } = useShipsgoTracking();
+
+  const openNewTracking = () => {
+    Alert.alert("Nuevo seguimiento", "¿Qué tipo de seguimiento querés crear?", [
+      {
+        text: "Aéreo",
+        onPress: () => navigation.navigate("NewAirTracking"),
+      },
+      {
+        text: "Marítimo",
+        onPress: () => navigation.navigate("NewOceanTracking"),
+      },
+      { text: "Cancelar", style: "cancel" },
+    ]);
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -164,7 +181,10 @@ export default function TrackeosListScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top"]}>
+    <SafeAreaView
+      style={styles.safe}
+      edges={embedded ? ["bottom"] : ["top"]}
+    >
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <View style={styles.headerText}>
@@ -289,6 +309,21 @@ export default function TrackeosListScreen() {
           }
         />
       )}
+
+      <Pressable
+        onPress={openNewTracking}
+        accessibilityRole="button"
+        accessibilityLabel="Nuevo seguimiento"
+        style={({ pressed }) => [
+          styles.fab,
+          {
+            bottom: 16 + (embedded ? 8 : Math.max(insets.bottom - 4, 8)),
+          },
+          pressed && styles.fabPressed,
+        ]}
+      >
+        <Ionicons name="add" size={28} color="#fff" />
+      </Pressable>
     </SafeAreaView>
   );
 }
@@ -297,6 +332,25 @@ const styles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: brand.canvas,
+  },
+  fab: {
+    position: "absolute",
+    right: 16,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: brand.primary,
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 30,
+    elevation: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+  },
+  fabPressed: {
+    backgroundColor: brand.primaryDark,
   },
   header: {
     paddingHorizontal: spacing.lg,

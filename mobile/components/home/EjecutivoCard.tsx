@@ -1,16 +1,9 @@
-import {
-  Image,
-  Linking,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Image, Linking, Pressable, StyleSheet, Text, View } from "react-native";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../auth/AuthContext";
-import { imgUrl } from "../../config/images";
+import { getEjecutivoPhotoUrl, getInitials } from "../../utils/ejecutivoPhoto";
 import { brand, spacing } from "../../theme/brand";
 import { fonts } from "../../theme/typography";
 
@@ -22,23 +15,7 @@ export default function EjecutivoCard() {
 
   if (!ejecutivo) return null;
 
-  const getInitials = (name: string) =>
-    name
-      .split(" ")
-      .map((w) => w[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
-
-  const getEjecutivoImage = (nombre: string) => {
-    const partes = nombre.trim().split(" ");
-    if (partes.length < 2) return null;
-    return imgUrl(
-      `/ejecutivos/${partes[0][0].toLowerCase()}${partes[1][0].toLowerCase()}.png`,
-    );
-  };
-
-  const photo = getEjecutivoImage(ejecutivo.nombre);
+  const photo = getEjecutivoPhotoUrl(ejecutivo.nombre);
   const telHref = ejecutivo.telefono
     ? `tel:${ejecutivo.telefono.replace(/\s/g, "")}`
     : undefined;

@@ -10,20 +10,32 @@ import {
 } from "@expo-google-fonts/plus-jakarta-sans";
 import "./i18n";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
+import { resolveMobilePortal } from "./auth/portalRouting";
 import Login from "./auth/Login";
 import { LinbisTokenProvider } from "./hooks/useLinbisToken";
 import { usePushNotifications } from "./hooks/usePushNotifications";
 import ClientTabs from "./navigation/ClientTabs";
+import ExecutiveTabs from "./navigation/ExecutiveTabs";
+import StaffEmptyHomeScreen from "./screens/executive/StaffEmptyHomeScreen";
 import { brand } from "./theme/brand";
 import { applyGlobalFonts } from "./theme/typography";
 
 let globalFontsApplied = false;
 
-function AuthenticatedApp() {
+function ClientAuthenticatedApp() {
   usePushNotifications();
   return (
     <LinbisTokenProvider>
       <ClientTabs />
+    </LinbisTokenProvider>
+  );
+}
+
+function ExecutiveAuthenticatedApp() {
+  usePushNotifications();
+  return (
+    <LinbisTokenProvider>
+      <ExecutiveTabs />
     </LinbisTokenProvider>
   );
 }
@@ -39,8 +51,18 @@ function RootApp() {
     );
   }
 
-  if (user && user.username !== "Ejecutivo") {
-    return <AuthenticatedApp />;
+  const portal = resolveMobilePortal(user);
+
+  if (portal === "client") {
+    return <ClientAuthenticatedApp />;
+  }
+
+  if (portal === "executive") {
+    return <ExecutiveAuthenticatedApp />;
+  }
+
+  if (portal === "staff-empty") {
+    return <StaffEmptyHomeScreen />;
   }
 
   return <Login />;

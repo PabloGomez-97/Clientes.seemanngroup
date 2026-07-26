@@ -16,6 +16,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Sharing from "expo-sharing";
 import ScreenHeader from "../../components/ui/ScreenHeader";
 import { useMisDocumentos } from "../../hooks/useMisDocumentos";
+import { useEmbeddedChrome } from "../../navigation/EmbeddedChromeContext";
 import {
   formatDocDate,
   TRANSPORT_LABELS,
@@ -35,6 +36,7 @@ const FILTERS: DocTransportType[] = [
 
 export default function MisDocumentosScreen() {
   const navigation = useNavigation();
+  const embedded = useEmbeddedChrome();
   const {
     activeUsername,
     docs,
@@ -169,11 +171,11 @@ export default function MisDocumentosScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top"]}>
+    <SafeAreaView style={styles.safe} edges={embedded ? [] : ["top"]}>
       <ScreenHeader
         title="Mis Documentos"
         subtitle={activeUsername || undefined}
-        onBack={() => navigation.goBack()}
+        onBack={embedded ? undefined : () => navigation.goBack()}
         right={
           <Pressable style={styles.iconBtn} onPress={() => void refresh()}>
             <Ionicons name="refresh" size={18} color={brand.navy} />

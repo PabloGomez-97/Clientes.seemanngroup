@@ -23,6 +23,7 @@ import OperationCard from "../../components/operaciones/OperationCard";
 import OperacionesFilterSheet from "../../components/operaciones/OperacionesFilterSheet";
 import OperacionesPaginationBar from "../../components/operaciones/OperacionesPaginationBar";
 import { useOperaciones } from "../../hooks/useOperaciones";
+import { useEmbeddedChrome } from "../../navigation/EmbeddedChromeContext";
 import type { OperacionesStackParamList } from "../../navigation/OperacionesStack";
 import { openTrackeosFromOperacion } from "../../navigation/openTrackeosFromOperacion";
 import type { ClientTabParamList } from "../../navigation/ClientTabs";
@@ -38,6 +39,7 @@ type NavigationProp = CompositeNavigationProp<
 
 export default function OperacionesListScreen() {
   const navigation = useNavigation<NavigationProp>();
+  const embedded = useEmbeddedChrome();
   const [showFilters, setShowFilters] = useState(false);
   const {
     activeUsername,
@@ -197,7 +199,7 @@ export default function OperacionesListScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top"]}>
+    <SafeAreaView style={styles.safe} edges={embedded ? [] : ["top"]}>
       <View style={styles.header}>
         <View>
           <Text style={styles.title}>Operaciones</Text>
