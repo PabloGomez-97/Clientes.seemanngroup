@@ -12,6 +12,7 @@ import { linbisFetch } from "../../src/services/linbisFetch";
 import {
   flattenAirShipmentRecords,
   mapLinbisAirToAirShipment,
+  mapLinbisGroundToGroundShipment,
   mapLinbisOceanToShippingOrder,
   type OceanListItem,
 } from "../../src/services/linbisShipmentMappers";
@@ -23,8 +24,8 @@ import {
 import { OPERACIONES_PAGE_SIZE } from "../../src/services/operacionesPagination";
 
 const LINBIS_AIR_URL = "https://api.linbis.com/air-shipments";
-const LINBIS_OCEAN_URL = "https://api.linbis.com/ocean-shipments/all";
-const LINBIS_GROUND_URL = "https://api.linbis.com/ground-shipments/all";
+const LINBIS_OCEAN_URL = "https://api.linbis.com/ocean-shipments";
+const LINBIS_GROUND_URL = "https://api.linbis.com/ground-shipments";
 
 export { OPERACIONES_PAGE_SIZE };
 
@@ -34,11 +35,15 @@ type LinbisOptions = {
   signal?: AbortSignal;
 };
 
-export type AirOperacionesPageResult = {
-  items: AirShipment[];
+export type OperacionesPageResult<T> = {
+  items: T[];
   page: number;
   hasMore: boolean;
 };
+
+export type AirOperacionesPageResult = OperacionesPageResult<AirShipment>;
+export type OceanOperacionesPageResult = OperacionesPageResult<OceanListItem>;
+export type GroundOperacionesPageResult = OperacionesPageResult<GroundShipment>;
 
 function extractArrayPayload(data: unknown): unknown[] {
   if (Array.isArray(data)) return data;
@@ -49,7 +54,40 @@ function extractArrayPayload(data: unknown): unknown[] {
   return [];
 }
 
-async function enrichAirOperacionesRoutes(
+async function fetchLinbisPage(
+  baseUrl: string,
+  consigneeName: string,
+  page: number,
+  pageSize: number,
+  options: LinbisOptions,
+): Promise<unknown[]> {
+  const params = buildLinbisListParams(consigneeName, page, pageSize);
+  const url = `${baseUrl}?${params}`;
+
+  const response = await linbisFetch(
+    url,
+    {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      signal: options.signal,
+    },
+    options.accessToken,
+    options.refreshAccessToken,
+  );
+
+  if (!response.ok) {
+    throw new Error(`Error al obtener operaciones (${response.status})`);
+  }
+
+  const data = await response.json();
+  return extractArrayPayload(data);
+}
+
+/** Completa origen/destino de aéreos en background (no bloquea el listado). */
+export async function enrichAirOperacionesRoutes(
   shipments: AirShipment[],
   options: LinbisOptions,
 ): Promise<AirShipment[]> {
@@ -77,109 +115,76 @@ export async function fetchAirOperacionesPage(
   options: LinbisOptions,
   pageSize = OPERACIONES_PAGE_SIZE,
 ): Promise<AirOperacionesPageResult> {
-  const params = buildLinbisListParams(consigneeName, page, pageSize);
-  const url = `${LINBIS_AIR_URL}?${params}`;
-
-  const response = await linbisFetch(
-    url,
-    {
-      method: "GET",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-      signal: options.signal,
-    },
-    options.accessToken,
-    options.refreshAccessToken,
+  const records = await fetchLinbisPage(
+    LINBIS_AIR_URL,
+    consigneeName,
+    page,
+    pageSize,
+    options,
   );
-
-  if (!response.ok) {
-    throw new Error(`Error al obtener operaciones aéreas (${response.status})`);
-  }
-
-  const data = await response.json();
-  const records = extractArrayPayload(data);
   const flat = flattenAirShipmentRecords(records);
   const mapped = flat.map((record) => mapLinbisAirToAirShipment(record));
-  const withRoutes = await enrichAirOperacionesRoutes(mapped, options);
-  const items = sortAirOperaciones(withRoutes);
+  const items = sortAirOperaciones(mapped);
 
   return {
     items,
     page,
-    hasMore: flat.length >= pageSize,
+    hasMore: records.length >= pageSize,
   };
 }
 
-export async function fetchOceanOperacionesCatalog(
+export async function fetchOceanOperacionesPage(
   consigneeName: string,
+  page: number,
   options: LinbisOptions,
-): Promise<OceanListItem[]> {
-  const { accessToken, refreshAccessToken, signal } = options;
-  const response = await linbisFetch(
+  pageSize = OPERACIONES_PAGE_SIZE,
+): Promise<OceanOperacionesPageResult> {
+  const records = await fetchLinbisPage(
     LINBIS_OCEAN_URL,
-    {
-      method: "GET",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-      signal,
-    },
-    accessToken,
-    refreshAccessToken,
+    consigneeName,
+    page,
+    pageSize,
+    options,
   );
-
-  if (!response.ok) {
-    throw new Error(`Error al obtener operaciones marítimas (${response.status})`);
-  }
-
-  const data = await response.json();
-  const records = Array.isArray(data) ? data : [];
-  const filtered = records.filter((record) =>
-    consigneeMatches(
-      (record as { consignee?: unknown }).consignee,
-      consigneeName,
-    ),
-  );
-  const mapped = filtered.map((record) =>
+  const mapped = records.map((record) =>
     mapLinbisOceanToShippingOrder(record as Record<string, unknown>),
   );
-  return sortOceanOperaciones(mapped);
+  // SortBy=newest en API + refuerzo local (más nuevo → más viejo).
+  const items = sortOceanOperaciones(mapped);
+
+  return {
+    items,
+    page,
+    hasMore: records.length >= pageSize,
+  };
 }
 
-export async function fetchGroundOperacionesCatalog(
+export async function fetchGroundOperacionesPage(
   consigneeName: string,
+  page: number,
   options: LinbisOptions,
-): Promise<GroundShipment[]> {
-  const { accessToken, refreshAccessToken, signal } = options;
-  const response = await linbisFetch(
+  pageSize = OPERACIONES_PAGE_SIZE,
+): Promise<GroundOperacionesPageResult> {
+  const records = await fetchLinbisPage(
     LINBIS_GROUND_URL,
-    {
-      method: "GET",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-      signal,
-    },
-    accessToken,
-    refreshAccessToken,
+    consigneeName,
+    page,
+    pageSize,
+    options,
   );
+  const mapped = records
+    .map((record) =>
+      mapLinbisGroundToGroundShipment(record as Record<string, unknown>),
+    )
+    .filter((record) => consigneeMatches(record.consignee, consigneeName));
+  const items = sortGroundOperaciones(mapped as GroundShipment[]);
 
-  if (!response.ok) {
-    throw new Error(
-      `Error al obtener operaciones terrestres (${response.status})`,
-    );
-  }
-
-  const data = await response.json();
-  const records = Array.isArray(data) ? (data as GroundShipment[]) : [];
-  const filtered = records.filter((record) =>
-    consigneeMatches(record.consignee, consigneeName),
-  );
-  return sortGroundOperaciones(filtered);
+  return {
+    items,
+    page,
+    // hasMore según respuesta cruda de Linbis (antes del filtro local).
+    hasMore: records.length >= pageSize,
+  };
 }
 
 export async function fetchOperacionesTrackingIndex(

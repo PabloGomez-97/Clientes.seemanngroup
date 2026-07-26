@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { AirShipment } from "../../../src/components/cliente/embarques/Handlers/HandlerAirShipments";
 import type { GroundShipment } from "../../../src/components/cliente/embarques/Handlers/HandlerGroundShipments";
@@ -14,16 +14,19 @@ type OperationCardProps =
       shipment: AirShipment;
       trackingStatus?: OperacionTrackingStatus;
       onOpenTracking?: () => void;
+      routeLoading?: boolean;
     }
   | {
       mode: "ocean";
       shipment: OceanListItem;
       trackingStatus?: OperacionTrackingStatus;
       onOpenTracking?: () => void;
+      routeLoading?: boolean;
     }
   | {
       mode: "ground";
       shipment: GroundShipment;
+      routeLoading?: boolean;
     };
 
 type Place = { code: string; name: string };
@@ -115,6 +118,9 @@ export default function OperationCard(props: OperationCardProps) {
   const routeHint =
     [from.name, to.name].filter(Boolean).join(" → ") || null;
 
+  const showRouteLoading =
+    Boolean(props.routeLoading) && from.code === "—" && to.code === "—";
+
   return (
     <View style={styles.row}>
       <View style={styles.accent} />
@@ -138,31 +144,38 @@ export default function OperationCard(props: OperationCardProps) {
           )}
         </View>
 
-        <View style={styles.routeRow}>
-          <View style={styles.place}>
-            <Text style={styles.code} numberOfLines={1}>
-              {from.code}
-            </Text>
-            <Text style={styles.placeMeta}>Origen</Text>
+        {showRouteLoading ? (
+          <View style={styles.routeLoading}>
+            <ActivityIndicator size="small" color={brand.primary} />
+            <Text style={styles.routeLoadingText}>Cargando...</Text>
           </View>
-
-          <View style={styles.routeMid}>
-            <View style={styles.routeLine} />
-            <View style={styles.routeArrow}>
-              <Ionicons name={routeIcon} size={12} color={brand.primary} />
+        ) : (
+          <View style={styles.routeRow}>
+            <View style={styles.place}>
+              <Text style={styles.code} numberOfLines={1}>
+                {from.code}
+              </Text>
+              <Text style={styles.placeMeta}>Origen</Text>
             </View>
-            <View style={styles.routeLine} />
-          </View>
 
-          <View style={[styles.place, styles.placeEnd]}>
-            <Text style={styles.code} numberOfLines={1}>
-              {to.code}
-            </Text>
-            <Text style={styles.placeMeta}>Destino</Text>
-          </View>
-        </View>
+            <View style={styles.routeMid}>
+              <View style={styles.routeLine} />
+              <View style={styles.routeArrow}>
+                <Ionicons name={routeIcon} size={12} color={brand.primary} />
+              </View>
+              <View style={styles.routeLine} />
+            </View>
 
-        {routeHint ? (
+            <View style={[styles.place, styles.placeEnd]}>
+              <Text style={styles.code} numberOfLines={1}>
+                {to.code}
+              </Text>
+              <Text style={styles.placeMeta}>Destino</Text>
+            </View>
+          </View>
+        )}
+
+        {routeHint && !showRouteLoading ? (
           <Text style={styles.routeHint} numberOfLines={1}>
             {routeHint}
           </Text>
@@ -240,6 +253,18 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 8,
+  },
+  routeLoading: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 10,
+    minHeight: 42,
+  },
+  routeLoadingText: {
+    fontSize: 13,
+    color: brand.muted,
+    fontFamily: fonts.medium,
   },
   place: {
     flex: 1,

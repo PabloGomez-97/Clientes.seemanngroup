@@ -162,21 +162,47 @@ export interface OceanListItem {
   charges?: unknown[];
 }
 
-/** Convierte un registro de ocean-shipments/all al shape de OceanShipmentsView. */
+function extractDateString(field: unknown): string | null {
+  if (!field) return null;
+  if (typeof field === "string") {
+    const trimmed = field.trim();
+    return trimmed || null;
+  }
+  if (typeof field === "object") {
+    const obj = field as RawRecord;
+    const value = obj.date ?? obj.displayDate ?? obj.dateTime;
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return null;
+}
+
+function locationLabel(field: unknown): string {
+  const loc = normalizeLocation(field);
+  if (!loc) return "";
+  if (loc.name && loc.code) return `${loc.name} (${loc.code})`;
+  return loc.name || loc.code || "";
+}
+
+/** Convierte un registro de ocean-shipments (lista o /all) al shape de OceanShipmentsView. */
 export function mapLinbisOceanToShippingOrder(raw: RawRecord): OceanListItem {
-  const originName = String(
-    raw.portOfLoading ?? raw.origin ?? raw.from ?? "",
-  ).trim();
-  const destName = String(
-    raw.portOfUnloading ?? raw.destination ?? raw.to ?? "",
-  ).trim();
+  const origin =
+    normalizeLocation(
+      raw.portOfLoading ?? raw.executedAt ?? raw.origin ?? raw.from,
+    ) ?? null;
+  const destination =
+    normalizeLocation(
+      raw.portOfUnloading ??
+        raw.finalDestination ??
+        raw.destination ??
+        raw.to,
+    ) ?? null;
 
   const departure =
-    typeof raw.departure === "string"
-      ? raw.departure
-      : (raw.departureDate ?? null);
+    extractDateString(raw.departure) ??
+    extractDateString(raw.departureDate) ??
+    extractDateString(raw.loadingDate);
   const arrival =
-    typeof raw.arrival === "string" ? raw.arrival : (raw.arrivalDate ?? null);
+    extractDateString(raw.arrival) ?? extractDateString(raw.arrivalDate);
 
   return {
     id: Number(raw.id) || 0,
@@ -184,12 +210,12 @@ export function mapLinbisOceanToShippingOrder(raw: RawRecord): OceanListItem {
     waybillNumber: raw.waybillNumber ?? null,
     bookingNumber: raw.bookingNumber ?? null,
     customerReference: raw.customerReference ?? null,
-    departureDate: departure ?? null,
-    arrivalDate: arrival ?? null,
+    departureDate: departure,
+    arrivalDate: arrival,
     notes: raw.notes ?? raw.cargoDescription ?? null,
     carrier: normalizeCarrier(raw.carrier ?? raw.carrierBroker),
-    executedAt: originName ? { name: originName } : null,
-    destination: destName ? { name: destName } : null,
+    executedAt: origin,
+    destination,
     trackingNumber: raw.trackingNumber ?? raw.containerNumber ?? null,
     totalCargo: {
       pieces: raw.totalCargo_Pieces ?? raw.totalCargo?.pieces ?? undefined,
@@ -209,5 +235,111 @@ export function mapLinbisOceanToShippingOrder(raw: RawRecord): OceanListItem {
     },
     commodities: Array.isArray(raw.commodities) ? raw.commodities : [],
     charges: Array.isArray(raw.charges) ? raw.charges : [],
+  };
+}
+
+/** Convierte un registro de ground-shipments (lista o /all) al shape de GroundShipment. */
+export function mapLinbisGroundToGroundShipment(raw: RawRecord): {
+  id?: number;
+  number?: string;
+  operationFlow?: string;
+  shipmentType?: string;
+  shipmentClass?: string;
+  currentFlow?: string;
+  departure?: string;
+  arrival?: string;
+  from?: string;
+  to?: string;
+  finalDestination?: string;
+  carrier?: string;
+  truckNumber?: string;
+  trackingNumber?: string;
+  proNumber?: string;
+  driver?: string;
+  bookingNumber?: string;
+  waybillNumber?: string;
+  containerNumber?: string;
+  consignee?: string;
+  consigneeId?: number;
+  consigneeAddress?: string;
+  shipper?: string;
+  customer?: string;
+  customerReference?: string;
+  cargoDescription?: string;
+  cargoStatus?: string;
+  rateCategory?: string;
+  totalCargo_Pieces?: number;
+  totalCargo_WeightDisplayValue?: string;
+  totalCargo_VolumeDisplayValue?: string;
+  notes?: string;
+  hazardous?: boolean;
+} {
+  const consigneeName =
+    typeof raw.consignee === "string"
+      ? raw.consignee
+      : raw.consignee?.name;
+  const customerName =
+    typeof raw.customer === "string" ? raw.customer : raw.customer?.name;
+  const carrierName =
+    typeof raw.carrier === "string"
+      ? raw.carrier
+      : raw.carrier?.name ?? raw.carrierBroker?.name;
+  const shipperName =
+    typeof raw.shipper === "string" ? raw.shipper : raw.shipper?.name;
+
+  return {
+    id: raw.id,
+    number: raw.number,
+    operationFlow: raw.operationFlow,
+    shipmentType: raw.shipmentType,
+    shipmentClass: raw.shipmentClass,
+    currentFlow: raw.currentFlow,
+    departure:
+      extractDateString(raw.departure) ??
+      extractDateString(raw.departureDate) ??
+      undefined,
+    arrival:
+      extractDateString(raw.arrival) ??
+      extractDateString(raw.arrivalDate) ??
+      undefined,
+    from:
+      locationLabel(raw.from ?? raw.origin ?? raw.portOfLoading) || undefined,
+    to:
+      locationLabel(raw.to ?? raw.destination ?? raw.portOfUnloading) ||
+      undefined,
+    finalDestination:
+      locationLabel(raw.finalDestination) || undefined,
+    carrier: carrierName ?? undefined,
+    truckNumber: raw.truckNumber ?? undefined,
+    trackingNumber: raw.trackingNumber ?? undefined,
+    proNumber: raw.proNumber ?? undefined,
+    driver: raw.driver ?? undefined,
+    bookingNumber: raw.bookingNumber ?? undefined,
+    waybillNumber: raw.waybillNumber ?? undefined,
+    containerNumber: raw.containerNumber ?? undefined,
+    consignee: consigneeName ?? undefined,
+    consigneeId:
+      typeof raw.consigneeId === "number"
+        ? raw.consigneeId
+        : raw.consignee?.id,
+    consigneeAddress: raw.consigneeAddress ?? undefined,
+    shipper: shipperName ?? undefined,
+    customer: customerName ?? undefined,
+    customerReference: raw.customerReference ?? undefined,
+    cargoDescription: raw.cargoDescription ?? undefined,
+    cargoStatus: raw.cargoStatus ?? undefined,
+    rateCategory: raw.rateCategory ?? undefined,
+    totalCargo_Pieces:
+      raw.totalCargo_Pieces ?? raw.totalCargo?.pieces ?? undefined,
+    totalCargo_WeightDisplayValue:
+      raw.totalCargo_WeightDisplayValue ??
+      raw.totalCargo?.weight?.userDisplay ??
+      undefined,
+    totalCargo_VolumeDisplayValue:
+      raw.totalCargo_VolumeDisplayValue ??
+      raw.totalCargo?.volume?.userDisplay ??
+      undefined,
+    notes: raw.notes ?? undefined,
+    hazardous: typeof raw.hazardous === "boolean" ? raw.hazardous : undefined,
   };
 }

@@ -268,11 +268,13 @@ export function sortAirOperaciones(shipments: AirShipment[]): AirShipment[] {
 export function sortOceanOperaciones(
   shipments: OceanListItem[],
 ): OceanListItem[] {
-  return [...shipments].sort(
-    (a, b) =>
-      parseDepartureTime(b as unknown as Record<string, unknown>) -
-      parseDepartureTime(a as unknown as Record<string, unknown>),
-  );
+  return [...shipments].sort((a, b) => {
+    const tb = parseDepartureTime(b as unknown as Record<string, unknown>);
+    const ta = parseDepartureTime(a as unknown as Record<string, unknown>);
+    if (tb !== ta) return tb - ta;
+    // Empate: id más alto = más reciente (refuerzo SortBy=newest).
+    return (b.id ?? 0) - (a.id ?? 0);
+  });
 }
 
 export function sortGroundOperaciones(

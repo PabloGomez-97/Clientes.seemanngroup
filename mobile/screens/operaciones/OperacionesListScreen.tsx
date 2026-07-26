@@ -49,6 +49,7 @@ export default function OperacionesListScreen() {
     airLoading,
     oceanLoading,
     groundLoading,
+    airRoutesLoading,
     airError,
     oceanError,
     groundError,
@@ -67,7 +68,6 @@ export default function OperacionesListScreen() {
     getOceanTrackingStatus,
     refreshActiveTab,
     pagination,
-    tabTotals,
   } = useOperaciones();
 
   const loading =
@@ -90,16 +90,13 @@ export default function OperacionesListScreen() {
         : filteredGround;
 
   const isCatalogEmpty =
-    activeTab === "air"
-      ? !airLoading &&
-        displayedItems.length === 0 &&
-        !pagination.hasNext &&
-        pagination.page === 1
-      : activeTab === "ocean"
-        ? oceanCatalogLoaded &&
-          !oceanLoading &&
-          tabTotals.ocean === 0
-        : groundCatalogLoaded && !groundLoading && tabTotals.ground === 0;
+    !loading &&
+    displayedItems.length === 0 &&
+    !pagination.hasNext &&
+    pagination.page === 1 &&
+    (activeTab === "air" ||
+      (activeTab === "ocean" && oceanCatalogLoaded) ||
+      (activeTab === "ground" && groundCatalogLoaded));
 
   const listEmptyAfterFilter =
     !loading &&
@@ -123,11 +120,7 @@ export default function OperacionesListScreen() {
   const formatTabLabel = (
     key: "air" | "ocean" | "ground",
     label: string,
-  ) => {
-    if (key === "air") return label;
-    const total = key === "ocean" ? tabTotals.ocean : tabTotals.ground;
-    return total != null ? `${label} (${total})` : label;
-  };
+  ) => label;
 
   const activeFilterCount = useMemo(() => {
     if (activeTab === "ground") return countActiveGroundFilters(groundFilters);
@@ -143,6 +136,13 @@ export default function OperacionesListScreen() {
 
   const renderAirItem = ({ item }: { item: AirShipment }) => {
     const trackingStatus = getAirTrackingStatus(item);
+    const routeLoading =
+      airRoutesLoading &&
+      !(
+        item.executedAt?.name?.trim() ||
+        item.origin?.name?.trim() ||
+        item.destination?.name?.trim()
+      );
     return (
       <Pressable
         onPress={() =>
@@ -153,6 +153,7 @@ export default function OperacionesListScreen() {
           mode="air"
           shipment={item}
           trackingStatus={trackingStatus}
+          routeLoading={routeLoading}
           onOpenTracking={() => {
             if (trackingStatus.openTarget) {
               openTrackeosFromOperacion(navigation, trackingStatus.openTarget);
