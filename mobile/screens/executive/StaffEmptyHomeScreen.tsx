@@ -12,11 +12,9 @@ export default function StaffEmptyHomeScreen() {
     ? "Proveedor"
     : user?.roles?.pricing
       ? "Pricing"
-      : user?.roles?.operaciones
-        ? "Operaciones"
-        : user?.roles?.administrador
-          ? "Administrador"
-          : "Staff";
+      : user?.roles?.administrador
+        ? "Administrador"
+        : "Staff";
 
   const confirmLogout = () => {
     Alert.alert("Cerrar sesión", "¿Deseas cerrar tu sesión?", [

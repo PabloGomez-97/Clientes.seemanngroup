@@ -16,6 +16,7 @@ import { LinbisTokenProvider } from "./hooks/useLinbisToken";
 import { usePushNotifications } from "./hooks/usePushNotifications";
 import ClientTabs from "./navigation/ClientTabs";
 import ExecutiveTabs from "./navigation/ExecutiveTabs";
+import OperacionesTabs from "./navigation/OperacionesTabs";
 import StaffEmptyHomeScreen from "./screens/executive/StaffEmptyHomeScreen";
 import { brand } from "./theme/brand";
 import { applyGlobalFonts } from "./theme/typography";
@@ -40,6 +41,15 @@ function ExecutiveAuthenticatedApp() {
   );
 }
 
+function OperacionesAuthenticatedApp() {
+  usePushNotifications();
+  return (
+    <LinbisTokenProvider>
+      <OperacionesTabs />
+    </LinbisTokenProvider>
+  );
+}
+
 function RootApp() {
   const { user, loading } = useAuth();
 
@@ -55,6 +65,10 @@ function RootApp() {
 
   if (portal === "client") {
     return <ClientAuthenticatedApp />;
+  }
+
+  if (portal === "operaciones") {
+    return <OperacionesAuthenticatedApp />;
   }
 
   if (portal === "executive") {

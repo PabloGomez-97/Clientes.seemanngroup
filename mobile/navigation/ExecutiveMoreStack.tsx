@@ -16,11 +16,15 @@ import HistoricoPreciosScreen from "../screens/consultas/HistoricoPreciosScreen"
 import NovedadesScreen from "../screens/consultas/NovedadesScreen";
 import NovedadDetailScreen from "../screens/consultas/NovedadDetailScreen";
 import PromesasScreen from "../screens/consultas/PromesasScreen";
+import ComportamientoListScreen from "../screens/operaciones/ComportamientoListScreen";
+import ComportamientoDetailScreen from "../screens/operaciones/ComportamientoDetailScreen";
 import { getEjecutivoPhotoUrl, getInitials } from "../utils/ejecutivoPhoto";
 import { brand, radii, spacing } from "../theme/brand";
 import { fonts } from "../theme/typography";
 import { noBackStackOptions } from "./noBackStackOptions";
 import { EmbeddedChromeProvider } from "./EmbeddedChromeContext";
+import { useStaffPortal } from "./StaffPortalContext";
+import { useStaffClientsSource } from "./StaffClientsSourceContext";
 
 export type ExecutiveMoreStackParamList = {
   MoreHome: undefined;
@@ -32,6 +36,12 @@ export type ExecutiveMoreStackParamList = {
   Novedades: undefined;
   NovedadDetail: { slug: string; title?: string };
   Promesas: undefined;
+  ComportamientoList: undefined;
+  ComportamientoDetail: {
+    email: string;
+    username: string;
+    nombreuser?: string;
+  };
 };
 
 const Stack = createNativeStackNavigator<ExecutiveMoreStackParamList>();
@@ -42,12 +52,13 @@ function MoreHomeScreen() {
       NativeStackNavigationProp<ExecutiveMoreStackParamList, "MoreHome">
     >();
   const { user, logout } = useAuth();
+  const portal = useStaffPortal();
   const [photoFailed, setPhotoFailed] = useState(false);
 
   const displayName =
     user?.nombreuser?.trim() ||
     user?.ejecutivo?.nombre?.trim() ||
-    "Ejecutivo";
+    (portal === "operaciones" ? "Operaciones" : "Ejecutivo");
   const photo = getEjecutivoPhotoUrl(displayName);
 
   const confirmLogout = () => {
@@ -66,6 +77,17 @@ function MoreHomeScreen() {
           label: "Documentos de clientes",
           icon: "folder-open-outline" as const,
           onPress: () => navigation.navigate("DocsClientPicker"),
+        },
+      ],
+    },
+    {
+      title: "Análisis",
+      links: [
+        {
+          key: "comportamiento",
+          label: "Comportamiento de clientes",
+          icon: "pulse-outline" as const,
+          onPress: () => navigation.navigate("ComportamientoList"),
         },
       ],
     },
@@ -184,6 +206,7 @@ function DocsClientPickerScreen() {
       >
     >();
   const { setActiveUsername } = useAuth();
+  const source = useStaffClientsSource();
 
   const onSelect = (client: Cliente) => {
     void setActiveUsername(client.username);
@@ -193,7 +216,11 @@ function DocsClientPickerScreen() {
   return (
     <ClientsListScreen
       title="Documentación"
-      subtitle="Elige un cliente"
+      subtitle={
+        source === "global"
+          ? "Elige un cliente del portal"
+          : "Elige un cliente"
+      }
       onSelectClient={onSelect}
     />
   );
@@ -314,6 +341,16 @@ export default function ExecutiveMoreStack() {
       <Stack.Screen
         name="Promesas"
         component={PromesasScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="ComportamientoList"
+        component={ComportamientoListScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="ComportamientoDetail"
+        component={ComportamientoDetailScreen}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>

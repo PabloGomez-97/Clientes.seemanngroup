@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { useNavigation, useRoute } from "@react-navigation/native";
@@ -12,12 +12,13 @@ import { useExecutivePortfolioTracking } from "../hooks/useExecutivePortfolioTra
 import TrackeosStack from "./TrackeosStack";
 import { EmbeddedChromeProvider } from "./EmbeddedChromeContext";
 import { useAuth } from "../auth/AuthContext";
+import { useStaffClientsSource } from "./StaffClientsSourceContext";
 import { brand } from "../theme/brand";
 import { fonts } from "../theme/typography";
 import { noBackStackOptions } from "./noBackStackOptions";
 
 export type ExecutiveTrackeosStackParamList = {
-  TrackeosClientPicker: undefined;
+  TrackeosClientPicker: { filter?: "active" } | undefined;
   TrackeosWorkspace: { username: string };
 };
 
@@ -31,16 +32,37 @@ function TrackeosClientPickerScreen() {
         "TrackeosClientPicker"
       >
     >();
+  const route =
+    useRoute<
+      RouteProp<ExecutiveTrackeosStackParamList, "TrackeosClientPicker">
+    >();
   const { setActiveUsername } = useAuth();
+  const source = useStaffClientsSource();
+  const activeOnly = route.params?.filter === "active";
   const {
     clients,
     counts,
+    activeCounts,
     totalAir,
     totalOcean,
+    inMotionAir,
+    inMotionOcean,
     loading,
     error,
     refresh,
   } = useExecutivePortfolioTracking();
+
+  const visibleClients = useMemo(() => {
+    if (!activeOnly) return clients;
+    return clients.filter((client) => {
+      const c = activeCounts.get(client.username);
+      return (c?.air ?? 0) > 0 || (c?.ocean ?? 0) > 0;
+    });
+  }, [activeOnly, clients, activeCounts]);
+
+  const visibleCounts = activeOnly ? activeCounts : counts;
+  const visibleAir = activeOnly ? inMotionAir : totalAir;
+  const visibleOcean = activeOnly ? inMotionOcean : totalOcean;
 
   const onSelect = (client: Cliente) => {
     void setActiveUsername(client.username);
@@ -49,16 +71,24 @@ function TrackeosClientPickerScreen() {
 
   return (
     <ClientsListScreen
-      title="Seguimientos"
-      subtitle="Elige un cliente de tu cartera"
+      title={activeOnly ? "En tránsito / Navegando" : "Seguimientos"}
+      subtitle={
+        activeOnly
+          ? "Clientes con envíos activos en movimiento"
+          : source === "global"
+            ? "Elige un cliente del portal"
+            : "Elige un cliente de tu cartera"
+      }
       onSelectClient={onSelect}
-      clientsOverride={clients}
+      clientsOverride={visibleClients}
       loadingOverride={loading}
       errorOverride={error}
       onRefreshOverride={refresh}
-      trackingCounts={counts}
-      totalAir={totalAir}
-      totalOcean={totalOcean}
+      trackingCounts={visibleCounts}
+      totalAir={visibleAir}
+      totalOcean={visibleOcean}
+      airPillLabel={activeOnly ? "en tránsito" : "aéreos"}
+      oceanPillLabel={activeOnly ? "navegando" : "marítimos"}
     />
   );
 }
@@ -85,7 +115,13 @@ function TrackeosWorkspaceScreen() {
       <View style={styles.fill}>
         <View style={[styles.header, { paddingTop: insets.top + 6 }]}>
           <Pressable
-            onPress={() => navigation.navigate("TrackeosClientPicker")}
+            onPress={() => {
+              if (navigation.canGoBack()) {
+                navigation.goBack();
+                return;
+              }
+              navigation.navigate("TrackeosClientPicker");
+            }}
             hitSlop={16}
             style={styles.back}
             accessibilityRole="button"

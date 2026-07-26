@@ -2,9 +2,9 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { NavigationContainer } from "@react-navigation/native";
 import type { NavigatorScreenParams } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
-import { Platform, StyleSheet, Text, View } from "react-native";
+import { Platform, StyleSheet, Text } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import ExecutiveHomeScreen from "../screens/executive/ExecutiveHomeScreen";
+import OperacionesHomeScreen from "../screens/operaciones/OperacionesHomeScreen";
 import ExecutiveClientsStack from "./ExecutiveClientsStack";
 import type { ExecutiveClientsStackParamList } from "./ExecutiveClientsStack";
 import ExecutiveTrackeosStack from "./ExecutiveTrackeosStack";
@@ -18,7 +18,7 @@ import { StaffPortalProvider } from "./StaffPortalContext";
 import { brand } from "../theme/brand";
 import { fonts } from "../theme/typography";
 
-export type ExecutiveTabParamList = {
+export type OperacionesTabParamList = {
   Home: undefined;
   Clients: NavigatorScreenParams<ExecutiveClientsStackParamList> | undefined;
   Trackeos: NavigatorScreenParams<ExecutiveTrackeosStackParamList> | undefined;
@@ -28,10 +28,10 @@ export type ExecutiveTabParamList = {
   More: NavigatorScreenParams<ExecutiveMoreStackParamList> | undefined;
 };
 
-const Tab = createBottomTabNavigator<ExecutiveTabParamList>();
+const Tab = createBottomTabNavigator<OperacionesTabParamList>();
 
 const TAB_ICON: Record<
-  keyof ExecutiveTabParamList,
+  keyof OperacionesTabParamList,
   { outline: keyof typeof Ionicons.glyphMap; filled: keyof typeof Ionicons.glyphMap }
 > = {
   Home: { outline: "home-outline", filled: "home" },
@@ -41,7 +41,7 @@ const TAB_ICON: Record<
   More: { outline: "ellipsis-horizontal-outline", filled: "ellipsis-horizontal" },
 };
 
-const TAB_LABEL: Record<keyof ExecutiveTabParamList, string> = {
+const TAB_LABEL: Record<keyof OperacionesTabParamList, string> = {
   Home: "Inicio",
   Clients: "Clientes",
   Trackeos: "Seguimientos",
@@ -49,13 +49,13 @@ const TAB_LABEL: Record<keyof ExecutiveTabParamList, string> = {
   More: "Más",
 };
 
-export default function ExecutiveTabs() {
+export default function OperacionesTabs() {
   const insets = useSafeAreaInsets();
   const bottomPad = Platform.OS === "ios" ? Math.max(insets.bottom - 4, 8) : 8;
 
   return (
-    <StaffPortalProvider value="executive">
-      <StaffClientsSourceProvider value="portfolio">
+    <StaffPortalProvider value="operaciones">
+      <StaffClientsSourceProvider value="global">
         <NavigationContainer>
           <Tab.Navigator
             screenOptions={({ route }) => ({
@@ -92,7 +92,7 @@ export default function ExecutiveTabs() {
               },
             })}
           >
-            <Tab.Screen name="Home" component={ExecutiveHomeScreen} />
+            <Tab.Screen name="Home" component={OperacionesHomeScreen} />
             <Tab.Screen name="Clients" component={ExecutiveClientsStack} />
             <Tab.Screen name="Trackeos" component={ExecutiveTrackeosStack} />
             <Tab.Screen name="Reporteria" component={ExecutiveReporteriaStack} />

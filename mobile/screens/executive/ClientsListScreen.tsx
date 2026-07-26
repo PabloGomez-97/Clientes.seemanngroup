@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -15,13 +15,17 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../auth/AuthContext";
 import type { ExecutiveClientsStackParamList } from "../../navigation/ExecutiveClientsStack";
+import { useStaffClientsSource } from "../../navigation/StaffClientsSourceContext";
 import type { ClientTrackingCounts } from "../../hooks/useExecutivePortfolioTracking";
 import {
   fetchMisClientes,
+  fetchTodosClientes,
   type Cliente,
 } from "../../services/ejecutivoClientesApi";
 import { brand, radii, spacing } from "../../theme/brand";
 import { fonts } from "../../theme/typography";
+
+const PAGE_SIZE = 15;
 
 type Nav = NativeStackNavigationProp<
   ExecutiveClientsStackParamList,
@@ -32,7 +36,7 @@ type Props = {
   onSelectClient?: (client: Cliente) => void;
   title?: string;
   subtitle?: string;
-  /** Lista y carga externas (p. ej. Seguimientos con conteos ShipsGo). */
+  /** Lista y carga externas (p. ej. Seguimientos con conteos). */
   clientsOverride?: Cliente[];
   loadingOverride?: boolean;
   errorOverride?: string | null;
@@ -40,6 +44,8 @@ type Props = {
   trackingCounts?: Map<string, ClientTrackingCounts>;
   totalAir?: number;
   totalOcean?: number;
+  airPillLabel?: string;
+  oceanPillLabel?: string;
 };
 
 export default function ClientsListScreen({
@@ -53,14 +59,19 @@ export default function ClientsListScreen({
   trackingCounts,
   totalAir,
   totalOcean,
+  airPillLabel = "aéreos",
+  oceanPillLabel = "marítimos",
 }: Props) {
   const navigation = useNavigation<Nav>();
   const { token } = useAuth();
+  const clientsSource = useStaffClientsSource();
+  const showEjecutivo = clientsSource === "global";
   const [clients, setClients] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
 
   const isExternal = clientsOverride !== undefined;
 
@@ -77,7 +88,10 @@ export default function ClientsListScreen({
     }
     setError(null);
     try {
-      const data = await fetchMisClientes(token);
+      const data =
+        clientsSource === "global"
+          ? await fetchTodosClientes(token)
+          : await fetchMisClientes(token);
       setClients(data);
     } catch (e) {
       setClients([]);
@@ -88,7 +102,7 @@ export default function ClientsListScreen({
       setLoading(false);
       setRefreshing(false);
     }
-  }, [token, isExternal, onRefreshOverride]);
+  }, [token, isExternal, onRefreshOverride, clientsSource]);
 
   useEffect(() => {
     if (isExternal) return;
@@ -101,16 +115,37 @@ export default function ClientsListScreen({
   const listError = isExternal ? (errorOverride ?? null) : error;
   const showTracking = Boolean(trackingCounts);
 
-  const filtered = list.filter((client) => {
+  const filtered = useMemo(() => {
     const term = query.trim().toLowerCase();
-    if (!term) return true;
-    return (
-      client.username.toLowerCase().includes(term) ||
-      (client.nombreuser || "").toLowerCase().includes(term) ||
-      (client.email || "").toLowerCase().includes(term) ||
-      (client.parentUsername || "").toLowerCase().includes(term)
+    if (!term) return list;
+    return list.filter(
+      (client) =>
+        client.username.toLowerCase().includes(term) ||
+        (client.nombreuser || "").toLowerCase().includes(term) ||
+        (client.email || "").toLowerCase().includes(term) ||
+        (client.parentUsername || "").toLowerCase().includes(term) ||
+        (client.ejecutivo?.nombre || "").toLowerCase().includes(term),
     );
-  });
+  }, [list, query]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [query, list.length]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pageItems = useMemo(() => {
+    const start = (safePage - 1) * PAGE_SIZE;
+    return filtered.slice(start, start + PAGE_SIZE);
+  }, [filtered, safePage]);
+
+  const rangeLabel =
+    filtered.length === 0
+      ? "0 de 0"
+      : `${(safePage - 1) * PAGE_SIZE + 1}-${Math.min(
+          safePage * PAGE_SIZE,
+          filtered.length,
+        )} de ${filtered.length}`;
 
   const openClient = (client: Cliente) => {
     if (onSelectClient) {
@@ -147,13 +182,13 @@ export default function ClientsListScreen({
           <View style={[styles.pill, styles.pillAir]}>
             <Ionicons name="airplane" size={14} color="#2563eb" />
             <Text style={[styles.pillText, styles.pillAirText]}>
-              {totalAir ?? 0} aéreos
+              {totalAir ?? 0} {airPillLabel}
             </Text>
           </View>
           <View style={[styles.pill, styles.pillOcean]}>
             <Ionicons name="boat" size={14} color="#059669" />
             <Text style={[styles.pillText, styles.pillOceanText]}>
-              {totalOcean ?? 0} marítimos
+              {totalOcean ?? 0} {oceanPillLabel}
             </Text>
           </View>
         </View>
@@ -185,7 +220,7 @@ export default function ClientsListScreen({
         </View>
       ) : (
         <FlatList
-          data={filtered}
+          data={pageItems}
           keyExtractor={(item) => `${item.id}-${item.username}`}
           contentContainerStyle={styles.list}
           refreshControl={
@@ -204,6 +239,50 @@ export default function ClientsListScreen({
                 ? "Sin resultados para esa búsqueda."
                 : "No hay clientes en tu cartera."}
             </Text>
+          }
+          ListFooterComponent={
+            filtered.length > 0 ? (
+              <View style={styles.pager}>
+                <Text style={styles.pagerRange}>{rangeLabel}</Text>
+                <View style={styles.pagerControls}>
+                  <Pressable
+                    style={[
+                      styles.pagerBtn,
+                      safePage <= 1 && styles.pagerBtnDisabled,
+                    ]}
+                    disabled={safePage <= 1}
+                    onPress={() => setPage((p) => Math.max(1, p - 1))}
+                  >
+                    <Ionicons
+                      name="chevron-back"
+                      size={18}
+                      color={safePage <= 1 ? brand.mutedLight : brand.navy}
+                    />
+                  </Pressable>
+                  <Text style={styles.pagerPage}>
+                    {safePage} / {totalPages}
+                  </Text>
+                  <Pressable
+                    style={[
+                      styles.pagerBtn,
+                      safePage >= totalPages && styles.pagerBtnDisabled,
+                    ]}
+                    disabled={safePage >= totalPages}
+                    onPress={() =>
+                      setPage((p) => Math.min(totalPages, p + 1))
+                    }
+                  >
+                    <Ionicons
+                      name="chevron-forward"
+                      size={18}
+                      color={
+                        safePage >= totalPages ? brand.mutedLight : brand.navy
+                      }
+                    />
+                  </Pressable>
+                </View>
+              </View>
+            ) : null
           }
           renderItem={({ item }) => {
             const counts = trackingCounts?.get(item.username);
@@ -233,6 +312,13 @@ export default function ClientsListScreen({
                       Subcuenta · {item.parentUsername}
                     </Text>
                   ) : null}
+                  {showEjecutivo ? (
+                    <Text style={styles.cardEjecutivo} numberOfLines={1}>
+                      {item.ejecutivo?.nombre
+                        ? `Ejecutivo · ${item.ejecutivo.nombre}`
+                        : "Sin ejecutivo asignado"}
+                    </Text>
+                  ) : null}
                   <Text style={styles.cardMeta} numberOfLines={1}>
                     {item.email || item.nombreuser || "—"}
                   </Text>
@@ -248,7 +334,9 @@ export default function ClientsListScreen({
                               size={12}
                               color="#2563eb"
                             />
-                            <Text style={[styles.badgeText, styles.badgeAirText]}>
+                            <Text
+                              style={[styles.badgeText, styles.badgeAirText]}
+                            >
                               {air}
                             </Text>
                           </View>
@@ -388,6 +476,12 @@ const styles = StyleSheet.create({
     fontFamily: fonts.medium,
     color: brand.primary,
   },
+  cardEjecutivo: {
+    marginTop: 2,
+    fontSize: 12,
+    fontFamily: fonts.medium,
+    color: brand.navy,
+  },
   cardMeta: {
     marginTop: 2,
     fontSize: 13,
@@ -448,5 +542,42 @@ const styles = StyleSheet.create({
     marginTop: 40,
     color: brand.muted,
     fontFamily: fonts.regular,
+  },
+  pager: {
+    marginTop: 8,
+    marginBottom: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  pagerRange: {
+    fontSize: 12,
+    fontFamily: fonts.medium,
+    color: brand.muted,
+  },
+  pagerControls: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  pagerBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: brand.border,
+    backgroundColor: brand.surface,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pagerBtnDisabled: {
+    opacity: 0.5,
+  },
+  pagerPage: {
+    fontSize: 13,
+    fontFamily: fonts.semiBold,
+    color: brand.navy,
+    minWidth: 48,
+    textAlign: "center",
   },
 });

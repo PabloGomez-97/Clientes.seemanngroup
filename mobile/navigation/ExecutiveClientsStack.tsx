@@ -14,9 +14,11 @@ import CotizacionesStack from "./CotizacionesStack";
 import OperacionesStack from "./OperacionesStack";
 import TrackeosStack from "./TrackeosStack";
 import { EmbeddedChromeProvider } from "./EmbeddedChromeContext";
+import { ComportamientoDetailView } from "../screens/operaciones/ComportamientoDetailScreen";
 import { brand } from "../theme/brand";
 import { fonts } from "../theme/typography";
 import { noBackStackOptions } from "./noBackStackOptions";
+import { useStaffClientsSource } from "./StaffClientsSourceContext";
 
 export type ClientScopeParams = {
   username: string;
@@ -31,6 +33,7 @@ export type ExecutiveClientsStackParamList = {
   ClientOperaciones: ClientScopeParams;
   ClientCotizaciones: ClientScopeParams;
   ClientDocumentos: ClientScopeParams;
+  ClientComportamiento: ClientScopeParams;
 };
 
 const Stack = createNativeStackNavigator<ExecutiveClientsStackParamList>();
@@ -46,6 +49,7 @@ function ScopeHeader({ title }: { title: string }) {
         | "ClientOperaciones"
         | "ClientCotizaciones"
         | "ClientDocumentos"
+        | "ClientComportamiento"
       >
     >();
   const insets = useSafeAreaInsets();
@@ -126,12 +130,57 @@ function ClientDocumentosScreen() {
   );
 }
 
+function ClientComportamientoScreen() {
+  const route =
+    useRoute<
+      RouteProp<ExecutiveClientsStackParamList, "ClientComportamiento">
+    >();
+  const email = route.params.email?.trim();
+
+  if (!email) {
+    return (
+      <ClientScopedScreen title="Comportamiento">
+        <View style={styles.missingEmail}>
+          <Text style={styles.missingEmailText}>
+            Este cliente no tiene email para cargar el análisis.
+          </Text>
+        </View>
+      </ClientScopedScreen>
+    );
+  }
+
+  return (
+    <ClientScopedScreen title="Comportamiento">
+      <ComportamientoDetailView
+        email={email}
+        username={route.params.username}
+        nombreuser={route.params.nombreuser}
+        embed
+      />
+    </ClientScopedScreen>
+  );
+}
+
+function ClientsListEntry() {
+  const source = useStaffClientsSource();
+  return (
+    <ClientsListScreen
+      title={source === "global" ? "Clientes" : "Mis clientes"}
+      subtitle={
+        source === "global"
+          ? "Directorio global del portal"
+          : undefined
+      }
+    />
+  );
+}
+
 export default function ExecutiveClientsStack() {
   return (
     <Stack.Navigator screenOptions={noBackStackOptions}>
       <Stack.Screen
         name="ClientsList"
-        component={ClientsListScreen}
+        component={ClientsListEntry}
         options={{ headerShown: false }}
       />
       <Stack.Screen
@@ -157,6 +206,11 @@ export default function ExecutiveClientsStack() {
       <Stack.Screen
         name="ClientDocumentos"
         component={ClientDocumentosScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="ClientComportamiento"
+        component={ClientComportamientoScreen}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>
@@ -190,5 +244,16 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: fonts.regular,
     color: brand.muted,
+  },
+  missingEmail: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+  },
+  missingEmailText: {
+    textAlign: "center",
+    color: brand.muted,
+    fontFamily: fonts.regular,
   },
 });

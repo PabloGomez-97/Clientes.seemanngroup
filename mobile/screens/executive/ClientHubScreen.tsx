@@ -21,7 +21,8 @@ type HubLink = {
     | "ClientTrackeos"
     | "ClientOperaciones"
     | "ClientCotizaciones"
-    | "ClientDocumentos";
+    | "ClientDocumentos"
+    | "ClientComportamiento";
   label: string;
   hint: string;
   icon: keyof typeof Ionicons.glyphMap;
@@ -52,6 +53,12 @@ const LINKS: HubLink[] = [
     hint: "Listar, ver y descargar",
     icon: "folder-open-outline",
   },
+  {
+    key: "ClientComportamiento",
+    label: "Comportamiento",
+    hint: "Cotizaciones y abandonos",
+    icon: "pulse-outline",
+  },
 ];
 
 export default function ClientHubScreen() {
@@ -63,6 +70,8 @@ export default function ClientHubScreen() {
   useEffect(() => {
     void setActiveUsername(username);
   }, [setActiveUsername, username]);
+
+  const links = LINKS;
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -92,12 +101,12 @@ export default function ClientHubScreen() {
 
         <Text style={styles.sectionTitle}>Accesos</Text>
         <View style={styles.linksCard}>
-          {LINKS.map((link, index) => (
+          {links.map((link, index) => (
             <Pressable
               key={link.key}
               style={({ pressed }) => [
                 styles.linkRow,
-                index < LINKS.length - 1 && styles.linkBorder,
+                index < links.length - 1 && styles.linkBorder,
                 pressed && styles.linkPressed,
               ]}
               onPress={() =>

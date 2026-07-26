@@ -18,20 +18,20 @@ import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../auth/AuthContext";
-import { useExecutivePortfolioTracking } from "../../hooks/useExecutivePortfolioTracking";
-import type { ExecutiveTabParamList } from "../../navigation/ExecutiveTabs";
+import { useOperacionesGlobalTracking } from "../../hooks/useOperacionesGlobalTracking";
+import type { OperacionesTabParamList } from "../../navigation/OperacionesTabs";
 import { getEjecutivoPhotoUrl, getInitials } from "../../utils/ejecutivoPhoto";
 import { brand, spacing } from "../../theme/brand";
 import { fonts } from "../../theme/typography";
 
-type Nav = BottomTabNavigationProp<ExecutiveTabParamList>;
+type Nav = BottomTabNavigationProp<OperacionesTabParamList>;
 
 type QuickLink = {
-  key: keyof ExecutiveTabParamList;
+  key: keyof OperacionesTabParamList;
   label: string;
   icon: keyof typeof Ionicons.glyphMap;
   accent: "navy" | "orange";
-  moreScreen?: "MoreHome" | "DocsClientPicker" | "ComportamientoList";
+  moreScreen?: string;
 };
 
 const QUICK: QuickLink[] = [
@@ -57,17 +57,17 @@ const QUICK: QuickLink[] = [
   },
   {
     key: "More",
-    label: "Consultas",
-    icon: "search",
-    accent: "navy",
-    moreScreen: "MoreHome",
-  },
-  {
-    key: "More",
     label: "Comportamiento",
     icon: "pulse",
     accent: "navy",
     moreScreen: "ComportamientoList",
+  },
+  {
+    key: "More",
+    label: "Consultas",
+    icon: "search",
+    accent: "navy",
+    moreScreen: "MoreHome",
   },
 ];
 
@@ -75,45 +75,51 @@ const INDEX = [
   {
     n: "01",
     title: "Novedades",
-    subtitle: "Comunicados y actualidad Seemann",
     target: "novedades" as const,
   },
   {
     n: "02",
     title: "Nuestras promesas",
-    subtitle: "Compromisos y modalidades de servicio",
     target: "promesas" as const,
   },
   {
     n: "03",
     title: "Reportería financiera",
-    subtitle: "Elige un cliente de tu cartera",
     target: "reporteria" as const,
   },
   {
     n: "04",
     title: "Reportería operacional",
-    subtitle: "Elige un cliente de tu cartera",
     target: "reporteria" as const,
   },
   {
     n: "05",
     title: "Comportamiento",
-    subtitle: "Cotizaciones y abandonos de tu cartera",
     target: "comportamiento" as const,
   },
 ];
 
-export default function ExecutiveHomeScreen() {
+export default function OperacionesHomeScreen() {
   const navigation = useNavigation<Nav>();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const {
     clients,
+    totalTrackings,
     inMotionTrackings,
+    inMotionAir,
+    inMotionOcean,
+    completedTrackings,
+    delayedTrackings,
+    delayedAir,
+    delayedOcean,
+    clientsWithTracking,
+    clientsWithoutTracking,
+    totalAir,
+    totalOcean,
     loading,
     refresh,
-  } = useExecutivePortfolioTracking();
+  } = useOperacionesGlobalTracking();
   const [refreshing, setRefreshing] = useState(false);
   const [lightStatus, setLightStatus] = useState(true);
   const [photoFailed, setPhotoFailed] = useState(false);
@@ -122,9 +128,8 @@ export default function ExecutiveHomeScreen() {
     user?.nombreuser?.trim() ||
     user?.ejecutivo?.nombre?.trim() ||
     user?.email?.split("@")[0] ||
-    "Ejecutivo";
+    "Operaciones";
   const photo = getEjecutivoPhotoUrl(name);
-  const clientCount = clients.length;
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -161,6 +166,33 @@ export default function ExecutiveHomeScreen() {
     });
   };
 
+  const kpis = [
+    {
+      label: "Total",
+      value: totalTrackings,
+      sub: `${totalAir} aéreos · ${totalOcean} marítimos`,
+      color: brand.primary,
+    },
+    {
+      label: "En movimiento",
+      value: inMotionTrackings,
+      sub: `${inMotionAir} en tránsito · ${inMotionOcean} navegando`,
+      color: "#0891b2",
+    },
+    {
+      label: "Completados",
+      value: completedTrackings,
+      sub: "Aterrizados / arribados",
+      color: "#059669",
+    },
+    {
+      label: "Retrasos",
+      value: delayedTrackings,
+      sub: `${delayedAir} aéreos · ${delayedOcean} marítimos`,
+      color: "#dc2626",
+    },
+  ];
+
   return (
     <View style={styles.root}>
       {lightStatus ? <StatusBar style="light" /> : null}
@@ -186,8 +218,6 @@ export default function ExecutiveHomeScreen() {
           style={bandStyle}
         >
           <View style={styles.bandOrb} />
-          <View style={styles.bandOrbSmall} />
-
           <View style={styles.bandTop}>
             <Image
               source={require("../../../src/auth/logoseemann.png")}
@@ -196,7 +226,7 @@ export default function ExecutiveHomeScreen() {
             />
             <View style={styles.accountPill}>
               <View style={styles.liveDot} />
-              <Text style={styles.accountPillText}>Portal ejecutivo</Text>
+              <Text style={styles.accountPillText}>Portal operaciones</Text>
             </View>
           </View>
 
@@ -218,7 +248,7 @@ export default function ExecutiveHomeScreen() {
                 {name}
               </Text>
               <Text style={styles.tagline}>
-                Torre de control de tu cartera de clientes
+                Torre de control global de operaciones
               </Text>
             </View>
           </View>
@@ -226,45 +256,76 @@ export default function ExecutiveHomeScreen() {
 
         <View style={styles.statusBoard}>
           <Pressable
-            style={({ pressed }) => [
-              styles.statusCell,
-              pressed && styles.statusPressed,
-            ]}
+            style={styles.statusCell}
             onPress={() => navigation.navigate("Clients")}
           >
-            <Text style={styles.statusKey}>CARTERA</Text>
+            <Text style={styles.statusKey}>CLIENTES</Text>
             {loading ? (
               <ActivityIndicator color={brand.navy} />
             ) : (
-              <Text style={styles.statusVal}>{String(clientCount)}</Text>
+              <Text style={styles.statusVal}>{String(clients.length)}</Text>
             )}
-            <Text style={styles.statusLink}>Ver clientes ↗</Text>
+            <Text style={styles.statusLink}>Directorio ↗</Text>
           </Pressable>
-
           <View style={styles.statusDivider} />
-
           <Pressable
-            style={({ pressed }) => [
-              styles.statusCell,
-              pressed && styles.statusPressed,
-            ]}
+            style={styles.statusCell}
             onPress={() => navigation.navigate("Trackeos")}
           >
-            <Text style={styles.statusKey}>SEGUIMIENTOS</Text>
+            <Text style={styles.statusKey}>RETRASOS</Text>
             {loading ? (
-              <ActivityIndicator color={brand.primary} />
+              <ActivityIndicator color="#dc2626" />
             ) : (
-              <Text style={[styles.statusVal, { color: brand.primary }]}>
-                {String(inMotionTrackings)}
+              <Text style={[styles.statusVal, { color: "#dc2626" }]}>
+                {String(delayedTrackings)}
               </Text>
             )}
-            <Text style={[styles.statusLink, { color: brand.primary }]}>
-              Abrir ↗
+            <Text style={[styles.statusLink, { color: "#dc2626" }]}>
+              Revisar ↗
             </Text>
           </Pressable>
         </View>
 
         <View style={styles.sectionPad}>
+          <Text style={styles.kicker}>Torre de control</Text>
+          <Text style={styles.sectionTitle}>Seguimientos de Clientes</Text>
+
+          <View style={styles.kpiGrid}>
+            {kpis.map((kpi) => (
+              <Pressable
+                key={kpi.label}
+                style={styles.kpiCard}
+                onPress={() => {
+                  if (kpi.label === "En movimiento") {
+                    navigation.navigate("Trackeos", {
+                      screen: "TrackeosClientPicker",
+                      params: { filter: "active" },
+                    });
+                    return;
+                  }
+                  navigation.navigate("Trackeos");
+                }}
+              >
+                <Text style={styles.kpiLabel}>{kpi.label}</Text>
+                {loading ? (
+                  <ActivityIndicator color={kpi.color} />
+                ) : (
+                  <Text style={[styles.kpiValue, { color: kpi.color }]}>
+                    {String(kpi.value)}
+                  </Text>
+                )}
+                <Text style={styles.kpiSub}>{kpi.sub}</Text>
+              </Pressable>
+            ))}
+          </View>
+
+          <View style={styles.coverageRow}>
+            <Text style={styles.coverageText}>
+              Con tracking: {clientsWithTracking} · Sin tracking:{" "}
+              {clientsWithoutTracking}
+            </Text>
+          </View>
+
           <View style={styles.sectionHead}>
             <Text style={styles.kicker}>Módulos</Text>
             <Text style={styles.sectionTitle}>Accesos rápidos</Text>
@@ -283,7 +344,7 @@ export default function ExecutiveHomeScreen() {
                   onPress={() => {
                     if (item.moreScreen) {
                       navigation.navigate("More", {
-                        screen: item.moreScreen,
+                        screen: item.moreScreen as never,
                       });
                       return;
                     }
@@ -317,18 +378,14 @@ export default function ExecutiveHomeScreen() {
             {INDEX.map((row, i) => (
               <Pressable
                 key={row.n}
-                style={({ pressed }) => [
+                style={[
                   styles.indexRow,
                   i < INDEX.length - 1 && styles.indexBorder,
-                  pressed && styles.indexPressed,
                 ]}
                 onPress={() => openIndex(row.target)}
               >
                 <Text style={styles.indexNum}>{row.n}</Text>
-                <View style={styles.indexCopy}>
-                  <Text style={styles.indexTitle}>{row.title}</Text>
-                  <Text style={styles.indexSub}>{row.subtitle}</Text>
-                </View>
+                <Text style={styles.indexTitle}>{row.title}</Text>
                 <Ionicons
                   name="chevron-forward"
                   size={16}
@@ -375,16 +432,6 @@ const styles = StyleSheet.create({
     top: -80,
     right: -60,
   },
-  bandOrbSmall: {
-    position: "absolute",
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
-    bottom: 10,
-    left: -40,
-  },
   bandTop: {
     flexDirection: "row",
     alignItems: "center",
@@ -414,11 +461,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: fonts.semiBold,
   },
-  heroRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-  },
+  heroRow: { flexDirection: "row", alignItems: "center", gap: 14 },
   heroAvatar: {
     width: 56,
     height: 56,
@@ -431,11 +474,7 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.18)",
   },
   heroAvatarImage: { width: 56, height: 56 },
-  heroInitials: {
-    color: "#fff",
-    fontFamily: fonts.bold,
-    fontSize: 18,
-  },
+  heroInitials: { color: "#fff", fontFamily: fonts.bold, fontSize: 18 },
   heroText: { flex: 1, minWidth: 0 },
   welcomeLine: {
     color: "rgba(255,255,255,0.55)",
@@ -470,12 +509,7 @@ const styles = StyleSheet.create({
     elevation: 5,
     marginBottom: spacing.xl,
   },
-  statusCell: {
-    flex: 1,
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-  },
-  statusPressed: { backgroundColor: "#fafafa" },
+  statusCell: { flex: 1, paddingVertical: 16, paddingHorizontal: 16 },
   statusDivider: {
     width: 1,
     backgroundColor: "#eceff3",
@@ -501,12 +535,8 @@ const styles = StyleSheet.create({
     fontFamily: fonts.semiBold,
     color: brand.navy,
   },
-  sectionPad: {
-    paddingHorizontal: spacing.lg,
-  },
-  sectionHead: {
-    marginBottom: 14,
-  },
+  sectionPad: { paddingHorizontal: spacing.lg },
+  sectionHead: { marginBottom: 14, marginTop: 8 },
   kicker: {
     fontSize: 11,
     letterSpacing: 1.6,
@@ -520,6 +550,54 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bold,
     color: brand.navy,
     letterSpacing: -0.3,
+    marginBottom: 14,
+  },
+  kpiGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    marginBottom: 12,
+  },
+  kpiCard: {
+    width: "47.8%",
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#e4e9f0",
+    padding: 14,
+    gap: 4,
+  },
+  kpiLabel: {
+    fontSize: 11,
+    fontFamily: fonts.semiBold,
+    color: brand.muted,
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+  },
+  kpiValue: {
+    fontSize: 26,
+    fontFamily: fonts.bold,
+    fontVariant: ["tabular-nums"],
+  },
+  kpiSub: {
+    fontSize: 11,
+    fontFamily: fonts.regular,
+    color: brand.muted,
+    lineHeight: 15,
+  },
+  coverageRow: {
+    marginBottom: spacing.xl,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: "#fff",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#e4e9f0",
+  },
+  coverageText: {
+    fontSize: 12,
+    fontFamily: fonts.medium,
+    color: brand.navy,
   },
   launcher: {
     flexDirection: "row",
@@ -577,23 +655,16 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#eef1f5",
   },
-  indexPressed: { backgroundColor: "#fafbfd" },
   indexNum: {
     fontFamily: fonts.bold,
     fontSize: 13,
     color: brand.primary,
     width: 28,
   },
-  indexCopy: { flex: 1 },
   indexTitle: {
+    flex: 1,
     fontFamily: fonts.semiBold,
     fontSize: 14,
     color: brand.navy,
-  },
-  indexSub: {
-    marginTop: 2,
-    fontSize: 12,
-    color: brand.muted,
-    lineHeight: 16,
   },
 });

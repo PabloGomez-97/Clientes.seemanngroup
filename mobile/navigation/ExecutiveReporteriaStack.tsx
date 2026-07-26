@@ -14,6 +14,7 @@ import ReporteriaOperacionalScreen from "../screens/menu/ReporteriaOperacionalSc
 import { brand, radii, spacing } from "../theme/brand";
 import { fonts } from "../theme/typography";
 import { noBackStackOptions } from "./noBackStackOptions";
+import { useStaffClientsSource } from "./StaffClientsSourceContext";
 
 export type ExecutiveReporteriaStackParamList = {
   ReporteriaClientPicker: undefined;
@@ -34,6 +35,7 @@ function ReporteriaClientPickerScreen() {
       >
     >();
   const { setActiveUsername } = useAuth();
+  const source = useStaffClientsSource();
 
   const onSelect = (client: Cliente) => {
     void setActiveUsername(client.username);
@@ -43,7 +45,11 @@ function ReporteriaClientPickerScreen() {
   return (
     <ClientsListScreen
       title="Reportería"
-      subtitle="Elige un cliente de tu cartera"
+      subtitle={
+        source === "global"
+          ? "Elige un cliente del portal"
+          : "Elige un cliente de tu cartera"
+      }
       onSelectClient={onSelect}
     />
   );
