@@ -33,6 +33,11 @@ yarn-error.*
 # local env files
 .env*.local
 
+# Google Play / EAS credentials (nunca subir a git)
+google-play-service-account.json
+*-play-service-account.json
+credentials.json
+
 # typescript
 *.tsbuildinfo
 
