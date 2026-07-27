@@ -1,18 +1,19 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { MOBILE_API_BASE } from "../../src/auth/authApi";
 import { useAuth } from "../auth/AuthContext";
+import { useRequestGate } from "./useRequestGate";
 
 export function useHomeDocumentsCount(activeUsername: string | undefined) {
   const { token } = useAuth();
+  const { next, isLatest } = useRequestGate();
   const [count, setCount] = useState(0);
   const [loading, setLoading] = useState(true);
-  const requestIdRef = useRef(0);
 
   const refresh = useCallback(
     async (silent = false) => {
-      const requestId = ++requestIdRef.current;
+      const requestId = next();
       if (!activeUsername || !token) {
-        if (requestId === requestIdRef.current) {
+        if (isLatest(requestId)) {
           setCount(0);
           setLoading(false);
         }
@@ -24,10 +25,10 @@ export function useHomeDocumentsCount(activeUsername: string | undefined) {
           `${MOBILE_API_BASE}/api/documents/all?ownerUsername=${encodeURIComponent(activeUsername)}`,
           { headers: { Authorization: `Bearer ${token}` } },
         );
-        if (requestId !== requestIdRef.current) return;
+        if (!isLatest(requestId)) return;
         if (!res.ok) return;
         const data = await res.json();
-        if (requestId !== requestIdRef.current) return;
+        if (!isLatest(requestId)) return;
         const total =
           (data.air?.length ?? 0) +
           (data.ocean?.length ?? 0) +
@@ -37,12 +38,10 @@ export function useHomeDocumentsCount(activeUsername: string | undefined) {
       } catch {
         /* ignore */
       } finally {
-        if (requestId === requestIdRef.current) {
-          setLoading(false);
-        }
+        if (isLatest(requestId)) setLoading(false);
       }
     },
-    [activeUsername, token],
+    [activeUsername, token, next, isLatest],
   );
 
   useEffect(() => {

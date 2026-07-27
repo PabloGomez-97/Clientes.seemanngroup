@@ -14,6 +14,7 @@ import {
 } from "../services/shipsgoApi";
 import { useAuth } from "../auth/AuthContext";
 import { useStaffClientsSource } from "../navigation/StaffClientsSourceContext";
+import { useRequestGate } from "./useRequestGate";
 
 export type ClientTrackingCounts = {
   air: number;
@@ -29,12 +30,13 @@ function emptyCounts(usernames: string[]): Map<string, ClientTrackingCounts> {
 }
 
 /**
- * Cartera (o directorio global) + conteos ShipsGo por `reference`.
+ * Cartera (o directorio global) + conteos de seguimiento por `reference`.
  * `inMotion*`: En tránsito (EN_ROUTE) + Navegando (SAILING) para Home ejecutivo.
  */
 export function useExecutivePortfolioTracking() {
   const { token } = useAuth();
   const clientsSource = useStaffClientsSource();
+  const { next, isLatest } = useRequestGate();
   const [clients, setClients] = useState<Cliente[]>([]);
   const [counts, setCounts] = useState<Map<string, ClientTrackingCounts>>(
     () => new Map(),
@@ -50,7 +52,9 @@ export function useExecutivePortfolioTracking() {
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    const requestId = next();
     if (!token) {
+      if (!isLatest(requestId)) return;
       setClients([]);
       setCounts(new Map());
       setActiveCounts(new Map());
@@ -72,6 +76,8 @@ export function useExecutivePortfolioTracking() {
         fetchAirShipments().catch(() => []),
         fetchOceanShipments().catch(() => []),
       ]);
+
+      if (!isLatest(requestId)) return;
 
       const names = new Set(portfolio.map((c) => c.username));
       const map = emptyCounts([...names]);
@@ -120,15 +126,16 @@ export function useExecutivePortfolioTracking() {
       setInMotionAir(airInMotion);
       setInMotionOcean(oceanInMotion);
     } catch (e) {
+      if (!isLatest(requestId)) return;
       setError(
         e instanceof Error
           ? e.message
           : "No se pudieron cargar los seguimientos.",
       );
     } finally {
-      setLoading(false);
+      if (isLatest(requestId)) setLoading(false);
     }
-  }, [token, clientsSource]);
+  }, [token, clientsSource, next, isLatest]);
 
   useEffect(() => {
     void load();

@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { MOBILE_API_BASE } from "../../src/auth/authApi";
+import { useRequestGate } from "./useRequestGate";
 
 export interface HmAirItem {
   kind: "air";
@@ -95,16 +96,16 @@ async function fetchShipments(username: string): Promise<{
 }
 
 export function useHomeShipments(activeUsername: string | undefined) {
+  const { next, isLatest } = useRequestGate();
   const [air, setAir] = useState<HmAirItem[]>([]);
   const [ocean, setOcean] = useState<HmOceanItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const requestIdRef = useRef(0);
 
   const refresh = useCallback(
     async (silent = false) => {
-      const requestId = ++requestIdRef.current;
+      const requestId = next();
       if (!activeUsername) {
-        if (requestId === requestIdRef.current) {
+        if (isLatest(requestId)) {
           setAir([]);
           setOcean([]);
           setLoading(false);
@@ -114,18 +115,16 @@ export function useHomeShipments(activeUsername: string | undefined) {
       if (!silent) setLoading(true);
       try {
         const result = await fetchShipments(activeUsername);
-        if (requestId !== requestIdRef.current) return;
+        if (!isLatest(requestId)) return;
         setAir(result.air);
         setOcean(result.ocean);
       } catch {
         /* ignore */
       } finally {
-        if (requestId === requestIdRef.current) {
-          setLoading(false);
-        }
+        if (isLatest(requestId)) setLoading(false);
       }
     },
-    [activeUsername],
+    [activeUsername, next, isLatest],
   );
 
   useEffect(() => {
