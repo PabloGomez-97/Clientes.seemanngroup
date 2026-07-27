@@ -4,7 +4,8 @@ export type StaffPortalKind =
   | "executive"
   | "operaciones"
   | "pricing"
-  | "proveedor";
+  | "proveedor"
+  | "admin";
 
 const StaffPortalContext = createContext<StaffPortalKind>("executive");
 

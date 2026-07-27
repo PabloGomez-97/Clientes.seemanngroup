@@ -133,6 +133,19 @@ export async function fetchProveedorOwnTariffs(
   return mapped;
 }
 
+/** Todas las tarifas publicadas (vista admin). */
+export async function fetchProveedorAllTariffs(
+  mode: ProveedorTariffMode,
+): Promise<ProveedorTariffRow[]> {
+  const rows = await fetchSheetRows(mode);
+  const mapped: ProveedorTariffRow[] = [];
+  rows.forEach((row, index) => {
+    const item = mapRow(mode, row, index);
+    if (item) mapped.push(item);
+  });
+  return mapped;
+}
+
 export async function fetchProveedorTariffCounts(
   nombreUsuario: string,
 ): Promise<{ air: number; fcl: number; lcl: number; all: number }> {

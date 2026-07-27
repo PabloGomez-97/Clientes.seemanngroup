@@ -9,6 +9,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { usePricingAlerts } from "../../hooks/usePricingAlerts";
 import type {
@@ -93,6 +94,7 @@ const FILTERS: { key: FilterKind; label: string }[] = [
 ];
 
 export default function PricingAlertsScreen() {
+  const navigation = useNavigation();
   const { expiry, loading, error, refresh } = usePricingAlerts(7);
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState<FilterKind>("all");
@@ -130,10 +132,25 @@ export default function PricingAlertsScreen() {
           rows.length,
         )} de ${rows.length}`;
 
+  const canBack = navigation.canGoBack();
+
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
+      {canBack ? (
+        <View style={styles.topBar}>
+          <Pressable
+            onPress={() => navigation.goBack()}
+            hitSlop={12}
+            style={styles.backBtn}
+          >
+            <Ionicons name="chevron-back" size={22} color={brand.navy} />
+          </Pressable>
+          <Text style={styles.topTitle}>Alertas</Text>
+          <View style={styles.backBtn} />
+        </View>
+      ) : null}
       <View style={styles.header}>
-        <Text style={styles.title}>Alertas</Text>
+        {!canBack ? <Text style={styles.title}>Alertas</Text> : null}
         <Text style={styles.subtitle}>
           Tarifas por vencer en los próximos {expiry?.days ?? 7} días
         </Text>
@@ -275,6 +292,25 @@ export default function PricingAlertsScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: brand.canvas },
+  topBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  backBtn: {
+    width: 36,
+    height: 36,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  topTitle: {
+    flex: 1,
+    textAlign: "center",
+    fontSize: 16,
+    fontFamily: fonts.semiBold,
+    color: brand.navy,
+  },
   header: {
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,

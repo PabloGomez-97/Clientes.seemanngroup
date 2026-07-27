@@ -19,6 +19,7 @@ import ExecutiveTabs from "./navigation/ExecutiveTabs";
 import OperacionesTabs from "./navigation/OperacionesTabs";
 import PricingTabs from "./navigation/PricingTabs";
 import ProveedorTabs from "./navigation/ProveedorTabs";
+import AdminTabs from "./navigation/AdminTabs";
 import StaffEmptyHomeScreen from "./screens/executive/StaffEmptyHomeScreen";
 import { brand } from "./theme/brand";
 import { applyGlobalFonts } from "./theme/typography";
@@ -70,6 +71,15 @@ function ProveedorAuthenticatedApp() {
   );
 }
 
+function AdminAuthenticatedApp() {
+  usePushNotifications();
+  return (
+    <LinbisTokenProvider>
+      <AdminTabs />
+    </LinbisTokenProvider>
+  );
+}
+
 function RootApp() {
   const { user, loading } = useAuth();
 
@@ -85,6 +95,10 @@ function RootApp() {
 
   if (portal === "client") {
     return <ClientAuthenticatedApp />;
+  }
+
+  if (portal === "admin") {
+    return <AdminAuthenticatedApp />;
   }
 
   if (portal === "operaciones") {

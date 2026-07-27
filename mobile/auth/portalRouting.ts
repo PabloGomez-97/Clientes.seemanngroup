@@ -5,6 +5,12 @@ export function isStaffUser(user: AuthUser | null | undefined): boolean {
   return user?.username === "Ejecutivo";
 }
 
+export function canAccessAdminPortal(
+  user: AuthUser | null | undefined,
+): boolean {
+  return isStaffUser(user) && Boolean(user?.roles?.administrador);
+}
+
 export function canAccessExecutivePortal(
   user: AuthUser | null | undefined,
 ): boolean {
@@ -31,6 +37,7 @@ export function canAccessProveedorPortal(
 
 export type MobilePortal =
   | "client"
+  | "admin"
   | "executive"
   | "operaciones"
   | "pricing"
@@ -40,13 +47,14 @@ export type MobilePortal =
 /**
  * En mobile los roles staff son exclusivos (sin combinación).
  * Prioridad solo por seguridad de resolución:
- * operaciones → pricing → ejecutivo → proveedor.
+ * admin → operaciones → pricing → ejecutivo → proveedor.
  */
 export function resolveMobilePortal(
   user: AuthUser | null | undefined,
 ): MobilePortal | null {
   if (!user) return null;
   if (!isStaffUser(user)) return "client";
+  if (canAccessAdminPortal(user)) return "admin";
   if (canAccessOperacionesPortal(user)) return "operaciones";
   if (canAccessPricingPortal(user)) return "pricing";
   if (canAccessExecutivePortal(user)) return "executive";
