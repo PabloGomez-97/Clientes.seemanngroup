@@ -17,6 +17,7 @@ import { useAuth } from "../../auth/AuthContext";
 import type { ExecutiveClientsStackParamList } from "../../navigation/ExecutiveClientsStack";
 import { useStaffClientsSource } from "../../navigation/StaffClientsSourceContext";
 import type { ClientTrackingCounts } from "../../hooks/useExecutivePortfolioTracking";
+import { useRefreshOnFocus } from "../../hooks/useRefreshOnFocus";
 import {
   fetchMisClientes,
   fetchTodosClientes,
@@ -104,11 +105,7 @@ export default function ClientsListScreen({
     }
   }, [token, isExternal, onRefreshOverride, clientsSource]);
 
-  useEffect(() => {
-    if (isExternal) return;
-    setLoading(true);
-    void load();
-  }, [load, isExternal]);
+  useRefreshOnFocus(load);
 
   const list = isExternal ? clientsOverride : clients;
   const isLoading = isExternal ? Boolean(loadingOverride) : loading;

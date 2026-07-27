@@ -16,6 +16,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Sharing from "expo-sharing";
 import ScreenHeader from "../../components/ui/ScreenHeader";
 import { useMisDocumentos } from "../../hooks/useMisDocumentos";
+import { useRefreshOnFocus } from "../../hooks/useRefreshOnFocus";
 import { useEmbeddedChrome } from "../../navigation/EmbeddedChromeContext";
 import {
   formatDocDate,
@@ -53,6 +54,8 @@ export default function MisDocumentosScreen() {
     download,
   } = useMisDocumentos();
   const [toast, setToast] = useState<string | null>(null);
+
+  useRefreshOnFocus(refresh);
 
   const showToast = (msg: string) => {
     setToast(msg);

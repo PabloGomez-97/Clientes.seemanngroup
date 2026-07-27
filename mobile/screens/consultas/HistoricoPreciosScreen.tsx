@@ -23,6 +23,7 @@ import {
   type HistoricalTierSeries,
 } from "../../../src/components/quotes/Handlers/shared/historicalExplorerParse";
 import ScreenHeader from "../../components/ui/ScreenHeader";
+import { useRefreshOnFocus } from "../../hooks/useRefreshOnFocus";
 import { brand, radii, spacing } from "../../theme/brand";
 import { fonts } from "../../theme/typography";
 
@@ -416,9 +417,7 @@ export default function HistoricoPreciosScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  useRefreshOnFocus(load);
 
   const modeItems = useMemo(() => buildItems(routes, mode), [mode, routes]);
 

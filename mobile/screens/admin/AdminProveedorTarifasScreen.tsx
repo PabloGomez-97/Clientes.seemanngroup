@@ -17,6 +17,7 @@ import {
   type ProveedorTariffMode,
   type ProveedorTariffRow,
 } from "../../services/proveedorApi";
+import { useRefreshOnFocus } from "../../hooks/useRefreshOnFocus";
 import { brand, radii, spacing } from "../../theme/brand";
 import { fonts } from "../../theme/typography";
 
@@ -54,11 +55,11 @@ export default function AdminProveedorTarifasScreen() {
     }
   }, [mode]);
 
+  useRefreshOnFocus(load);
+
   useEffect(() => {
-    setLoading(true);
     setPage(1);
-    void load();
-  }, [load]);
+  }, [mode]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();

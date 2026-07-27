@@ -22,6 +22,7 @@ import {
 } from "../../../src/components/quotes/Handlers/shared/buildBrowsableRates";
 import type { CountryRateService } from "../../../src/components/quotes/Handlers/shared/countryRatesTypes";
 import ScreenHeader from "../../components/ui/ScreenHeader";
+import { useRefreshOnFocus } from "../../hooks/useRefreshOnFocus";
 import { brand, radii, spacing } from "../../theme/brand";
 import { fonts } from "../../theme/typography";
 
@@ -268,9 +269,8 @@ export default function TarifarioScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    void load(false);
-  }, [load]);
+  const refreshRates = useCallback(() => load(true), [load]);
+  useRefreshOnFocus(refreshRates);
 
   const modeRows = rowsByMode[mode];
 

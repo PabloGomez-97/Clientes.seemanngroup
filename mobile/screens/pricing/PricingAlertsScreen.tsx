@@ -12,6 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { usePricingAlerts } from "../../hooks/usePricingAlerts";
+import { useRefreshOnFocus } from "../../hooks/useRefreshOnFocus";
 import type {
   PricingExpiringAir,
   PricingExpiringFcl,
@@ -99,6 +100,8 @@ export default function PricingAlertsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState<FilterKind>("all");
   const [page, setPage] = useState(1);
+
+  useRefreshOnFocus(refresh);
 
   const rows = useMemo(() => {
     if (!expiry) return [];

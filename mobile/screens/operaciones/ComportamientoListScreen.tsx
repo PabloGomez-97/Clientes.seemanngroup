@@ -18,6 +18,7 @@ import {
   fetchBehaviorClients,
   type BehaviorClientSummary,
 } from "../../services/comportamientoApi";
+import { useRefreshOnFocus } from "../../hooks/useRefreshOnFocus";
 import { useStaffClientsSource } from "../../navigation/StaffClientsSourceContext";
 import { brand, radii, spacing } from "../../theme/brand";
 import { fonts } from "../../theme/typography";
@@ -73,10 +74,7 @@ export default function ComportamientoListScreen() {
     }
   }, [token, clientsSource]);
 
-  useEffect(() => {
-    setLoading(true);
-    void load();
-  }, [load]);
+  useRefreshOnFocus(load);
 
   const filtered = useMemo(() => {
     const term = query.trim().toLowerCase();

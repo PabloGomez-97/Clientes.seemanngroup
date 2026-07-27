@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -19,6 +19,7 @@ import {
   fetchBlogPosts,
   type MobileBlogPost,
 } from "../../services/contentful";
+import { useRefreshOnFocus } from "../../hooks/useRefreshOnFocus";
 import { brand, radii, spacing } from "../../theme/brand";
 import { fonts } from "../../theme/typography";
 
@@ -55,9 +56,7 @@ export default function NovedadesScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  useRefreshOnFocus(load);
 
   const renderItem = ({ item }: { item: MobileBlogPost }) => (
     <Pressable

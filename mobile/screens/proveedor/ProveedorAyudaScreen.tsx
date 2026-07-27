@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -17,6 +17,7 @@ import {
   fetchProveedorAyudaEjecutivos,
   type ProveedorEjecutivoContact,
 } from "../../services/proveedorApi";
+import { useRefreshOnFocus } from "../../hooks/useRefreshOnFocus";
 import { brand, radii, spacing } from "../../theme/brand";
 import { fonts } from "../../theme/typography";
 
@@ -49,10 +50,7 @@ export default function ProveedorAyudaScreen() {
     }
   }, [token]);
 
-  useEffect(() => {
-    setLoading(true);
-    void load();
-  }, [load]);
+  useRefreshOnFocus(load);
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>

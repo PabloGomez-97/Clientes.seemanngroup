@@ -23,6 +23,7 @@ import OperationCard from "../../components/operaciones/OperationCard";
 import OperacionesFilterSheet from "../../components/operaciones/OperacionesFilterSheet";
 import OperacionesPaginationBar from "../../components/operaciones/OperacionesPaginationBar";
 import { useOperaciones } from "../../hooks/useOperaciones";
+import { useRefreshOnFocus } from "../../hooks/useRefreshOnFocus";
 import { useEmbeddedChrome } from "../../navigation/EmbeddedChromeContext";
 import type { OperacionesStackParamList } from "../../navigation/OperacionesStack";
 import { openTrackeosFromOperacion } from "../../navigation/openTrackeosFromOperacion";
@@ -71,6 +72,8 @@ export default function OperacionesListScreen() {
     refreshActiveTab,
     pagination,
   } = useOperaciones();
+
+  useRefreshOnFocus(refreshActiveTab);
 
   const loading =
     activeTab === "air"

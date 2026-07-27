@@ -15,6 +15,7 @@ import type { ClientQuote } from "../../../src/services/cotizacionesLogic";
 import QuoteCard from "../../components/cotizaciones/QuoteCard";
 import OperacionesPaginationBar from "../../components/operaciones/OperacionesPaginationBar";
 import { useCotizaciones } from "../../hooks/useCotizaciones";
+import { useRefreshOnFocus } from "../../hooks/useRefreshOnFocus";
 import { useEmbeddedChrome } from "../../navigation/EmbeddedChromeContext";
 import type { CotizacionesStackParamList } from "../../navigation/CotizacionesStack";
 import { brand, radii, spacing } from "../../theme/brand";
@@ -30,6 +31,8 @@ export default function CotizacionesListScreen() {
   const embedded = useEmbeddedChrome();
   const { activeUsername, items, loading, error, pagination, refresh } =
     useCotizaciones();
+
+  useRefreshOnFocus(refresh);
 
   const renderItem = ({ item }: { item: ClientQuote }) => (
     <Pressable

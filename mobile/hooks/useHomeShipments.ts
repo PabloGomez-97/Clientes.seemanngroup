@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { MOBILE_API_BASE } from "../../src/auth/authApi";
 
 export interface HmAirItem {
@@ -99,33 +99,31 @@ export function useHomeShipments(activeUsername: string | undefined) {
   const [ocean, setOcean] = useState<HmOceanItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (!activeUsername) {
-      setLoading(false);
-      return;
-    }
-
-    let cancelled = false;
-
-    (async () => {
-      setLoading(true);
+  const refresh = useCallback(
+    async (silent = false) => {
+      if (!activeUsername) {
+        setAir([]);
+        setOcean([]);
+        setLoading(false);
+        return;
+      }
+      if (!silent) setLoading(true);
       try {
         const result = await fetchShipments(activeUsername);
-        if (!cancelled) {
-          setAir(result.air);
-          setOcean(result.ocean);
-        }
+        setAir(result.air);
+        setOcean(result.ocean);
       } catch {
         /* ignore */
       } finally {
-        if (!cancelled) setLoading(false);
+        setLoading(false);
       }
-    })();
+    },
+    [activeUsername],
+  );
 
-    return () => {
-      cancelled = true;
-    };
-  }, [activeUsername]);
+  useEffect(() => {
+    void refresh(false);
+  }, [refresh]);
 
   const items = useMemo<HmShipmentItem[]>(
     () => [...air, ...ocean],
@@ -137,5 +135,12 @@ export function useHomeShipments(activeUsername: string | undefined) {
     [items],
   );
 
-  return { air, ocean, items, activeCount, loading };
+  return {
+    air,
+    ocean,
+    items,
+    activeCount,
+    loading,
+    refresh: () => refresh(true),
+  };
 }

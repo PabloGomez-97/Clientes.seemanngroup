@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { MOBILE_API_BASE } from "../../src/auth/authApi";
 import { useAuth } from "../auth/AuthContext";
 
@@ -7,16 +7,14 @@ export function useHomeDocumentsCount(activeUsername: string | undefined) {
   const [count, setCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (!activeUsername || !token) {
-      setLoading(false);
-      return;
-    }
-
-    let cancelled = false;
-
-    (async () => {
-      setLoading(true);
+  const refresh = useCallback(
+    async (silent = false) => {
+      if (!activeUsername || !token) {
+        setCount(0);
+        setLoading(false);
+        return;
+      }
+      if (!silent) setLoading(true);
       try {
         const res = await fetch(
           `${MOBILE_API_BASE}/api/documents/all?ownerUsername=${encodeURIComponent(activeUsername)}`,
@@ -29,18 +27,19 @@ export function useHomeDocumentsCount(activeUsername: string | undefined) {
           (data.ocean?.length ?? 0) +
           (data.ground?.length ?? 0) +
           (data.quotes?.length ?? 0);
-        if (!cancelled) setCount(total);
+        setCount(total);
       } catch {
         /* ignore */
       } finally {
-        if (!cancelled) setLoading(false);
+        setLoading(false);
       }
-    })();
+    },
+    [activeUsername, token],
+  );
 
-    return () => {
-      cancelled = true;
-    };
-  }, [activeUsername, token]);
+  useEffect(() => {
+    void refresh(false);
+  }, [refresh]);
 
-  return { count, loading };
+  return { count, loading, refresh: () => refresh(true) };
 }

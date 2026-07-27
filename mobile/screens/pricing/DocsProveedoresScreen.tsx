@@ -19,6 +19,7 @@ import {
   saveProveedorArchivoToCache,
   type ProveedorArchivo,
 } from "../../services/pricingApi";
+import { useRefreshOnFocus } from "../../hooks/useRefreshOnFocus";
 import { brand, radii, spacing } from "../../theme/brand";
 import { fonts } from "../../theme/typography";
 
@@ -71,10 +72,7 @@ export default function DocsProveedoresScreen() {
     }
   }, [token]);
 
-  useEffect(() => {
-    setLoading(true);
-    void load();
-  }, [load]);
+  useRefreshOnFocus(load);
 
   const filtered = useMemo(() => {
     if (filter === "ALL") return files;

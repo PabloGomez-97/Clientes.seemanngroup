@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../auth/AuthContext";
+import { useRefreshOnFocus } from "../../hooks/useRefreshOnFocus";
 import {
   fetchAdminEjecutivos,
   roleLabels,
@@ -56,10 +57,7 @@ export default function AdminEjecutivosTabScreen() {
     }
   }, [token]);
 
-  useEffect(() => {
-    setLoading(true);
-    void load();
-  }, [load]);
+  useRefreshOnFocus(load);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();

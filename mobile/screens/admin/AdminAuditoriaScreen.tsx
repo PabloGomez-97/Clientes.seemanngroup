@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -17,6 +17,7 @@ import {
   fetchAuditLogs,
   type AuditLogRow,
 } from "../../services/adminApi";
+import { useRefreshOnFocus } from "../../hooks/useRefreshOnFocus";
 import { brand, radii, spacing } from "../../theme/brand";
 import { fonts } from "../../theme/typography";
 
@@ -72,10 +73,7 @@ export default function AdminAuditoriaScreen() {
     }
   }, [token, page, categoria, busqueda]);
 
-  useEffect(() => {
-    setLoading(true);
-    void load();
-  }, [load]);
+  useRefreshOnFocus(load);
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>

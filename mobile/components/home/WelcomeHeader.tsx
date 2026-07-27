@@ -8,12 +8,14 @@ import {
   type StyleProp,
   type ViewStyle,
 } from "react-native";
+import { useCallback } from "react";
 import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation } from "@react-navigation/native";
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import { useAuth } from "../../auth/AuthContext";
 import { useHomeShipments } from "../../hooks/useHomeShipments";
 import { useHomeDocumentsCount } from "../../hooks/useHomeDocumentsCount";
+import { useRefreshOnFocus } from "../../hooks/useRefreshOnFocus";
 import type { ClientTabParamList } from "../../navigation/ClientTabs";
 import { brand, spacing } from "../../theme/brand";
 import { fonts } from "../../theme/typography";
@@ -26,10 +28,20 @@ export default function WelcomeHeader({ topInset = 0 }: Props) {
   const navigation =
     useNavigation<BottomTabNavigationProp<ClientTabParamList>>();
   const { user, activeUsername } = useAuth();
-  const { activeCount, loading: shipmentsLoading } =
+  const { activeCount, loading: shipmentsLoading, refresh: refreshShipments } =
     useHomeShipments(activeUsername);
-  const { count: docsCount, loading: docsLoading } =
-    useHomeDocumentsCount(activeUsername);
+  const {
+    count: docsCount,
+    loading: docsLoading,
+    refresh: refreshDocs,
+  } = useHomeDocumentsCount(activeUsername);
+
+  const refreshHome = useCallback(() => {
+    void refreshShipments();
+    void refreshDocs();
+  }, [refreshShipments, refreshDocs]);
+
+  useRefreshOnFocus(refreshHome);
 
   const displayName =
     user?.nombreuser?.trim() || activeUsername || user?.username || "Cliente";

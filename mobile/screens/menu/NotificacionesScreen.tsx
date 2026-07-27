@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   StyleSheet,
@@ -10,6 +10,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { useAuth } from "../../auth/AuthContext";
 import ScreenHeader from "../../components/ui/ScreenHeader";
+import { useRefreshOnFocus } from "../../hooks/useRefreshOnFocus";
 import {
   getNotificationPreferences,
   registerPushToken,
@@ -41,9 +42,7 @@ export default function NotificacionesScreen() {
     }
   }, [token]);
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  useRefreshOnFocus(load);
 
   const onToggle = async (next: boolean) => {
     if (!token || saving) return;
