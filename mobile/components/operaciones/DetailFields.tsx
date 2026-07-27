@@ -49,10 +49,11 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   sectionTitle: {
-    fontSize: 15,
+    fontSize: 13,
     fontFamily: fonts.semiBold,
-    color: brand.ink,
+    color: brand.navy,
     marginBottom: spacing.sm,
+    letterSpacing: 0.2,
   },
   grid: {
     gap: spacing.sm,
@@ -61,19 +62,20 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   label: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: brand.muted,
+    fontSize: 10,
+    fontFamily: fonts.semiBold,
+    color: brand.mutedLight,
     textTransform: "uppercase",
-    letterSpacing: 0.4,
+    letterSpacing: 0.5,
   },
   value: {
-    fontSize: 14,
+    fontSize: 13,
     color: brand.inkSecondary,
-    lineHeight: 20,
+    lineHeight: 18,
+    fontFamily: fonts.medium,
   },
   valueAccent: {
-    color: brand.primary,
+    color: brand.navy,
     fontFamily: fonts.semiBold,
   },
 });

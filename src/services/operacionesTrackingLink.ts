@@ -199,10 +199,12 @@ export function getOceanOperacionTrackingStatus(
   return {
     isTracked,
     openTarget,
+    // Igual que web: "Número de seguimiento" (trackingNumber / índice),
+    // con fallback a booking/contenedor solo si no hay número de seguimiento.
     trackingLabel:
-      containerNumber ||
       trackingNumber ||
       shipment.bookingNumber?.trim() ||
+      containerNumber ||
       hbli ||
       null,
   };

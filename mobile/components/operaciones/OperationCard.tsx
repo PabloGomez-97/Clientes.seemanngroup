@@ -3,10 +3,11 @@ import { Ionicons } from "@expo/vector-icons";
 import type { AirShipment } from "../../../src/components/cliente/embarques/Handlers/HandlerAirShipments";
 import type { GroundShipment } from "../../../src/components/cliente/embarques/Handlers/HandlerGroundShipments";
 import type { OceanListItem } from "../../../src/services/linbisShipmentMappers";
-import { formatOperacionDate } from "../../../src/services/operacionesFiltersLogic";
+import { formatOperacionCustomerReference, formatOperacionDate } from "../../../src/services/operacionesFiltersLogic";
 import type { OperacionTrackingStatus } from "../../../src/services/operacionesTrackingLink";
-import { brand } from "../../theme/brand";
+import { brand, radii } from "../../theme/brand";
 import { fonts } from "../../theme/typography";
+import { STATUS_TONE } from "../tracking/statusTone";
 
 type OperationCardProps =
   | {
@@ -30,6 +31,12 @@ type OperationCardProps =
     };
 
 type Place = { code: string; name: string };
+
+const MODE_ACCENT = {
+  air: STATUS_TONE.transit.accent,
+  ocean: "#0f766e",
+  ground: brand.navy,
+} as const;
 
 function parsePlace(
   location?: { code?: string; name?: string } | string | null,
@@ -67,10 +74,10 @@ function parsePlace(
 }
 
 export default function OperationCard(props: OperationCardProps) {
-  const number =
+  const reference =
     props.mode === "ground"
-      ? props.shipment.number
-      : props.shipment.number || "—";
+      ? props.shipment.number || "—"
+      : formatOperacionCustomerReference(props.shipment.customerReference);
 
   const from: Place =
     props.mode === "air"
@@ -115,19 +122,38 @@ export default function OperationCard(props: OperationCardProps) {
         ? ("boat" as const)
         : ("bus" as const);
 
-  const routeHint =
-    [from.name, to.name].filter(Boolean).join(" → ") || null;
-
+  const accent = MODE_ACCENT[props.mode];
   const showRouteLoading =
     Boolean(props.routeLoading) && from.code === "—" && to.code === "—";
 
   return (
-    <View style={styles.row}>
-      <View style={styles.accent} />
+    <View style={styles.card}>
+      <View style={styles.body}>
+        <View style={styles.mainRow}>
+          <View style={styles.routeBlock}>
+            {showRouteLoading ? (
+              <View style={styles.routeLoading}>
+                <ActivityIndicator size="small" color={brand.navy} />
+                <Text style={styles.routeLoadingText}>Cargando ruta…</Text>
+              </View>
+            ) : (
+              <>
+                <Text style={styles.code}>{from.code}</Text>
+                <View style={styles.connector}>
+                  <View style={styles.connectorLine} />
+                  <Ionicons
+                    name={routeIcon}
+                    size={11}
+                    color={accent}
+                    style={styles.connectorIcon}
+                  />
+                  <View style={styles.connectorLine} />
+                </View>
+                <Text style={styles.code}>{to.code}</Text>
+              </>
+            )}
+          </View>
 
-      <View style={styles.content}>
-        <View style={styles.topRow}>
-          <Text style={styles.number}>{number}</Text>
           {trackingStatus?.isTracked ? (
             <Pressable
               onPress={
@@ -139,193 +165,146 @@ export default function OperationCard(props: OperationCardProps) {
               <View style={styles.trackDot} />
               <Text style={styles.trackText}>Seguimiento</Text>
             </Pressable>
-          ) : (
+          ) : props.mode === "ground" ? (
             <Ionicons name="chevron-forward" size={16} color={brand.mutedLight} />
-          )}
+          ) : null}
         </View>
 
-        {showRouteLoading ? (
-          <View style={styles.routeLoading}>
-            <ActivityIndicator size="small" color={brand.primary} />
-            <Text style={styles.routeLoadingText}>Cargando...</Text>
-          </View>
-        ) : (
-          <View style={styles.routeRow}>
-            <View style={styles.place}>
-              <Text style={styles.code} numberOfLines={1}>
-                {from.code}
-              </Text>
-              <Text style={styles.placeMeta}>Origen</Text>
-            </View>
-
-            <View style={styles.routeMid}>
-              <View style={styles.routeLine} />
-              <View style={styles.routeArrow}>
-                <Ionicons name={routeIcon} size={12} color={brand.primary} />
-              </View>
-              <View style={styles.routeLine} />
-            </View>
-
-            <View style={[styles.place, styles.placeEnd]}>
-              <Text style={styles.code} numberOfLines={1}>
-                {to.code}
-              </Text>
-              <Text style={styles.placeMeta}>Destino</Text>
-            </View>
-          </View>
-        )}
-
-        {routeHint && !showRouteLoading ? (
-          <Text style={styles.routeHint} numberOfLines={1}>
-            {routeHint}
+        <View style={styles.metaRow}>
+          <Text style={styles.metaPrimary} numberOfLines={1}>
+            {reference}
           </Text>
-        ) : null}
+          {carrier ? (
+            <>
+              <Text style={styles.metaDot}>·</Text>
+              <Text style={styles.metaSecondary} numberOfLines={1}>
+                {carrier}
+              </Text>
+            </>
+          ) : null}
+        </View>
 
         <Text style={styles.dates}>
           {departure}
           <Text style={styles.datesSep}>  ·  </Text>
           {arrival}
         </Text>
-
-        {carrier ? (
-          <Text style={styles.carrier} numberOfLines={1}>
-            {carrier}
-          </Text>
-        ) : null}
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  row: {
-    flexDirection: "row",
+  card: {
     backgroundColor: brand.surface,
-    borderRadius: 14,
-    marginBottom: 10,
-    overflow: "hidden",
+    borderRadius: radii.md,
+    marginBottom: 8,
     borderWidth: 1,
-    borderColor: "rgba(30, 58, 95, 0.08)",
+    borderColor: brand.border,
+    overflow: "hidden",
   },
-  accent: {
-    width: 3,
-    backgroundColor: brand.navy,
-  },
-  content: {
-    flex: 1,
-    paddingVertical: 14,
+  body: {
     paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 10,
   },
-  topRow: {
+  mainRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 12,
+    gap: 10,
   },
-  number: {
-    fontSize: 12,
-    letterSpacing: 0.8,
-    color: brand.muted,
-    fontFamily: fonts.semiBold,
-    textTransform: "uppercase",
-  },
-  trackChip: {
+  routeBlock: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    backgroundColor: brand.primarySoft,
+    minWidth: 0,
   },
-  trackDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: brand.primary,
+  code: {
+    fontSize: 17,
+    lineHeight: 22,
+    letterSpacing: 0.3,
+    color: brand.navy,
+    fontFamily: fonts.bold,
   },
-  trackText: {
-    fontSize: 11,
-    color: brand.primary,
-    fontFamily: fonts.semiBold,
-  },
-  routeRow: {
+  connector: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 8,
+    width: 48,
+    marginHorizontal: 8,
+  },
+  connectorLine: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: "rgba(30, 58, 95, 0.28)",
+  },
+  connectorIcon: {
+    marginHorizontal: 3,
   },
   routeLoading: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    marginBottom: 10,
-    minHeight: 42,
+    minHeight: 22,
   },
   routeLoadingText: {
-    fontSize: 13,
+    fontSize: 12,
     color: brand.muted,
     fontFamily: fonts.medium,
   },
-  place: {
-    flex: 1,
-    minWidth: 0,
-  },
-  placeEnd: {
-    alignItems: "flex-end",
-  },
-  code: {
-    fontSize: 26,
-    lineHeight: 30,
-    letterSpacing: -0.6,
-    color: brand.navy,
-    fontFamily: fonts.bold,
-  },
-  placeMeta: {
-    marginTop: 2,
-    fontSize: 10,
-    letterSpacing: 0.8,
-    textTransform: "uppercase",
-    color: brand.mutedLight,
-    fontFamily: fonts.medium,
-  },
-  routeMid: {
-    width: 72,
+  trackChip: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 6,
+    gap: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: radii.pill,
+    backgroundColor: STATUS_TONE.transit.soft,
+    borderWidth: 1,
+    borderColor: STATUS_TONE.transit.border,
   },
-  routeLine: {
-    flex: 1,
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: "rgba(30, 58, 95, 0.25)",
+  trackDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: STATUS_TONE.transit.accent,
   },
-  routeArrow: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: brand.primarySoft,
+  trackText: {
+    fontSize: 11,
+    color: STATUS_TONE.transit.text,
+    fontFamily: fonts.semiBold,
+  },
+  metaRow: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    marginHorizontal: 4,
+    marginTop: 8,
+    gap: 5,
   },
-  routeHint: {
+  metaPrimary: {
+    flexShrink: 1,
+    fontSize: 12,
+    letterSpacing: 0.2,
+    color: brand.ink,
+    fontFamily: fonts.semiBold,
+  },
+  metaSecondary: {
+    flexShrink: 1,
     fontSize: 12,
     color: brand.muted,
     fontFamily: fonts.regular,
-    marginBottom: 10,
+  },
+  metaDot: {
+    fontSize: 12,
+    color: brand.mutedLight,
+    fontFamily: fonts.regular,
   },
   dates: {
-    fontSize: 13,
-    color: brand.inkSecondary,
+    marginTop: 4,
+    fontSize: 11,
+    color: brand.mutedLight,
     fontFamily: fonts.medium,
   },
   datesSep: {
-    color: brand.mutedLight,
-    fontFamily: fonts.regular,
-  },
-  carrier: {
-    marginTop: 6,
-    fontSize: 12,
     color: brand.mutedLight,
     fontFamily: fonts.regular,
   },

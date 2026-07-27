@@ -260,7 +260,7 @@ export default function OperacionesListScreen() {
 
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color={brand.primary} />
+          <ActivityIndicator size="large" color={brand.navy} />
           <Text style={styles.loadingText}>Cargando operaciones...</Text>
         </View>
       ) : error ? (
@@ -281,8 +281,8 @@ export default function OperacionesListScreen() {
                   ? "boat-outline"
                   : "bus-outline"
             }
-            size={42}
-            color={brand.primary}
+            size={36}
+            color={brand.navy}
           />
           <Text style={styles.emptyTitle}>No hay operaciones registradas</Text>
           <Text style={styles.emptyText}>
@@ -396,15 +396,16 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   title: {
-    fontSize: 26,
+    fontSize: 22,
     fontFamily: fonts.bold,
-    color: brand.ink,
-    letterSpacing: -0.5,
+    color: brand.navy,
+    letterSpacing: -0.3,
   },
   subtitle: {
-    fontSize: 13,
+    fontSize: 12,
     color: brand.muted,
     marginTop: 2,
+    fontFamily: fonts.medium,
   },
   headerActions: {
     flexDirection: "row",
@@ -433,12 +434,12 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
   },
   filterButtonActive: {
-    backgroundColor: brand.primary,
-    borderColor: brand.primary,
+    backgroundColor: brand.navy,
+    borderColor: brand.navy,
   },
   filterButtonText: {
     fontSize: 12,
-    fontWeight: "700",
+    fontFamily: fonts.semiBold,
     color: brand.navy,
   },
   filterButtonTextActive: {
@@ -457,20 +458,21 @@ const styles = StyleSheet.create({
   tab: {
     flex: 1,
     alignItems: "center",
-    paddingVertical: 10,
+    paddingVertical: 9,
     borderRadius: radii.sm,
   },
   tabActive: {
-    backgroundColor: brand.primarySoft,
+    backgroundColor: "#e8eef5",
   },
   tabText: {
-    fontSize: 11,
-    fontWeight: "600",
+    fontSize: 12,
+    fontFamily: fonts.medium,
     color: brand.muted,
     textAlign: "center",
   },
   tabTextActive: {
-    color: brand.primary,
+    color: brand.navy,
+    fontFamily: fonts.semiBold,
   },
   listContent: {
     paddingHorizontal: spacing.lg,
@@ -485,7 +487,7 @@ const styles = StyleSheet.create({
   },
   loadingText: { color: brand.muted, fontSize: 14 },
   errorTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontFamily: fonts.semiBold,
     color: brand.ink,
   },
@@ -496,14 +498,17 @@ const styles = StyleSheet.create({
   },
   retryButton: {
     marginTop: 8,
-    backgroundColor: brand.primary,
+    backgroundColor: brand.navy,
     paddingHorizontal: 18,
     paddingVertical: 10,
     borderRadius: radii.md,
   },
-  retryButtonText: { color: "#fff", fontWeight: "700" },
+  retryButtonText: {
+    color: "#fff",
+    fontFamily: fonts.semiBold,
+  },
   emptyTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontFamily: fonts.semiBold,
     color: brand.ink,
   },
@@ -513,10 +518,10 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   filterEmpty: {
-    backgroundColor: brand.primarySoft,
+    backgroundColor: "#e8eef5",
     borderRadius: radii.md,
     borderWidth: 1,
-    borderColor: brand.primaryBorder,
+    borderColor: "rgba(30, 58, 95, 0.14)",
     padding: spacing.md,
     marginBottom: spacing.sm,
     alignItems: "center",
@@ -524,7 +529,7 @@ const styles = StyleSheet.create({
   },
   filterEmptyText: { color: brand.inkSecondary, textAlign: "center" },
   filterEmptyAction: {
-    color: brand.primary,
-    fontWeight: "700",
+    color: brand.navy,
+    fontFamily: fonts.semiBold,
   },
 });

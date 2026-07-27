@@ -23,6 +23,7 @@ import {
   matchesAirOpenTrackingTarget,
   matchesOceanOpenTrackingTarget,
 } from "../../../src/services/shipsgoTrackingNavigation";
+import OperacionesPaginationBar from "../../components/operaciones/OperacionesPaginationBar";
 import ShipmentCard from "../../components/tracking/ShipmentCard";
 import TrackingStatusStrip from "../../components/tracking/TrackingStatusStrip";
 import { useShipsgoTracking } from "../../hooks/useShipsgoTracking";
@@ -48,6 +49,8 @@ export default function TrackeosListScreen() {
     setActiveTab,
     filteredUserAir,
     filteredUserOcean,
+    displayedAir,
+    displayedOcean,
     userAir,
     userOcean,
     airLoading,
@@ -62,10 +65,26 @@ export default function TrackeosListScreen() {
     toggleOceanFilter,
     clearAirFilter,
     clearOceanFilter,
+    pagination,
     refreshAll,
     removeAirShipment,
     removeOceanShipment,
   } = useShipsgoTracking();
+
+  const paginationFooter =
+    pagination.totalItems > 0 &&
+    (pagination.totalPages > 1 || pagination.page > 1) ? (
+      <OperacionesPaginationBar
+        page={pagination.page}
+        totalPages={pagination.totalPages}
+        totalItems={pagination.totalItems}
+        hasPrevious={pagination.hasPrevious}
+        hasNext={pagination.hasNext}
+        onPrevious={pagination.goPrevious}
+        onNext={pagination.goNext}
+        itemLabel="seguimientos"
+      />
+    ) : null;
 
   const openNewTracking = () => {
     Alert.alert("Nuevo seguimiento", "¿Qué tipo de seguimiento querés crear?", [
@@ -244,7 +263,7 @@ export default function TrackeosListScreen() {
         </View>
       ) : activeTab === "air" ? (
         <FlatList
-          data={filteredUserAir}
+          data={displayedAir}
           keyExtractor={(item) => String(item.id)}
           renderItem={renderAirItem}
           contentContainerStyle={styles.listContent}
@@ -274,10 +293,11 @@ export default function TrackeosListScreen() {
               ) : null}
             </View>
           }
+          ListFooterComponent={paginationFooter}
         />
       ) : (
         <FlatList
-          data={filteredUserOcean}
+          data={displayedOcean}
           keyExtractor={(item) => String(item.id)}
           renderItem={renderOceanItem}
           contentContainerStyle={styles.listContent}
@@ -307,6 +327,7 @@ export default function TrackeosListScreen() {
               ) : null}
             </View>
           }
+          ListFooterComponent={paginationFooter}
         />
       )}
 
@@ -406,7 +427,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   tabActive: {
-    backgroundColor: brand.primarySoft,
+    backgroundColor: "#e8eef5",
   },
   tabText: {
     fontSize: 13,
@@ -414,7 +435,7 @@ const styles = StyleSheet.create({
     color: brand.muted,
   },
   tabTextActive: {
-    color: brand.primary,
+    color: brand.navy,
     fontFamily: fonts.semiBold,
   },
   center: {
@@ -464,7 +485,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.xl,
+    paddingBottom: 96,
   },
   filterEmpty: {
     alignItems: "center",

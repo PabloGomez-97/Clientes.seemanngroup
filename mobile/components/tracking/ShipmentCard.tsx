@@ -14,8 +14,10 @@ import {
   isAirDelayed,
   isOceanDelayed,
 } from "../../../src/services/shipsgoTrackingLogic";
-import { brand } from "../../theme/brand";
+import { brand, radii } from "../../theme/brand";
 import { fonts } from "../../theme/typography";
+import StatusDot from "./StatusDot";
+import { STATUS_TONE, toneForStatus } from "./statusTone";
 
 type ShipmentCardProps =
   | {
@@ -59,214 +61,195 @@ export default function ShipmentCard({ mode, shipment }: ShipmentCardProps) {
       : null;
 
   const routeIcon = mode === "air" ? "airplane" : "boat";
+  const toneKey = toneForStatus(mode, shipment.status, delayed);
+  const tone = STATUS_TONE[toneKey];
 
   return (
-    <View style={[styles.row, delayed && styles.rowDelayed]}>
-      <View style={[styles.accent, delayed && styles.accentDelayed]} />
+    <View
+      style={[
+        styles.card,
+        toneKey === "delayed" && styles.cardDelayed,
+        toneKey === "done" && styles.cardDone,
+      ]}
+    >
+      <View style={styles.body}>
+        <View style={styles.mainRow}>
+          <View style={styles.routeBlock}>
+            <Text style={styles.code}>{origin || "—"}</Text>
+            <View style={styles.connector}>
+              <View style={styles.connectorLine} />
+              <Ionicons
+                name={routeIcon}
+                size={11}
+                color={tone.accent}
+                style={styles.connectorIcon}
+              />
+              <View style={styles.connectorLine} />
+            </View>
+            <Text style={styles.code}>{destination || "—"}</Text>
+          </View>
 
-      <View style={styles.content}>
-        <View style={styles.topRow}>
-          <Text style={styles.number} numberOfLines={1}>
-            {title}
-          </Text>
-          <View style={styles.statusChip}>
-            {delayed ? <View style={styles.delayDot} /> : null}
-            <Text style={styles.statusText} numberOfLines={1}>
+          <View
+            style={[
+              styles.statusChip,
+              {
+                backgroundColor: tone.soft,
+                borderColor: tone.border,
+              },
+            ]}
+          >
+            <StatusDot color={tone.accent} pulse={toneKey === "transit"} />
+            <Text
+              style={[styles.statusText, { color: tone.text }]}
+              numberOfLines={1}
+            >
               {delayed ? "Demorado" : statusLabel}
             </Text>
           </View>
         </View>
 
-        <View style={styles.routeRow}>
-          <View style={styles.place}>
-            <Text style={styles.code} numberOfLines={1}>
-              {origin || "—"}
-            </Text>
-            <Text style={styles.placeMeta}>Origen</Text>
-          </View>
-
-          <View style={styles.routeMid}>
-            <View style={styles.routeLine} />
-            <View style={styles.routeArrow}>
-              <Ionicons name={routeIcon} size={12} color={brand.primary} />
-            </View>
-            <View style={styles.routeLine} />
-          </View>
-
-          <View style={[styles.place, styles.placeEnd]}>
-            <Text style={styles.code} numberOfLines={1}>
-              {destination || "—"}
-            </Text>
-            <Text style={styles.placeMeta}>Destino</Text>
-          </View>
-        </View>
-
-        {progress != null ? (
-          <View style={styles.progressWrap}>
-            <View style={styles.progressTrack}>
-              <View style={[styles.progressFill, { width: `${progress}%` }]} />
-            </View>
-            <Text style={styles.progressText}>{progress}%</Text>
-          </View>
-        ) : null}
-
-        <View style={styles.footerRow}>
-          <Text style={styles.carrier} numberOfLines={1}>
+        <View style={styles.metaRow}>
+          <Text style={styles.metaPrimary} numberOfLines={1}>
+            {title}
+          </Text>
+          <Text style={styles.metaDot}>·</Text>
+          <Text style={styles.metaSecondary} numberOfLines={1}>
             {carrier}
           </Text>
-          <Text style={styles.date}>Creado {formatDate(shipment.created_at)}</Text>
+          {progress != null ? (
+            <>
+              <Text style={styles.metaDot}>·</Text>
+              <Text style={styles.metaProgress}>{progress}%</Text>
+            </>
+          ) : null}
         </View>
+
+        <Text style={styles.date}>Creado {formatDate(shipment.created_at)}</Text>
       </View>
+
+      {progress != null ? (
+        <View style={styles.progressTrack}>
+          <View
+            style={[
+              styles.progressFill,
+              { width: `${progress}%`, backgroundColor: tone.accent },
+            ]}
+          />
+        </View>
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  row: {
-    flexDirection: "row",
+  card: {
     backgroundColor: brand.surface,
-    borderRadius: 14,
-    marginBottom: 10,
-    overflow: "hidden",
+    borderRadius: radii.md,
+    marginBottom: 8,
     borderWidth: 1,
-    borderColor: "rgba(30, 58, 95, 0.08)",
+    borderColor: brand.border,
+    overflow: "hidden",
   },
-  rowDelayed: {
+  cardDelayed: {
     borderColor: "#fecaca",
+    backgroundColor: "#fffbfb",
   },
-  accent: {
-    width: 3,
-    backgroundColor: brand.navy,
+  cardDone: {
+    borderColor: "#dcfce7",
   },
-  accentDelayed: {
-    backgroundColor: "#dc2626",
-  },
-  content: {
-    flex: 1,
-    paddingVertical: 14,
+  body: {
     paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 10,
   },
-  topRow: {
+  mainRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 12,
-    gap: 8,
+    gap: 10,
   },
-  number: {
-    flexShrink: 1,
-    fontSize: 12,
-    letterSpacing: 0.6,
-    color: brand.muted,
-    fontFamily: fonts.semiBold,
+  routeBlock: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    minWidth: 0,
+  },
+  code: {
+    fontSize: 18,
+    lineHeight: 22,
+    letterSpacing: 0.4,
+    color: brand.navy,
+    fontFamily: fonts.bold,
+  },
+  connector: {
+    flexDirection: "row",
+    alignItems: "center",
+    width: 52,
+    marginHorizontal: 8,
+  },
+  connectorLine: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: "rgba(30, 58, 95, 0.28)",
+  },
+  connectorIcon: {
+    marginHorizontal: 3,
   },
   statusChip: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
+    maxWidth: "42%",
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 8,
-    backgroundColor: brand.primarySoft,
-  },
-  delayDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: "#dc2626",
+    borderRadius: radii.pill,
+    borderWidth: 1,
   },
   statusText: {
-    fontSize: 11,
-    color: brand.primary,
-    fontFamily: fonts.semiBold,
-  },
-  routeRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  place: {
-    flex: 1,
-    minWidth: 0,
-  },
-  placeEnd: {
-    alignItems: "flex-end",
-  },
-  code: {
-    fontSize: 26,
-    lineHeight: 30,
-    letterSpacing: -0.6,
-    color: brand.navy,
-    fontFamily: fonts.bold,
-  },
-  placeMeta: {
-    marginTop: 2,
-    fontSize: 10,
-    letterSpacing: 0.8,
-    textTransform: "uppercase",
-    color: brand.mutedLight,
-    fontFamily: fonts.medium,
-  },
-  routeMid: {
-    width: 72,
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 6,
-  },
-  routeLine: {
-    flex: 1,
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: "rgba(30, 58, 95, 0.25)",
-  },
-  routeArrow: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: brand.primarySoft,
-    alignItems: "center",
-    justifyContent: "center",
-    marginHorizontal: 4,
-  },
-  progressWrap: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginBottom: 10,
-  },
-  progressTrack: {
-    flex: 1,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: "#eef2f7",
-    overflow: "hidden",
-  },
-  progressFill: {
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: brand.primary,
-  },
-  progressText: {
+    flexShrink: 1,
     fontSize: 11,
     fontFamily: fonts.semiBold,
+  },
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 8,
+    gap: 5,
+  },
+  metaPrimary: {
+    flexShrink: 1,
+    fontSize: 12,
+    letterSpacing: 0.2,
+    color: brand.ink,
+    fontFamily: fonts.semiBold,
+  },
+  metaSecondary: {
+    flexShrink: 1,
+    fontSize: 12,
     color: brand.muted,
-    minWidth: 34,
-    textAlign: "right",
+    fontFamily: fonts.regular,
   },
-  footerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 8,
-  },
-  carrier: {
-    flex: 1,
+  metaDot: {
     fontSize: 12,
     color: brand.mutedLight,
     fontFamily: fonts.regular,
   },
+  metaProgress: {
+    fontSize: 12,
+    color: brand.navy,
+    fontFamily: fonts.semiBold,
+  },
   date: {
+    marginTop: 4,
     fontSize: 11,
     color: brand.mutedLight,
     fontFamily: fonts.medium,
+  },
+  progressTrack: {
+    height: 2,
+    backgroundColor: "#eef2f7",
+  },
+  progressFill: {
+    height: 2,
   },
 });

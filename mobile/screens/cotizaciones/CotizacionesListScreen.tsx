@@ -58,7 +58,7 @@ export default function CotizacionesListScreen() {
 
       {loading && items.length === 0 ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color={brand.primary} />
+          <ActivityIndicator size="large" color={brand.navy} />
           <Text style={styles.loadingText}>Cargando cotizaciones...</Text>
         </View>
       ) : error ? (
@@ -73,8 +73,8 @@ export default function CotizacionesListScreen() {
         <View style={styles.center}>
           <Ionicons
             name="document-text-outline"
-            size={42}
-            color={brand.primary}
+            size={36}
+            color={brand.navy}
           />
           <Text style={styles.emptyTitle}>No hay cotizaciones registradas</Text>
           <Text style={styles.emptyText}>
@@ -126,15 +126,16 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   title: {
-    fontSize: 26,
+    fontSize: 22,
     fontFamily: fonts.bold,
-    color: brand.ink,
-    letterSpacing: -0.5,
+    color: brand.navy,
+    letterSpacing: -0.3,
   },
   subtitle: {
-    fontSize: 13,
+    fontSize: 12,
     color: brand.muted,
     marginTop: 2,
+    fontFamily: fonts.medium,
   },
   iconButton: {
     width: 38,
@@ -159,7 +160,7 @@ const styles = StyleSheet.create({
   },
   loadingText: { color: brand.muted, fontSize: 14 },
   errorTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontFamily: fonts.semiBold,
     color: brand.ink,
   },
@@ -170,14 +171,17 @@ const styles = StyleSheet.create({
   },
   retryButton: {
     marginTop: 8,
-    backgroundColor: brand.primary,
+    backgroundColor: brand.navy,
     paddingHorizontal: 18,
     paddingVertical: 10,
     borderRadius: radii.md,
   },
-  retryButtonText: { color: "#fff", fontWeight: "700" },
+  retryButtonText: {
+    color: "#fff",
+    fontFamily: fonts.semiBold,
+  },
   emptyTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontFamily: fonts.semiBold,
     color: brand.ink,
   },

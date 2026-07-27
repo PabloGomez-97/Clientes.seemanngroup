@@ -141,7 +141,7 @@ export default function TrackingEmbed({
             style={styles.actionBtn}
             accessibilityLabel="Compartir mapa"
           >
-            <Ionicons name="share-outline" size={18} color={brand.primary} />
+            <Ionicons name="share-outline" size={18} color={brand.navy} />
           </Pressable>
         </View>
       </View>

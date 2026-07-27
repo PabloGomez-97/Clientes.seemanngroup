@@ -24,8 +24,11 @@ import {
 import { OPERACIONES_PAGE_SIZE } from "../../src/services/operacionesPagination";
 
 const LINBIS_AIR_URL = "https://api.linbis.com/air-shipments";
-const LINBIS_OCEAN_URL = "https://api.linbis.com/ocean-shipments";
-/** Terrestre no acepta ConsigneeName (400). Misma estrategia que la web: /all + filtro local. */
+/**
+ * Ocean y ground: el listado paginado con ConsigneeName responde 400.
+ * Misma estrategia que la web: /all + filtro local por consignatario.
+ */
+const LINBIS_OCEAN_ALL_URL = "https://api.linbis.com/ocean-shipments/all";
 const LINBIS_GROUND_ALL_URL = "https://api.linbis.com/ground-shipments/all";
 
 export { OPERACIONES_PAGE_SIZE };
@@ -43,7 +46,6 @@ export type OperacionesPageResult<T> = {
 };
 
 export type AirOperacionesPageResult = OperacionesPageResult<AirShipment>;
-export type OceanOperacionesPageResult = OperacionesPageResult<OceanListItem>;
 
 function extractArrayPayload(data: unknown): unknown[] {
   if (Array.isArray(data)) return data;
@@ -145,30 +147,48 @@ export async function fetchAirOperacionesPage(
   };
 }
 
-export async function fetchOceanOperacionesPage(
+/**
+ * Marítimo: Linbis /ocean-shipments?ConsigneeName=… responde 400.
+ * Igual que la web → GET /ocean-shipments/all y filtrar por consignatario.
+ */
+export async function fetchOceanOperacionesCatalog(
   consigneeName: string,
-  page: number,
   options: LinbisOptions,
-  pageSize = OPERACIONES_PAGE_SIZE,
-): Promise<OceanOperacionesPageResult> {
-  const records = await fetchLinbisPage(
-    LINBIS_OCEAN_URL,
-    consigneeName,
-    page,
-    pageSize,
-    options,
+): Promise<OceanListItem[]> {
+  const response = await linbisFetch(
+    LINBIS_OCEAN_ALL_URL,
+    {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      signal: options.signal,
+    },
+    options.accessToken,
+    options.refreshAccessToken,
   );
-  const mapped = records.map((record) =>
-    mapLinbisOceanToShippingOrder(record as Record<string, unknown>),
-  );
-  // SortBy=newest en API + refuerzo local (más nuevo → más viejo).
-  const items = sortOceanOperaciones(mapped);
 
-  return {
-    items,
-    page,
-    hasMore: records.length >= pageSize,
-  };
+  if (!response.ok) {
+    throw new Error(
+      `Error al obtener operaciones marítimas (${response.status})`,
+    );
+  }
+
+  const data = await response.json();
+  const records = Array.isArray(data) ? data : [];
+  const mapped = records
+    .filter((record) => {
+      if (!record || typeof record !== "object") return false;
+      const raw = record as Record<string, unknown>;
+      return consigneeMatches(raw.consignee, consigneeName);
+    })
+    .map((record) =>
+      mapLinbisOceanToShippingOrder(record as Record<string, unknown>),
+    )
+    .filter((order) => order.id && order.number);
+
+  return sortOceanOperaciones(mapped);
 }
 
 /**

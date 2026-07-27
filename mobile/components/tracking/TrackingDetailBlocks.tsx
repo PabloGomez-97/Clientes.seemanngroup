@@ -1,7 +1,8 @@
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { brand } from "../../theme/brand";
+import { brand, radii } from "../../theme/brand";
 import { fonts } from "../../theme/typography";
+import { STATUS_TONE, type StatusToneKey } from "./statusTone";
 
 type RouteTimelineProps = {
   mode: "air" | "ocean";
@@ -12,6 +13,7 @@ type RouteTimelineProps = {
   departureValue: string;
   arrivalLabel: string;
   arrivalValue: string;
+  toneKey?: StatusToneKey;
 };
 
 export function RouteTimelineCard({
@@ -23,41 +25,47 @@ export function RouteTimelineCard({
   departureValue,
   arrivalLabel,
   arrivalValue,
+  toneKey = "neutral",
 }: RouteTimelineProps) {
   const pct =
     typeof progress === "number"
       ? Math.min(Math.max(progress, 0), 100)
       : null;
   const icon = mode === "air" ? "airplane" : "boat";
+  const tone = STATUS_TONE[toneKey];
 
   return (
     <View style={styles.card}>
       <View style={styles.routeRow}>
-        <View style={styles.place}>
-          <Text style={styles.code}>{origin || "—"}</Text>
-          <Text style={styles.placeMeta}>Origen</Text>
+        <Text style={styles.code}>{origin || "—"}</Text>
+        <View style={styles.connector}>
+          <View style={styles.connectorLine} />
+          <Ionicons
+            name={icon}
+            size={12}
+            color={tone.accent}
+            style={styles.connectorIcon}
+          />
+          <View style={styles.connectorLine} />
         </View>
-        <View style={styles.routeMid}>
-          <View style={styles.routeLine} />
-          <View style={styles.routeArrow}>
-            <Ionicons name={icon} size={14} color={brand.primary} />
-          </View>
-          <View style={styles.routeLine} />
-        </View>
-        <View style={[styles.place, styles.placeEnd]}>
-          <Text style={styles.code}>{destination || "—"}</Text>
-          <Text style={styles.placeMeta}>Destino</Text>
-        </View>
+        <Text style={styles.code}>{destination || "—"}</Text>
+        {pct != null ? (
+          <Text style={[styles.progressPct, { color: tone.text }]}>{pct}%</Text>
+        ) : null}
       </View>
 
       {pct != null ? (
-        <View style={styles.progressWrap}>
-          <View style={styles.progressTrack}>
-            <View style={[styles.progressFill, { width: `${pct}%` }]} />
-          </View>
-          <Text style={styles.progressText}>{pct}%</Text>
+        <View style={styles.progressTrack}>
+          <View
+            style={[
+              styles.progressFill,
+              { width: `${pct}%`, backgroundColor: tone.accent },
+            ]}
+          />
         </View>
-      ) : null}
+      ) : (
+        <View style={styles.divider} />
+      )}
 
       <View style={styles.datesRow}>
         <View style={styles.dateCol}>
@@ -82,27 +90,44 @@ type MovementItem = {
 type MovementsTimelineProps = {
   loading: boolean;
   items: MovementItem[];
+  accentColor?: string;
 };
 
-export function MovementsTimeline({ loading, items }: MovementsTimelineProps) {
+export function MovementsTimeline({
+  loading,
+  items,
+  accentColor = brand.navy,
+}: MovementsTimelineProps) {
   return (
     <View style={styles.card}>
       <Text style={styles.sectionTitle}>Movimientos</Text>
       {loading ? (
-        <ActivityIndicator color={brand.primary} style={{ marginTop: 8 }} />
+        <ActivityIndicator color={brand.navy} style={{ marginTop: 8 }} />
       ) : items.length === 0 ? (
         <Text style={styles.empty}>Sin movimientos registrados aún.</Text>
       ) : (
         <View style={styles.timeline}>
           {items.map((item, index) => {
             const last = index === items.length - 1;
+            const isFirst = index === 0;
             return (
               <View key={item.key} style={styles.timelineRow}>
                 <View style={styles.timelineRail}>
-                  <View style={styles.timelineDot} />
+                  <View
+                    style={[
+                      styles.timelineDot,
+                      {
+                        backgroundColor: isFirst
+                          ? accentColor
+                          : "rgba(30, 58, 95, 0.28)",
+                      },
+                    ]}
+                  />
                   {!last ? <View style={styles.timelineLine} /> : null}
                 </View>
-                <View style={[styles.timelineBody, last && styles.timelineBodyLast]}>
+                <View
+                  style={[styles.timelineBody, last && styles.timelineBodyLast]}
+                >
                   <Text style={styles.movementTitle}>{item.title}</Text>
                   <Text style={styles.movementMeta}>{item.meta}</Text>
                 </View>
@@ -118,82 +143,60 @@ export function MovementsTimeline({ loading, items }: MovementsTimelineProps) {
 const styles = StyleSheet.create({
   card: {
     backgroundColor: brand.surface,
-    borderRadius: 14,
+    borderRadius: radii.md,
     borderWidth: 1,
-    borderColor: "rgba(30, 58, 95, 0.08)",
-    padding: 16,
+    borderColor: brand.border,
+    paddingHorizontal: 14,
+    paddingTop: 14,
+    paddingBottom: 12,
+    overflow: "hidden",
   },
   routeRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 14,
-  },
-  place: {
-    flex: 1,
-    minWidth: 0,
-  },
-  placeEnd: {
-    alignItems: "flex-end",
+    marginBottom: 12,
   },
   code: {
-    fontSize: 28,
-    lineHeight: 32,
-    letterSpacing: -0.6,
+    fontSize: 20,
+    lineHeight: 24,
+    letterSpacing: 0.3,
     color: brand.navy,
     fontFamily: fonts.bold,
   },
-  placeMeta: {
-    marginTop: 2,
-    fontSize: 10,
-    letterSpacing: 0.8,
-    textTransform: "uppercase",
-    color: brand.mutedLight,
-    fontFamily: fonts.medium,
-  },
-  routeMid: {
-    width: 80,
+  connector: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 6,
+    marginHorizontal: 10,
+    maxWidth: 88,
   },
-  routeLine: {
+  connectorLine: {
     flex: 1,
     height: StyleSheet.hairlineWidth,
-    backgroundColor: "rgba(30, 58, 95, 0.25)",
+    backgroundColor: "rgba(30, 58, 95, 0.28)",
   },
-  routeArrow: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: brand.primarySoft,
-    alignItems: "center",
-    justifyContent: "center",
+  connectorIcon: {
     marginHorizontal: 4,
   },
-  progressWrap: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginBottom: 14,
+  progressPct: {
+    marginLeft: 10,
+    fontSize: 13,
+    fontFamily: fonts.semiBold,
   },
   progressTrack: {
-    flex: 1,
-    height: 4,
-    borderRadius: 2,
+    height: 2,
+    borderRadius: 1,
     backgroundColor: "#eef2f7",
+    marginBottom: 12,
     overflow: "hidden",
   },
   progressFill: {
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: brand.primary,
+    height: 2,
   },
-  progressText: {
-    fontSize: 12,
-    fontFamily: fonts.semiBold,
-    color: brand.muted,
-    minWidth: 36,
-    textAlign: "right",
+  divider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: brand.border,
+    marginBottom: 12,
   },
   datesRow: {
     flexDirection: "row",
@@ -207,22 +210,23 @@ const styles = StyleSheet.create({
   },
   dateLabel: {
     fontSize: 10,
-    letterSpacing: 0.8,
+    letterSpacing: 0.6,
     textTransform: "uppercase",
     color: brand.mutedLight,
     fontFamily: fonts.semiBold,
-    marginBottom: 4,
+    marginBottom: 3,
   },
   dateValue: {
-    fontSize: 13,
+    fontSize: 12,
     color: brand.inkSecondary,
     fontFamily: fonts.medium,
   },
   sectionTitle: {
-    fontSize: 14,
+    fontSize: 13,
     fontFamily: fonts.semiBold,
     color: brand.navy,
-    marginBottom: 8,
+    marginBottom: 10,
+    letterSpacing: 0.2,
   },
   empty: {
     fontSize: 13,
@@ -230,38 +234,37 @@ const styles = StyleSheet.create({
     fontFamily: fonts.regular,
   },
   timeline: {
-    marginTop: 4,
+    marginTop: 2,
   },
   timelineRow: {
     flexDirection: "row",
     gap: 12,
   },
   timelineRail: {
-    width: 14,
+    width: 12,
     alignItems: "center",
   },
   timelineDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: brand.primary,
-    marginTop: 4,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginTop: 5,
   },
   timelineLine: {
     flex: 1,
-    width: 1,
-    backgroundColor: "rgba(30, 58, 95, 0.15)",
+    width: StyleSheet.hairlineWidth,
+    backgroundColor: "rgba(30, 58, 95, 0.14)",
     marginTop: 4,
   },
   timelineBody: {
     flex: 1,
-    paddingBottom: 16,
+    paddingBottom: 14,
   },
   timelineBodyLast: {
     paddingBottom: 0,
   },
   movementTitle: {
-    fontSize: 14,
+    fontSize: 13,
     fontFamily: fonts.semiBold,
     color: brand.ink,
     marginBottom: 2,

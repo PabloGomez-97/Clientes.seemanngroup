@@ -22,7 +22,7 @@ import {
   enrichAirOperacionesRoutes,
   fetchAirOperacionesPage,
   fetchGroundOperacionesCatalog,
-  fetchOceanOperacionesPage,
+  fetchOceanOperacionesCatalog,
   fetchOperacionesTrackingIndex,
   type OceanListItem,
 } from "../services/operacionesApi";
@@ -64,8 +64,7 @@ export function useOperaciones() {
   const airPageRef = useRef(1);
 
   const [oceanPage, setOceanPage] = useState(1);
-  const [oceanPageItems, setOceanPageItems] = useState<OceanListItem[]>([]);
-  const [oceanHasMore, setOceanHasMore] = useState(false);
+  const [oceanCatalog, setOceanCatalog] = useState<OceanListItem[] | null>(null);
   const [oceanLoading, setOceanLoading] = useState(false);
   const [oceanError, setOceanError] = useState<string | null>(null);
   const [oceanLoaded, setOceanLoaded] = useState(false);
@@ -211,46 +210,40 @@ export function useOperaciones() {
     [accessToken, activeUsername, enrichAirRoutesInBackground, linbisOptions],
   );
 
-  const loadOceanPage = useCallback(
-    async (page: number) => {
-      if (!accessToken || !activeUsername) {
-        setOceanPageItems([]);
-        setOceanHasMore(false);
-        setOceanLoading(false);
-        oceanLoadedRef.current = false;
-        return;
-      }
+  const loadOceanCatalog = useCallback(async () => {
+    if (!accessToken || !activeUsername) {
+      setOceanCatalog([]);
+      setOceanLoading(false);
+      oceanLoadedRef.current = false;
+      setOceanLoaded(false);
+      return;
+    }
 
-      setOceanLoading(true);
-      setOceanError(null);
+    setOceanLoading(true);
+    setOceanError(null);
 
-      try {
-        const result = await fetchOceanOperacionesPage(
-          activeUsername,
-          page,
-          linbisOptions,
-        );
-        setOceanPage(page);
-        setOceanPageItems(result.items);
-        setOceanHasMore(result.hasMore);
-        oceanLoadedRef.current = true;
-        setOceanLoaded(true);
-      } catch (error) {
-        setOceanPageItems([]);
-        setOceanHasMore(false);
-        oceanLoadedRef.current = true;
-        setOceanLoaded(true);
-        setOceanError(
-          error instanceof Error
-            ? error.message
-            : "No se pudieron cargar las operaciones marítimas.",
-        );
-      } finally {
-        setOceanLoading(false);
-      }
-    },
-    [accessToken, activeUsername, linbisOptions],
-  );
+    try {
+      const catalog = await fetchOceanOperacionesCatalog(
+        activeUsername,
+        linbisOptions,
+      );
+      setOceanCatalog(catalog);
+      setOceanPage(1);
+      oceanLoadedRef.current = true;
+      setOceanLoaded(true);
+    } catch (error) {
+      setOceanCatalog([]);
+      oceanLoadedRef.current = true;
+      setOceanLoaded(true);
+      setOceanError(
+        error instanceof Error
+          ? error.message
+          : "No se pudieron cargar las operaciones marítimas.",
+      );
+    } finally {
+      setOceanLoading(false);
+    }
+  }, [accessToken, activeUsername, linbisOptions]);
 
   const loadGroundCatalog = useCallback(async () => {
     if (!accessToken || !activeUsername) {
@@ -299,7 +292,7 @@ export function useOperaciones() {
       }
 
       if (tab === "ocean" && !oceanLoadedRef.current && !oceanLoading) {
-        void loadOceanPage(1);
+        void loadOceanCatalog();
         return;
       }
 
@@ -314,7 +307,7 @@ export function useOperaciones() {
       groundLoading,
       loadAirPage,
       loadGroundCatalog,
-      loadOceanPage,
+      loadOceanCatalog,
       oceanLoading,
       tokenLoading,
     ],
@@ -336,7 +329,7 @@ export function useOperaciones() {
     }
     if (activeTab === "ocean") {
       oceanLoadedRef.current = false;
-      await loadOceanPage(oceanPage);
+      await loadOceanCatalog();
       return;
     }
     groundLoadedRef.current = false;
@@ -346,9 +339,8 @@ export function useOperaciones() {
     airPage,
     loadAirPage,
     loadGroundCatalog,
-    loadOceanPage,
+    loadOceanCatalog,
     loadTrackingData,
-    oceanPage,
     refreshAccessToken,
   ]);
 
@@ -366,7 +358,7 @@ export function useOperaciones() {
     if (activeTab === "air") {
       await loadAirPage(1);
     } else if (activeTab === "ocean") {
-      await loadOceanPage(1);
+      await loadOceanCatalog();
     } else {
       await loadGroundCatalog();
     }
@@ -375,7 +367,7 @@ export function useOperaciones() {
     activeTab,
     loadAirPage,
     loadGroundCatalog,
-    loadOceanPage,
+    loadOceanCatalog,
     loadTrackingData,
     refreshAccessToken,
   ]);
@@ -420,10 +412,9 @@ export function useOperaciones() {
     setOceanPage(1);
     setGroundPage(1);
     setAirPageItems([]);
-    setOceanPageItems([]);
+    setOceanCatalog(null);
     setGroundCatalog(null);
     setAirHasMore(false);
-    setOceanHasMore(false);
     setOceanLoaded(false);
     setGroundLoaded(false);
     setTrackingIndex({});
@@ -436,9 +427,14 @@ export function useOperaciones() {
     [airFilters, airPageItems],
   );
 
-  const filteredOceanPage = useMemo(
-    () => applyOceanOperacionesFilters(oceanPageItems, oceanFilters),
-    [oceanFilters, oceanPageItems],
+  const filteredOceanAll = useMemo(
+    () => applyOceanOperacionesFilters(oceanCatalog ?? [], oceanFilters),
+    [oceanCatalog, oceanFilters],
+  );
+
+  const oceanPagination = useMemo(
+    () => paginateList(filteredOceanAll, oceanPage),
+    [filteredOceanAll, oceanPage],
   );
 
   const filteredGroundAll = useMemo(
@@ -462,14 +458,14 @@ export function useOperaciones() {
   }, [airLoading, airPage, loadAirPage]);
 
   const goToNextOceanPage = useCallback(() => {
-    if (!oceanHasMore || oceanLoading) return;
-    void loadOceanPage(oceanPage + 1);
-  }, [loadOceanPage, oceanHasMore, oceanLoading, oceanPage]);
+    if (!oceanPagination.hasNext) return;
+    setOceanPage((page) => page + 1);
+  }, [oceanPagination.hasNext]);
 
   const goToPreviousOceanPage = useCallback(() => {
-    if (oceanPage <= 1 || oceanLoading) return;
-    void loadOceanPage(oceanPage - 1);
-  }, [loadOceanPage, oceanLoading, oceanPage]);
+    if (!oceanPagination.hasPrevious) return;
+    setOceanPage((page) => Math.max(1, page - 1));
+  }, [oceanPagination.hasPrevious]);
 
   const goToNextGroundPage = useCallback(() => {
     if (!groundPagination.hasNext) return;
@@ -506,8 +502,7 @@ export function useOperaciones() {
   const clearOceanFilters = useCallback(() => {
     setOceanFilters(EMPTY_AIR_FILTERS);
     setOceanPage(1);
-    void loadOceanPage(1);
-  }, [loadOceanPage]);
+  }, []);
 
   const clearGroundFilters = useCallback(() => {
     setGroundFilters(EMPTY_GROUND_FILTERS);
@@ -531,9 +526,8 @@ export function useOperaciones() {
     (filters: AirOceanOperacionesFilters) => {
       setOceanFilters(filters);
       setOceanPage(1);
-      void loadOceanPage(1);
     },
-    [loadOceanPage],
+    [],
   );
 
   const handleSetGroundFilters = useCallback(
@@ -558,11 +552,11 @@ export function useOperaciones() {
     }
     if (activeTab === "ocean") {
       return {
-        page: oceanPage,
-        totalPages: undefined as number | undefined,
-        totalItems: undefined as number | undefined,
-        hasPrevious: oceanPage > 1,
-        hasNext: oceanHasMore,
+        page: oceanPagination.page,
+        totalPages: oceanPagination.totalPages,
+        totalItems: oceanPagination.totalItems,
+        hasPrevious: oceanPagination.hasPrevious,
+        hasNext: oceanPagination.hasNext,
         goNext: goToNextOceanPage,
         goPrevious: goToPreviousOceanPage,
       };
@@ -587,17 +581,16 @@ export function useOperaciones() {
     goToPreviousGroundPage,
     goToPreviousOceanPage,
     groundPagination,
-    oceanHasMore,
-    oceanPage,
+    oceanPagination,
   ]);
 
   const tabTotals = useMemo(
     () => ({
       air: null as number | null,
-      ocean: null as number | null,
+      ocean: oceanCatalog?.length ?? null,
       ground: groundCatalog?.length ?? null,
     }),
-    [groundCatalog],
+    [groundCatalog, oceanCatalog],
   );
 
   return {
@@ -607,13 +600,13 @@ export function useOperaciones() {
     tokenLoading,
     tokenError,
     displayedAir: filteredAirPage,
-    displayedOcean: filteredOceanPage,
+    displayedOcean: oceanPagination.items,
     displayedGround: groundPagination.items,
     filteredAir: filteredAirPage,
-    filteredOcean: filteredOceanPage,
+    filteredOcean: oceanPagination.items,
     filteredGround: groundPagination.items,
     airShipments: airPageItems,
-    oceanShipments: oceanPageItems,
+    oceanShipments: oceanCatalog ?? [],
     groundShipments: groundCatalog ?? [],
     airLoading,
     oceanLoading,

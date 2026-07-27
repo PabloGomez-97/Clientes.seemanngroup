@@ -13,13 +13,19 @@ import {
   MovementsTimeline,
   RouteTimelineCard,
 } from "../../components/tracking/TrackingDetailBlocks";
+import StatusDot from "../../components/tracking/StatusDot";
+import {
+  STATUS_TONE,
+  toneForStatus,
+} from "../../components/tracking/statusTone";
 import { fetchOceanShipmentDetail } from "../../services/shipsgoApi";
 import {
   getOceanEmbedQuery,
   getOceanTrackingLabel,
+  isOceanDelayed,
 } from "../../../src/services/shipsgoTrackingLogic";
 import type { TrackeosStackParamList } from "../../navigation/TrackeosStack";
-import { brand, spacing } from "../../theme/brand";
+import { brand, radii, spacing } from "../../theme/brand";
 import { fonts } from "../../theme/typography";
 
 type RouteProps = RouteProp<TrackeosStackParamList, "OceanDetail">;
@@ -45,20 +51,42 @@ export default function OceanTrackingDetailScreen() {
   const shipment = detail || params.shipment;
   const movements =
     detail?.containers?.flatMap((container) => container.movements) || [];
-  const status = OCEAN_STATUS_LABELS[shipment.status] || shipment.status;
+  const delayed = isOceanDelayed(shipment);
+  const status = delayed
+    ? "Demorado"
+    : OCEAN_STATUS_LABELS[shipment.status] || shipment.status;
+  const toneKey = toneForStatus("ocean", shipment.status, delayed);
+  const tone = STATUS_TONE[toneKey];
 
   return (
     <SafeAreaView style={styles.safe} edges={["bottom"]}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.hero}>
-          <Text style={styles.kicker}>Contenedor / Booking</Text>
-          <Text style={styles.title}>{getOceanTrackingLabel(shipment)}</Text>
-          <Text style={styles.subtitle}>
-            {shipment.carrier?.name || "Sin naviera"}
-          </Text>
-          <View style={styles.statusChip}>
-            <View style={styles.statusDot} />
-            <Text style={styles.statusText}>{status}</Text>
+          <View style={styles.heroTop}>
+            <View style={styles.heroText}>
+              <Text style={styles.kicker}>Contenedor / Booking</Text>
+              <Text style={styles.title}>{getOceanTrackingLabel(shipment)}</Text>
+              <Text style={styles.subtitle}>
+                {shipment.carrier?.name || "Sin naviera"}
+              </Text>
+            </View>
+            <View
+              style={[
+                styles.statusChip,
+                {
+                  backgroundColor: tone.soft,
+                  borderColor: tone.border,
+                },
+              ]}
+            >
+              <StatusDot
+                color={tone.accent}
+                pulse={toneKey === "transit"}
+              />
+              <Text style={[styles.statusText, { color: tone.text }]}>
+                {status}
+              </Text>
+            </View>
           </View>
         </View>
 
@@ -76,6 +104,7 @@ export default function OceanTrackingDetailScreen() {
             arrivalValue={formatDateTime(
               shipment.route.port_of_discharge.date_of_discharge,
             )}
+            toneKey={toneKey}
           />
         ) : null}
 
@@ -87,6 +116,7 @@ export default function OceanTrackingDetailScreen() {
 
         <MovementsTimeline
           loading={loading}
+          accentColor={tone.accent}
           items={movements.map((movement, index) => ({
             key: `${movement.timestamp}-${index}`,
             title:
@@ -103,50 +133,54 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: brand.canvas },
   content: {
     padding: spacing.lg,
-    gap: 14,
+    gap: 12,
     paddingBottom: spacing.xl,
   },
   hero: {
-    gap: 4,
+    marginBottom: 2,
+  },
+  heroTop: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  heroText: {
+    flex: 1,
+    minWidth: 0,
   },
   kicker: {
     fontSize: 11,
-    letterSpacing: 1.2,
+    letterSpacing: 1,
     textTransform: "uppercase",
     color: brand.mutedLight,
     fontFamily: fonts.semiBold,
   },
   title: {
-    fontSize: 24,
-    letterSpacing: -0.4,
+    marginTop: 2,
+    fontSize: 20,
+    letterSpacing: -0.3,
     color: brand.navy,
     fontFamily: fonts.bold,
   },
   subtitle: {
+    marginTop: 2,
     fontSize: 13,
     color: brand.muted,
     fontFamily: fonts.medium,
-    marginBottom: 8,
   },
   statusChip: {
-    alignSelf: "flex-start",
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: brand.primarySoft,
-    borderRadius: 8,
+    borderRadius: radii.pill,
+    borderWidth: 1,
     paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: brand.primary,
+    paddingVertical: 5,
+    marginTop: 2,
   },
   statusText: {
-    color: brand.primary,
     fontFamily: fonts.semiBold,
-    fontSize: 12,
+    fontSize: 11,
   },
 });

@@ -19,6 +19,10 @@ import {
   isOceanTrackingComplete,
 } from "../../src/services/shipsgoTrackingLogic";
 import {
+  OPERACIONES_PAGE_SIZE,
+  paginateList,
+} from "../../src/services/operacionesPagination";
+import {
   deleteAirShipment,
   deleteOceanShipment,
   fetchAirShipments,
@@ -42,6 +46,8 @@ export function useShipsgoTracking() {
   );
   const [oceanStatusFilter, setOceanStatusFilter] =
     useState<OceanFilterKey | null>(null);
+  const [airPage, setAirPage] = useState(1);
+  const [oceanPage, setOceanPage] = useState(1);
 
   const userAir = useMemo(
     () =>
@@ -77,6 +83,16 @@ export function useShipsgoTracking() {
       matchesOceanFilter(shipment, oceanStatusFilter),
     );
   }, [userOcean, oceanStatusFilter]);
+
+  const airPagination = useMemo(
+    () => paginateList(filteredUserAir, airPage, OPERACIONES_PAGE_SIZE),
+    [airPage, filteredUserAir],
+  );
+
+  const oceanPagination = useMemo(
+    () => paginateList(filteredUserOcean, oceanPage, OPERACIONES_PAGE_SIZE),
+    [filteredUserOcean, oceanPage],
+  );
 
   const fetchAir = useCallback(async () => {
     setAirLoading(true);
@@ -126,10 +142,23 @@ export function useShipsgoTracking() {
     void fetchOcean();
   }, [activeUsername, fetchAir, fetchOcean]);
 
+  useEffect(() => {
+    setAirPage(1);
+  }, [activeUsername, airStatusFilter]);
+
+  useEffect(() => {
+    setOceanPage(1);
+  }, [activeUsername, oceanStatusFilter]);
+
   const handleTabChange = useCallback((tab: TrackingTab) => {
     setActiveTab(tab);
-    if (tab === "air") setOceanStatusFilter(null);
-    else setAirStatusFilter(null);
+    if (tab === "air") {
+      setOceanStatusFilter(null);
+      setAirPage(1);
+    } else {
+      setAirStatusFilter(null);
+      setOceanPage(1);
+    }
   }, []);
 
   const toggleAirFilter = useCallback((key: string) => {
@@ -143,6 +172,26 @@ export function useShipsgoTracking() {
       prev === key ? null : (key as OceanFilterKey),
     );
   }, []);
+
+  const goToNextAirPage = useCallback(() => {
+    if (!airPagination.hasNext) return;
+    setAirPage((page) => page + 1);
+  }, [airPagination.hasNext]);
+
+  const goToPreviousAirPage = useCallback(() => {
+    if (!airPagination.hasPrevious) return;
+    setAirPage((page) => Math.max(1, page - 1));
+  }, [airPagination.hasPrevious]);
+
+  const goToNextOceanPage = useCallback(() => {
+    if (!oceanPagination.hasNext) return;
+    setOceanPage((page) => page + 1);
+  }, [oceanPagination.hasNext]);
+
+  const goToPreviousOceanPage = useCallback(() => {
+    if (!oceanPagination.hasPrevious) return;
+    setOceanPage((page) => Math.max(1, page - 1));
+  }, [oceanPagination.hasPrevious]);
 
   const removeAirShipment = useCallback(
     async (shipmentId: number) => {
@@ -166,6 +215,27 @@ export function useShipsgoTracking() {
     [token],
   );
 
+  const pagination =
+    activeTab === "air"
+      ? {
+          page: airPagination.page,
+          totalPages: airPagination.totalPages,
+          totalItems: airPagination.totalItems,
+          hasPrevious: airPagination.hasPrevious,
+          hasNext: airPagination.hasNext,
+          goNext: goToNextAirPage,
+          goPrevious: goToPreviousAirPage,
+        }
+      : {
+          page: oceanPagination.page,
+          totalPages: oceanPagination.totalPages,
+          totalItems: oceanPagination.totalItems,
+          hasPrevious: oceanPagination.hasPrevious,
+          hasNext: oceanPagination.hasNext,
+          goNext: goToNextOceanPage,
+          goPrevious: goToPreviousOceanPage,
+        };
+
   return {
     activeUsername,
     activeTab,
@@ -174,6 +244,8 @@ export function useShipsgoTracking() {
     userOcean,
     filteredUserAir,
     filteredUserOcean,
+    displayedAir: airPagination.items,
+    displayedOcean: oceanPagination.items,
     airLoading,
     oceanLoading,
     airError,
@@ -188,6 +260,7 @@ export function useShipsgoTracking() {
     toggleOceanFilter,
     clearAirFilter: () => setAirStatusFilter(null),
     clearOceanFilter: () => setOceanStatusFilter(null),
+    pagination,
     refreshAll,
     fetchAir,
     fetchOcean,

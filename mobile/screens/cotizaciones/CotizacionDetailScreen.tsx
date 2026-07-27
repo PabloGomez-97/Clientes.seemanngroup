@@ -123,20 +123,21 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   heroTitle: {
-    fontSize: 24,
+    fontSize: 20,
     fontFamily: fonts.bold,
-    color: brand.ink,
+    color: brand.navy,
     marginBottom: 4,
   },
   heroSubtitle: {
-    fontSize: 14,
-    fontWeight: "600",
+    fontSize: 13,
+    fontFamily: fonts.semiBold,
     color: brand.muted,
     marginBottom: 4,
   },
   heroRoute: {
-    fontSize: 14,
-    color: brand.inkSecondary,
-    lineHeight: 20,
+    fontSize: 13,
+    color: brand.muted,
+    lineHeight: 18,
+    fontFamily: fonts.medium,
   },
 });

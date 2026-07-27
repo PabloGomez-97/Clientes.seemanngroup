@@ -10,7 +10,7 @@ type TrackingStatusStripProps = {
 };
 
 const TONE_COLORS = {
-  transit: brand.navy,
+  transit: "#2f6fed",
   done: "#16a34a",
   delayed: "#dc2626",
   neutral: brand.muted,
@@ -72,8 +72,8 @@ const styles = StyleSheet.create({
     borderColor: "rgba(30, 58, 95, 0.08)",
   },
   chipActive: {
-    borderColor: brand.primaryBorder,
-    backgroundColor: brand.primarySoft,
+    borderColor: "rgba(30, 58, 95, 0.22)",
+    backgroundColor: "#e8eef5",
   },
   dot: {
     width: 7,
@@ -95,6 +95,6 @@ const styles = StyleSheet.create({
     color: brand.muted,
   },
   countActive: {
-    color: brand.primary,
+    color: brand.navy,
   },
 });

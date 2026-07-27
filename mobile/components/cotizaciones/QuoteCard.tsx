@@ -7,8 +7,9 @@ import {
   getQuoteTransportDisplay,
   getQuoteValidityLabel,
 } from "../../../src/services/cotizacionesLogic";
-import { brand } from "../../theme/brand";
+import { brand, radii } from "../../theme/brand";
 import { fonts } from "../../theme/typography";
+import { STATUS_TONE } from "../tracking/statusTone";
 
 type QuoteCardProps = {
   quote: ClientQuote;
@@ -65,86 +66,70 @@ export default function QuoteCard({ quote }: QuoteCardProps) {
   const flow = getQuoteFlowLabel(quote.currentFlow);
   const from = parsePlace(quote.origin);
   const to = parsePlace(quote.destination);
-  const routeHint =
-    [from.name || quote.origin, to.name || quote.destination]
-      .filter(Boolean)
-      .join(" → ") || null;
   const icon = transportIcon(quote);
+  const validityTone = isExpired ? STATUS_TONE.neutral : STATUS_TONE.done;
+  const ref =
+    quote.customerReference?.trim() || quote.number || "Sin referencia";
 
   return (
-    <View style={styles.row}>
-      <View style={[styles.accent, isExpired && styles.accentExpired]} />
-
-      <View style={styles.content}>
-        <View style={styles.topRow}>
-          <Text style={styles.title} numberOfLines={1}>
-            {quote.customerReference?.trim() || "Sin referencia"}
-          </Text>
-          <View style={styles.statusRow}>
-            <View style={styles.flowChip}>
-              <Text style={styles.flowChipText}>{flow}</Text>
+    <View style={[styles.card, isExpired && styles.cardExpired]}>
+      <View style={styles.body}>
+        <View style={styles.mainRow}>
+          <View style={styles.routeBlock}>
+            <Text style={styles.code}>{from.code}</Text>
+            <View style={styles.connector}>
+              <View style={styles.connectorLine} />
+              <Ionicons
+                name={icon}
+                size={11}
+                color={isExpired ? brand.muted : brand.navy}
+                style={styles.connectorIcon}
+              />
+              <View style={styles.connectorLine} />
             </View>
-            <Text
-              style={[styles.validityText, isExpired && styles.validityExpired]}
-            >
+            <Text style={styles.code}>{to.code}</Text>
+          </View>
+
+          <View
+            style={[
+              styles.validityChip,
+              {
+                backgroundColor: validityTone.soft,
+                borderColor: validityTone.border,
+              },
+            ]}
+          >
+            <View
+              style={[
+                styles.validityDot,
+                { backgroundColor: validityTone.accent },
+              ]}
+            />
+            <Text style={[styles.validityText, { color: validityTone.text }]}>
               {validity}
             </Text>
           </View>
         </View>
 
-        <View style={styles.routeRow}>
-          <View style={styles.place}>
-            <Text style={styles.code} numberOfLines={1}>
-              {from.code}
-            </Text>
-            <Text style={styles.placeMeta}>Origen</Text>
-          </View>
-
-          <View style={styles.routeMid}>
-            <View style={styles.routeLine} />
-            <View style={styles.routeArrow}>
-              <Ionicons name={icon} size={12} color={brand.primary} />
-            </View>
-            <View style={styles.routeLine} />
-          </View>
-
-          <View style={[styles.place, styles.placeEnd]}>
-            <Text style={styles.code} numberOfLines={1}>
-              {to.code}
-            </Text>
-            <Text style={styles.placeMeta}>Destino</Text>
-          </View>
+        <View style={styles.metaRow}>
+          <Text style={styles.metaPrimary} numberOfLines={1}>
+            {ref}
+          </Text>
+          <Text style={styles.metaDot}>·</Text>
+          <Text style={styles.metaSecondary} numberOfLines={1}>
+            {flow}
+          </Text>
         </View>
 
-        {routeHint ? (
-          <Text style={styles.routeHint} numberOfLines={1}>
-            {routeHint}
-          </Text>
-        ) : null}
-
-        <Text style={styles.quoteNumber} numberOfLines={1}>
-          {quote.number || "—"}
-        </Text>
-
-        <Text style={styles.dates}>
-          {formatOperacionDate(quote.date)}
-          <Text style={styles.datesSep}>  ·  </Text>
-          {formatOperacionDate(quote.validUntil_Date)}
-        </Text>
-
         <View style={styles.footerRow}>
-          <Text style={styles.transport} numberOfLines={1}>
+          <Text style={styles.footerLeft} numberOfLines={1}>
+            {quote.number ? `${quote.number} · ` : ""}
             {getQuoteTransportDisplay(quote)}
           </Text>
-          {quote.transitDays != null ? (
-            <Text style={styles.transit}>{quote.transitDays} días</Text>
-          ) : (
-            <Ionicons
-              name="chevron-forward"
-              size={16}
-              color={brand.mutedLight}
-            />
-          )}
+          <Text style={styles.footerRight}>
+            {formatOperacionDate(quote.validUntil_Date)}
+            {quote.transitDays != null ? ` · ${quote.transitDays}d` : ""}
+          </Text>
         </View>
       </View>
     </View>
@@ -152,150 +137,114 @@ export default function QuoteCard({ quote }: QuoteCardProps) {
 }
 
 const styles = StyleSheet.create({
-  row: {
-    flexDirection: "row",
+  card: {
     backgroundColor: brand.surface,
-    borderRadius: 14,
-    marginBottom: 10,
-    overflow: "hidden",
+    borderRadius: radii.md,
+    marginBottom: 8,
     borderWidth: 1,
-    borderColor: "rgba(30, 58, 95, 0.08)",
+    borderColor: brand.border,
+    overflow: "hidden",
   },
-  accent: {
-    width: 3,
-    backgroundColor: brand.navy,
+  cardExpired: {
+    borderColor: "#e5e7eb",
+    backgroundColor: "#fafafa",
   },
-  accentExpired: {
-    backgroundColor: brand.mutedLight,
-  },
-  content: {
-    flex: 1,
-    paddingVertical: 14,
+  body: {
     paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 10,
   },
-  topRow: {
+  mainRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 12,
-    gap: 8,
+    gap: 10,
   },
-  title: {
-    flexShrink: 1,
-    fontSize: 13,
-    letterSpacing: 0.2,
-    color: brand.navy,
-    fontFamily: fonts.semiBold,
-  },
-  statusRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  flowChip: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    backgroundColor: "rgba(30, 58, 95, 0.08)",
-  },
-  flowChipText: {
-    fontSize: 11,
-    color: brand.navy,
-    fontFamily: fonts.semiBold,
-  },
-  validityText: {
-    fontSize: 11,
-    color: brand.primary,
-    fontFamily: fonts.semiBold,
-  },
-  validityExpired: {
-    color: brand.muted,
-  },
-  routeRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  place: {
+  routeBlock: {
     flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
     minWidth: 0,
   },
-  placeEnd: {
-    alignItems: "flex-end",
-  },
   code: {
-    fontSize: 22,
-    lineHeight: 26,
-    letterSpacing: -0.4,
+    fontSize: 17,
+    lineHeight: 22,
+    letterSpacing: 0.3,
     color: brand.navy,
     fontFamily: fonts.bold,
   },
-  placeMeta: {
-    marginTop: 2,
-    fontSize: 10,
-    letterSpacing: 0.8,
-    textTransform: "uppercase",
-    color: brand.mutedLight,
-    fontFamily: fonts.medium,
-  },
-  routeMid: {
-    width: 72,
+  connector: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 6,
+    width: 48,
+    marginHorizontal: 8,
   },
-  routeLine: {
+  connectorLine: {
     flex: 1,
     height: StyleSheet.hairlineWidth,
-    backgroundColor: "rgba(30, 58, 95, 0.25)",
+    backgroundColor: "rgba(30, 58, 95, 0.28)",
   },
-  routeArrow: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: brand.primarySoft,
+  connectorIcon: {
+    marginHorizontal: 3,
+  },
+  validityChip: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    marginHorizontal: 4,
+    gap: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: radii.pill,
+    borderWidth: 1,
   },
-  routeHint: {
+  validityDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  validityText: {
+    fontSize: 11,
+    fontFamily: fonts.semiBold,
+  },
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 8,
+    gap: 5,
+  },
+  metaPrimary: {
+    flexShrink: 1,
+    fontSize: 12,
+    letterSpacing: 0.2,
+    color: brand.ink,
+    fontFamily: fonts.semiBold,
+  },
+  metaSecondary: {
+    flexShrink: 1,
     fontSize: 12,
     color: brand.muted,
     fontFamily: fonts.regular,
-    marginBottom: 6,
   },
-  quoteNumber: {
+  metaDot: {
     fontSize: 12,
-    color: brand.muted,
-    fontFamily: fonts.medium,
-    marginBottom: 8,
-    letterSpacing: 0.4,
-  },
-  dates: {
-    fontSize: 13,
-    color: brand.inkSecondary,
-    fontFamily: fonts.medium,
-  },
-  datesSep: {
     color: brand.mutedLight,
     fontFamily: fonts.regular,
   },
   footerRow: {
-    marginTop: 8,
+    marginTop: 4,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     gap: 8,
   },
-  transport: {
+  footerLeft: {
     flex: 1,
-    fontSize: 12,
+    fontSize: 11,
     color: brand.mutedLight,
-    fontFamily: fonts.regular,
+    fontFamily: fonts.medium,
   },
-  transit: {
-    fontSize: 12,
-    color: brand.navy,
-    fontFamily: fonts.semiBold,
+  footerRight: {
+    fontSize: 11,
+    color: brand.mutedLight,
+    fontFamily: fonts.medium,
   },
 });
