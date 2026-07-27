@@ -1,4 +1,4 @@
-export const OPERACIONES_PAGE_SIZE = 5;
+export const OPERACIONES_PAGE_SIZE = 6;
 
 export type PaginatedSlice<T> = {
   items: T[];
