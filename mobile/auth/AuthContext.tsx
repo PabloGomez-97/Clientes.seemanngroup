@@ -25,7 +25,6 @@ type AuthCtx = {
   login: (
     email: string,
     password: string,
-    turnstileToken?: string,
   ) => Promise<AuthUser>;
   logout: () => void;
 };
@@ -109,13 +108,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (
     email: string,
     password: string,
-    turnstileToken?: string,
   ) => {
     const data = await loginRequest(
       MOBILE_API_BASE,
       email,
       password,
-      turnstileToken,
+      undefined,
       { client: "mobile", tenant: "cl" },
     );
     if (data.requiresTenantSelection) {

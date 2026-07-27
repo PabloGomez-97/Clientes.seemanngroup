@@ -16,17 +16,11 @@ import { LinearGradient } from "expo-linear-gradient";
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as SecureStore from "expo-secure-store";
-import { WebView } from "react-native-webview";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { LAST_LOGIN_EMAIL_KEY, useAuth } from "./AuthContext";
 import { brand, radii, spacing } from "../theme/brand";
 import { fonts } from "../theme/typography";
-
-const TURNSTILE_SITE_KEY =
-  process.env.EXPO_PUBLIC_TURNSTILE_SITE_KEY ??
-  process.env.VITE_TURNSTILE_SITE_KEY ??
-  "";
 
 type Step = "email" | "password";
 
@@ -45,9 +39,6 @@ export default function Login() {
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [focused, setFocused] = useState(false);
-  const [captchaRequired, setCaptchaRequired] = useState(false);
-  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
-  const turnstileKeyRef = useRef(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -84,11 +75,6 @@ export default function Login() {
     });
   };
 
-  const resetCaptcha = () => {
-    setTurnstileToken(null);
-    turnstileKeyRef.current += 1;
-  };
-
   const goToPassword = () => {
     const trimmed = email.trim();
     if (!trimmed) return;
@@ -104,8 +90,6 @@ export default function Login() {
     setPassword("");
     setShowPassword(false);
     setErr(null);
-    setCaptchaRequired(false);
-    setTurnstileToken(null);
     setFocused(false);
     passwordRef.current?.blur();
     animateStep(() => {
@@ -114,72 +98,26 @@ export default function Login() {
   };
 
   const onSubmit = async () => {
-    if (captchaRequired && !turnstileToken) {
-      setErr(t("home.login.captchaRequired"));
-      return;
-    }
-
     setErr(null);
     setLoading(true);
 
     try {
-      const loggedUser = await login(
-        email.trim(),
-        password,
-        turnstileToken ?? undefined,
-      );
-
-      // Staff entra al portal correspondiente (App.tsx). Solo bloqueamos aquí si hace falta captcha/error.
-      void loggedUser;
+      await login(email.trim(), password);
       setLoading(false);
     } catch (e: unknown) {
-      const error = e as { message?: string; requiresCaptcha?: boolean };
-      if (error.requiresCaptcha) {
-        setCaptchaRequired(true);
-        resetCaptcha();
-      } else {
-        setCaptchaRequired(false);
-        setTurnstileToken(null);
-      }
+      const error = e as { message?: string };
       setErr(error.message || t("home.login.loginError"));
       setLoading(false);
     }
   };
 
   const emailReady = email.trim().length > 0;
-  const passwordReady =
-    password.length > 0 && !(captchaRequired && !turnstileToken);
+  const passwordReady = password.length > 0;
   const submitDisabled = loading || !passwordReady;
 
   const tryLogin = () => {
     if (!submitDisabled) void onSubmit();
   };
-
-  const turnstileHtml =
-    TURNSTILE_SITE_KEY &&
-    `<!DOCTYPE html>
-<html>
-  <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
-    <style>
-      body { margin: 0; display: flex; justify-content: center; background: #f7f8fb; }
-    </style>
-  </head>
-  <body>
-    <div
-      class="cf-turnstile"
-      data-sitekey="${TURNSTILE_SITE_KEY}"
-      data-callback="onTurnstileSuccess"
-      data-theme="light"
-    ></div>
-    <script>
-      function onTurnstileSuccess(token) {
-        window.ReactNativeWebView.postMessage(token);
-      }
-    </script>
-  </body>
-</html>`;
 
   return (
     <View style={styles.root}>
@@ -376,23 +314,6 @@ export default function Login() {
                         />
                       </Pressable>
                     </View>
-
-                    {captchaRequired && turnstileHtml ? (
-                      <View style={styles.captchaBox}>
-                        <Text style={styles.captchaLabel}>
-                          {t("home.login.captchaLabel")}
-                        </Text>
-                        <WebView
-                          key={turnstileKeyRef.current}
-                          originWhitelist={["*"]}
-                          source={{ html: turnstileHtml }}
-                          onMessage={(event) =>
-                            setTurnstileToken(event.nativeEvent.data)
-                          }
-                          style={styles.captchaWebView}
-                        />
-                      </View>
-                    ) : null}
 
                     <Pressable
                       onPress={tryLogin}
@@ -636,18 +557,5 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-  },
-  captchaBox: {
-    marginBottom: 16,
-  },
-  captchaLabel: {
-    fontSize: 12,
-    color: brand.muted,
-    marginBottom: 8,
-    fontFamily: fonts.medium,
-  },
-  captchaWebView: {
-    height: 78,
-    backgroundColor: "#f7f8fb",
   },
 });

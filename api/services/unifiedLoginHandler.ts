@@ -246,8 +246,12 @@ export async function handleUnifiedLogin(
     );
   }
 
+  // Turnstile en WebView mobile es frágil (origen inválido / red). En app nativa
+  // no exigimos captcha; en web sí tras N fallos.
   const captchaRequired =
-    Boolean(clUser?.loginCaptchaRequired) || Boolean(mxUser?.loginCaptchaRequired);
+    !deps.isMobileClient &&
+    (Boolean(clUser?.loginCaptchaRequired) ||
+      Boolean(mxUser?.loginCaptchaRequired));
   if (captchaRequired) {
     if (!turnstileToken) {
       return res.status(403).json({
@@ -323,7 +327,8 @@ export async function handleUnifiedLogin(
 
     return res.status(401).json({
       error: 'Credenciales inválidas',
-      requiresCaptcha: newCaptchaRequired,
+      // Mobile no usa Turnstile; no forzar UI de captcha en la app.
+      requiresCaptcha: deps.isMobileClient ? false : newCaptchaRequired,
       failCount: newFailCount,
     });
   }
