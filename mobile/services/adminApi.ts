@@ -243,31 +243,49 @@ export async function createAdminEjecutivoAccount(
   },
 ): Promise<void> {
   const roles = rolesFromSingle(input.role);
-  const ej = await apiJson<{ success?: boolean }>(
-    "/api/admin/ejecutivos",
-    token,
-    {
-      method: "POST",
-      body: JSON.stringify({
-        nombre: input.nombreuser.trim(),
-        email: input.email.trim().toLowerCase(),
-        telefono: input.telefono.trim(),
-        idInterno: input.idInterno,
-        roles,
-      }),
-    },
-  );
-  if (!ej) throw new Error("Error al crear ejecutivo");
-
-  await apiJson("/api/admin/create-user", token, {
+  const email = input.email.trim().toLowerCase();
+  const ej = await apiJson<{
+    success?: boolean;
+    ejecutivo?: { id?: string };
+  }>("/api/admin/ejecutivos", token, {
     method: "POST",
     body: JSON.stringify({
-      email: input.email.trim().toLowerCase(),
-      username: "Ejecutivo",
-      usernames: ["Ejecutivo"],
-      nombreuser: input.nombreuser.trim(),
+      nombre: input.nombreuser.trim(),
+      email,
+      telefono: input.telefono.trim(),
+      idInterno: input.idInterno,
+      roles,
     }),
   });
+
+  const ejecutivoId = ej.ejecutivo?.id ? String(ej.ejecutivo.id) : null;
+  if (!ejecutivoId) {
+    throw new Error("Error al crear ejecutivo");
+  }
+
+  try {
+    await apiJson("/api/admin/create-user", token, {
+      method: "POST",
+      body: JSON.stringify({
+        email,
+        username: "Ejecutivo",
+        usernames: ["Ejecutivo"],
+        nombreuser: input.nombreuser.trim(),
+      }),
+    });
+  } catch (err) {
+    // Compensación: no dejar ejecutivo sin cuenta de login.
+    try {
+      await apiJson(
+        `/api/admin/ejecutivos/${encodeURIComponent(ejecutivoId)}`,
+        token,
+        { method: "DELETE" },
+      );
+    } catch {
+      /* best-effort */
+    }
+    throw err;
+  }
 }
 
 export async function updateAdminEjecutivoUser(

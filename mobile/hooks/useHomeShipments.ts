@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MOBILE_API_BASE } from "../../src/auth/authApi";
 
 export interface HmAirItem {
@@ -98,24 +98,31 @@ export function useHomeShipments(activeUsername: string | undefined) {
   const [air, setAir] = useState<HmAirItem[]>([]);
   const [ocean, setOcean] = useState<HmOceanItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const requestIdRef = useRef(0);
 
   const refresh = useCallback(
     async (silent = false) => {
+      const requestId = ++requestIdRef.current;
       if (!activeUsername) {
-        setAir([]);
-        setOcean([]);
-        setLoading(false);
+        if (requestId === requestIdRef.current) {
+          setAir([]);
+          setOcean([]);
+          setLoading(false);
+        }
         return;
       }
       if (!silent) setLoading(true);
       try {
         const result = await fetchShipments(activeUsername);
+        if (requestId !== requestIdRef.current) return;
         setAir(result.air);
         setOcean(result.ocean);
       } catch {
         /* ignore */
       } finally {
-        setLoading(false);
+        if (requestId === requestIdRef.current) {
+          setLoading(false);
+        }
       }
     },
     [activeUsername],

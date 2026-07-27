@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -18,6 +18,7 @@ import {
   type ProveedorTariffRow,
 } from "../../services/proveedorApi";
 import { useRefreshOnFocus } from "../../hooks/useRefreshOnFocus";
+import { useRequestGate } from "../../hooks/useRequestGate";
 import { brand, radii, spacing } from "../../theme/brand";
 import { fonts } from "../../theme/typography";
 
@@ -31,6 +32,7 @@ const MODES: { key: ProveedorTariffMode; label: string }[] = [
 
 export default function ProveedorTarifarioScreen() {
   const { user } = useAuth();
+  const { next, isLatest } = useRequestGate();
   const nombre =
     user?.nombreuser?.trim() || user?.email?.trim() || "Proveedor";
 
@@ -41,22 +43,35 @@ export default function ProveedorTarifarioScreen() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const lastModeRef = useRef(mode);
 
   const load = useCallback(async () => {
+    const requestId = next();
+    const modeChanged = lastModeRef.current !== mode;
+    lastModeRef.current = mode;
     setError(null);
+    if (modeChanged) {
+      setRows([]);
+      setLoading(true);
+      setPage(1);
+    }
     try {
       const data = await fetchProveedorOwnTariffs(mode, nombre);
+      if (!isLatest(requestId)) return;
       setRows(data);
     } catch (e) {
+      if (!isLatest(requestId)) return;
       setRows([]);
       setError(
         e instanceof Error ? e.message : "No se pudieron cargar tus tarifas.",
       );
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (isLatest(requestId)) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
-  }, [mode, nombre]);
+  }, [mode, nombre, next, isLatest]);
 
   useRefreshOnFocus(load);
 

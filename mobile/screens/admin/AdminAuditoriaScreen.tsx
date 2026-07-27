@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -18,10 +18,12 @@ import {
   type AuditLogRow,
 } from "../../services/adminApi";
 import { useRefreshOnFocus } from "../../hooks/useRefreshOnFocus";
+import { useRequestGate } from "../../hooks/useRequestGate";
 import { brand, radii, spacing } from "../../theme/brand";
 import { fonts } from "../../theme/typography";
 
 const PAGE_SIZE = 15;
+const SEARCH_DEBOUNCE_MS = 350;
 
 const CATEGORIES = [
   { key: "", label: "Todas" },
@@ -34,6 +36,7 @@ const CATEGORIES = [
 export default function AdminAuditoriaScreen() {
   const navigation = useNavigation();
   const { token } = useAuth();
+  const { next, isLatest } = useRequestGate();
   const [logs, setLogs] = useState<AuditLogRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -42,8 +45,17 @@ export default function AdminAuditoriaScreen() {
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [categoria, setCategoria] = useState("");
+  const [busquedaInput, setBusquedaInput] = useState("");
   const [busqueda, setBusqueda] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setBusqueda(busquedaInput.trim());
+      setPage(1);
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(t);
+  }, [busquedaInput]);
 
   const load = useCallback(async () => {
     if (!token) {
@@ -51,7 +63,9 @@ export default function AdminAuditoriaScreen() {
       setLoading(false);
       return;
     }
+    const requestId = next();
     setError(null);
+    setLoading(true);
     try {
       const data = await fetchAuditLogs(token, {
         page,
@@ -59,19 +73,23 @@ export default function AdminAuditoriaScreen() {
         categoria: categoria || undefined,
         busqueda: busqueda || undefined,
       });
+      if (!isLatest(requestId)) return;
       setLogs(data.logs);
       setTotalPages(Math.max(1, data.pagination.totalPages));
       setTotal(data.pagination.total);
     } catch (e) {
+      if (!isLatest(requestId)) return;
       setLogs([]);
       setError(
         e instanceof Error ? e.message : "No se pudo cargar la auditoría.",
       );
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (isLatest(requestId)) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
-  }, [token, page, categoria, busqueda]);
+  }, [token, page, categoria, busqueda, next, isLatest]);
 
   useRefreshOnFocus(load);
 
@@ -95,11 +113,8 @@ export default function AdminAuditoriaScreen() {
           style={styles.search}
           placeholder="Buscar usuario, acción…"
           placeholderTextColor={brand.mutedLight}
-          value={busqueda}
-          onChangeText={(t) => {
-            setBusqueda(t);
-            setPage(1);
-          }}
+          value={busquedaInput}
+          onChangeText={setBusquedaInput}
           autoCapitalize="none"
           autoCorrect={false}
         />
@@ -115,6 +130,7 @@ export default function AdminAuditoriaScreen() {
               onPress={() => {
                 setCategoria(c.key);
                 setPage(1);
+                setLoading(true);
               }}
             >
               <Text style={[styles.chipText, active && styles.chipTextActive]}>

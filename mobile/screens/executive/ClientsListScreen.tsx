@@ -18,6 +18,7 @@ import type { ExecutiveClientsStackParamList } from "../../navigation/ExecutiveC
 import { useStaffClientsSource } from "../../navigation/StaffClientsSourceContext";
 import type { ClientTrackingCounts } from "../../hooks/useExecutivePortfolioTracking";
 import { useRefreshOnFocus } from "../../hooks/useRefreshOnFocus";
+import { useRequestGate } from "../../hooks/useRequestGate";
 import {
   fetchMisClientes,
   fetchTodosClientes,
@@ -65,6 +66,7 @@ export default function ClientsListScreen({
 }: Props) {
   const navigation = useNavigation<Nav>();
   const { token } = useAuth();
+  const { next, isLatest } = useRequestGate();
   const clientsSource = useStaffClientsSource();
   const showEjecutivo = clientsSource === "global";
   const [clients, setClients] = useState<Cliente[]>([]);
@@ -77,14 +79,17 @@ export default function ClientsListScreen({
   const isExternal = clientsOverride !== undefined;
 
   const load = useCallback(async () => {
+    const requestId = next();
     if (isExternal) {
       if (onRefreshOverride) await onRefreshOverride();
-      setRefreshing(false);
+      if (isLatest(requestId)) setRefreshing(false);
       return;
     }
     if (!token) {
-      setClients([]);
-      setLoading(false);
+      if (isLatest(requestId)) {
+        setClients([]);
+        setLoading(false);
+      }
       return;
     }
     setError(null);
@@ -93,17 +98,28 @@ export default function ClientsListScreen({
         clientsSource === "global"
           ? await fetchTodosClientes(token)
           : await fetchMisClientes(token);
+      if (!isLatest(requestId)) return;
       setClients(data);
     } catch (e) {
+      if (!isLatest(requestId)) return;
       setClients([]);
       setError(
         e instanceof Error ? e.message : "No se pudo cargar la cartera.",
       );
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (isLatest(requestId)) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
-  }, [token, isExternal, onRefreshOverride, clientsSource]);
+  }, [
+    token,
+    isExternal,
+    onRefreshOverride,
+    clientsSource,
+    next,
+    isLatest,
+  ]);
 
   useRefreshOnFocus(load);
 
