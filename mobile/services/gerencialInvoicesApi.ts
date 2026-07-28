@@ -7,7 +7,7 @@ import {
   filterInvoices,
   formatInvoiceCurrency,
   getPeriodRange,
-  groupInvoicesByMonth,
+  parseLinbisInvoiceDate,
   type PeriodPreset,
 } from "../../src/components/administrador/reporteria/financiera/invoiceUtils";
 
@@ -80,15 +80,25 @@ const MONTH_NAMES = [
   "Dic",
 ];
 
+function groupByMonth(invoices: InvoiceData[]): Record<string, InvoiceData[]> {
+  const monthMap: Record<string, InvoiceData[]> = {};
+  for (const invoice of invoices) {
+    const d = parseLinbisInvoiceDate(invoice.date);
+    if (!d) continue;
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    if (!monthMap[key]) monthMap[key] = [];
+    monthMap[key].push(invoice);
+  }
+  return monthMap;
+}
+
 export function buildInvoiceMonthlyComparison(
   invoices1: InvoiceData[],
   invoices2: InvoiceData[],
 ): InvoiceMonthlyComparisonRow[] {
-  const monthSet = new Set<string>();
-  const map1 = groupInvoicesByMonth(invoices1);
-  const map2 = groupInvoicesByMonth(invoices2);
-  Object.keys(map1).forEach((k) => monthSet.add(k));
-  Object.keys(map2).forEach((k) => monthSet.add(k));
+  const map1 = groupByMonth(invoices1);
+  const map2 = groupByMonth(invoices2);
+  const monthSet = new Set([...Object.keys(map1), ...Object.keys(map2)]);
 
   return [...monthSet]
     .sort()
