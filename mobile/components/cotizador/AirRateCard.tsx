@@ -5,8 +5,16 @@ import {
   airRouteValidityMeta,
   formatAirRateTier,
 } from "../../../src/components/quotes/Handlers/Air/airQuoteStep1Shared";
-import { brand, radii, spacing } from "../../theme/brand";
+import { formatValidUntilDisplay } from "../../../src/components/quotes/Handlers/handlerFechas";
+import { AIR_RATE_TIERS } from "./AirRateDetailModal";
+import { brand, radii } from "../../theme/brand";
 import { fonts } from "../../theme/typography";
+
+function formatValidityDate(validUntil: string | null | undefined): string {
+  const display = formatValidUntilDisplay(validUntil);
+  if (!display || display === "—") return "";
+  return display.replace(/-/g, "/");
+}
 
 type Props = {
   ruta: RutaAerea;
@@ -15,6 +23,7 @@ type Props = {
   onPress: () => void;
 };
 
+/** Vista compacta tipo Tarifario: toca para abrir el detalle completo. */
 export default function AirRateCard({
   ruta,
   selected,
@@ -22,6 +31,7 @@ export default function AirRateCard({
   onPress,
 }: Props) {
   const validity = airRouteValidityMeta(ruta.validUntil);
+  const validityDate = formatValidityDate(ruta.validUntil);
   const tone =
     validity.state === "expired"
       ? { bg: "#fee2e2", color: "#b91c1c" }
@@ -29,11 +39,14 @@ export default function AirRateCard({
         ? { bg: "#ffedd5", color: "#c2410c" }
         : { bg: "#dcfce7", color: "#15803d" };
 
-  const tiers = [
-    { key: "45", label: "+45 kg", value: ruta.kg45 },
-    { key: "100", label: "+100", value: ruta.kg100 },
-    { key: "300", label: "+300", value: ruta.kg300 },
-  ];
+  const allTiers = AIR_RATE_TIERS.map((tier) => ({
+    ...tier,
+    value: formatAirRateTier(ruta[tier.field], ruta.currency),
+    raw: ruta[tier.field],
+  })).filter((t) => t.raw);
+
+  const preview = allTiers.slice(0, 3);
+  const hasMore = allTiers.length > 3;
 
   return (
     <Pressable
@@ -57,7 +70,7 @@ export default function AirRateCard({
       <Text style={styles.carrier} numberOfLines={1}>
         {ruta.carrier || "Carrier por confirmar"}
         {ruta.transitTime ? ` · TT ${ruta.transitTime}` : ""}
-        {!pending && validity.iso ? ` · Validez ${validity.iso}` : ""}
+        {!pending && validityDate ? ` · Validez ${validityDate}` : ""}
       </Text>
       {pending ? (
         <Text style={styles.pendingHint}>
@@ -65,19 +78,24 @@ export default function AirRateCard({
         </Text>
       ) : (
         <View style={styles.chips}>
-          {tiers.map((tier) => (
+          {preview.map((tier) => (
             <View key={tier.key} style={styles.chip}>
               <Text style={styles.chipLabel}>{tier.label}</Text>
-              <Text style={styles.chipValue}>
-                {formatAirRateTier(tier.value, ruta.currency)}
-              </Text>
+              <Text style={styles.chipValue}>{tier.value}</Text>
             </View>
           ))}
+          {hasMore ? (
+            <View style={styles.chipMore}>
+              <Text style={styles.chipMoreText}>+ más</Text>
+            </View>
+          ) : null}
         </View>
       )}
       <View style={styles.footer}>
         <Text style={styles.tapHint}>
-          {selected ? "Seleccionada" : "Toca para seleccionar"}
+          {selected
+            ? "Seleccionada · toca para ver detalle"
+            : "Toca para ver el detalle completo"}
         </Text>
         {selected ? (
           <Ionicons name="checkmark-circle" size={18} color={brand.primary} />
@@ -152,6 +170,18 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: fonts.semiBold,
     color: brand.navy,
+  },
+  chipMore: {
+    backgroundColor: brand.canvas,
+    borderRadius: radii.sm,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    justifyContent: "center",
+  },
+  chipMoreText: {
+    fontSize: 11,
+    fontFamily: fonts.semiBold,
+    color: brand.primary,
   },
   footer: {
     marginTop: 2,

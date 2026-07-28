@@ -45,6 +45,7 @@ import {
   SPAIN_COUNTRY_OPTION,
 } from "../../../../src/services/airConnectSpainQuote";
 import AirRateCard from "../../../components/cotizador/AirRateCard";
+import AirRateDetailModal from "../../../components/cotizador/AirRateDetailModal";
 import CotizadorSelectField, {
   type CotizadorOption,
 } from "../../../components/cotizador/CotizadorSelectField";
@@ -111,6 +112,8 @@ export default function QuoteAirStep1({ onConfirm }: Props) {
   const [rutaSeleccionada, setRutaSeleccionada] = useState<RutaAerea | null>(
     null,
   );
+  const [detailRuta, setDetailRuta] = useState<RutaAerea | null>(null);
+  const [detailPending, setDetailPending] = useState(false);
   const [sinTarifa, setSinTarifa] = useState(false);
 
   const load = useCallback(async () => {
@@ -344,19 +347,65 @@ export default function QuoteAirStep1({ onConfirm }: Props) {
     }
   }, [routeMode, origin, destination, incoterm, filteredRoutes]);
 
-  const routeReady =
-    !!pais &&
-    !!destination &&
-    !!incoterm &&
-    (airConnect && incoterm === "EXW"
-      ? isValidSpainPostalCode(spainPostal) && !!origin
-      : incoterm === "FCA"
-        ? !!origin
-        : incoterm === "EXW"
-          ? !!pickupCoords && !!origin
-          : false) &&
-    !!rutaSeleccionada &&
-    isAirRouteSelectable(rutaSeleccionada);
+  const canConfirmWithRuta = (ruta: RutaAerea | null) => {
+    if (!pais || !destination || !incoterm || !origin || !routeMode || !ruta) {
+      return false;
+    }
+    if (!isAirRouteSelectable(ruta)) return false;
+    if (airConnect && incoterm === "EXW") {
+      return isValidSpainPostalCode(spainPostal);
+    }
+    if (incoterm === "FCA") return true;
+    if (incoterm === "EXW") return !!pickupCoords;
+    return false;
+  };
+
+  const routeReady = canConfirmWithRuta(rutaSeleccionada);
+
+  const confirmHintFor = (ruta: RutaAerea | null): string | null => {
+    if (!ruta) return null;
+    if (canConfirmWithRuta(ruta)) return null;
+    if (incoterm === "EXW" && !airConnect && !pickupCoords) {
+      return "Completa y confirma la dirección de recogida EXW para continuar.";
+    }
+    if (airConnect && incoterm === "EXW" && !isValidSpainPostalCode(spainPostal)) {
+      return "Ingresa un código postal español válido (5 dígitos).";
+    }
+    if (!origin) return "Selecciona el aeropuerto de origen.";
+    return "Completa los datos de la ruta antes de confirmar.";
+  };
+
+  const emitConfirm = (ruta: RutaAerea) => {
+    if (
+      !canConfirmWithRuta(ruta) ||
+      !pais ||
+      !destination ||
+      !origin ||
+      !routeMode ||
+      !incoterm
+    ) {
+      setRutaSeleccionada(ruta);
+      setDetailRuta(null);
+      setDetailPending(false);
+      return;
+    }
+    setRutaSeleccionada(ruta);
+    setDetailRuta(null);
+    setDetailPending(false);
+    onConfirm({
+      routeMode,
+      incoterm: incoterm as "EXW" | "FCA",
+      pais,
+      destination,
+      origin,
+      ruta,
+      sinTarifa: ruta.id === "AIR-PENDING" || sinTarifa,
+      pickupAddress: pickupAddress || undefined,
+      pickupCoords: pickupCoords || undefined,
+      spainPostalCode: spainPostal || undefined,
+      airConnect,
+    });
+  };
 
   const resetDownstream = () => {
     setDestination(null);
@@ -558,7 +607,10 @@ export default function QuoteAirStep1({ onConfirm }: Props) {
             ruta={rutaSeleccionada}
             selected
             pending
-            onPress={() => undefined}
+            onPress={() => {
+              setDetailPending(true);
+              setDetailRuta(rutaSeleccionada);
+            }}
           />
         </>
       ) : null}
@@ -580,7 +632,8 @@ export default function QuoteAirStep1({ onConfirm }: Props) {
                 selected={rutaSeleccionada?.id === ruta.id}
                 onPress={() => {
                   if (!isAirRouteSelectable(ruta)) return;
-                  setRutaSeleccionada(ruta);
+                  setDetailPending(false);
+                  setDetailRuta(ruta);
                 }}
               />
             ))
@@ -588,37 +641,27 @@ export default function QuoteAirStep1({ onConfirm }: Props) {
         </>
       ) : null}
 
-      <Pressable
-        style={[styles.confirm, !routeReady && styles.confirmDisabled]}
-        disabled={!routeReady}
-        onPress={() => {
-          if (
-            !routeReady ||
-            !pais ||
-            !destination ||
-            !origin ||
-            !rutaSeleccionada ||
-            !routeMode
-          ) {
-            return;
-          }
-          onConfirm({
-            routeMode,
-            incoterm: incoterm as "EXW" | "FCA",
-            pais,
-            destination,
-            origin,
-            ruta: rutaSeleccionada,
-            sinTarifa,
-            pickupAddress: pickupAddress || undefined,
-            pickupCoords: pickupCoords || undefined,
-            spainPostalCode: spainPostal || undefined,
-            airConnect,
-          });
+      <AirRateDetailModal
+        ruta={detailRuta}
+        pending={detailPending}
+        onClose={() => {
+          setDetailRuta(null);
+          setDetailPending(false);
         }}
-      >
-        <Text style={styles.confirmText}>Confirmar ruta</Text>
-      </Pressable>
+        onConfirm={emitConfirm}
+        confirmDisabled={detailRuta ? !canConfirmWithRuta(detailRuta) : true}
+        confirmHint={confirmHintFor(detailRuta)}
+      />
+
+      {rutaSeleccionada && !detailRuta ? (
+        <Pressable
+          style={[styles.confirm, !routeReady && styles.confirmDisabled]}
+          disabled={!routeReady}
+          onPress={() => emitConfirm(rutaSeleccionada)}
+        >
+          <Text style={styles.confirmText}>Confirmar ruta</Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }

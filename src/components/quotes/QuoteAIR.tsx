@@ -2222,10 +2222,10 @@ function QuoteAPITester({
   // Calcular tarifa AIR FREIGHT si hay ruta seleccionada
   const tarifaAirFreight = rutaSeleccionada
     ? seleccionarTarifaPorPeso(
-        rutaSeleccionada,
-        pesoAirFreight,
-        profitMarkup.air,
-      )
+      rutaSeleccionada,
+      pesoAirFreight,
+      profitMarkup.air,
+    )
     : null;
 
   const simulatedAirFreightExpenseRate = useMemo(
