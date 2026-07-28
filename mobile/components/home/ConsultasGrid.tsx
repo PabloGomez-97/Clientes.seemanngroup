@@ -71,12 +71,12 @@ const LAUNCHER: LauncherItem[] = [
     menu: "Tarifario",
   },
   {
-    id: "hist",
-    title: "Histórico",
-    icon: "pulse",
-    accent: "navy",
+    id: "cotizador",
+    title: "Cotizador",
+    icon: "create",
+    accent: "orange",
     kind: "menu",
-    menu: "HistoricoPrecios",
+    menu: "Cotizador",
   },
 ];
 

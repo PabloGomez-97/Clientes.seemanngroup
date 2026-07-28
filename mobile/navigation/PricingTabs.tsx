@@ -10,6 +10,7 @@ import TarifarioScreen from "../screens/consultas/TarifarioScreen";
 import PricingMoreStack from "./PricingMoreStack";
 import type { PricingMoreStackParamList } from "./PricingMoreStack";
 import { StaffPortalProvider } from "./StaffPortalContext";
+import { StaffClientsSourceProvider } from "./StaffClientsSourceContext";
 import { brand } from "../theme/brand";
 import { fonts } from "../theme/typography";
 
@@ -48,6 +49,7 @@ export default function PricingTabs() {
 
   return (
     <StaffPortalProvider value="pricing">
+      <StaffClientsSourceProvider value="global">
       <NavigationContainer>
         <Tab.Navigator
           screenOptions={({ route }) => ({
@@ -99,6 +101,7 @@ export default function PricingTabs() {
           />
         </Tab.Navigator>
       </NavigationContainer>
+      </StaffClientsSourceProvider>
     </StaffPortalProvider>
   );
 }

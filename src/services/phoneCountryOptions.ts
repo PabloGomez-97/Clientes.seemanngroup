@@ -11,11 +11,23 @@ export interface PhoneCountryOption {
   label: string;
 }
 
-const regionNames = new Intl.DisplayNames(["es"], { type: "region" });
+function createRegionDisplayNames(): Intl.DisplayNames | null {
+  try {
+    const DisplayNames = (
+      Intl as typeof Intl & { DisplayNames?: typeof Intl.DisplayNames }
+    ).DisplayNames;
+    if (typeof DisplayNames !== "function") return null;
+    return new DisplayNames(["es"], { type: "region" });
+  } catch {
+    return null;
+  }
+}
+
+const regionNames = createRegionDisplayNames();
 
 function getCountryLabel(code: CountryCode): string {
   try {
-    return regionNames.of(code) ?? code;
+    return regionNames?.of(code) ?? code;
   } catch {
     return code;
   }

@@ -21,6 +21,7 @@ import ChangePasswordScreen from "../screens/menu/ChangePasswordScreen";
 import MisDocumentosScreen from "../screens/menu/MisDocumentosScreen";
 import TarifarioScreen from "../screens/consultas/TarifarioScreen";
 import HistoricoPreciosScreen from "../screens/consultas/HistoricoPreciosScreen";
+import CotizadorStack from "./CotizadorStack";
 import NovedadesScreen from "../screens/consultas/NovedadesScreen";
 import NovedadDetailScreen from "../screens/consultas/NovedadDetailScreen";
 import PromesasScreen from "../screens/consultas/PromesasScreen";
@@ -50,6 +51,7 @@ export type AdminMoreStackParamList = {
   DocsWorkspace: { username: string };
   Tarifario: undefined;
   HistoricoPrecios: undefined;
+  Cotizador: undefined;
   Novedades: undefined;
   NovedadDetail: { slug: string; title?: string };
   Promesas: undefined;
@@ -187,6 +189,12 @@ function MoreHomeScreen() {
     {
       title: "Consultas",
       links: [
+        {
+          key: "cotizador",
+          label: "Cotizador",
+          icon: "create-outline" as const,
+          onPress: () => navigation.navigate("Cotizador"),
+        },
         {
           key: "historico",
           label: "Histórico de precios",
@@ -416,6 +424,11 @@ export default function AdminMoreStack() {
       <Stack.Screen
         name="HistoricoPrecios"
         component={HistoricoPreciosScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="Cotizador"
+        component={CotizadorStack}
         options={{ headerShown: false }}
       />
       <Stack.Screen

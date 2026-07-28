@@ -7,6 +7,7 @@ import ReporteriaFinancieraScreen from "../screens/menu/ReporteriaFinancieraScre
 import ReporteriaOperacionalScreen from "../screens/menu/ReporteriaOperacionalScreen";
 import TarifarioScreen from "../screens/consultas/TarifarioScreen";
 import HistoricoPreciosScreen from "../screens/consultas/HistoricoPreciosScreen";
+import CotizadorStack from "./CotizadorStack";
 import NovedadesScreen from "../screens/consultas/NovedadesScreen";
 import NovedadDetailScreen from "../screens/consultas/NovedadDetailScreen";
 import PromesasScreen from "../screens/consultas/PromesasScreen";
@@ -20,6 +21,7 @@ export type MenuStackParamList = {
   MisDocumentos: undefined;
   Tarifario: undefined;
   HistoricoPrecios: undefined;
+  Cotizador: undefined;
   Novedades: undefined;
   NovedadDetail: { slug: string; title?: string };
   Promesas: undefined;
@@ -61,6 +63,11 @@ export default function MenuStack() {
       <Stack.Screen
         name="HistoricoPrecios"
         component={HistoricoPreciosScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="Cotizador"
+        component={CotizadorStack}
         options={{ headerShown: false }}
       />
       <Stack.Screen

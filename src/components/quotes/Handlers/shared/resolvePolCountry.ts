@@ -2,10 +2,20 @@ import { getOriginCountryCode } from "../../../../config/airportCoordinates";
 import { getPortByPOL } from "../../../../config/portCoordinates";
 import { normalize } from "../FCL/HandlerQuoteFCL";
 
-const COUNTRY_NAMES_ES =
-  typeof Intl !== "undefined" && "DisplayNames" in Intl
-    ? new Intl.DisplayNames(["es"], { type: "region" })
-    : null;
+/** Hermes (RN) may lack Intl.DisplayNames — guard before `new`. */
+function createRegionDisplayNames(): Intl.DisplayNames | null {
+  try {
+    const DisplayNames = (
+      Intl as typeof Intl & { DisplayNames?: typeof Intl.DisplayNames }
+    ).DisplayNames;
+    if (typeof DisplayNames !== "function") return null;
+    return new DisplayNames(["es"], { type: "region" });
+  } catch {
+    return null;
+  }
+}
+
+const COUNTRY_NAMES_ES = createRegionDisplayNames();
 
 export function getPolCountryCode(
   polNorm: string,

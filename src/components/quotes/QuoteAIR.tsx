@@ -108,6 +108,10 @@ import {
 } from "./originSelection";
 import { AirPriceHistoryModal } from "./Handlers/Air/AirPriceHistoryModal";
 import { buildCountryAirRates } from "./Handlers/Air/buildCountryAirRates";
+import {
+  getAirDestinationLabel,
+  normalizeAirCarrierKey,
+} from "./Handlers/Air/airQuoteStep1Shared";
 import { CountryRatesDownloadButton } from "./Handlers/shared/CountryRatesDownloadButton";
 import { COUNTRY_RATE_COLUMNS_AIR } from "./Handlers/shared/countryRatesTypes";
 import "./Handlers/shared/CountryRatesDownload.css";
@@ -166,20 +170,6 @@ function resolveAirPackageTypeLabel(packageType: string): string {
   return match?.name ?? packageType;
 }
 const INITIAL_VISIBLE_ROUTES = 5;
-
-const normalizeAirCarrierKey = (carrier: string | null | undefined): string => {
-  const trimmed = carrier?.trim();
-  return trimmed ? trimmed.toLowerCase() : "otros/no informado";
-};
-
-function getAirDestinationLabel(
-  destinationNormalized: string,
-  routeDestination: string,
-): string {
-  return (
-    getAirportByOrigin(destinationNormalized)?.name ?? capitalize(routeDestination)
-  );
-}
 
 /** Expande cuentas multi-empresa: una entrada por empresa en el selector */
 function expandClientesPorEmpresa(

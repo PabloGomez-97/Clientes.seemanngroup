@@ -80,6 +80,12 @@ export default function MenuScreen() {
       title: "Consultas",
       links: [
         {
+          key: "cotizador",
+          label: "Cotizador",
+          icon: "create-outline",
+          onPress: () => navigation.navigate("Cotizador"),
+        },
+        {
           key: "tarifario",
           label: "Tarifario",
           icon: "pricetags-outline",

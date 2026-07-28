@@ -36,6 +36,7 @@ type Nav = NativeStackNavigationProp<
 
 type Props = {
   onSelectClient?: (client: Cliente) => void;
+  onBack?: () => void;
   title?: string;
   subtitle?: string;
   /** Lista y carga externas (p. ej. Seguimientos con conteos). */
@@ -52,6 +53,7 @@ type Props = {
 
 export default function ClientsListScreen({
   onSelectClient,
+  onBack,
   title = "Mis clientes",
   subtitle,
   clientsOverride,
@@ -175,13 +177,21 @@ export default function ClientsListScreen({
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <View style={styles.header}>
-        <Text style={styles.title}>{title}</Text>
-        <Text style={styles.subtitle}>
-          {subtitle ??
-            (isLoading
-              ? "Cargando cartera…"
-              : `${list.length} cliente${list.length === 1 ? "" : "s"}`)}
-        </Text>
+        {onBack ? (
+          <Pressable onPress={onBack} hitSlop={12} style={styles.backBtn}>
+            <Ionicons name="chevron-back" size={26} color={brand.navy} />
+          </Pressable>
+        ) : null}
+        <View style={styles.headerText}>
+          <Text style={styles.title}>{title}</Text>
+          <Text style={styles.subtitle}>
+            {subtitle ??
+              (isLoading
+                ? "Cargando cartera…"
+                : `${list.length} cliente${list.length === 1 ? "" : "s"}`)}
+          </Text>
+        </View>
+        {onBack ? <View style={{ width: 26 }} /> : null}
       </View>
 
       {showTracking ? (
@@ -387,9 +397,20 @@ export default function ClientsListScreen({
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: brand.canvas },
   header: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
     paddingBottom: spacing.sm,
+  },
+  backBtn: {
+    width: 32,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerText: {
+    flex: 1,
   },
   title: {
     fontSize: 28,

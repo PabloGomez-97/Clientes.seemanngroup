@@ -9,6 +9,9 @@ const srcRoot = path.resolve(workspaceRoot, "src");
 
 const config = getDefaultConfig(projectRoot);
 
+// Evita crashes Hermes por resolución ESM (`prototype` of undefined) con package exports.
+config.resolver.unstable_enablePackageExports = false;
+
 config.watchFolders = [workspaceRoot];
 config.resolver.nodeModulesPaths = [mobileModules];
 config.resolver.extraNodeModules = {

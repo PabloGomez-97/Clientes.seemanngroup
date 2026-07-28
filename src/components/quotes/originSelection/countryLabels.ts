@@ -46,10 +46,20 @@ export const COUNTRY_SEARCH_ALIASES: Readonly<Record<string, string[]>> = {
   ES: ["espana", "españa"],
 };
 
-const regionDisplay =
-  typeof Intl !== "undefined"
-    ? new Intl.DisplayNames(["es"], { type: "region" })
-    : null;
+/** Hermes (RN) no implementa Intl.DisplayNames; `new` sobre undefined → prototype crash. */
+function createRegionDisplayNames(): Intl.DisplayNames | null {
+  try {
+    const DisplayNames = (
+      Intl as typeof Intl & { DisplayNames?: typeof Intl.DisplayNames }
+    ).DisplayNames;
+    if (typeof DisplayNames !== "function") return null;
+    return new DisplayNames(["es"], { type: "region" });
+  } catch {
+    return null;
+  }
+}
+
+const regionDisplay = createRegionDisplayNames();
 
 export function getCountryLabel(countryCode: string): string {
   const code = countryCode.toUpperCase();

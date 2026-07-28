@@ -329,22 +329,44 @@ export type VespucioDeliveryZone = "inside" | "extended" | "outside";
 /** Factor multiplicador (+45 %) para TT / Delivery en zona extendida. */
 export const VESPUCIO_EXTENDED_ZONE_SURCHARGE = 1.45;
 
+/** Ray casting puro (RN / sin Google Maps Geometry). */
+const isPointInPolygonPure = (
+  point: LatLngLiteral,
+  polygonCoords: LatLngLiteral[],
+): boolean => {
+  let inside = false;
+  for (
+    let i = 0, j = polygonCoords.length - 1;
+    i < polygonCoords.length;
+    j = i++
+  ) {
+    const xi = polygonCoords[i].lng;
+    const yi = polygonCoords[i].lat;
+    const xj = polygonCoords[j].lng;
+    const yj = polygonCoords[j].lat;
+    const intersect =
+      yi > point.lat !== yj > point.lat &&
+      point.lng < ((xj - xi) * (point.lat - yi)) / (yj - yi + 0.0) + xi;
+    if (intersect) inside = !inside;
+  }
+  return inside;
+};
+
 const isPointInPolygon = (
   point: LatLngLiteral,
   polygonCoords: LatLngLiteral[],
 ): boolean | null => {
-  if (
-    typeof google === "undefined" ||
-    !google.maps?.geometry?.poly?.containsLocation
-  ) {
-    return null;
+  // Evita tocar el global `google` (solo existe en web Maps JS).
+  const g = (globalThis as { google?: any }).google;
+  if (g?.maps?.geometry?.poly?.containsLocation) {
+    const path = polygonCoords.map((p) => new g.maps.LatLng(p.lat, p.lng));
+    const polygon = new g.maps.Polygon({ paths: path });
+    return g.maps.geometry.poly.containsLocation(
+      new g.maps.LatLng(point.lat, point.lng),
+      polygon,
+    );
   }
-  const path = polygonCoords.map((p) => new google.maps.LatLng(p.lat, p.lng));
-  const polygon = new google.maps.Polygon({ paths: path });
-  return google.maps.geometry.poly.containsLocation(
-    new google.maps.LatLng(point.lat, point.lng),
-    polygon,
-  );
+  return isPointInPolygonPure(point, polygonCoords);
 };
 
 export const isInsideVespucioRing = (

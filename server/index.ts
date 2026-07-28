@@ -2125,6 +2125,136 @@ const auth: express.RequestHandler = (req, res, next) => {
  *  Rutas
  *  ========================= */
 
+/** =========================
+ *  Places (proxy mobile)
+ *  La API key de Maps tiene restricción HTTP referer; desde RN hay que
+ *  reenviar el referer del portal. Endpoints autenticados para autocomplete.
+ *  ========================= */
+const GOOGLE_MAPS_API_KEY =
+  process.env.GOOGLE_MAPS_API_KEY ||
+  process.env.VITE_GOOGLE_MAPS_API_KEY ||
+  process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
+  '';
+const GOOGLE_MAPS_HTTP_REFERER =
+  process.env.GOOGLE_MAPS_HTTP_REFERER ||
+  'https://portalclientes.seemanngroup.com/';
+
+function googleMapsHeaders(extra?: Record<string, string>): Record<string, string> {
+  return {
+    'Content-Type': 'application/json',
+    'X-Goog-Api-Key': GOOGLE_MAPS_API_KEY,
+    Referer: GOOGLE_MAPS_HTTP_REFERER,
+    ...extra,
+  };
+}
+
+app.post('/api/places/autocomplete', auth, async (req, res) => {
+  try {
+    if (!GOOGLE_MAPS_API_KEY) {
+      return res.status(500).json({ error: 'Google Maps API key no configurada' });
+    }
+    const input = String(req.body?.input || '').trim();
+    if (input.length < 3) {
+      return res.json({ suggestions: [] });
+    }
+
+    const body: Record<string, unknown> = {
+      input,
+      languageCode: String(req.body?.languageCode || 'es'),
+    };
+    if (req.body?.country) {
+      body.includedRegionCodes = [String(req.body.country).toUpperCase()];
+    }
+    if (
+      req.body?.locationBias &&
+      typeof req.body.locationBias.lat === 'number' &&
+      typeof req.body.locationBias.lng === 'number'
+    ) {
+      body.locationBias = {
+        circle: {
+          center: {
+            latitude: req.body.locationBias.lat,
+            longitude: req.body.locationBias.lng,
+          },
+          radius: Number(req.body.locationBias.radiusMeters) || 80000,
+        },
+      };
+    }
+
+    const r = await fetch('https://places.googleapis.com/v1/places:autocomplete', {
+      method: 'POST',
+      headers: googleMapsHeaders(),
+      body: JSON.stringify(body),
+    });
+    const data = await r.json();
+    if (!r.ok) {
+      return res.status(r.status).json({
+        error: data?.error?.message || 'Error en Places Autocomplete',
+      });
+    }
+
+    const suggestions = (data.suggestions || [])
+      .map((s: any) => s.placePrediction)
+      .filter((p: any) => p?.placeId)
+      .map((p: any) => {
+        const description = p.text?.text || '';
+        return {
+          placeId: p.placeId as string,
+          description,
+          mainText: p.structuredFormat?.mainText?.text || description,
+          secondaryText: p.structuredFormat?.secondaryText?.text || '',
+        };
+      });
+
+    return res.json({ suggestions });
+  } catch (err) {
+    console.error('places autocomplete', err);
+    return res.status(500).json({ error: 'Error al buscar direcciones' });
+  }
+});
+
+app.get('/api/places/details', auth, async (req, res) => {
+  try {
+    if (!GOOGLE_MAPS_API_KEY) {
+      return res.status(500).json({ error: 'Google Maps API key no configurada' });
+    }
+    const placeId = String(req.query.placeId || '').trim();
+    if (!placeId) {
+      return res.status(400).json({ error: 'placeId requerido' });
+    }
+
+    const r = await fetch(
+      `https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}`,
+      {
+        method: 'GET',
+        headers: googleMapsHeaders({
+          'X-Goog-FieldMask': 'id,formattedAddress,location',
+        }),
+      },
+    );
+    const data = await r.json();
+    if (!r.ok) {
+      return res.status(r.status).json({
+        error: data?.error?.message || 'Error en Place Details',
+      });
+    }
+    if (data.location?.latitude == null || data.location?.longitude == null) {
+      return res.status(404).json({ error: 'Ubicación no encontrada' });
+    }
+
+    return res.json({
+      address: data.formattedAddress || '',
+      coords: {
+        lat: data.location.latitude,
+        lng: data.location.longitude,
+      },
+    });
+  } catch (err) {
+    console.error('places details', err);
+    return res.status(500).json({ error: 'Error al resolver dirección' });
+  }
+});
+
 // Login unificado Chile + México
 app.post('/api/login', async (req, res) => {
   try {
