@@ -743,7 +743,7 @@ export default function CommissionAnalysisReportScreen() {
                         style={({ pressed }) => [
                           styles.menuRow,
                           index < section.items.length - 1 &&
-                            styles.menuRowBorder,
+                          styles.menuRowBorder,
                           pressed && styles.menuRowPressed,
                         ]}
                         onPress={() => selectMode(item.id)}
@@ -1123,7 +1123,7 @@ export default function CommissionAnalysisReportScreen() {
                     (filterPicker === "exec"
                       ? selectedReps.length === 0
                       : selectedConsignees.length === 0) &&
-                      styles.modalOptionActive,
+                    styles.modalOptionActive,
                   ]}
                   onPress={() => {
                     if (filterPicker === "exec") setSelectedReps([]);
@@ -1136,7 +1136,7 @@ export default function CommissionAnalysisReportScreen() {
                       (filterPicker === "exec"
                         ? selectedReps.length === 0
                         : selectedConsignees.length === 0) &&
-                        styles.modalOptionTextActive,
+                      styles.modalOptionTextActive,
                     ]}
                   >
                     Todos
