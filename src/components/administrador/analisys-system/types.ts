@@ -1,5 +1,12 @@
 export type InvoiceReconciliationStatus = "complete" | "incomplete";
 
+export type AnalisysSectionId =
+  | "summary"
+  | "periodComparison"
+  | "trends"
+  | "comparison"
+  | "topCustomers";
+
 export type CommissionAnalysisInvoiceRow = {
   invoice: string;
   date: string;

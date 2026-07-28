@@ -36,6 +36,7 @@ import AdminStaffAccountFormScreen from "../screens/admin/AdminStaffAccountFormS
 import AdminAuditoriaScreen from "../screens/admin/AdminAuditoriaScreen";
 import AdminProveedorTarifasScreen from "../screens/admin/AdminProveedorTarifasScreen";
 import ExecutiveReporteriaStack from "./ExecutiveReporteriaStack";
+import AdminReporteriaGerencialStack from "./AdminReporteriaGerencialStack";
 import { getEjecutivoPhotoUrl, getInitials } from "../utils/ejecutivoPhoto";
 import { brand, radii, spacing } from "../theme/brand";
 import { fonts } from "../theme/typography";
@@ -76,6 +77,7 @@ export type AdminMoreStackParamList = {
   DocsProveedores: undefined;
   AdminProveedorTarifas: undefined;
   Reporteria: undefined;
+  ReporteriaGerencial: undefined;
 };
 
 const Stack = createNativeStackNavigator<AdminMoreStackParamList>();
@@ -136,9 +138,20 @@ function MoreHomeScreen() {
         },
         {
           key: "reporteria",
-          label: "Reportería",
+          label: "Reportería por cliente",
           icon: "stats-chart-outline" as const,
           onPress: () => navigation.navigate("Reporteria"),
+        },
+      ],
+    },
+    {
+      title: "Reportería Gerencial",
+      links: [
+        {
+          key: "reporteriaGerencial",
+          label: "Reportería Gerencial",
+          icon: "bar-chart-outline" as const,
+          onPress: () => navigation.navigate("ReporteriaGerencial"),
         },
       ],
     },
@@ -478,6 +491,11 @@ export default function AdminMoreStack() {
       <Stack.Screen
         name="Reporteria"
         component={ExecutiveReporteriaStack}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="ReporteriaGerencial"
+        component={AdminReporteriaGerencialStack}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>

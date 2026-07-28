@@ -20,6 +20,10 @@
     "../src/services/trackingEmailPreferences.ts",
     "../src/services/linbisListFetch.ts",
     "../src/services/linbisQuoteLookup.ts",
-    "../src/services/linbisShipmentMappers.ts"
+    "../src/services/linbisShipmentMappers.ts",
+    "../src/components/administrador/analisys-system/**/*.ts",
+    "../src/components/administrador/reporteria/financiera/quoteUtils.ts",
+    "../src/components/administrador/reporteria/financiera/invoiceUtils.ts",
+    "../src/components/administrador/reporteria/financiera/types.ts"
   ]
 }

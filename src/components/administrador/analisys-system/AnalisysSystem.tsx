@@ -10,7 +10,7 @@ import {
   prewarmCommissionCoreDataset,
   type AnalysisBuildPhase,
 } from "./commissionAnalysisService";
-import type { AnalisysSectionId } from "./AnalisysSectionNav";
+import type { AnalisysSectionId } from "./types";
 import AnalisysSectionNav from "./AnalisysSectionNav";
 import AnalisysSimpleModal from "./AnalisysSimpleModal";
 import CustomComparisonModal from "./CustomComparisonModal";

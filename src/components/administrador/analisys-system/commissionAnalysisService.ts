@@ -1221,7 +1221,12 @@ export function filterReportByIsoDateRange(
 
 export function filterCommissionAnalysisReport(
   report: CommissionAnalysisReport,
-  filters: { salesRep?: string; salesReps?: string[]; consignee?: string },
+  filters: {
+    salesRep?: string;
+    salesReps?: string[];
+    consignee?: string;
+    consignees?: string[];
+  },
 ): CommissionAnalysisReport {
   const salesRepsSet = new Set(
     (filters.salesReps ?? [])
@@ -1232,6 +1237,11 @@ export function filterCommissionAnalysisReport(
     salesRepsSet.add(filters.salesRep.trim());
   }
   const hasSalesRepFilter = salesRepsSet.size > 0;
+  const consigneesSet = new Set(
+    (filters.consignees ?? [])
+      .map((value) => value.trim().toLowerCase())
+      .filter(Boolean),
+  );
   const consigneeFilter = (filters.consignee || "").trim().toLowerCase();
 
   const filteredRows: CommissionAnalysisInvoiceRow[] = [];
@@ -1240,7 +1250,13 @@ export function filterCommissionAnalysisReport(
     if (hasSalesRepFilter && !salesRepsSet.has(group.salesRep)) continue;
 
     for (const row of group.rows) {
-      if (consigneeFilter && !row.consignee.toLowerCase().includes(consigneeFilter)) {
+      const consignee = row.consignee.toLowerCase();
+      if (consigneesSet.size > 0) {
+        if (!consigneesSet.has(consignee.trim())) continue;
+      } else if (
+        consigneeFilter &&
+        !consignee.includes(consigneeFilter)
+      ) {
         continue;
       }
       filteredRows.push(row);

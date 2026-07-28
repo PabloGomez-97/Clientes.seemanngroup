@@ -1,5 +1,5 @@
 import { toIsoDate } from "@/components/administrador/reporteria/financiera/quoteUtils";
-import type { AnalisysSectionId } from "./AnalisysSectionNav";
+import type { AnalisysSectionId } from "./types";
 import type { TimeGranularity } from "./commissionAnalytics";
 
 export type DateRange = {
