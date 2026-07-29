@@ -29,6 +29,7 @@ dist-ssr
 *.sln
 *.sw?
 n8n
+n8n-workflows
 
 # Otros
 # quiero colocar la carpeta security que está en la raíz del proyecto
