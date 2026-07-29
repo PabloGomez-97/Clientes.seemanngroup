@@ -41,6 +41,8 @@ type Props = {
   step3: AirStep3Result;
   clientUsername?: string;
   clientName?: string;
+  /** Mongo User _id — markup ya se resolvió en el wizard; se conserva por paridad con web */
+  clientUserId?: string;
   profitMarkupPct: number;
   onCloseHome?: () => void;
 };

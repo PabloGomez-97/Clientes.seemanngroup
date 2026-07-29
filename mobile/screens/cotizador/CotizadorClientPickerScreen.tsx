@@ -21,6 +21,7 @@ export default function CotizadorClientPickerScreen() {
     navigation.navigate("CotizadorHub", {
       clientUsername: client.username,
       clientName: client.nombreuser || client.username,
+      clientUserId: client.id,
     });
   };
 

@@ -14,15 +14,19 @@ export type CotizadorStackParamList = {
   CotizadorHub: {
     clientUsername?: string;
     clientName?: string;
+    /** Mongo User _id del cliente (modo staff) — para profit markup */
+    clientUserId?: string;
   };
   QuoteAir: {
     clientUsername?: string;
     clientName?: string;
+    clientUserId?: string;
   };
   CotizadorComingSoon: {
     mode: Exclude<CotizadorMode, "air">;
     clientUsername?: string;
     clientName?: string;
+    clientUserId?: string;
   };
 };
 

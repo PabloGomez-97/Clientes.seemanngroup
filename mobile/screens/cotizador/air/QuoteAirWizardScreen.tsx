@@ -52,11 +52,21 @@ export default function QuoteAirWizardScreen() {
 
   useEffect(() => {
     if (!token) return;
+    const staff = isStaffUser(user);
+    const clientUserId = route.params?.clientUserId;
+    // Staff sin cliente: no pedir override (queda global / default 15).
+    if (staff && !clientUserId) return;
+
     let cancelled = false;
     (async () => {
       try {
-        const staff = isStaffUser(user);
-        const qs = staff ? "" : "?forSelf=1";
+        // Alineado a web useEffectiveProfitMarkup:
+        // - staff → ?clientUserId= (markup del cliente)
+        // - cliente → sin qs (el API resuelve el override del usuario autenticado)
+        const qs =
+          staff && clientUserId
+            ? `?clientUserId=${encodeURIComponent(clientUserId)}`
+            : "";
         const res = await fetch(
           `${MOBILE_API_BASE}/api/profit-markup/effective${qs}`,
           { headers: { Authorization: `Bearer ${token}` } },
@@ -72,7 +82,7 @@ export default function QuoteAirWizardScreen() {
     return () => {
       cancelled = true;
     };
-  }, [token, user]);
+  }, [token, user, route.params?.clientUserId]);
 
   const goBackStep = () => {
     if (step === 1) {
@@ -178,6 +188,7 @@ export default function QuoteAirWizardScreen() {
             step3={step3}
             clientUsername={route.params?.clientUsername}
             clientName={route.params?.clientName}
+            clientUserId={route.params?.clientUserId}
             profitMarkupPct={profitMarkupPct}
             onCloseHome={() => {
               // Sube al tab navigator y vuelve al inicio (Dashboard / Home).

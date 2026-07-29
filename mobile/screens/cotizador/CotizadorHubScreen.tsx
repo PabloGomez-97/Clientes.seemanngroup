@@ -56,16 +56,22 @@ export default function CotizadorHubScreen() {
   const route = useRoute<R>();
   const clientUsername = route.params?.clientUsername;
   const clientName = route.params?.clientName;
+  const clientUserId = route.params?.clientUserId;
 
   const openMode = (mode: CotizadorMode, ready: boolean) => {
     if (mode === "air" && ready) {
-      navigation.navigate("QuoteAir", { clientUsername, clientName });
+      navigation.navigate("QuoteAir", {
+        clientUsername,
+        clientName,
+        clientUserId,
+      });
       return;
     }
     navigation.navigate("CotizadorComingSoon", {
       mode: mode as Exclude<CotizadorMode, "air">,
       clientUsername,
       clientName,
+      clientUserId,
     });
   };
 
