@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "shipsgo": {
+      "command": "node",
+      "args": [
+        "/Users/pablogomez/Documents/GitHub/Clientes.seemanngroup/mcp-shipsgo/dist/index.js"
+      ],
+      "env": {
+        "SHIPSGO_OPENAPI_PATH": "/Users/pablogomez/Documents/GitHub/Clientes.seemanngroup/mcp-shipsgo/openapi.json",
+        "SHIPSGO_DOTENV_PATH": "/Users/pablogomez/Documents/GitHub/Clientes.seemanngroup/.env"
+      }
+    }
+  }
+}
