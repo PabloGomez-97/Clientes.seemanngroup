@@ -7,6 +7,7 @@ import PageBannerHeader from "@/components/shared/layout/PageBannerHeader";
 import { useAuditLog } from "@/hooks/useAuditLog";
 import { useTrackingEmailPreferences } from "@/hooks/useTrackingEmailPreferences";
 import TrackingEmailSuggestions from "@/components/shared/tracking/TrackingEmailSuggestions";
+import TrackingTagSuggestions from "@/components/shared/tracking/TrackingTagSuggestions";
 import {
   addUniqueEmail,
   MAX_VISIBLE_TRACK_FOLLOWERS,
@@ -352,6 +353,8 @@ function ShippingOrderView() {
   const [showTrackModal, setShowTrackModal] = useState(false);
   const [trackOrder, setTrackOrder] = useState<ShippingOrder | null>(null);
   const [trackEmails, setTrackEmails] = useState<string[]>([""]);
+  const [trackTags, setTrackTags] = useState<string[]>([]);
+  const [trackTagInput, setTrackTagInput] = useState("");
   const [trackLoading, setTrackLoading] = useState(false);
   const [trackError, setTrackError] = useState<string | null>(null);
 
@@ -655,6 +658,8 @@ function ShippingOrderView() {
     setTrackOrder(pendingTrackOrder);
     setPendingTrackOrder(null);
     setTrackEmails([""]);
+    setTrackTags([]);
+    setTrackTagInput("");
     setTrackError(null);
     setShowTrackModal(true);
   };
@@ -664,8 +669,40 @@ function ShippingOrderView() {
     setShowTrackModal(false);
     setTrackOrder(null);
     setTrackEmails([""]);
+    setTrackTags([]);
+    setTrackTagInput("");
     setTrackError(null);
     setSelectedTrackType(null);
+  };
+
+  const addTrackTag = () => {
+    const tagValue = trackTagInput.trim();
+    if (!tagValue) return;
+    setTrackError(null);
+    setTrackTags((prev) => {
+      if (prev.includes(tagValue) || prev.length >= 10) return prev;
+      return [...prev, tagValue];
+    });
+    setTrackTagInput("");
+  };
+
+  const removeTrackTag = (tag: string) => {
+    setTrackTags((prev) => prev.filter((value) => value !== tag));
+  };
+
+  const handleSelectSuggestedTrackTag = (tag: string) => {
+    const tagValue = tag.trim();
+    if (!tagValue) return;
+    setTrackError(null);
+    setTrackTags((prev) => {
+      if (
+        prev.some((value) => value.toLowerCase() === tagValue.toLowerCase()) ||
+        prev.length >= 10
+      ) {
+        return prev;
+      }
+      return [...prev, tagValue];
+    });
   };
 
   const updateTrackEmail = (index: number, value: string) => {
@@ -774,7 +811,7 @@ function ShippingOrderView() {
             reference: activeUsername,
             awb_number: cleanTn,
             followers,
-            tags: [],
+            tags: trackTags,
           }),
         });
       } else {
@@ -783,7 +820,7 @@ function ShippingOrderView() {
           reference: activeUsername,
           carrier: "SG_XXXX",
           followers,
-          tags: [],
+          tags: trackTags,
         };
         if (isContainerNumber) {
           payload.container_number = cleanTn.toUpperCase();
@@ -847,6 +884,7 @@ function ShippingOrderView() {
           tipo: isAir ? "air" : "ocean",
           numero: cleanTn,
           cuenta: activeUsername,
+          tags: trackTags,
         },
         clienteAfectado: activeUsername || undefined,
       });
@@ -2122,6 +2160,102 @@ function ShippingOrderView() {
                 type="text"
                 value={trackOrder.trackingNumber || ""}
                 disabled
+              />
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <label className="asv-label">
+                Ref. Cliente / Etiquetas
+                <span
+                  style={{
+                    marginLeft: "0.5rem",
+                    fontWeight: 400,
+                    textTransform: "none",
+                    letterSpacing: "normal",
+                    color: "#6b7280",
+                  }}
+                >
+                  (opcional · {trackTags.length}/10)
+                </span>
+              </label>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <input
+                  className="asv-input"
+                  type="text"
+                  value={trackTagInput}
+                  onChange={(e) => setTrackTagInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addTrackTag();
+                    }
+                  }}
+                  placeholder="Escribe una etiqueta y presiona Enter"
+                  maxLength={64}
+                  disabled={trackTags.length >= 10}
+                />
+                <button
+                  type="button"
+                  className="asv-btn asv-btn--ghost asv-btn--sm"
+                  onClick={addTrackTag}
+                  disabled={!trackTagInput.trim() || trackTags.length >= 10}
+                >
+                  +
+                </button>
+              </div>
+              <small className="asv-hint">
+                Puedes agregar hasta 10 etiquetas. Es opcional.
+              </small>
+              {trackTags.length > 0 && (
+                <div
+                  style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: 8,
+                    marginTop: 10,
+                  }}
+                >
+                  {trackTags.map((tag) => (
+                    <span
+                      key={tag}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 6,
+                        padding: "4px 10px",
+                        borderRadius: 999,
+                        background: "#f3f4f6",
+                        border: "1px solid #e5e7eb",
+                        fontSize: 13,
+                        color: "#374151",
+                      }}
+                    >
+                      {tag}
+                      <button
+                        type="button"
+                        onClick={() => removeTrackTag(tag)}
+                        aria-label={`Quitar ${tag}`}
+                        style={{
+                          border: "none",
+                          background: "transparent",
+                          cursor: "pointer",
+                          color: "#6b7280",
+                          padding: 0,
+                          lineHeight: 1,
+                          fontSize: 16,
+                        }}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              <TrackingTagSuggestions
+                suggestions={[trackOrder.customerReference || ""]}
+                selectedTags={trackTags}
+                onSelectTag={handleSelectSuggestedTrackTag}
+                disabled={trackLoading}
               />
             </div>
 

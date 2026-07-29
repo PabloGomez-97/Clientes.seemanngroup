@@ -18,6 +18,7 @@ import { type OutletContext } from "@/components/cliente/embarques/Handlers/Hand
 import { MUNDOGAMING_DUMMY_OCEAN_SHIPMENTS } from "@/mocks/mundogaming";
 import { QuoteOperationalDocumentsSection } from "@/components/cliente/documentos/QuoteOperationalDocumentsSection";
 import TrackingEmailSuggestions from "@/components/shared/tracking/TrackingEmailSuggestions";
+import TrackingTagSuggestions from "@/components/shared/tracking/TrackingTagSuggestions";
 import {
   addUniqueEmail,
   MAX_VISIBLE_TRACK_FOLLOWERS,
@@ -818,6 +819,8 @@ function OceanShipmentsView({
     null,
   );
   const [trackEmails, setTrackEmails] = useState<string[]>([""]);
+  const [trackTags, setTrackTags] = useState<string[]>([]);
+  const [trackTagInput, setTrackTagInput] = useState("");
   const [trackLoading, setTrackLoading] = useState(false);
   const [trackError, setTrackError] = useState<string | null>(null);
 
@@ -1806,6 +1809,8 @@ function OceanShipmentsView({
     if (!isTrackingReady(shipment)) return;
     setTrackShipment(shipment);
     setTrackEmails([""]);
+    setTrackTags([]);
+    setTrackTagInput("");
     setTrackError(null);
     setShowTrackModal(true);
   };
@@ -1814,7 +1819,39 @@ function OceanShipmentsView({
     setShowTrackModal(false);
     setTrackShipment(null);
     setTrackEmails([""]);
+    setTrackTags([]);
+    setTrackTagInput("");
     setTrackError(null);
+  };
+
+  const addTrackTag = () => {
+    const tagValue = trackTagInput.trim();
+    if (!tagValue) return;
+    setTrackError(null);
+    setTrackTags((prev) => {
+      if (prev.includes(tagValue) || prev.length >= 10) return prev;
+      return [...prev, tagValue];
+    });
+    setTrackTagInput("");
+  };
+
+  const removeTrackTag = (tag: string) => {
+    setTrackTags((prev) => prev.filter((value) => value !== tag));
+  };
+
+  const handleSelectSuggestedTrackTag = (tag: string) => {
+    const tagValue = tag.trim();
+    if (!tagValue) return;
+    setTrackError(null);
+    setTrackTags((prev) => {
+      if (
+        prev.some((value) => value.toLowerCase() === tagValue.toLowerCase()) ||
+        prev.length >= 10
+      ) {
+        return prev;
+      }
+      return [...prev, tagValue];
+    });
   };
 
   const updateTrackEmail = (index: number, value: string) => {
@@ -1927,7 +1964,7 @@ function OceanShipmentsView({
         reference: activeUsername,
         carrier: "SG_XXXX",
         followers,
-        tags: [],
+        tags: trackTags,
       };
 
       if (isContainerNumber) {
@@ -1981,6 +2018,7 @@ function OceanShipmentsView({
           tipo: "ocean",
           numero: oceanNumber,
           cuenta: activeUsername,
+          tags: trackTags,
         },
         clienteAfectado: activeUsername || undefined,
       });
@@ -2631,6 +2669,102 @@ function OceanShipmentsView({
                 type="text"
                 value={getTrackOceanNumber(trackShipment)}
                 disabled
+              />
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <label className="osv-label">
+                Ref. Cliente / Etiquetas
+                <span
+                  style={{
+                    marginLeft: "0.5rem",
+                    fontWeight: 400,
+                    textTransform: "none",
+                    letterSpacing: "normal",
+                    color: "#6b7280",
+                  }}
+                >
+                  (opcional · {trackTags.length}/10)
+                </span>
+              </label>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <input
+                  className="osv-input"
+                  type="text"
+                  value={trackTagInput}
+                  onChange={(e) => setTrackTagInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addTrackTag();
+                    }
+                  }}
+                  placeholder="Escribe una etiqueta y presiona Enter"
+                  maxLength={64}
+                  disabled={trackTags.length >= 10}
+                />
+                <button
+                  type="button"
+                  className="osv-btn osv-btn--ghost osv-btn--sm"
+                  onClick={addTrackTag}
+                  disabled={!trackTagInput.trim() || trackTags.length >= 10}
+                >
+                  +
+                </button>
+              </div>
+              <small className="osv-label osv-label--small">
+                Puedes agregar hasta 10 etiquetas. Es opcional.
+              </small>
+              {trackTags.length > 0 && (
+                <div
+                  style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: 8,
+                    marginTop: 10,
+                  }}
+                >
+                  {trackTags.map((tag) => (
+                    <span
+                      key={tag}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 6,
+                        padding: "4px 10px",
+                        borderRadius: 999,
+                        background: "#f3f4f6",
+                        border: "1px solid #e5e7eb",
+                        fontSize: 13,
+                        color: "#374151",
+                      }}
+                    >
+                      {tag}
+                      <button
+                        type="button"
+                        onClick={() => removeTrackTag(tag)}
+                        aria-label={`Quitar ${tag}`}
+                        style={{
+                          border: "none",
+                          background: "transparent",
+                          cursor: "pointer",
+                          color: "#6b7280",
+                          padding: 0,
+                          lineHeight: 1,
+                          fontSize: 16,
+                        }}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              <TrackingTagSuggestions
+                suggestions={[trackShipment.customerReference || ""]}
+                selectedTags={trackTags}
+                onSelectTag={handleSelectSuggestedTrackTag}
+                disabled={trackLoading}
               />
             </div>
 

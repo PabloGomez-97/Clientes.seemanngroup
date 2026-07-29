@@ -256,7 +256,7 @@ function CreateShipmentForm({
             {/* Tags */}
             <div className="csf-form-group">
               <label className="csf-label" htmlFor="csf-tag">
-                Etiquetas
+                Ref. Cliente / Etiquetas
                 <span
                   className="csf-field-msg csf-field-msg--hint"
                   style={{ marginLeft: "0.5rem", display: "inline" }}

@@ -836,7 +836,7 @@ function ShipsGoTracking({
                         <th>Estado</th>
                         <th>AWB</th>
                         {showAirRefTagsColumn && (
-                          <th>Ref. Cliente/Etiquetas</th>
+                          <th>Ref. Cliente / Etiquetas</th>
                         )}
                         <th>Aerolínea</th>
                         <th>Origen</th>
@@ -1125,7 +1125,7 @@ function ShipsGoTracking({
                         <th>Estado</th>
                         <th>Container / Booking</th>
                         {showOceanRefTagsColumn && (
-                          <th>Ref. Cliente/Etiquetas</th>
+                          <th>Ref. Cliente / Etiquetas</th>
                         )}
                         <th>Naviera</th>
                         <th>Puerto Carga</th>

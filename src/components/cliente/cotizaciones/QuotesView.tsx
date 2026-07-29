@@ -30,6 +30,7 @@ import { DocumentosSection } from "@/components/cliente/documentos/DocumentosSec
 import { DocumentosSectionQuoteAir } from "@/components/cliente/documentos/DocumentosSectionQuoteAir";
 import { DocumentosSectionQuoteOcean } from "@/components/cliente/documentos/DocumentosSectionQuoteOcean";
 import TrackingEmailSuggestions from "@/components/shared/tracking/TrackingEmailSuggestions";
+import TrackingTagSuggestions from "@/components/shared/tracking/TrackingTagSuggestions";
 import QuotePdfResendCell from "./QuotePdfResendCell";
 import { linbisFetch } from "@/services/linbisFetch";
 import { buildLinbisListParams } from "@/services/linbisListFetch";
@@ -1209,6 +1210,8 @@ function QuotesView({
   const [trackQuote, setTrackQuote] = useState<Quote | null>(null);
   const [trackType, setTrackType] = useState<"air" | "ocean" | null>(null);
   const [trackEmails, setTrackEmails] = useState<string[]>([""]);
+  const [trackTags, setTrackTags] = useState<string[]>([]);
+  const [trackTagInput, setTrackTagInput] = useState("");
   const [trackLoading, setTrackLoading] = useState(false);
   const [trackError, setTrackError] = useState<string | null>(null);
 
@@ -1673,6 +1676,8 @@ function QuotesView({
     setTrackQuote(quote);
     setTrackType(type);
     setTrackEmails([""]);
+    setTrackTags([]);
+    setTrackTagInput("");
     setTrackError(null);
     setShowTrackModal(true);
   };
@@ -1682,7 +1687,39 @@ function QuotesView({
     setTrackQuote(null);
     setTrackType(null);
     setTrackEmails([""]);
+    setTrackTags([]);
+    setTrackTagInput("");
     setTrackError(null);
+  };
+
+  const addTrackTag = () => {
+    const tagValue = trackTagInput.trim();
+    if (!tagValue) return;
+    setTrackError(null);
+    setTrackTags((prev) => {
+      if (prev.includes(tagValue) || prev.length >= 10) return prev;
+      return [...prev, tagValue];
+    });
+    setTrackTagInput("");
+  };
+
+  const removeTrackTag = (tag: string) => {
+    setTrackTags((prev) => prev.filter((value) => value !== tag));
+  };
+
+  const handleSelectSuggestedTrackTag = (tag: string) => {
+    const tagValue = tag.trim();
+    if (!tagValue) return;
+    setTrackError(null);
+    setTrackTags((prev) => {
+      if (
+        prev.some((value) => value.toLowerCase() === tagValue.toLowerCase()) ||
+        prev.length >= 10
+      ) {
+        return prev;
+      }
+      return [...prev, tagValue];
+    });
   };
 
   const updateTrackEmail = (index: number, value: string) => {
@@ -1799,7 +1836,7 @@ function QuotesView({
             reference: activeUsername,
             awb_number: cleanAwb,
             followers,
-            tags: [],
+            tags: trackTags,
           }),
         });
       } else {
@@ -1814,7 +1851,7 @@ function QuotesView({
             carrier: "SG_XXXX",
             booking_number: trackingNumber,
             followers,
-            tags: [],
+            tags: trackTags,
           }),
         });
       }
@@ -1860,6 +1897,7 @@ function QuotesView({
           numero: trackingNumber,
           cuenta: activeUsername,
           quoteNumber: trackQuote.number,
+          tags: trackTags,
         },
         clienteAfectado: activeUsername || undefined,
       });
@@ -3015,6 +3053,102 @@ function QuotesView({
                 type="text"
                 value={getQuoteTrackingNumber(trackQuote)}
                 disabled
+              />
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <label className="qv-label">
+                Ref. Cliente / Etiquetas
+                <span
+                  style={{
+                    marginLeft: "0.5rem",
+                    fontWeight: 400,
+                    textTransform: "none",
+                    letterSpacing: "normal",
+                    color: "#6b7280",
+                  }}
+                >
+                  (opcional · {trackTags.length}/10)
+                </span>
+              </label>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <input
+                  className="qv-input"
+                  type="text"
+                  value={trackTagInput}
+                  onChange={(e) => setTrackTagInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addTrackTag();
+                    }
+                  }}
+                  placeholder="Escribe una etiqueta y presiona Enter"
+                  maxLength={64}
+                  disabled={trackTags.length >= 10}
+                />
+                <button
+                  type="button"
+                  className="qv-btn qv-btn--ghost qv-btn--sm"
+                  onClick={addTrackTag}
+                  disabled={!trackTagInput.trim() || trackTags.length >= 10}
+                >
+                  +
+                </button>
+              </div>
+              <small className="qv-hint">
+                Puedes agregar hasta 10 etiquetas. Es opcional.
+              </small>
+              {trackTags.length > 0 && (
+                <div
+                  style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: 8,
+                    marginTop: 10,
+                  }}
+                >
+                  {trackTags.map((tag) => (
+                    <span
+                      key={tag}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 6,
+                        padding: "4px 10px",
+                        borderRadius: 999,
+                        background: "#f3f4f6",
+                        border: "1px solid #e5e7eb",
+                        fontSize: 13,
+                        color: "#374151",
+                      }}
+                    >
+                      {tag}
+                      <button
+                        type="button"
+                        onClick={() => removeTrackTag(tag)}
+                        aria-label={`Quitar ${tag}`}
+                        style={{
+                          border: "none",
+                          background: "transparent",
+                          cursor: "pointer",
+                          color: "#6b7280",
+                          padding: 0,
+                          lineHeight: 1,
+                          fontSize: 16,
+                        }}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              <TrackingTagSuggestions
+                suggestions={[trackQuote.customerReference || ""]}
+                selectedTags={trackTags}
+                onSelectTag={handleSelectSuggestedTrackTag}
+                disabled={trackLoading}
               />
             </div>
 

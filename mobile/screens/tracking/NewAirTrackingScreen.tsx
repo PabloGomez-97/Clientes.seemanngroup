@@ -160,7 +160,7 @@ export default function NewAirTrackingScreen() {
           )}
 
           <ChipEditor
-            label="Etiquetas"
+            label="Ref. Cliente / Etiquetas"
             placeholder="Escribe una etiqueta"
             values={tags}
             maxItems={10}
