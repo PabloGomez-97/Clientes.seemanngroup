@@ -2189,7 +2189,19 @@ app.post('/api/places/autocomplete', auth, async (req, res) => {
       headers: googleMapsHeaders(),
       body: JSON.stringify(body),
     });
-    const data = await r.json();
+    const data = (await r.json()) as {
+      error?: { message?: string };
+      suggestions?: Array<{
+        placePrediction?: {
+          placeId?: string;
+          text?: { text?: string };
+          structuredFormat?: {
+            mainText?: { text?: string };
+            secondaryText?: { text?: string };
+          };
+        };
+      }>;
+    };
     if (!r.ok) {
       return res.status(r.status).json({
         error: data?.error?.message || 'Error en Places Autocomplete',
@@ -2197,12 +2209,12 @@ app.post('/api/places/autocomplete', auth, async (req, res) => {
     }
 
     const suggestions = (data.suggestions || [])
-      .map((s: any) => s.placePrediction)
-      .filter((p: any) => p?.placeId)
-      .map((p: any) => {
+      .map((s) => s.placePrediction)
+      .filter((p): p is NonNullable<typeof p> & { placeId: string } => Boolean(p?.placeId))
+      .map((p) => {
         const description = p.text?.text || '';
         return {
-          placeId: p.placeId as string,
+          placeId: p.placeId,
           description,
           mainText: p.structuredFormat?.mainText?.text || description,
           secondaryText: p.structuredFormat?.secondaryText?.text || '',
@@ -2235,7 +2247,11 @@ app.get('/api/places/details', auth, async (req, res) => {
         }),
       },
     );
-    const data = await r.json();
+    const data = (await r.json()) as {
+      error?: { message?: string };
+      formattedAddress?: string;
+      location?: { latitude?: number; longitude?: number };
+    };
     if (!r.ok) {
       return res.status(r.status).json({
         error: data?.error?.message || 'Error en Place Details',
