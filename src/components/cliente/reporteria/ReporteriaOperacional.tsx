@@ -14,7 +14,6 @@ import {
 } from "recharts";
 import "@/components/cliente/styles/ReporteriaOperacional.css";
 import { linbisFetch } from "@/services/linbisFetch";
-import { buildLinbisListParams } from "@/services/linbisListFetch";
 import {
   matchesConsigneeName,
   normalizeShipmentKey,
@@ -29,63 +28,86 @@ interface OutletContext {
   onLogout: () => void;
 }
 
+/** Operación de reportería = Shipping Order (SOG), no master AWB ni /shipments/all. */
 interface Shipment {
   id?: number;
   number?: string;
   createdOn?: string;
-  updateOn?: string;
   departure?: string;
   arrival?: string;
   origin?: string;
   destination?: string;
-  modeOfTransportation?: string;
+  /** 1/Air, 2/Ocean, 3/Ground (Linbis ShippingOrderType). */
+  orderType?: number | string;
   currentFlow?: string;
   totalCargo_Pieces?: number;
   totalCargo_WeightValue?: number;
   totalCargo_VolumeWeightValue?: number;
   shipper?: string;
   consignee?: string;
-  moduleType?: string;
 }
 
 type TransportMode = "air" | "sea" | "ground" | "other";
 
+type LinbisDateLike =
+  | string
+  | {
+      date?: string | null;
+      displayDate?: string | null;
+    }
+  | null
+  | undefined;
+
+type LinbisLocationLike =
+  | string
+  | {
+      name?: string | null;
+      code?: string | null;
+    }
+  | null
+  | undefined;
+
+type LinbisPartyLike =
+  | string
+  | {
+      name?: string | null;
+    }
+  | null
+  | undefined;
+
+interface ShippingOrdersPage {
+  items?: unknown[];
+  pageIndex?: number;
+  totalPages?: number;
+  totalCount?: number;
+  hasNextPage?: boolean;
+}
+
 /* ============================================================
    CONSTANTS
    ============================================================ */
-const SHIPMENTS_ALL_URL = "https://api.linbis.com/shipments/all";
-/** v2: el endpoint /shipments/all ignora Page e ItemsPerPage; no paginar. */
-const CACHE_KEY_PREFIX = "shipmentsCache_v2_";
-const LEGACY_CACHE_PREFIX = "shipmentsCache_";
+const SHIPPING_ORDERS_URL = "https://api.linbis.com/api/shipping-orders";
+/** v3: fuente = Shipping Orders (SOG) con ConsigneeName. */
+const CACHE_KEY_PREFIX = "shipmentsCache_v3_";
+const LEGACY_CACHE_PREFIXES = ["shipmentsCache_", "shipmentsCache_v2_"] as const;
 const CACHE_TTL_MS = 60 * 60 * 1000;
+const PAGE_SIZE = 100;
+const MAX_PAGES = 50;
 const CHART_STROKE = "#374151";
 const CHART_FILL = "#9ca3af";
 
 /* ============================================================
    HELPERS
    ============================================================ */
-function isAirShipment(mode?: string): boolean {
-  if (!mode) return false;
-  const m = mode.toLowerCase();
-  return m.includes("40 - air") || m.includes("41 - air");
+function isSogNumber(number?: string | null): boolean {
+  return /^SOG/i.test((number ?? "").trim());
 }
 
-function isSeaShipment(mode?: string): boolean {
-  if (!mode) return false;
-  const m = mode.toLowerCase();
-  return m.includes("10 - vessel") || m.includes("11 - vessel");
-}
-
-function isGroundShipment(mode?: string): boolean {
-  if (!mode) return false;
-  const m = mode.toLowerCase();
-  return m.includes("30 - truck") || m.includes("terrestre");
-}
-
-function getTransportMode(mode?: string): TransportMode {
-  if (isAirShipment(mode)) return "air";
-  if (isSeaShipment(mode)) return "sea";
-  if (isGroundShipment(mode)) return "ground";
+function getTransportMode(s: Shipment): TransportMode {
+  const ot = s.orderType;
+  if (ot === 1 || ot === "1" || ot === "Air") return "air";
+  if (ot === 2 || ot === "2" || ot === "Ocean") return "sea";
+  if (ot === 3 || ot === "3" || ot === "Ground") return "ground";
   return "other";
 }
 
@@ -109,26 +131,44 @@ function fmtNumber(n: number, decimals = 0): string {
   }).format(n);
 }
 
-/** Linbis dataset dates often arrive as MM/DD/YYYY. */
-function parseLinbisDate(value?: string | null): Date | null {
-  if (!value?.trim()) return null;
-  const raw = value.trim();
+/** Linbis dates: ISO, MM/DD/YYYY, or { date, displayDate }. */
+function parseLinbisDate(value?: LinbisDateLike): Date | null {
+  if (value == null) return null;
+  const raw =
+    typeof value === "string"
+      ? value.trim()
+      : String(value.displayDate ?? value.date ?? "").trim();
+  if (!raw) return null;
   const us = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(raw);
   if (us) {
-    const month = Number(us[1]);
-    const day = Number(us[2]);
-    const year = Number(us[3]);
-    const d = new Date(year, month - 1, day);
+    const d = new Date(Number(us[3]), Number(us[1]) - 1, Number(us[2]));
     return Number.isNaN(d.getTime()) ? null : d;
   }
   const d = new Date(raw);
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+function dateToIsoString(value?: LinbisDateLike): string | undefined {
+  const d = parseLinbisDate(value);
+  return d ? d.toISOString() : undefined;
+}
+
+function locationName(value?: LinbisLocationLike): string | undefined {
+  if (value == null) return undefined;
+  if (typeof value === "string") return value.trim() || undefined;
+  const name = value.name?.trim() || value.code?.trim();
+  return name || undefined;
+}
+
+function partyName(value?: LinbisPartyLike): string | undefined {
+  if (value == null) return undefined;
+  if (typeof value === "string") return value.trim() || undefined;
+  return value.name?.trim() || undefined;
+}
+
 function shipmentTimestamp(s: Shipment): number {
   return (
     parseLinbisDate(s.createdOn)?.getTime() ??
-    parseLinbisDate(s.updateOn)?.getTime() ??
     parseLinbisDate(s.departure)?.getTime() ??
     0
   );
@@ -160,10 +200,12 @@ function cacheKey(username: string): string {
 }
 
 function clearLegacyCache(username: string) {
-  const legacy = `${LEGACY_CACHE_PREFIX}${username}`;
-  localStorage.removeItem(legacy);
-  localStorage.removeItem(`${legacy}_ts`);
-  localStorage.removeItem(`${legacy}_page`);
+  for (const prefix of LEGACY_CACHE_PREFIXES) {
+    const legacy = `${prefix}${username}`;
+    localStorage.removeItem(legacy);
+    localStorage.removeItem(`${legacy}_ts`);
+    localStorage.removeItem(`${legacy}_page`);
+  }
 }
 
 function parseCachedShipments(raw: string): Shipment[] | null {
@@ -195,8 +237,64 @@ function shipmentIdentity(s: Shipment): string | null {
   return number ? `num:${number}` : null;
 }
 
-/** Una sola respuesta: /shipments/all ignora Page/ItemsPerPage y repite el set completo. */
-function normalizeShipmentsForConsignee(
+function mapShippingOrderToShipment(raw: Record<string, unknown>): Shipment | null {
+  const number = typeof raw.number === "string" ? raw.number.trim() : "";
+  if (!isSogNumber(number)) return null;
+
+  const consignee = partyName(raw.consignee as LinbisPartyLike);
+  const cargo =
+    raw.totalCargo && typeof raw.totalCargo === "object"
+      ? (raw.totalCargo as Record<string, unknown>)
+      : null;
+  const weightObj =
+    cargo?.weight && typeof cargo.weight === "object"
+      ? (cargo.weight as { value?: number })
+      : null;
+  const volumeWeightObj =
+    cargo?.volumeWeight && typeof cargo.volumeWeight === "object"
+      ? (cargo.volumeWeight as { value?: number })
+      : null;
+
+  return {
+    id: typeof raw.id === "number" ? raw.id : undefined,
+    number,
+    createdOn:
+      dateToIsoString(raw.orderDate as LinbisDateLike) ??
+      dateToIsoString(raw.executedOnDate as LinbisDateLike),
+    departure: dateToIsoString(raw.departureDate as LinbisDateLike),
+    arrival: dateToIsoString(raw.arrivalDate as LinbisDateLike),
+    origin:
+      locationName(raw.origin as LinbisLocationLike) ??
+      locationName(raw.from as LinbisLocationLike) ??
+      locationName(raw.executedAt as LinbisLocationLike) ??
+      locationName(raw.portOfLoading as LinbisLocationLike),
+    destination:
+      locationName(raw.destination as LinbisLocationLike) ??
+      locationName(raw.to as LinbisLocationLike) ??
+      locationName(raw.portOfUnloading as LinbisLocationLike),
+    orderType: raw.orderType as number | string | undefined,
+    currentFlow:
+      typeof raw.operationFlow === "string" ? raw.operationFlow : undefined,
+    totalCargo_Pieces:
+      typeof cargo?.pieces === "number" ? cargo.pieces : undefined,
+    totalCargo_WeightValue:
+      typeof cargo?.weightValue === "number"
+        ? cargo.weightValue
+        : typeof weightObj?.value === "number"
+          ? weightObj.value
+          : undefined,
+    totalCargo_VolumeWeightValue:
+      typeof cargo?.volumeWeightValue === "number"
+        ? cargo.volumeWeightValue
+        : typeof volumeWeightObj?.value === "number"
+          ? volumeWeightObj.value
+          : undefined,
+    shipper: partyName(raw.shipper as LinbisPartyLike),
+    consignee,
+  };
+}
+
+function normalizeShippingOrdersForConsignee(
   records: unknown[],
   consigneeName: string,
 ): Shipment[] {
@@ -205,18 +303,23 @@ function normalizeShipmentsForConsignee(
 
   for (const record of records) {
     if (!record || typeof record !== "object") continue;
-    const raw = record as Shipment;
-    if (!matchesConsigneeName(raw.consignee, consigneeName)) continue;
+    const mapped = mapShippingOrderToShipment(record as Record<string, unknown>);
+    if (!mapped) continue;
+    if (!matchesConsigneeName(mapped.consignee, consigneeName)) continue;
 
-    const key = shipmentIdentity(raw);
+    const key = shipmentIdentity(mapped);
     if (!key || seen.has(key)) continue;
     seen.add(key);
-    list.push(raw);
+    list.push(mapped);
   }
 
   return list.sort((a, b) => shipmentTimestamp(b) - shipmentTimestamp(a));
 }
 
+/**
+ * Fuente de verdad operativa: Shipping Orders (SOG) filtrados por ConsigneeName.
+ * Coincide con el listado/export "Shipping Order List" de Linbis.
+ */
 async function fetchAllShipmentsByConsignee(
   consigneeName: string,
   accessToken: string,
@@ -228,36 +331,58 @@ async function fetchAllShipmentsByConsignee(
     throw new Error("ConsigneeName es obligatorio para consultar operaciones.");
   }
 
-  if (signal?.aborted) {
-    throw new DOMException("Aborted", "AbortError");
-  }
+  const allRaw: unknown[] = [];
+  let page = 1;
 
-  // Page=1 solo por compatibilidad con el contrato OpenAPI; Linbis devuelve el set completo.
-  const params = buildLinbisListParams(name, 1);
-  const res = await linbisFetch(
-    `${SHIPMENTS_ALL_URL}?${params}`,
-    {
-      method: "GET",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
+  while (page <= MAX_PAGES) {
+    if (signal?.aborted) {
+      throw new DOMException("Aborted", "AbortError");
+    }
+
+    const params = new URLSearchParams({
+      ConsigneeName: name,
+      PageNumber: page.toString(),
+      PageSize: PAGE_SIZE.toString(),
+    });
+
+    const res = await linbisFetch(
+      `${SHIPPING_ORDERS_URL}?${params}`,
+      {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        signal,
       },
-      signal,
-    },
-    accessToken,
-    refreshAccessToken,
-  );
+      accessToken,
+      refreshAccessToken,
+    );
 
-  if (!res.ok) {
-    throw new Error(`Error ${res.status}: ${res.statusText}`);
+    if (!res.ok) {
+      throw new Error(`Error ${res.status}: ${res.statusText}`);
+    }
+
+    const data: unknown = await res.json();
+    if (!data || typeof data !== "object") {
+      throw new Error("Respuesta inesperada de Linbis (shipping-orders).");
+    }
+
+    const pageData = (data as { shippingOrders?: ShippingOrdersPage })
+      .shippingOrders;
+    const items = Array.isArray(pageData?.items) ? pageData.items : [];
+    allRaw.push(...items);
+
+    const hasNext =
+      pageData?.hasNextPage === true ||
+      (typeof pageData?.totalPages === "number" &&
+        page < pageData.totalPages);
+
+    if (!hasNext || items.length < PAGE_SIZE) break;
+    page += 1;
   }
 
-  const data: unknown = await res.json();
-  if (!Array.isArray(data)) {
-    throw new Error("Respuesta inesperada de Linbis (se esperaba un listado).");
-  }
-
-  return normalizeShipmentsForConsignee(data, name);
+  return normalizeShippingOrdersForConsignee(allRaw, name);
 }
 
 /* ============================================================
@@ -319,8 +444,7 @@ function ShipmentsView() {
             if (!Number.isNaN(age) && age < CACHE_TTL_MS) {
               const parsed = parseCachedShipments(cached);
               if (parsed) {
-                // Re-normalize por si el cache quedó con duplicados.
-                const cleaned = normalizeShipmentsForConsignee(
+                const cleaned = normalizeShippingOrdersForConsignee(
                   parsed,
                   activeUsername,
                 );
@@ -432,7 +556,7 @@ function ShipmentsView() {
     let transitCount = 0;
 
     for (const s of filtered) {
-      const m = getTransportMode(s.modeOfTransportation);
+      const m = getTransportMode(s);
       if (m === "air") air += 1;
       else if (m === "sea") sea += 1;
       else if (m === "ground") ground += 1;
@@ -559,7 +683,7 @@ function ShipmentsView() {
       fmtDate(s.createdOn),
       s.origin || "",
       s.destination || "",
-      getModeLabelI18n(getTransportMode(s.modeOfTransportation), t),
+      getModeLabelI18n(getTransportMode(s), t),
       s.totalCargo_Pieces || 0,
       s.totalCargo_WeightValue || 0,
       s.totalCargo_VolumeWeightValue || 0,
@@ -673,7 +797,7 @@ function ShipmentsView() {
                       {yearComp.growth.toFixed(1)}%{" "}
                       {t("reportOperational.vsYearWithCount", {
                         year: yearComp.py,
-                        count: fmtNumber(yearComp.prev),
+                        count: yearComp.prev,
                       })}
                     </>
                   ) : (
@@ -686,7 +810,7 @@ function ShipmentsView() {
               <div className="rop-kpi__sub">
                 {t("reportOperational.kpiTotalShipmentsHint", {
                   year: yearComp.cy,
-                  count: fmtNumber(yearComp.curr),
+                  count: yearComp.curr,
                 })}
               </div>
             </div>
@@ -937,7 +1061,7 @@ function ShipmentsView() {
                 </thead>
                 <tbody>
                   {recent.map((s, i) => {
-                    const mode = getTransportMode(s.modeOfTransportation);
+                    const mode = getTransportMode(s);
                     return (
                       <tr key={s.id ?? `${s.number ?? "op"}-${i}`}>
                         <td className="rop-table__number">
