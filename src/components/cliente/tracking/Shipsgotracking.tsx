@@ -245,12 +245,12 @@ function ShipsGoTracking({
     [userOcean],
   );
 
-  const showAirTagsColumn = useMemo(
+  const showAirRefTagsColumn = useMemo(
     () => userAir.some((s) => s.tags.length > 0),
     [userAir],
   );
 
-  const showOceanTagsColumn = useMemo(
+  const showOceanRefTagsColumn = useMemo(
     () => userOcean.some((s) => s.tags.length > 0),
     [userOcean],
   );
@@ -835,11 +835,13 @@ function ShipsGoTracking({
                       <tr>
                         <th>Estado</th>
                         <th>AWB</th>
+                        {showAirRefTagsColumn && (
+                          <th>Ref. Cliente/Etiquetas</th>
+                        )}
                         <th>Aerolínea</th>
                         <th>Origen</th>
                         <th>Destino</th>
                         <th>Progreso</th>
-                        {showAirTagsColumn && <th>Etiquetas</th>}
                         <th>Fecha</th>
                         <th></th>
                       </tr>
@@ -873,6 +875,21 @@ function ShipsGoTracking({
                             <td>
                               <span className="sg-awb">{s.awb_number}</span>
                             </td>
+                            {showAirRefTagsColumn && (
+                              <td>
+                                {s.tags.length > 0 ? (
+                                  <div className="sg-tags">
+                                    {s.tags.map((t) => (
+                                      <span key={t.id} className="sg-tag">
+                                        {t.name}
+                                      </span>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  "—"
+                                )}
+                              </td>
+                            )}
                             <td>
                               <span className="sg-airline">
                                 {s.airline?.name || "—"}
@@ -942,21 +959,6 @@ function ShipsGoTracking({
                                 "—"
                               )}
                             </td>
-                            {showAirTagsColumn && (
-                              <td>
-                                {s.tags.length > 0 ? (
-                                  <div className="sg-tags">
-                                    {s.tags.map((t) => (
-                                      <span key={t.id} className="sg-tag">
-                                        {t.name}
-                                      </span>
-                                    ))}
-                                  </div>
-                                ) : (
-                                  "—"
-                                )}
-                              </td>
-                            )}
                             <td>
                               <span className="sg-date">
                                 {formatDate(s.created_at)}
@@ -1122,11 +1124,13 @@ function ShipsGoTracking({
                       <tr>
                         <th>Estado</th>
                         <th>Container / Booking</th>
+                        {showOceanRefTagsColumn && (
+                          <th>Ref. Cliente/Etiquetas</th>
+                        )}
                         <th>Naviera</th>
                         <th>Puerto Carga</th>
                         <th>Puerto Descarga</th>
                         <th>Progreso</th>
-                        {showOceanTagsColumn && <th>Etiquetas</th>}
                         <th>Fecha</th>
                         <th></th>
                       </tr>
@@ -1176,6 +1180,21 @@ function ShipsGoTracking({
                                 )}
                               </div>
                             </td>
+                            {showOceanRefTagsColumn && (
+                              <td>
+                                {s.tags.length > 0 ? (
+                                  <div className="sg-tags">
+                                    {s.tags.map((t) => (
+                                      <span key={t.id} className="sg-tag">
+                                        {t.name}
+                                      </span>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  "—"
+                                )}
+                              </td>
+                            )}
                             <td>
                               <span className="sg-airline">
                                 {s.carrier?.name || "—"}
@@ -1249,21 +1268,6 @@ function ShipsGoTracking({
                                 "—"
                               )}
                             </td>
-                            {showOceanTagsColumn && (
-                              <td>
-                                {s.tags.length > 0 ? (
-                                  <div className="sg-tags">
-                                    {s.tags.map((t) => (
-                                      <span key={t.id} className="sg-tag">
-                                        {t.name}
-                                      </span>
-                                    ))}
-                                  </div>
-                                ) : (
-                                  "—"
-                                )}
-                              </td>
-                            )}
                             <td>
                               <span className="sg-date">
                                 {formatDate(s.created_at)}
