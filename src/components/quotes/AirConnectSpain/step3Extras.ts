@@ -16,21 +16,34 @@ export interface AirConnectStep3ExtrasParams {
   gastolocal: boolean;
 }
 
-export function calculateAirConnectStep3Extras(
+export interface AirConnectStep3ExtrasBreakdown {
+  ultimaMilla: number;
+  seguro: number;
+  aduana: number;
+  gastolocal: number;
+  total: number;
+}
+
+export function calculateAirConnectStep3ExtrasBreakdown(
   params: AirConnectStep3ExtrasParams,
-): number {
-  let extra = 0;
+): AirConnectStep3ExtrasBreakdown {
+  let ultimaMilla = 0;
   if (params.ultimaMillaActivo) {
-    extra += params.calculateUltimaMilla();
+    ultimaMilla = params.calculateUltimaMilla();
   }
+
   const valorCarga =
     parseFloat(params.valorMercaderia.replace(",", ".")) || 0;
+
+  let seguro = 0;
   if (params.seguroActivo) {
-    extra += Math.max(
+    seguro = Math.max(
       (valorCarga + params.transportBaseline) * 1.1 * 0.0025,
       25,
     );
   }
+
+  let aduana = 0;
   if (params.aduanaActivo && params.aduanaConfig) {
     const valorProd =
       parseFloat(params.valorProductoAduana.replace(",", ".")) || 0;
@@ -41,7 +54,7 @@ export function calculateAirConnectStep3Extras(
             25,
           )
         : (valorProd + params.transportBaseline) * 1.1 * 0.02;
-      extra += applyDerechosExclusion(
+      aduana = applyDerechosExclusion(
         calculateAduanaCharges(
           valorProd,
           params.transportBaseline,
@@ -53,8 +66,20 @@ export function calculateAirConnectStep3Extras(
       ).total;
     }
   }
-  if (params.gastolocal) {
-    extra += 194.4;
-  }
-  return extra;
+
+  const gastolocal = params.gastolocal ? 194.4 : 0;
+
+  return {
+    ultimaMilla,
+    seguro,
+    aduana,
+    gastolocal,
+    total: ultimaMilla + seguro + aduana + gastolocal,
+  };
+}
+
+export function calculateAirConnectStep3Extras(
+  params: AirConnectStep3ExtrasParams,
+): number {
+  return calculateAirConnectStep3ExtrasBreakdown(params).total;
 }

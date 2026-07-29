@@ -141,13 +141,9 @@ export function AirConnectSpainStep4Panel({
                   </div>
                 </>
               ) : null}
-              <div className="col-6 text-muted">Peso cobrable (API)</div>
+              <div className="col-6 text-muted">Peso cobrable</div>
               <div className="col-6 text-end fw-semibold">
                 {(quote.parcelsData?.airChargeableWeight ?? 0).toFixed(2)} kg
-              </div>
-              <div className="col-6 text-muted">Cargos terrestres</div>
-              <div className="col-6 text-end fw-semibold">
-                {(quote.totalLand ?? 0).toFixed(2)} {AIR_CONNECT_CURRENCY}
               </div>
             </div>
           </div>
@@ -159,14 +155,8 @@ export function AirConnectSpainStep4Panel({
                   <th className="qa-rt-th-select"></th>
                   <th>Aerolínea</th>
                   <th>Tramo</th>
-                  <th>Rate EUR/kg</th>
-                  <th>Flete</th>
-                  <th>Fuel</th>
-                  <th>Fees</th>
-                  <th>Total aéreo</th>
-                  <th>Total c/ tierra</th>
                   {step3Extra > 0 ? <th>Serv. adic.</th> : null}
-                  <th>Total estimado</th>
+                  <th>Total</th>
                 </tr>
               </thead>
               <tbody>
@@ -210,14 +200,6 @@ export function AirConnectSpainStep4Panel({
                           ) : null}
                         </td>
                         <td>{offer.freight}</td>
-                        <td className="fw-semibold">
-                          {offer.incomeRate.toFixed(2)}
-                        </td>
-                        <td>{offer.incomeFreight.toFixed(2)}</td>
-                        <td>{offer.fuelAmount.toFixed(2)}</td>
-                        <td>{offer.feesAmount.toFixed(2)}</td>
-                        <td>{offer.incomeAirTotal.toFixed(2)}</td>
-                        <td>{offer.incomeWithLand.toFixed(2)}</td>
                         {step3Extra > 0 ? (
                           <td>{step3Extra.toFixed(2)}</td>
                         ) : null}

@@ -2760,8 +2760,6 @@ function QuoteAPITester({
   };
 
   const buildAirConnectPdfCharges = (offer: AirConnectPricedOffer) => {
-    const chargeableWeight =
-      airConnect.quote?.parcelsData?.airChargeableWeight ?? pesoChargeable;
     const airlineLabel = offer.via
       ? `${offer.airline} (${offer.via})`
       : offer.airline;
@@ -2775,47 +2773,15 @@ function QuoteAPITester({
       amount: number;
     }> = [];
 
+    // Un solo ítem AirConnect: Total de cotización API + profit (sin desglose interno)
     pdfCharges.push({
-      code: "AF",
-      description: `AIR FREIGHT - ${airlineLabel}`,
-      quantity: chargeableWeight,
-      unit: "kg",
-      rate: offer.incomeRate,
-      amount: offer.incomeFreight,
+      code: "GT",
+      description: `GASTOS TOTALES - ${airlineLabel}`,
+      quantity: 1,
+      unit: "Shipment",
+      rate: offer.incomeWithLand,
+      amount: offer.incomeWithLand,
     });
-
-    if (offer.fuelAmount > 0) {
-      pdfCharges.push({
-        code: "FS",
-        description: "FUEL SURCHARGE",
-        quantity: 1,
-        unit: "Shipment",
-        rate: offer.fuelAmount,
-        amount: offer.fuelAmount,
-      });
-    }
-
-    if (offer.feesAmount > 0) {
-      pdfCharges.push({
-        code: "CF",
-        description: "CARRIER FEES",
-        quantity: 1,
-        unit: "Shipment",
-        rate: offer.feesAmount,
-        amount: offer.feesAmount,
-      });
-    }
-
-    if (offer.landAmount > 0) {
-      pdfCharges.push({
-        code: "LC",
-        description: "LAND CHARGES (FCA/PNS/THC)",
-        quantity: 1,
-        unit: "Shipment",
-        rate: offer.landAmount,
-        amount: offer.landAmount,
-      });
-    }
 
     if (seguroActivo) {
       const valorCarga = parseFloat(valorMercaderia.replace(",", ".")) || 0;
@@ -3130,7 +3096,7 @@ function QuoteAPITester({
                 ultimaMillaVespucioZone === "extended",
             }
             : {}),
-          precio: offer.incomeFreight,
+          precio: offer.incomeWithLand,
           currency: AIR_CONNECT_CURRENCY,
           total: totalEmail,
           tipoAccion: "cotizacion",

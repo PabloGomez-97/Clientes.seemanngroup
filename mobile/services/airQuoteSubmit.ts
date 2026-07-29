@@ -34,7 +34,7 @@ import {
   buildAirConnectPricedOffers,
   type AirConnectPricedOffer,
 } from "../../src/services/airConnectSpainQuote";
-import { calculateAirConnectStep3Extras } from "../../src/components/quotes/AirConnectSpain/step3Extras";
+import { calculateAirConnectStep3Extras, calculateAirConnectStep3ExtrasBreakdown } from "../../src/components/quotes/AirConnectSpain/step3Extras";
 import { buildAirAduanaPdfBreakdown } from "../../src/components/quotes/pdf-template/pdfAduanaBreakdown";
 import {
   formatValidUntilDisplay,
@@ -481,53 +481,81 @@ export async function submitAirQuote(
       : offer.airline;
     pdfCharges = [
       {
-        code: "AF",
-        description: `AIR FREIGHT - ${airlineLabel}`,
-        quantity: step2.chargeableWeight || 1,
-        unit: "kg",
-        rate: offer.incomeRate,
-        amount: offer.incomeFreight,
+        code: "GT",
+        description: `GASTOS TOTALES - ${airlineLabel}`,
+        quantity: 1,
+        unit: "Shipment",
+        rate: offer.incomeWithLand,
+        amount: offer.incomeWithLand,
       },
     ];
-    if (offer.fuelAmount > 0) {
+
+    const extrasBreakdown = calculateAirConnectStep3ExtrasBreakdown({
+      transportBaseline: offer.apiWithLand,
+      ultimaMillaActivo: addons.ultimaMillaActivo,
+      calculateUltimaMilla: () =>
+        calculateUltimaMillaAmount({
+          activo: addons.ultimaMillaActivo,
+          bracket: addons.ultimaMillaBracket,
+          zone: addons.ultimaMillaZone,
+          extendedMultiplier: vespucioMult,
+        }),
+      seguroActivo: addons.seguroActivo,
+      valorMercaderia: addons.valorMercaderia,
+      aduanaActivo: addons.aduanaActivo,
+      valorProductoAduana: addons.valorProductoAduana,
+      aduanaConfig: aduana,
+      gastolocal: addons.gastolocal,
+    });
+
+    if (extrasBreakdown.seguro > 0) {
       pdfCharges.push({
-        code: "FS",
-        description: "FUEL SURCHARGE",
+        code: "S",
+        description: "SEGURO",
         quantity: 1,
         unit: "Shipment",
-        rate: offer.fuelAmount,
-        amount: offer.fuelAmount,
+        rate: extrasBreakdown.seguro,
+        amount: extrasBreakdown.seguro,
       });
     }
-    if (offer.feesAmount > 0) {
+    if (extrasBreakdown.gastolocal > 0) {
       pdfCharges.push({
-        code: "CF",
-        description: "CARRIER FEES",
+        code: "D",
+        description: "GASTOS LOCALES (Desconsolidación)",
         quantity: 1,
         unit: "Shipment",
-        rate: offer.feesAmount,
-        amount: offer.feesAmount,
+        rate: extrasBreakdown.gastolocal,
+        amount: extrasBreakdown.gastolocal,
       });
     }
-    if (offer.landAmount > 0) {
+    if (extrasBreakdown.ultimaMilla > 0) {
       pdfCharges.push({
-        code: "LC",
-        description: "LAND CHARGES (FCA/PNS/THC)",
+        code: "TT",
+        description: "TRANSPORTE TERRESTRE",
         quantity: 1,
         unit: "Shipment",
-        rate: offer.landAmount,
-        amount: offer.landAmount,
+        rate: extrasBreakdown.ultimaMilla,
+        amount: extrasBreakdown.ultimaMilla,
       });
     }
-    const extra = params.airConnectStep3Extra || 0;
-    if (extra > 0) {
+    if (extrasBreakdown.aduana > 0) {
       pdfCharges.push({
-        code: "XT",
-        description: "SERVICIOS ADICIONALES",
+        code: "ADA",
+        description: "AGENCIA DE ADUANA",
         quantity: 1,
         unit: "Shipment",
-        rate: extra,
-        amount: extra,
+        rate: extrasBreakdown.aduana,
+        amount: extrasBreakdown.aduana,
+      });
+    }
+    if (addons.liveTrackingActivo) {
+      pdfCharges.push({
+        code: "LT",
+        description: "LIVE TRACKING (Free)",
+        quantity: 1,
+        unit: "Shipment",
+        rate: 0,
+        amount: 0,
       });
     }
   }

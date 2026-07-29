@@ -224,15 +224,20 @@ export const buildAirConnectCalculateInput = buildAirConnectFcaCalculateInput;
 
 export interface AirConnectPricedOffer extends AirConnectAirFreightOffer {
   key: string;
-  /** Valores API sin margen (base para servicios adicionales) */
+  /** Total de cotización API (sin profit). Base para seguro/aduana. */
   apiWithLand: number;
+  /** Precio de venta = Total de cotización × (1 + profit%). */
+  incomeWithLand: number;
+  /**
+   * @deprecated Campos de desglose AirConnect; el PDF/cliente solo usa el total.
+   * Se mantienen en 0 para no exponer costos internos.
+   */
   incomeRate: number;
   incomeFreight: number;
   fuelAmount: number;
   feesAmount: number;
   incomeAirTotal: number;
   landAmount: number;
-  incomeWithLand: number;
 }
 
 export function getAirConnectOfferKey(
@@ -242,66 +247,94 @@ export function getAirConnectOfferKey(
   return `${offer.airline.trim()}-${offer.via ?? "direct"}-${index}`;
 }
 
-export function priceAirConnectOffer(
-  offer: AirConnectAirFreightOffer,
-  chargeableWeight: number,
-  totalLand: number,
-  profitMarkupPct = DEFAULT_AIR_CONNECT_SPAIN_CONFIG.profitMarkupPctFca,
-): Omit<AirConnectPricedOffer, "key"> {
-  const apiFreight = chargeableWeight * offer.rate;
-  const apiFuel = offer.fuelSurcharge ?? 0;
-  const apiFees = offer.fees ?? 0;
-  const apiAirTotal = apiFreight + apiFuel + apiFees;
-  const apiWithLand = apiAirTotal + totalLand;
-
-  const markup = airConnectProfitMultiplier(profitMarkupPct);
-  const incomeRate = offer.rate * markup;
-  const incomeFreight = chargeableWeight * incomeRate;
-  const fuelAmount = apiFuel * markup;
-  const feesAmount = apiFees * markup;
-  const landAmount = totalLand * markup;
-  const incomeAirTotal = incomeFreight + fuelAmount + feesAmount;
-
-  return {
-    ...offer,
-    apiWithLand,
-    incomeRate,
-    incomeFreight,
-    fuelAmount,
-    feesAmount,
-    incomeAirTotal,
-    landAmount,
-    incomeWithLand: incomeAirTotal + landAmount,
-  };
-}
-
-export function buildAirConnectPricedOffers(
-  quote: AirConnectQuotationResponse,
-  fallbackChargeableWeight = 0,
-  profitMarkupPct = DEFAULT_AIR_CONNECT_SPAIN_CONFIG.profitMarkupPctFca,
-): AirConnectPricedOffer[] {
-  const chargeableWeight =
-    quote.parcelsData?.airChargeableWeight ?? fallbackChargeableWeight;
-  const totalLand = quote.totalLand ?? 0;
-
-  return quote.airFreight.map((offer, index) => ({
-    key: getAirConnectOfferKey(offer, index),
-    ...priceAirConnectOffer(offer, chargeableWeight, totalLand, profitMarkupPct),
-  }));
+function roundAirConnectMoney(value: number): number {
+  return Math.round(value * 100) / 100;
 }
 
 export function matchAirConnectTotalAmount(
   offer: AirConnectAirFreightOffer,
   totals: AirConnectQuotationResponse["totalAmount"],
 ): number | null {
-  const viaSuffix = offer.via ? ` (via ${offer.via})` : "";
-  const expected = `${offer.airline}${viaSuffix}`.trim().toLowerCase();
-  const row = totals.find((t) => t.airline.trim().toLowerCase() === expected);
-  if (row) return row.total;
-  const loose = totals.find((t) =>
-    t.airline.toLowerCase().includes(offer.airline.trim().toLowerCase()),
+  if (!Array.isArray(totals) || totals.length === 0) return null;
+
+  const airline = offer.airline.trim().toLowerCase();
+  const via = offer.via?.trim().toLowerCase() || null;
+  const expected = via ? `${airline} (via ${via})` : airline;
+
+  const exact = totals.find(
+    (t) => t.airline.trim().toLowerCase() === expected,
   );
-  return loose?.total ?? null;
+  if (exact != null) return exact.total;
+
+  if (via) {
+    const withVia = totals.find((t) => {
+      const name = t.airline.trim().toLowerCase();
+      return name.startsWith(airline) && name.includes("via") && name.includes(via);
+    });
+    if (withVia != null) return withVia.total;
+  } else {
+    const direct = totals.find((t) => {
+      const name = t.airline.trim().toLowerCase();
+      return name === airline || (name.startsWith(airline) && !name.includes("via"));
+    });
+    if (direct != null) return direct.total;
+  }
+
+  return null;
+}
+
+/** Total oficial de cotización 3lg; fallback offer.total + totalLand. */
+export function resolveAirConnectQuotationTotal(
+  offer: AirConnectAirFreightOffer,
+  quote: Pick<AirConnectQuotationResponse, "totalAmount" | "totalLand">,
+): number {
+  const matched = matchAirConnectTotalAmount(offer, quote.totalAmount ?? []);
+  if (matched != null && Number.isFinite(matched) && matched > 0) {
+    return matched;
+  }
+  const totalLand = quote.totalLand ?? 0;
+  const airTotal =
+    typeof offer.total === "number" && Number.isFinite(offer.total)
+      ? offer.total
+      : (offer.price ?? 0) + (offer.fuelSurcharge ?? 0) + (offer.fees ?? 0);
+  return airTotal + totalLand;
+}
+
+export function priceAirConnectOffer(
+  offer: AirConnectAirFreightOffer,
+  quotationTotal: number,
+  profitMarkupPct = DEFAULT_AIR_CONNECT_SPAIN_CONFIG.profitMarkupPctFca,
+): Omit<AirConnectPricedOffer, "key"> {
+  const apiWithLand = roundAirConnectMoney(quotationTotal);
+  const markup = airConnectProfitMultiplier(profitMarkupPct);
+  const incomeWithLand = roundAirConnectMoney(apiWithLand * markup);
+
+  return {
+    ...offer,
+    apiWithLand,
+    incomeWithLand,
+    // Sin desglose de AirConnect hacia cliente/ejecutivo
+    incomeRate: 0,
+    incomeFreight: incomeWithLand,
+    fuelAmount: 0,
+    feesAmount: 0,
+    incomeAirTotal: incomeWithLand,
+    landAmount: 0,
+  };
+}
+
+export function buildAirConnectPricedOffers(
+  quote: AirConnectQuotationResponse,
+  _fallbackChargeableWeight = 0,
+  profitMarkupPct = DEFAULT_AIR_CONNECT_SPAIN_CONFIG.profitMarkupPctFca,
+): AirConnectPricedOffer[] {
+  return quote.airFreight.map((offer, index) => {
+    const quotationTotal = resolveAirConnectQuotationTotal(offer, quote);
+    return {
+      key: getAirConnectOfferKey(offer, index),
+      ...priceAirConnectOffer(offer, quotationTotal, profitMarkupPct),
+    };
+  });
 }
 
 export function resolveAirConnectOriginLabel(
@@ -382,15 +415,31 @@ export function formatAirConnectFetchError(
   err: unknown,
   incoterm: "FCA" | "EXW",
 ): string {
+  const message =
+    err instanceof Error
+      ? err.message
+      : "No se pudo obtener tarifas de AirConnect";
+
+  // Errores de configuración/auth no son "código postal inválido"
+  const lower = message.toLowerCase();
+  if (
+    lower.includes("api_key_3lg") ||
+    lower.includes("falta api_key") ||
+    lower.includes("sesión no válida") ||
+    lower.includes("401") ||
+    lower.includes("500")
+  ) {
+    return message;
+  }
+
   if (incoterm === "EXW") {
+    // Solo enmascarar fallos de cotización EXW (CP fuera de cobertura / API 4xx)
     return AIR_CONNECT_EXW_POSTAL_ERROR;
   }
   if (isAirConnectNetworkError(err)) {
     return "No se pudo conectar con el servicio de tarifas. Inténtalo de nuevo en unos momentos.";
   }
-  return err instanceof Error
-    ? err.message
-    : "No se pudo obtener tarifas de AirConnect";
+  return message;
 }
 
 export async function fetchAirConnectQuotation(

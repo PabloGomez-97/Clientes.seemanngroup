@@ -340,6 +340,12 @@ export default function QuoteAirStep4({
               const label = offer.via
                 ? `${offer.airline} (vía ${offer.via})`
                 : offer.airline;
+              const offerExtra = computeAirConnectStep3Extra({
+                offer,
+                step3,
+                aduanaConfig,
+                vespucioMult,
+              });
               return (
                 <Pressable
                   key={offer.key}
@@ -351,7 +357,7 @@ export default function QuoteAirStep4({
                     {label}
                   </Text>
                   <Text style={[styles.offerAmt, on && styles.offerTitleOn]}>
-                    EUR {(offer.incomeWithLand + (on ? acExtra : 0)).toFixed(2)}
+                    EUR {(offer.incomeWithLand + offerExtra).toFixed(2)}
                   </Text>
                 </Pressable>
               );
