@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { useLinbisToken } from "./useLinbisToken";
 import {
@@ -132,28 +132,44 @@ export function useReporteriaOperacional() {
   const [sampleSize, setSampleSize] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   const load = useCallback(async () => {
     if (!accessToken || !activeUsername) {
       setLoading(false);
       return;
     }
+
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     setLoading(true);
     setError(null);
     try {
-      const shipments = await fetchAllClientShipments(
-        activeUsername,
-        { accessToken, refreshAccessToken },
-        20,
-      );
+      const shipments = await fetchAllClientShipments(activeUsername, {
+        accessToken,
+        refreshAccessToken,
+        signal: controller.signal,
+      });
+      if (controller.signal.aborted) return;
       setSampleSize(shipments.length);
       setDashboard(computeOperationalDashboard(shipments));
     } catch (err) {
+      if (
+        controller.signal.aborted ||
+        (err instanceof DOMException && err.name === "AbortError") ||
+        (err instanceof Error && err.name === "AbortError")
+      ) {
+        return;
+      }
       setError(err instanceof Error ? err.message : "Error al cargar");
       setDashboard(EMPTY_DASHBOARD);
       setSampleSize(0);
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) {
+        setLoading(false);
+      }
     }
   }, [accessToken, activeUsername, refreshAccessToken]);
 
@@ -164,6 +180,9 @@ export function useReporteriaOperacional() {
       setError(tokenError);
       setLoading(false);
     }
+    return () => {
+      abortRef.current?.abort();
+    };
   }, [accessToken, load, tokenError, tokenLoading]);
 
   return {
@@ -176,8 +195,12 @@ export function useReporteriaOperacional() {
       try {
         await refreshAccessToken();
         await load();
-      } catch {
-        // token error already set in context
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : tokenError || "Error al actualizar el token",
+        );
       }
     },
   };

@@ -1,4 +1,8 @@
 import { linbisFetch } from "../../src/services/linbisFetch";
+import {
+  matchesConsigneeName,
+  normalizeShipmentKey,
+} from "../../src/utils/linbisClientFilter";
 
 export type InvoiceRow = {
   id?: number;
@@ -19,37 +23,72 @@ export type InvoiceRow = {
   [key: string]: unknown;
 };
 
+/** Operación de reportería = Shipping Order SOG (misma lógica que web). */
 export type ShipmentRow = {
   id?: number;
   number?: string;
-  customerReference?: string;
-  modeOfTransportation?: string;
-  origin?: string;
-  destination?: string;
+  createdOn?: string;
   departure?: string;
   arrival?: string;
+  origin?: string;
+  destination?: string;
+  /** 1/Air, 2/Ocean, 3/Ground (Linbis ShippingOrderType). */
+  orderType?: number | string;
   currentFlow?: string;
-  lastEvent?: string;
-  createdOn?: string;
   shipper?: string;
+  consignee?: string;
   totalCargo_Pieces?: number;
   totalCargo_WeightValue?: number;
   totalCargo_VolumeWeightValue?: number;
-  [key: string]: unknown;
 };
 
 type LinbisOpts = {
   accessToken: string;
   refreshAccessToken: () => Promise<string>;
+  signal?: AbortSignal;
 };
+
+type LinbisDateLike =
+  | string
+  | { date?: string | null; displayDate?: string | null }
+  | null
+  | undefined;
+
+type LinbisLocationLike =
+  | string
+  | { name?: string | null; code?: string | null }
+  | null
+  | undefined;
+
+type LinbisPartyLike = string | { name?: string | null } | null | undefined;
+
+type ShippingOrdersPage = {
+  items?: unknown[];
+  pageIndex?: number;
+  totalPages?: number;
+  totalCount?: number;
+  hasNextPage?: boolean;
+};
+
+const SHIPPING_ORDERS_URL = "https://api.linbis.com/api/shipping-orders";
+const PAGE_SIZE = 100;
+const MAX_PAGES = 50;
 
 export async function fetchClientInvoices(
   consigneeName: string,
   page: number,
   opts: LinbisOpts,
 ): Promise<{ items: InvoiceRow[]; hasMore: boolean }> {
+  const name = consigneeName.trim();
+  if (!name) {
+    throw new Error("ConsigneeName es obligatorio para consultar facturas.");
+  }
+  if (!Number.isInteger(page) || page < 1) {
+    throw new Error("Page inválido para consultar facturas.");
+  }
+
   const params = new URLSearchParams({
-    ConsigneeName: consigneeName,
+    ConsigneeName: name,
     Page: String(page),
     ItemsPerPage: "50",
     SortBy: "newest",
@@ -62,6 +101,7 @@ export async function fetchClientInvoices(
         Accept: "application/json",
         "Content-Type": "application/json",
       },
+      signal: opts.signal,
     },
     opts.accessToken,
     opts.refreshAccessToken,
@@ -69,40 +109,212 @@ export async function fetchClientInvoices(
   if (!response.ok) {
     throw new Error(`Error ${response.status} al cargar facturas`);
   }
-  const data = await response.json();
-  const items: InvoiceRow[] = Array.isArray(data) ? data : [];
+  const data: unknown = await response.json();
+  const items: InvoiceRow[] = Array.isArray(data) ? (data as InvoiceRow[]) : [];
   return { items, hasMore: items.length === 50 };
 }
 
-export async function fetchClientShipmentsAll(
-  consigneeName: string,
-  page: number,
-  opts: LinbisOpts,
-): Promise<{ items: ShipmentRow[]; hasMore: boolean }> {
-  const params = new URLSearchParams({
-    ConsigneeName: consigneeName,
-    Page: String(page),
-    ItemsPerPage: "50",
-    SortBy: "newest",
-  });
-  const response = await linbisFetch(
-    `https://api.linbis.com/shipments/all?${params}`,
-    {
-      method: "GET",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-    },
-    opts.accessToken,
-    opts.refreshAccessToken,
-  );
-  if (!response.ok) {
-    throw new Error(`Error ${response.status} al cargar embarques`);
+function isSogNumber(number?: string | null): boolean {
+  return /^SOG/i.test((number ?? "").trim());
+}
+
+function parseLinbisDate(value?: LinbisDateLike): Date | null {
+  if (value == null) return null;
+  const raw =
+    typeof value === "string"
+      ? value.trim()
+      : String(value.displayDate ?? value.date ?? "").trim();
+  if (!raw) return null;
+  const us = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(raw);
+  if (us) {
+    const d = new Date(Number(us[3]), Number(us[1]) - 1, Number(us[2]));
+    return Number.isNaN(d.getTime()) ? null : d;
   }
-  const data = await response.json();
-  const items: ShipmentRow[] = Array.isArray(data) ? data : [];
-  return { items, hasMore: items.length === 50 };
+  const d = new Date(raw);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function dateToIsoString(value?: LinbisDateLike): string | undefined {
+  const d = parseLinbisDate(value);
+  return d ? d.toISOString() : undefined;
+}
+
+function locationName(value?: LinbisLocationLike): string | undefined {
+  if (value == null) return undefined;
+  if (typeof value === "string") return value.trim() || undefined;
+  return value.name?.trim() || value.code?.trim() || undefined;
+}
+
+function partyName(value?: LinbisPartyLike): string | undefined {
+  if (value == null) return undefined;
+  if (typeof value === "string") return value.trim() || undefined;
+  return value.name?.trim() || undefined;
+}
+
+function shipmentIdentity(s: ShipmentRow): string | null {
+  if (typeof s.id === "number" && Number.isFinite(s.id)) return `id:${s.id}`;
+  const number = normalizeShipmentKey(s.number);
+  return number ? `num:${number}` : null;
+}
+
+function shipmentTimestamp(s: ShipmentRow): number {
+  return (
+    parseLinbisDate(s.createdOn)?.getTime() ??
+    parseLinbisDate(s.departure)?.getTime() ??
+    0
+  );
+}
+
+function mapShippingOrderToShipment(
+  raw: Record<string, unknown>,
+): ShipmentRow | null {
+  const number = typeof raw.number === "string" ? raw.number.trim() : "";
+  if (!isSogNumber(number)) return null;
+
+  const consignee = partyName(raw.consignee as LinbisPartyLike);
+  const cargo =
+    raw.totalCargo && typeof raw.totalCargo === "object"
+      ? (raw.totalCargo as Record<string, unknown>)
+      : null;
+  const weightObj =
+    cargo?.weight && typeof cargo.weight === "object"
+      ? (cargo.weight as { value?: number })
+      : null;
+  const volumeWeightObj =
+    cargo?.volumeWeight && typeof cargo.volumeWeight === "object"
+      ? (cargo.volumeWeight as { value?: number })
+      : null;
+
+  return {
+    id: typeof raw.id === "number" ? raw.id : undefined,
+    number,
+    createdOn:
+      dateToIsoString(raw.orderDate as LinbisDateLike) ??
+      dateToIsoString(raw.executedOnDate as LinbisDateLike),
+    departure: dateToIsoString(raw.departureDate as LinbisDateLike),
+    arrival: dateToIsoString(raw.arrivalDate as LinbisDateLike),
+    origin:
+      locationName(raw.origin as LinbisLocationLike) ??
+      locationName(raw.from as LinbisLocationLike) ??
+      locationName(raw.executedAt as LinbisLocationLike) ??
+      locationName(raw.portOfLoading as LinbisLocationLike),
+    destination:
+      locationName(raw.destination as LinbisLocationLike) ??
+      locationName(raw.to as LinbisLocationLike) ??
+      locationName(raw.portOfUnloading as LinbisLocationLike),
+    orderType: raw.orderType as number | string | undefined,
+    currentFlow:
+      typeof raw.operationFlow === "string" ? raw.operationFlow : undefined,
+    totalCargo_Pieces:
+      typeof cargo?.pieces === "number" ? cargo.pieces : undefined,
+    totalCargo_WeightValue:
+      typeof cargo?.weightValue === "number"
+        ? cargo.weightValue
+        : typeof weightObj?.value === "number"
+          ? weightObj.value
+          : undefined,
+    totalCargo_VolumeWeightValue:
+      typeof cargo?.volumeWeightValue === "number"
+        ? cargo.volumeWeightValue
+        : typeof volumeWeightObj?.value === "number"
+          ? volumeWeightObj.value
+          : undefined,
+    shipper: partyName(raw.shipper as LinbisPartyLike),
+    consignee,
+  };
+}
+
+function normalizeShippingOrdersForConsignee(
+  records: unknown[],
+  consigneeName: string,
+): ShipmentRow[] {
+  const seen = new Set<string>();
+  const list: ShipmentRow[] = [];
+
+  for (const record of records) {
+    if (!record || typeof record !== "object") continue;
+    const mapped = mapShippingOrderToShipment(record as Record<string, unknown>);
+    if (!mapped) continue;
+    if (!matchesConsigneeName(mapped.consignee, consigneeName)) continue;
+
+    const key = shipmentIdentity(mapped);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    list.push(mapped);
+  }
+
+  return list.sort((a, b) => shipmentTimestamp(b) - shipmentTimestamp(a));
+}
+
+/**
+ * Fuente de verdad operativa (igual que web):
+ * GET /api/shipping-orders?ConsigneeName=… → solo SOG.
+ */
+export async function fetchAllClientShipments(
+  consigneeName: string,
+  opts: LinbisOpts,
+  maxPages = MAX_PAGES,
+): Promise<ShipmentRow[]> {
+  const name = consigneeName.trim();
+  if (!name) {
+    throw new Error("ConsigneeName es obligatorio para consultar operaciones.");
+  }
+  if (!Number.isInteger(maxPages) || maxPages < 1) {
+    throw new Error("maxPages inválido para consultar operaciones.");
+  }
+
+  const allRaw: unknown[] = [];
+  let page = 1;
+  const pageCap = Math.min(maxPages, MAX_PAGES);
+
+  while (page <= pageCap) {
+    if (opts.signal?.aborted) {
+      throw new DOMException("Aborted", "AbortError");
+    }
+
+    const params = new URLSearchParams({
+      ConsigneeName: name,
+      PageNumber: page.toString(),
+      PageSize: PAGE_SIZE.toString(),
+    });
+
+    const response = await linbisFetch(
+      `${SHIPPING_ORDERS_URL}?${params}`,
+      {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        signal: opts.signal,
+      },
+      opts.accessToken,
+      opts.refreshAccessToken,
+    );
+
+    if (!response.ok) {
+      throw new Error(`Error ${response.status} al cargar embarques`);
+    }
+
+    const data: unknown = await response.json();
+    if (!data || typeof data !== "object") {
+      throw new Error("Respuesta inesperada de Linbis (shipping-orders).");
+    }
+
+    const pageData = (data as { shippingOrders?: ShippingOrdersPage })
+      .shippingOrders;
+    const items = Array.isArray(pageData?.items) ? pageData.items : [];
+    allRaw.push(...items);
+
+    const hasNext =
+      pageData?.hasNextPage === true ||
+      (typeof pageData?.totalPages === "number" && page < pageData.totalPages);
+
+    if (!hasNext || items.length < PAGE_SIZE) break;
+    page += 1;
+  }
+
+  return normalizeShippingOrdersForConsignee(allRaw, name);
 }
 
 export function moneyLabel(invoice: InvoiceRow): string {
@@ -115,16 +327,13 @@ export function moneyLabel(invoice: InvoiceRow): string {
   return total;
 }
 
-export function classifyMode(mode?: string): "air" | "sea" | "ground" | "other" {
-  if (!mode) return "other";
-  const m = mode.toLowerCase();
-  if (m.includes("40 - air") || m.includes("41 - air") || m.includes("air")) {
-    return "air";
-  }
-  if (m.includes("10 - vessel") || m.includes("11 - vessel") || m.includes("vessel") || m.includes("ocean")) {
-    return "sea";
-  }
-  if (m.includes("30 - truck") || m.includes("terrestre") || m.includes("truck")) {
+/** Clasifica por orderType de Shipping Order (Air/Ocean/Ground). */
+export function classifyMode(
+  orderType?: number | string,
+): "air" | "sea" | "ground" | "other" {
+  if (orderType === 1 || orderType === "1" || orderType === "Air") return "air";
+  if (orderType === 2 || orderType === "2" || orderType === "Ocean") return "sea";
+  if (orderType === 3 || orderType === "3" || orderType === "Ground") {
     return "ground";
   }
   return "other";
@@ -132,15 +341,13 @@ export function classifyMode(mode?: string): "air" | "sea" | "ground" | "other" 
 
 export function formatShortDate(value?: string): string {
   if (!value) return "—";
-  try {
-    return new Date(value).toLocaleDateString("es-CL", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
-  } catch {
-    return value;
-  }
+  const date = parseLinbisDate(value);
+  if (!date) return "—";
+  return date.toLocaleDateString("es-CL", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
 }
 
 function shortenLocation(value: string): string {
@@ -203,19 +410,17 @@ function modePerf(
   mode: "air" | "sea" | "ground",
   total: number,
 ): OperationalModeStats {
-  const list = shipments.filter(
-    (s) => classifyMode(s.modeOfTransportation) === mode,
-  );
+  const list = shipments.filter((s) => classifyMode(s.orderType) === mode);
   const count = list.length;
   let transitSum = 0;
   let transitN = 0;
   let weightSum = 0;
   for (const s of list) {
     weightSum += s.totalCargo_WeightValue || 0;
-    if (s.departure && s.arrival) {
-      const days =
-        (new Date(s.arrival).getTime() - new Date(s.departure).getTime()) /
-        86400000;
+    const dep = parseLinbisDate(s.departure);
+    const arr = parseLinbisDate(s.arrival);
+    if (dep && arr) {
+      const days = (arr.getTime() - dep.getTime()) / 86400000;
       if (days > 0) {
         transitSum += days;
         transitN += 1;
@@ -256,7 +461,7 @@ export function computeOperationalDashboard(
   >();
 
   for (const s of shipments) {
-    const mode = classifyMode(s.modeOfTransportation);
+    const mode = classifyMode(s.orderType);
     if (mode === "air") air += 1;
     else if (mode === "sea") sea += 1;
     else if (mode === "ground") ground += 1;
@@ -265,18 +470,19 @@ export function computeOperationalDashboard(
     weightKg += s.totalCargo_WeightValue || 0;
     volumeM3 += s.totalCargo_VolumeWeightValue || 0;
 
-    if (s.departure && s.arrival) {
-      const days =
-        (new Date(s.arrival).getTime() - new Date(s.departure).getTime()) /
-        86400000;
+    const dep = parseLinbisDate(s.departure);
+    const arr = parseLinbisDate(s.arrival);
+    if (dep && arr) {
+      const days = (arr.getTime() - dep.getTime()) / 86400000;
       if (days > 0) {
         transitSum += days;
         transitCount += 1;
       }
     }
 
-    const created = s.createdOn ? new Date(s.createdOn) : null;
-    if (created && !Number.isNaN(created.getTime())) {
+    const created =
+      parseLinbisDate(s.createdOn) ?? parseLinbisDate(s.departure);
+    if (created) {
       const y = created.getFullYear();
       if (y === cy) yearCurr += 1;
       else if (y === py) yearPrev += 1;
@@ -381,18 +587,4 @@ export function computeOperationalDashboard(
     topDestinations,
     monthly,
   };
-}
-
-export async function fetchAllClientShipments(
-  consigneeName: string,
-  opts: LinbisOpts,
-  maxPages = 20,
-): Promise<ShipmentRow[]> {
-  const all: ShipmentRow[] = [];
-  for (let page = 1; page <= maxPages; page += 1) {
-    const result = await fetchClientShipmentsAll(consigneeName, page, opts);
-    all.push(...result.items);
-    if (!result.hasMore) break;
-  }
-  return all;
 }

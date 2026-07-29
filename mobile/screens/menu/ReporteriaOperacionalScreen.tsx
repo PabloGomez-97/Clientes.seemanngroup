@@ -346,12 +346,13 @@ export default function ReporteriaOperacionalScreen() {
               />
               <Text style={styles.emptyTitle}>Sin datos operacionales</Text>
               <Text style={styles.empty}>
-                No hay embarques registrados para calcular indicadores.
+                No hay shipping orders (SOG) para calcular indicadores.
               </Text>
             </View>
           ) : (
             <Text style={styles.footnote}>
-              Indicadores calculados sobre {fmtInt(sampleSize)} embarques.
+              Indicadores calculados sobre {fmtInt(sampleSize)} shipping orders
+              (SOG).
             </Text>
           )}
         </ScrollView>

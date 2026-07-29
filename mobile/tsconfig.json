@@ -13,6 +13,7 @@
     "../src/auth/**/*.ts",
     "../src/locales/**/*.json",
     "../src/services/linbisFetch.ts",
+    "../src/utils/linbisClientFilter.ts",
     "../src/services/cotizacionesLogic.ts",
     "../src/services/operacionesPagination.ts",
     "../src/services/operacionesFiltersLogic.ts",
