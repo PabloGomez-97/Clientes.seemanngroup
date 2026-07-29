@@ -1,3 +1,8 @@
+import {
+  MAX_TRACK_TAG_LENGTH,
+  MAX_TRACK_TAGS,
+} from "@/services/trackingTagHelpers";
+
 interface TrackingTagSuggestionsProps {
   suggestions: string[];
   selectedTags: string[];
@@ -15,7 +20,7 @@ function TrackingTagSuggestions({
   selectedTags,
   onSelectTag,
   disabled = false,
-  maxTags = 10,
+  maxTags = MAX_TRACK_TAGS,
 }: TrackingTagSuggestionsProps) {
   const selectedSet = new Set(
     selectedTags.filter(Boolean).map((tag) => normalizeTag(tag)),
@@ -26,6 +31,7 @@ function TrackingTagSuggestions({
       suggestions
         .map((value) => value.trim())
         .filter(Boolean)
+        .filter((value) => value.length <= MAX_TRACK_TAG_LENGTH)
         .filter((value) => !selectedSet.has(normalizeTag(value))),
     ),
   );

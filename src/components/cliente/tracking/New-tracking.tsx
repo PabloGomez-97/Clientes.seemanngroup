@@ -10,6 +10,12 @@ import {
   hasEmail,
   MAX_VISIBLE_TRACK_FOLLOWERS,
 } from "@/services/trackingEmailPreferences";
+import {
+  canAddTrackTag,
+  MAX_TRACK_TAG_LENGTH,
+  MAX_TRACK_TAGS,
+} from "@/services/trackingTagHelpers";
+import type { AirShipment } from "@/components/cliente/tracking/shipsgo/types";
 import "@/components/cliente/styles/CreateShipmentForm.css";
 import PageBannerHeader from "@/components/shared/layout/PageBannerHeader";
 
@@ -56,7 +62,9 @@ function CreateShipmentForm({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [createdShipment, setCreatedShipment] = useState<any>(null);
+  const [createdShipment, setCreatedShipment] = useState<AirShipment | null>(
+    null,
+  );
 
   // Validación de AWB
   const validateAwb = (value: string): { valid: boolean; message: string } => {
@@ -110,11 +118,16 @@ function CreateShipmentForm({
   };
 
   const addTag = () => {
-    const tagValue = newTag.trim();
-    if (tagValue && !tags.includes(tagValue) && tags.length < 10) {
-      setTags([...tags, tagValue]);
-      setNewTag("");
+    const result = canAddTrackTag(tags, newTag);
+    if (!result.ok) {
+      if (newTag.trim()) {
+        setError(result.error);
+      }
+      return;
     }
+    setError(null);
+    setTags([...tags, result.tag]);
+    setNewTag("");
   };
 
   const removeTag = (tag: string) => setTags(tags.filter((t) => t !== tag));
@@ -261,7 +274,7 @@ function CreateShipmentForm({
                   className="csf-field-msg csf-field-msg--hint"
                   style={{ marginLeft: "0.5rem", display: "inline" }}
                 >
-                  ({tags.length}/10)
+                  ({tags.length}/{MAX_TRACK_TAGS})
                 </span>
               </label>
               <div className="csf-input-row">
@@ -273,13 +286,13 @@ function CreateShipmentForm({
                   value={newTag}
                   onChange={(e) => setNewTag(e.target.value)}
                   onKeyDown={(e) => handleKeyPress(e, addTag)}
-                  maxLength={64}
+                  maxLength={MAX_TRACK_TAG_LENGTH}
                 />
                 <button
                   type="button"
                   className="csf-btn-add"
                   onClick={addTag}
-                  disabled={!newTag.trim() || tags.length >= 10}
+                  disabled={!newTag.trim() || tags.length >= MAX_TRACK_TAGS}
                 >
                   Agregar
                 </button>

@@ -13,6 +13,11 @@ import {
   MAX_VISIBLE_TRACK_FOLLOWERS,
   OPERATIONS_FOLLOWER_EMAIL,
 } from "@/services/trackingEmailPreferences";
+import {
+  canAddTrackTag,
+  MAX_TRACK_TAG_LENGTH,
+  MAX_TRACK_TAGS,
+} from "@/services/trackingTagHelpers";
 import { InfoField } from "@/components/cliente/embarques/Handlers/HandlerAirShipments";
 import "@/components/cliente/styles/ShippingOrder.css";
 import { linbisFetch } from "@/services/linbisFetch";
@@ -676,13 +681,15 @@ function ShippingOrderView() {
   };
 
   const addTrackTag = () => {
-    const tagValue = trackTagInput.trim();
-    if (!tagValue) return;
+    const result = canAddTrackTag(trackTags, trackTagInput);
+    if (!result.ok) {
+      if (trackTagInput.trim()) {
+        setTrackError(result.error);
+      }
+      return;
+    }
     setTrackError(null);
-    setTrackTags((prev) => {
-      if (prev.includes(tagValue) || prev.length >= 10) return prev;
-      return [...prev, tagValue];
-    });
+    setTrackTags((prev) => [...prev, result.tag]);
     setTrackTagInput("");
   };
 
@@ -691,18 +698,13 @@ function ShippingOrderView() {
   };
 
   const handleSelectSuggestedTrackTag = (tag: string) => {
-    const tagValue = tag.trim();
-    if (!tagValue) return;
+    const result = canAddTrackTag(trackTags, tag);
+    if (!result.ok) {
+      setTrackError(result.error);
+      return;
+    }
     setTrackError(null);
-    setTrackTags((prev) => {
-      if (
-        prev.some((value) => value.toLowerCase() === tagValue.toLowerCase()) ||
-        prev.length >= 10
-      ) {
-        return prev;
-      }
-      return [...prev, tagValue];
-    });
+    setTrackTags((prev) => [...prev, result.tag]);
   };
 
   const updateTrackEmail = (index: number, value: string) => {
@@ -2175,7 +2177,7 @@ function ShippingOrderView() {
                     color: "#6b7280",
                   }}
                 >
-                  (opcional · {trackTags.length}/10)
+                  (opcional · {trackTags.length}/{MAX_TRACK_TAGS})
                 </span>
               </label>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -2191,14 +2193,16 @@ function ShippingOrderView() {
                     }
                   }}
                   placeholder="Escribe una etiqueta y presiona Enter"
-                  maxLength={64}
-                  disabled={trackTags.length >= 10}
+                  maxLength={MAX_TRACK_TAG_LENGTH}
+                  disabled={trackTags.length >= MAX_TRACK_TAGS}
                 />
                 <button
                   type="button"
                   className="asv-btn asv-btn--ghost asv-btn--sm"
                   onClick={addTrackTag}
-                  disabled={!trackTagInput.trim() || trackTags.length >= 10}
+                  disabled={
+                    !trackTagInput.trim() || trackTags.length >= MAX_TRACK_TAGS
+                  }
                 >
                   +
                 </button>
