@@ -26,11 +26,7 @@ export default function ExwPickupMap({
       placeholder="Calle, número, comuna, ciudad…"
       multiline
       pendingHint="Escribe la dirección y elige una opción de la lista para continuar."
-      confirmedHint={
-        coords
-          ? `Dirección confirmada (${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)})`
-          : undefined
-      }
+      confirmedHint={coords ? "Dirección confirmada." : undefined}
     />
   );
 }

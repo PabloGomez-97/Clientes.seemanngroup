@@ -179,6 +179,35 @@ export default function QuoteAirWizardScreen() {
             clientUsername={route.params?.clientUsername}
             clientName={route.params?.clientName}
             profitMarkupPct={profitMarkupPct}
+            onCloseHome={() => {
+              // Sube al tab navigator y vuelve al inicio (Dashboard / Home).
+              let nav: typeof navigation | undefined = navigation;
+              let tabNav: typeof navigation | undefined;
+              while (nav) {
+                const state = nav.getState?.();
+                const names = state?.routeNames as string[] | undefined;
+                if (
+                  names?.includes("Dashboard") ||
+                  names?.includes("Home")
+                ) {
+                  tabNav = nav;
+                  break;
+                }
+                nav = nav.getParent?.() as typeof navigation | undefined;
+              }
+              if (tabNav) {
+                const names = tabNav.getState().routeNames as string[];
+                const home = names.includes("Dashboard")
+                  ? "Dashboard"
+                  : names.includes("Home")
+                    ? "Home"
+                    : names[0];
+                // @ts-expect-error tab route names vary by portal role
+                tabNav.navigate(home);
+                return;
+              }
+              navigation.popToTop();
+            }}
           />
         ) : null}
       </ScrollView>

@@ -7,8 +7,12 @@ import {
 } from "../../src/components/quotes/Handlers/Air/airQuoteLinbisPayload";
 import {
   buildAirPdfCharges,
+  calculateAirBaseWithoutSeguro,
+  calculateSeguroAmount,
   calculateUltimaMillaAmount,
   computeAirFreightQuoteValues,
+  getCargoWeightTotals,
+  resolveAirFreightWeights,
   type AirAddonsState,
 } from "../../src/components/quotes/Handlers/Air/airQuotePricingShared";
 import {
@@ -31,6 +35,17 @@ import {
   type AirConnectPricedOffer,
 } from "../../src/services/airConnectSpainQuote";
 import { calculateAirConnectStep3Extras } from "../../src/components/quotes/AirConnectSpain/step3Extras";
+import { buildAirAduanaPdfBreakdown } from "../../src/components/quotes/pdf-template/pdfAduanaBreakdown";
+import {
+  formatValidUntilDisplay,
+  getValidityClass,
+} from "../../src/components/quotes/Handlers/handlerFechas";
+import {
+  DEFAULT_OVERALL_AIR_DESCRIPTION,
+  FIXED_AIR_PACKAGE_TYPE_NAME,
+} from "../../src/components/quotes/Handlers/Air/airQuoteCargoShared";
+import { capitalize } from "../../src/components/quotes/Handlers/Air/HandlerQuoteAir";
+import { buildAirQuotePdfHtml } from "./buildAirQuotePdfHtml";
 import type { AirStep1Result } from "../screens/cotizador/air/QuoteAirStep1";
 import type {
   AirStep2Result,
@@ -42,7 +57,13 @@ export type SubmitAirQuoteParams = {
   step2: AirStep2Result;
   step3: AirStep3Result;
   effectiveUsername: string;
+  clientName?: string;
   salesRep: SalesRepPayload;
+  /** Nombre visible del ejecutivo en el PDF */
+  salesRepName?: string;
+  /** Para notificación al ejecutivo (modo staff / cliente) */
+  ejecutivoEmail?: string;
+  ejecutivoNombre?: string;
   portalToken: string;
   accessToken: string | null;
   refreshAccessToken: () => Promise<string>;
@@ -103,40 +124,158 @@ function toAddons(step2: AirStep2Result, step3: AirStep3Result): AirAddonsState 
   };
 }
 
-function buildPdfHtml(params: {
+function formatPdfDate(d: Date): string {
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yyyy = d.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
+}
+
+function buildPdfHtmlFromQuote(params: {
   quoteNumber: string;
   step1: AirStep1Result;
+  step2: AirStep2Result;
+  step3: AirStep3Result;
   username: string;
+  salesRepName: string;
   charges: ReturnType<typeof buildAirPdfCharges>;
+  freight: ReturnType<typeof computeAirFreightQuoteValues>;
+  aduana: IAgenciaAduanaConfig;
   pending: boolean;
+  profitMarkupPct: number;
 }): string {
-  const rows = params.charges
-    .map(
-      (c) =>
-        `<tr><td>${c.code}</td><td>${c.description}</td><td>${c.quantity}</td><td>${c.unit}</td><td>${c.rate.toFixed(2)}</td><td>${c.amount.toFixed(2)}</td></tr>`,
-    )
-    .join("");
-  const total = params.charges.reduce((s, c) => s + c.amount, 0);
-  const currency = params.step1.ruta.currency || "USD";
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"/>
-  <style>
-    body{font-family:-apple-system,Helvetica,Arial,sans-serif;color:#0f172a;padding:24px}
-    h1{font-size:20px;margin:0 0 4px} h2{font-size:14px;color:#475569;font-weight:500;margin:0 0 16px}
-    .badge{display:inline-block;background:#0b1f3a;color:#fff;padding:4px 8px;border-radius:6px;font-size:12px;margin-bottom:12px}
-    table{width:100%;border-collapse:collapse;font-size:12px}
-    th,td{border-bottom:1px solid #e2e8f0;padding:8px;text-align:left}
-    th{background:#f8fafc} .total{font-weight:700;font-size:14px;margin-top:12px}
-    .pending{background:#fef3c7;padding:10px;border-radius:8px;margin-bottom:12px;font-size:12px}
-  </style></head><body>
-  <div class="badge">Seemann Group · Cotización Aérea</div>
-  <h1>${params.quoteNumber || "Cotización"}</h1>
-  <h2>${params.step1.ruta.origin} → ${params.step1.ruta.destination} · ${params.step1.incoterm} · ${params.username}</h2>
-  ${params.pending ? `<div class="pending">Cotización pendiente de tarifa — montos referenciales en $0 hasta confirmación del ejecutivo.</div>` : ""}
-  <table><thead><tr><th>Código</th><th>Descripción</th><th>Cant.</th><th>Unidad</th><th>Tarifa</th><th>Monto</th></tr></thead>
-  <tbody>${rows}</tbody></table>
-  <div class="total">Total: ${currency} ${total.toFixed(2)}</div>
-  <p style="font-size:11px;color:#64748b;margin-top:24px">Generado desde Portal Clientes Seemann Group (App móvil)</p>
-  </body></html>`;
+  const { step1, step2, step3, charges, freight } = params;
+  const overallMode = step2.mode === "overall";
+  const cargo = {
+    mode: step2.mode,
+    pieces: step2.pieces,
+    overallPieces: step2.overallPieces,
+  };
+  const totals = getCargoWeightTotals(cargo);
+  const { pesoAirFreight } = resolveAirFreightWeights(
+    step1.ruta,
+    totals.chargeableWeight,
+    step1.sinTarifa,
+  );
+  const airFreightMinWeight =
+    !params.pending && pesoAirFreight !== totals.chargeableWeight
+      ? pesoAirFreight
+      : undefined;
+
+  const baseWithoutSeguro =
+    freight != null
+      ? calculateAirBaseWithoutSeguro(
+          {
+            ruta: step1.ruta,
+            incoterm: step1.incoterm,
+            sinTarifa: step1.sinTarifa,
+            cargo,
+            profitMarkupPct: params.profitMarkupPct,
+            noApilableActivo: step2.noApilableActivo,
+          },
+          freight.incomeAmount,
+        )
+      : 0;
+  const seguroMonto = calculateSeguroAmount({
+    activo: step3.seguroActivo,
+    valorMercaderia: step3.valorMercaderia,
+    baseWithoutSeguro,
+  });
+
+  const aduanaBreakdown =
+    !params.pending && step3.aduanaActivo
+      ? buildAirAduanaPdfBreakdown({
+          activo: step3.aduanaActivo,
+          valorProducto: step3.valorProductoAduana,
+          costoTransporte: baseWithoutSeguro,
+          seguroActivo: step3.seguroActivo,
+          seguroMonto,
+          currency: step1.ruta.currency || freight?.currency || "USD",
+          config: params.aduana,
+        })
+      : undefined;
+
+  const validUntilDisplay = step1.sinTarifa
+    ? undefined
+    : formatValidUntilDisplay(step1.ruta.validUntil) ||
+      step1.ruta.validUntil ||
+      undefined;
+
+  const expirationDate = step1.sinTarifa
+    ? formatPdfDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000))
+    : validUntilDisplay ||
+      formatPdfDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
+
+  const totalCharges = charges.reduce((s, c) => s + c.amount, 0);
+
+  return buildAirQuotePdfHtml({
+    quoteNumber: params.quoteNumber,
+    customerName: params.username || "Customer",
+    origin: step1.ruta.origin,
+    destination: step1.ruta.destination,
+    effectiveDate: formatPdfDate(new Date()),
+    expirationDate,
+    incoterm: step1.incoterm,
+    pickupFromAddress:
+      step1.incoterm === "EXW" ? step1.pickupAddress : undefined,
+    deliveryToAddress:
+      step1.incoterm === "EXW" && !step3.ultimaMillaActivo
+        ? step1.ruta.destination
+        : undefined,
+    ultimaMillaDeliveryAddress: step3.ultimaMillaActivo
+      ? step3.ultimaMillaDireccion || undefined
+      : undefined,
+    salesRep: params.salesRepName || "—",
+    pieces: overallMode ? step2.overallPieces.length : step2.pieces.length,
+    packageTypeName: FIXED_AIR_PACKAGE_TYPE_NAME,
+    description: DEFAULT_OVERALL_AIR_DESCRIPTION,
+    totalWeight: totals.totalRealWeight,
+    totalVolume: totals.totalVolume,
+    chargeableWeight: totals.chargeableWeight,
+    charges,
+    totalCharges,
+    currency: freight?.currency || step1.ruta.currency || "USD",
+    overallMode,
+    piecesData: !overallMode
+      ? step2.pieces.map((piece) => ({
+          id: piece.id,
+          packageTypeName: FIXED_AIR_PACKAGE_TYPE_NAME,
+          length: piece.length,
+          width: piece.width,
+          height: piece.height,
+          description: DEFAULT_OVERALL_AIR_DESCRIPTION,
+          weight: piece.weight,
+          volume: piece.totalVolume,
+          volumeWeight: piece.volumeWeight,
+        }))
+      : undefined,
+    overallPiecesData: overallMode
+      ? step2.overallPieces.map((piece) => ({
+          id: piece.id,
+          packageTypeName: FIXED_AIR_PACKAGE_TYPE_NAME,
+          description: DEFAULT_OVERALL_AIR_DESCRIPTION,
+          weight: piece.weight,
+          volume: piece.volume,
+          chargeableWeight: Math.max(piece.weight, piece.volumeWeight),
+        }))
+      : undefined,
+    carrier: step1.sinTarifa ? "—" : step1.ruta.carrier || undefined,
+    transitTime: step1.sinTarifa ? "—" : step1.ruta.transitTime || undefined,
+    frequency: step1.sinTarifa ? "—" : step1.ruta.frequency || undefined,
+    routing: step1.sinTarifa ? "—" : step1.ruta.routing || undefined,
+    validUntil: validUntilDisplay,
+    isPendingQuote: params.pending,
+    company: params.pending
+      ? undefined
+      : capitalize(step1.ruta.company || "") || undefined,
+    assignedAirport:
+      step1.incoterm === "EXW" ? step1.origin.label : undefined,
+    airFreightMinWeight,
+    isExpiringSoon:
+      !step1.sinTarifa &&
+      getValidityClass(step1.ruta.validUntil) === "expiring-soon",
+    aduanaBreakdown,
+  });
 }
 
 async function resolveQuoteNumber(
@@ -175,45 +314,65 @@ async function resolveQuoteNumber(
   return `AIR-${Date.now()}`;
 }
 
-async function uploadAndSharePdf(params: {
+async function generateAndUploadPdf(params: {
   quoteNumber: string;
   html: string;
   portalToken: string;
   step1: AirStep1Result;
   username: string;
+  subidoPor?: string;
 }): Promise<string | null> {
-  // Lazy: evita cargar ExpoPrint / Sharing al arranque (requireNativeModule).
+  // Lazy: evita cargar ExpoPrint al arranque (requireNativeModule).
   const Print = await import("expo-print");
-  const Sharing = await import("expo-sharing");
   const FileSystem = await import("expo-file-system/legacy");
-  const printed = await Print.printToFileAsync({ html: params.html });
-  const filename = `Cotizacion_AIR_${params.quoteNumber}.pdf`;
+  const printed = await Print.printToFileAsync({
+    html: params.html,
+    base64: true,
+  });
+  const customerClean = params.username.replace(/[^a-zA-Z0-9_-]/g, "_");
+  const filename = `${params.quoteNumber}_${customerClean}.pdf`;
   const cacheDir = FileSystem.cacheDirectory;
-  const destUri = cacheDir
-    ? `${cacheDir}${filename}`
-    : printed.uri;
+  const destUri = cacheDir ? `${cacheDir}${filename}` : printed.uri;
+
+  const base64 =
+    typeof printed.base64 === "string" && printed.base64.length > 0
+      ? printed.base64
+      : await FileSystem.readAsStringAsync(printed.uri, {
+          encoding: "base64",
+        });
 
   try {
-    const base64 = await FileSystem.readAsStringAsync(printed.uri, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
-    await fetch(`${MOBILE_API_BASE}/api/quote-pdf/upload`, {
+    // Campos de ownership al inicio: si el body se trunca, igual fallará el JSON,
+    // pero dejamos usuarioId explícito y claro para staff → cliente.
+    const uploadBody = {
+      quoteNumber: params.quoteNumber,
+      usuarioId: params.username,
+      subidoPor: params.subidoPor || params.username,
+      nombreArchivo: filename,
+      tipoServicio: "AIR" as const,
+      origen: params.step1.ruta.origin,
+      destino: params.step1.ruta.destination,
+      contenidoBase64: base64,
+    };
+    const uploadRes = await fetch(`${MOBILE_API_BASE}/api/quote-pdf/upload`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${params.portalToken}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        quoteNumber: params.quoteNumber,
-        nombreArchivo: filename,
-        contenidoBase64: base64,
-        tipoServicio: "AIR",
-        origen: params.step1.ruta.origin,
-        destino: params.step1.ruta.destination,
-        usuarioId: params.username,
-        subidoPor: params.username,
-      }),
+      body: JSON.stringify(uploadBody),
     });
+    if (!uploadRes.ok) {
+      const errText = await uploadRes.text().catch(() => "");
+      console.warn(
+        `[airQuoteSubmit] PDF upload HTTP ${uploadRes.status}:`,
+        errText.slice(0, 400),
+      );
+    } else {
+      console.log(
+        `[airQuoteSubmit] PDF subido a Cloudflare para usuarioId=${params.username} quote=${params.quoteNumber}`,
+      );
+    }
   } catch (e) {
     console.warn("[airQuoteSubmit] PDF upload failed:", e);
   }
@@ -222,23 +381,23 @@ async function uploadAndSharePdf(params: {
     if (cacheDir && destUri !== printed.uri) {
       await FileSystem.copyAsync({ from: printed.uri, to: destUri });
     }
-    if (await Sharing.isAvailableAsync()) {
-      await Sharing.shareAsync(destUri, {
-        mimeType: "application/pdf",
-        dialogTitle: "Compartir cotización",
-        UTI: "com.adobe.pdf",
-      });
-    }
     return destUri;
   } catch {
-    if (await Sharing.isAvailableAsync()) {
-      await Sharing.shareAsync(printed.uri, {
-        mimeType: "application/pdf",
-        dialogTitle: "Compartir cotización",
-      });
-    }
     return printed.uri;
   }
+}
+
+/** Comparte un PDF ya generado (p. ej. tras "Compartir PDF"). */
+export async function shareAirQuotePdf(pdfUri: string): Promise<void> {
+  const Sharing = await import("expo-sharing");
+  if (!(await Sharing.isAvailableAsync())) {
+    throw new Error("Compartir no está disponible en este dispositivo");
+  }
+  await Sharing.shareAsync(pdfUri, {
+    mimeType: "application/pdf",
+    dialogTitle: "Compartir cotización",
+    UTI: "com.adobe.pdf",
+  });
 }
 
 export async function submitAirQuote(
@@ -249,7 +408,11 @@ export async function submitAirQuote(
     step2,
     step3,
     effectiveUsername,
+    clientName,
     salesRep,
+    salesRepName,
+    ejecutivoEmail,
+    ejecutivoNombre,
     portalToken,
     accessToken,
     refreshAccessToken,
@@ -442,44 +605,132 @@ export async function submitAirQuote(
     previousMaxId,
   );
 
-  if (step1.sinTarifa) {
-    try {
-      await fetch(`${MOBILE_API_BASE}/api/send-no-rate-quote-email`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${portalToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          quoteNumber,
-          origen: step1.ruta.origin,
-          destino: step1.ruta.destination,
-          carrier: step1.ruta.carrier || "",
-          incoterm: step1.incoterm,
-          clienteNombre: effectiveUsername,
-          tipoServicio: "AIR",
-        }),
-      });
-    } catch (e) {
-      console.warn("[airQuoteSubmit] no-rate email:", e);
-    }
-  }
-
-  const html = buildPdfHtml({
+  const html = buildPdfHtmlFromQuote({
     quoteNumber,
     step1,
+    step2,
+    step3,
     username: effectiveUsername,
+    salesRepName:
+      salesRepName ||
+      ("name" in salesRep ? salesRep.name : "") ||
+      "—",
     charges: pdfCharges,
+    freight,
+    aduana,
     pending: step1.sinTarifa,
+    profitMarkupPct,
   });
 
-  const pdfUri = await uploadAndSharePdf({
+  const pdfUri = await generateAndUploadPdf({
     quoteNumber,
     html,
     portalToken,
     step1,
     username: effectiveUsername,
+    subidoPor: ejecutivoEmail || effectiveUsername,
   });
+
+  // Correos después del upload para que Brevo pueda adjuntar el PDF de R2.
+  if (step1.sinTarifa) {
+    try {
+      const emailRes = await fetch(
+        `${MOBILE_API_BASE}/api/send-no-rate-quote-email`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${portalToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            quoteType: "AIR",
+            quoteNumber,
+            cargoDetails: {
+              origen: step1.ruta.origin,
+              destino: step1.ruta.destination,
+              carrier: step1.ruta.carrier || "",
+              incoterm: step1.incoterm,
+            },
+            clienteUsername: effectiveUsername,
+            clienteNombre: clientName || effectiveUsername,
+            ejecutivoEmail,
+            ejecutivoNombre,
+          }),
+        },
+      );
+      if (!emailRes.ok) {
+        console.warn(
+          "[airQuoteSubmit] no-rate email HTTP",
+          emailRes.status,
+          await emailRes.text().catch(() => ""),
+        );
+      }
+    } catch (e) {
+      console.warn("[airQuoteSubmit] no-rate email:", e);
+    }
+  } else {
+    const totalCharges = pdfCharges.reduce((s, c) => s + c.amount, 0);
+    const currency = freight?.currency || step1.ruta.currency || "USD";
+    try {
+      const emailRes = await fetch(
+        `${MOBILE_API_BASE}/api/send-operation-email`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${portalToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            ejecutivoEmail,
+            ejecutivoNombre,
+            clienteUsername: effectiveUsername,
+            clienteNombre: clientName || effectiveUsername,
+            tipoServicio: "Aéreo",
+            origen: step1.ruta.origin,
+            destino: step1.ruta.destination,
+            carrier: step1.ruta.carrier || "",
+            description: "Cargamento Aéreo",
+            chargeableWeight: step2.chargeableWeight,
+            incoterm: step1.incoterm,
+            pickupFromAddress:
+              step1.incoterm === "EXW" ? step1.pickupAddress : undefined,
+            deliveryToAddress:
+              step1.incoterm === "EXW" ? step1.ruta.destination : undefined,
+            ...(step3.ultimaMillaActivo
+              ? {
+                  ultimaMilla: true,
+                  ultimaMillaDireccion: step3.ultimaMillaDireccion,
+                  ultimaMillaMonto: `${currency} ${calculateUltimaMillaAmount(
+                    {
+                      activo: true,
+                      bracket: step3.ultimaMillaBracket,
+                      zone: step3.ultimaMillaZone,
+                      extendedMultiplier: vespucioMult,
+                    },
+                  ).toFixed(2)}`,
+                  ultimaMillaZonaExtendida:
+                    step3.ultimaMillaZone === "extended",
+                }
+              : {}),
+            currency,
+            total: `${currency} ${totalCharges.toFixed(2)}`,
+            tipoAccion: "cotizacion",
+            agente: step1.ruta.company || undefined,
+            quoteNumber,
+          }),
+        },
+      );
+      if (!emailRes.ok) {
+        console.warn(
+          "[airQuoteSubmit] operation email HTTP",
+          emailRes.status,
+          await emailRes.text().catch(() => ""),
+        );
+      }
+    } catch (e) {
+      console.warn("[airQuoteSubmit] operation email:", e);
+    }
+  }
 
   return { quoteNumber, pdfUri };
 }

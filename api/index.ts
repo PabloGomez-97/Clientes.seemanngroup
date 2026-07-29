@@ -6428,11 +6428,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         const { quoteNumber, nombreArchivo, contenidoBase64, tipoServicio, origen, destino } = req.body;
 
-        const overrideUsuarioId = typeof (req.body.usuarioId) === 'string' ? String(req.body.usuarioId) : null;
-        const overrideSubidoPor = typeof (req.body.subidoPor) === 'string' ? String(req.body.subidoPor) : null;
-        const shouldUseOverride = currentUser.username === 'Ejecutivo' && overrideUsuarioId && overrideSubidoPor;
-        const resolvedUsuarioId = shouldUseOverride ? overrideUsuarioId : currentUser.username;
-        const resolvedSubidoPor = shouldUseOverride ? overrideSubidoPor : currentUser.sub;
+        const overrideUsuarioId =
+          typeof req.body.usuarioId === 'string' && req.body.usuarioId.trim()
+            ? String(req.body.usuarioId).trim()
+            : null;
+        const overrideSubidoPor =
+          typeof req.body.subidoPor === 'string' && req.body.subidoPor.trim()
+            ? String(req.body.subidoPor).trim()
+            : null;
+        // Staff siempre guarda el PDF bajo el username del cliente (portal lo lista por usuarioId).
+        const shouldUseOverride =
+          currentUser.username === 'Ejecutivo' && !!overrideUsuarioId;
+        const resolvedUsuarioId = shouldUseOverride
+          ? overrideUsuarioId
+          : currentUser.username;
+        const resolvedSubidoPor = shouldUseOverride
+          ? overrideSubidoPor || currentUser.sub
+          : currentUser.sub;
 
         if (!quoteNumber || !nombreArchivo || !contenidoBase64 || !tipoServicio) {
           return res.status(400).json({
@@ -6481,6 +6493,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           existente.contenidoBase64 = undefined;  // Limpiar legacy si existía
           await existente.save();
 
+          if (shouldUseOverride && resolvedUsuarioId !== 'Ejecutivo') {
+            await QuotePDF.deleteOne({
+              quoteNumber: String(quoteNumber),
+              usuarioId: 'Ejecutivo',
+            });
+          }
+
           console.log(`[quote-pdf] Metadatos actualizados para cotización ${quoteNumber}`);
           return res.status(200).json({
             success: true,
@@ -6506,7 +6525,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           subidoPor: resolvedSubidoPor,
         });
 
-        console.log(`[quote-pdf] PDF subido para cotización ${quoteNumber}: ${nuevoQuotePDF._id}`);
+        if (shouldUseOverride && resolvedUsuarioId !== 'Ejecutivo') {
+          await QuotePDF.deleteOne({
+            quoteNumber: String(quoteNumber),
+            usuarioId: 'Ejecutivo',
+          });
+        }
+
+        console.log(`[quote-pdf] PDF subido para cotización ${quoteNumber}: ${nuevoQuotePDF._id} (usuarioId=${resolvedUsuarioId})`);
 
         return res.status(201).json({
           success: true,
@@ -6542,7 +6568,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         );
 
         const pdfs = await QuotePDF.find({
-          usuarioId: ownerUsername,
+          ...(ownerUsername === 'Ejecutivo'
+            ? { usuarioId: ownerUsername }
+            : {
+                $or: [
+                  { usuarioId: ownerUsername },
+                  { usuarioId: 'Ejecutivo' },
+                ],
+              }),
           quoteNumber: { $exists: true, $nin: ['', null] }
         })
           .select('-contenidoBase64')
@@ -6614,10 +6647,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           getRequestedDocumentOwnerUsername(req),
         );
 
-        const quotePdf = await QuotePDF.findOne({
-          quoteNumber: decodeURIComponent(quoteNumber),
+        const decodedQuoteNumber = decodeURIComponent(quoteNumber);
+        let quotePdf = await QuotePDF.findOne({
+          quoteNumber: decodedQuoteNumber,
           usuarioId: ownerUsername
         });
+
+        if (!quotePdf && ownerUsername !== 'Ejecutivo') {
+          quotePdf = await QuotePDF.findOne({
+            quoteNumber: decodedQuoteNumber,
+            usuarioId: 'Ejecutivo',
+          });
+        }
 
         if (!quotePdf) {
           return res.status(404).json({ error: 'PDF de cotización no encontrado' });
@@ -6696,10 +6737,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             : getRequestedDocumentOwnerUsername(req),
         );
 
-        const quotePdf = await QuotePDF.findOne({
+        let quotePdf = await QuotePDF.findOne({
           quoteNumber: String(body.quoteNumber).trim(),
           usuarioId: ownerUsername,
         }).lean();
+
+        if (!quotePdf && ownerUsername !== 'Ejecutivo') {
+          quotePdf = await QuotePDF.findOne({
+            quoteNumber: String(body.quoteNumber).trim(),
+            usuarioId: 'Ejecutivo',
+          }).lean();
+        }
 
         if (!quotePdf) {
           return res.status(404).json({ error: 'PDF de cotización no encontrado' });

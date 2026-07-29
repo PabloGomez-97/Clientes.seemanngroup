@@ -232,10 +232,7 @@ export default function PlacesAddressField({
       {error && !coords ? <Text style={styles.error}>{error}</Text> : null}
 
       {coords ? (
-        <Text style={styles.ok}>
-          {confirmedHint ||
-            `Dirección confirmada (${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)})`}
-        </Text>
+        <Text style={styles.ok}>{confirmedHint || "Dirección confirmada."}</Text>
       ) : (
         <Text style={styles.hint}>{pendingHint}</Text>
       )}

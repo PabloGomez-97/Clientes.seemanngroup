@@ -103,10 +103,20 @@ export async function loadQuotePdfAttachment(
     } | null> };
   },
 ): Promise<{ content: string; name: string } | null> {
-  const quotePdf = await QuotePDFModel.findOne({
-    quoteNumber: String(quoteNumber),
-    usuarioId: String(usuarioId),
+  const qn = String(quoteNumber);
+  const uid = String(usuarioId);
+  let quotePdf = await QuotePDFModel.findOne({
+    quoteNumber: qn,
+    usuarioId: uid,
   }).lean();
+
+  // Misma fallback que list/download: staff pudo guardar bajo "Ejecutivo".
+  if (!quotePdf && uid !== 'Ejecutivo') {
+    quotePdf = await QuotePDFModel.findOne({
+      quoteNumber: qn,
+      usuarioId: 'Ejecutivo',
+    }).lean();
+  }
 
   if (!quotePdf) {
     console.warn(

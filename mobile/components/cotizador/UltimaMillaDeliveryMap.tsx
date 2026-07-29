@@ -18,13 +18,13 @@ type Props = {
     zone: VespucioDeliveryZone | null,
     coords: DeliveryCoords | null,
   ) => void;
-  extendedPct: number;
 };
 
+/** Places API (New): circle.radius máx. 50_000 m. */
 const SANTIAGO_BIAS = {
   lat: -33.4489,
   lng: -70.6693,
-  radiusMeters: 80_000,
+  radiusMeters: 50_000,
 };
 
 /** Entrega última milla SCL: autocomplete + zona Vespucio (sin mapa ni botón buscar). */
@@ -32,7 +32,6 @@ export default function UltimaMillaDeliveryMap({
   address,
   onAddressChange,
   onZoneChange,
-  extendedPct,
 }: Props) {
   const [coords, setCoords] = useState<DeliveryCoords | null>(null);
   const zone = coords ? getVespucioDeliveryZone(coords) : null;
@@ -61,23 +60,14 @@ export default function UltimaMillaDeliveryMap({
         country="cl"
         locationBias={SANTIAGO_BIAS}
         pendingHint="Escribe la dirección en Santiago y elige una opción de la lista."
-        confirmedHint={
-          coords
-            ? `Ubicación OK (${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)})`
-            : undefined
-        }
+        confirmedHint={coords ? "Dirección confirmada." : undefined}
       />
-      {zone === "extended" ? (
-        <Text style={styles.zoneInfo}>
-          Zona extendida: +{extendedPct}% sobre transporte terrestre.
-        </Text>
-      ) : null}
       {zone === "outside" ? (
         <Text style={styles.zoneOut}>
-          Fuera de cobertura Vespucio. No es posible agregar Última Milla.
+          Fuera de cobertura. No es posible agregar Última Milla.
         </Text>
       ) : null}
-      {zone === "inside" ? (
+      {zone === "inside" || zone === "extended" ? (
         <Text style={styles.zoneOk}>Dirección dentro de cobertura.</Text>
       ) : null}
     </View>
@@ -86,11 +76,6 @@ export default function UltimaMillaDeliveryMap({
 
 const styles = StyleSheet.create({
   wrap: { gap: 8 },
-  zoneInfo: {
-    fontSize: 12,
-    fontFamily: fonts.regular,
-    color: brand.inkSecondary,
-  },
   zoneOut: { fontSize: 12, fontFamily: fonts.medium, color: "#b42318" },
   zoneOk: { fontSize: 12, fontFamily: fonts.medium, color: "#15803d" },
 });

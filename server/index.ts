@@ -2176,7 +2176,10 @@ app.post('/api/places/autocomplete', auth, async (req, res) => {
             latitude: req.body.locationBias.lat,
             longitude: req.body.locationBias.lng,
           },
-          radius: Number(req.body.locationBias.radiusMeters) || 80000,
+          radius: Math.min(
+            Math.max(Number(req.body.locationBias.radiusMeters) || 50000, 0),
+            50000,
+          ),
         },
       };
     }
@@ -5602,7 +5605,7 @@ app.post('/api/send-operation-email', auth, async (req, res) => {
       '';
     const pdfAttachment =
       quoteNumber && pdfUsuarioId
-        ? await loadQuotePdfAttachment(String(quoteNumber), pdfUsuarioId, QuotePDF)
+        ? await loadQuotePdfAttachmentWithRetry(String(quoteNumber), pdfUsuarioId, QuotePDF)
         : null;
 
     if (!pdfAttachment && quoteNumber) {
@@ -6072,14 +6075,31 @@ app.post('/api/send-special-quote-email', auth, async (req, res) => {
 app.post('/api/send-no-rate-quote-email', auth, async (req, res) => {
   try {
     const currentUser = await User.findOne({ email: (req as any).user.sub }).populate('ejecutivoId');
-    if (!currentUser || !currentUser.ejecutivoId) {
-      return res.status(400).json({ error: 'No se encontró ejecutivo asignado al usuario' });
+    if (!currentUser) {
+      return res.status(401).json({ error: 'Usuario no encontrado' });
     }
 
-    const ejecutivoEmail = (currentUser.ejecutivoId as any).email;
-    const ejecutivoNombre = (currentUser.ejecutivoId as any).nombre || 'Ejecutivo';
-    const clienteUsername = currentUser.username || currentUser.email;
-    const clienteNombre = currentUser.nombreuser || undefined;
+    const ejecutivoResolved = await resolveEjecutivoForEmail(
+      currentUser,
+      {
+        ejecutivoEmail: req.body?.ejecutivoEmail,
+        ejecutivoNombre: req.body?.ejecutivoNombre,
+      },
+      Ejecutivo,
+    );
+    if (!ejecutivoResolved) {
+      return res.status(400).json({ error: 'No se encontró ejecutivo asignado al usuario' });
+    }
+    const { ejecutivoEmail, ejecutivoNombre } = ejecutivoResolved;
+
+    const clienteUsername =
+      (typeof req.body?.clienteUsername === 'string' && req.body.clienteUsername.trim()) ||
+      currentUser.username ||
+      currentUser.email;
+    const clienteNombre =
+      (typeof req.body?.clienteNombre === 'string' && req.body.clienteNombre.trim()) ||
+      currentUser.nombreuser ||
+      undefined;
 
     const { quoteType, cargoDetails } = req.body as {
       quoteType: 'AIR' | 'FCL' | 'LCL' | 'LASTMILE';
@@ -6283,14 +6303,25 @@ app.post('/api/quote-pdf/upload', auth, async (req, res) => {
 
     const { quoteNumber, nombreArchivo, contenidoBase64, tipoServicio, origen, destino } = req.body;
 
-    const overrideUsuarioId = typeof (req.body.usuarioId) === 'string' ? String(req.body.usuarioId) : null;
-    const overrideSubidoPor = typeof (req.body.subidoPor) === 'string' ? String(req.body.subidoPor) : null;
+    const overrideUsuarioId =
+      typeof req.body.usuarioId === 'string' && req.body.usuarioId.trim()
+        ? String(req.body.usuarioId).trim()
+        : null;
+    const overrideSubidoPor =
+      typeof req.body.subidoPor === 'string' && req.body.subidoPor.trim()
+        ? String(req.body.subidoPor).trim()
+        : null;
 
+    // Staff siempre guarda el PDF bajo el username del cliente (portal lo lista por usuarioId).
     const shouldUseOverride =
-      currentUser.username === 'Ejecutivo' && overrideUsuarioId && overrideSubidoPor;
+      currentUser.username === 'Ejecutivo' && !!overrideUsuarioId;
 
-    const resolvedUsuarioId = shouldUseOverride ? overrideUsuarioId : currentUser.username;
-    const resolvedSubidoPor = shouldUseOverride ? overrideSubidoPor : currentUser.sub;
+    const resolvedUsuarioId = shouldUseOverride
+      ? overrideUsuarioId
+      : currentUser.username;
+    const resolvedSubidoPor = shouldUseOverride
+      ? overrideSubidoPor || currentUser.sub
+      : currentUser.sub;
 
     if (!quoteNumber || !nombreArchivo || !contenidoBase64 || !tipoServicio) {
       return res.status(400).json({
@@ -6339,6 +6370,13 @@ app.post('/api/quote-pdf/upload', auth, async (req, res) => {
       existente.contenidoBase64 = undefined;  // Limpiar legacy si existía
       await existente.save();
 
+      if (shouldUseOverride && resolvedUsuarioId !== 'Ejecutivo') {
+        await QuotePDF.deleteOne({
+          quoteNumber: String(quoteNumber),
+          usuarioId: 'Ejecutivo',
+        });
+      }
+
       console.log(`[quote-pdf] Metadatos actualizados para cotización ${quoteNumber}`);
       return res.status(200).json({
         success: true,
@@ -6364,7 +6402,14 @@ app.post('/api/quote-pdf/upload', auth, async (req, res) => {
       subidoPor: resolvedSubidoPor,
     });
 
-    console.log(`[quote-pdf] PDF subido para cotización ${quoteNumber}: ${nuevoQuotePDF._id}`);
+    if (shouldUseOverride && resolvedUsuarioId !== 'Ejecutivo') {
+      await QuotePDF.deleteOne({
+        quoteNumber: String(quoteNumber),
+        usuarioId: 'Ejecutivo',
+      });
+    }
+
+    console.log(`[quote-pdf] PDF subido para cotización ${quoteNumber}: ${nuevoQuotePDF._id} (usuarioId=${resolvedUsuarioId})`);
 
     return res.status(201).json({
       success: true,
@@ -6397,7 +6442,15 @@ app.get('/api/quote-pdf/list', auth, async (req, res) => {
     );
 
     const pdfs = await QuotePDF.find({
-      usuarioId: ownerUsername,
+      ...(ownerUsername === 'Ejecutivo'
+        ? { usuarioId: ownerUsername }
+        : {
+            $or: [
+              { usuarioId: ownerUsername },
+              // PDFs generados por staff sin override quedaron bajo "Ejecutivo"
+              { usuarioId: 'Ejecutivo' },
+            ],
+          }),
       quoteNumber: { $exists: true, $nin: ['', null] }
     })
       .select('-contenidoBase64')
@@ -6470,10 +6523,19 @@ app.get('/api/quote-pdf/download/:quoteNumber', auth, async (req, res) => {
       getRequestedDocumentOwnerUsername(req),
     );
 
-    const quotePdf = await QuotePDF.findOne({
-      quoteNumber: decodeURIComponent(quoteNumber),
+    const decodedQuoteNumber = decodeURIComponent(quoteNumber);
+    let quotePdf = await QuotePDF.findOne({
+      quoteNumber: decodedQuoteNumber,
       usuarioId: ownerUsername
     });
+
+    // Fallback: staff subió el PDF bajo "Ejecutivo" en vez del cliente
+    if (!quotePdf && ownerUsername !== 'Ejecutivo') {
+      quotePdf = await QuotePDF.findOne({
+        quoteNumber: decodedQuoteNumber,
+        usuarioId: 'Ejecutivo',
+      });
+    }
 
     if (!quotePdf) {
       return res.status(404).json({ error: 'PDF de cotización no encontrado' });
@@ -6540,10 +6602,17 @@ app.post('/api/quote-pdf/resend', auth, async (req, res) => {
         : getRequestedDocumentOwnerUsername(req),
     );
 
-    const quotePdf = await QuotePDF.findOne({
+    let quotePdf = await QuotePDF.findOne({
       quoteNumber: String(quoteNumber).trim(),
       usuarioId: ownerUsername,
     }).lean();
+
+    if (!quotePdf && ownerUsername !== 'Ejecutivo') {
+      quotePdf = await QuotePDF.findOne({
+        quoteNumber: String(quoteNumber).trim(),
+        usuarioId: 'Ejecutivo',
+      }).lean();
+    }
 
     if (!quotePdf) {
       return res.status(404).json({ error: 'PDF de cotización no encontrado' });

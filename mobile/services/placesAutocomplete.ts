@@ -146,11 +146,13 @@ export async function fetchPlaceSuggestions(
   }
 
   if (options.locationBias) {
-    const { lat, lng, radiusMeters = 80_000 } = options.locationBias;
+    // Places API (New): locationBias.circle.radius debe estar entre 0 y 50_000.
+    const { lat, lng, radiusMeters = 50_000 } = options.locationBias;
+    const radius = Math.min(Math.max(radiusMeters, 0), 50_000);
     body.locationBias = {
       circle: {
         center: { latitude: lat, longitude: lng },
-        radius: radiusMeters,
+        radius,
       },
     };
   }

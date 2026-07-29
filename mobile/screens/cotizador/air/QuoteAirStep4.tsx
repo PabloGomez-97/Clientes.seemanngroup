@@ -27,6 +27,7 @@ import { isStaffUser } from "../../../auth/portalRouting";
 import {
   computeAirConnectStep3Extra,
   fetchMobileAirConnectOffers,
+  shareAirQuotePdf,
   submitAirQuote,
 } from "../../../services/airQuoteSubmit";
 import { brand, radii, spacing } from "../../../theme/brand";
@@ -41,7 +42,7 @@ type Props = {
   clientUsername?: string;
   clientName?: string;
   profitMarkupPct: number;
-  onDone?: () => void;
+  onCloseHome?: () => void;
 };
 
 export default function QuoteAirStep4({
@@ -51,7 +52,7 @@ export default function QuoteAirStep4({
   clientUsername,
   clientName,
   profitMarkupPct,
-  onDone,
+  onCloseHome,
 }: Props) {
   const { user, token, activeUsername } = useAuth();
   const { accessToken, refreshAccessToken, loading: linbisLoading } =
@@ -59,8 +60,11 @@ export default function QuoteAirStep4({
   const staff = isStaffUser(user);
 
   const [submitting, setSubmitting] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const [doneMsg, setDoneMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [generatedPdfUri, setGeneratedPdfUri] = useState<string | null>(null);
+  const [quoteGenerated, setQuoteGenerated] = useState(false);
 
   const [acLoading, setAcLoading] = useState(false);
   const [acError, setAcError] = useState<string | null>(null);
@@ -75,14 +79,14 @@ export default function QuoteAirStep4({
     ? clientUsername || ""
     : activeUsername || user?.username || "";
 
+  const salesRepName = staff
+    ? user?.nombreuser || user?.username || ""
+    : user?.ejecutivo?.nombre?.trim() || "";
+
   const salesRep =
     typeof user?.ejecutivo?.idInterno === "number"
       ? { id: user.ejecutivo.idInterno }
-      : {
-          name: staff
-            ? user?.nombreuser || user?.username || ""
-            : user?.ejecutivo?.nombre?.trim() || "",
-        };
+      : { name: salesRepName };
 
   const base = useMemo(
     () => ({
@@ -223,6 +227,7 @@ export default function QuoteAirStep4({
       : 0;
 
   const canSubmit =
+    !quoteGenerated &&
     !!token &&
     !!effectiveUsername &&
     !linbisLoading &&
@@ -241,7 +246,15 @@ export default function QuoteAirStep4({
         step2,
         step3,
         effectiveUsername,
+        clientName: clientName || effectiveUsername,
         salesRep,
+        salesRepName,
+        ejecutivoEmail: staff
+          ? user?.ejecutivo?.email || user?.email
+          : user?.ejecutivo?.email,
+        ejecutivoNombre: staff
+          ? user?.ejecutivo?.nombre || user?.nombreuser || user?.username
+          : user?.ejecutivo?.nombre,
         portalToken: token,
         accessToken,
         refreshAccessToken,
@@ -249,16 +262,33 @@ export default function QuoteAirStep4({
         airConnectOffer: step1.airConnect ? selectedOffer : null,
         airConnectStep3Extra: step1.airConnect ? acExtra : 0,
       });
-      setDoneMsg(
-        `Cotización ${result.quoteNumber} creada. Puedes compartir el PDF.`,
-      );
-      onDone?.();
+      setGeneratedPdfUri(result.pdfUri);
+      setQuoteGenerated(true);
+      setDoneMsg(`Cotización ${result.quoteNumber} creada correctamente.`);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Error al generar cotización";
       setError(msg);
       Alert.alert("Error", msg);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleShare = async () => {
+    if (!generatedPdfUri) {
+      Alert.alert("PDF", "No hay PDF disponible para compartir.");
+      return;
+    }
+    setSharing(true);
+    try {
+      await shareAirQuotePdf(generatedPdfUri);
+    } catch (e) {
+      Alert.alert(
+        "Error",
+        e instanceof Error ? e.message : "No se pudo compartir el PDF",
+      );
+    } finally {
+      setSharing(false);
     }
   };
 
@@ -312,6 +342,7 @@ export default function QuoteAirStep4({
                 <Pressable
                   key={offer.key}
                   style={[styles.offer, on && styles.offerOn]}
+                  disabled={quoteGenerated}
                   onPress={() => setSelectedOffer(offer)}
                 >
                   <Text style={[styles.offerTitle, on && styles.offerTitleOn]}>
@@ -325,45 +356,75 @@ export default function QuoteAirStep4({
             })
           )}
         </View>
-      ) : (
-        <View style={styles.chargesBox}>
-          <Text style={styles.sectionTitle}>Cargos estimados</Text>
-          {step1.sinTarifa ? (
-            <Text style={styles.pending}>
-              Pendiente de tarifa: el ejecutivo recibirá tu solicitud.
-            </Text>
-          ) : null}
-          {pdfPreview.map((c) => (
-            <View key={`${c.code}-${c.description}`} style={styles.chargeRow}>
-              <Text style={styles.chargeLabel}>{c.description}</Text>
-              <Text style={styles.chargeAmt}>
-                {currency} {c.amount.toFixed(2)}
-              </Text>
-            </View>
-          ))}
-          <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>Total</Text>
-            <Text style={styles.totalAmt}>
-              {currency} {totalPreview.toFixed(2)}
+      ) : staff ? (
+        <View style={styles.chargesWrap}>
+          <View style={styles.staffWarn}>
+            <Text style={styles.staffWarnText}>
+              Los cargos estimados NO los puede ver el cliente
             </Text>
           </View>
+          <View style={styles.chargesBox}>
+            <Text style={styles.sectionTitle}>Cargos estimados</Text>
+            {step1.sinTarifa ? (
+              <Text style={styles.pending}>
+                Pendiente de tarifa: el ejecutivo recibirá tu solicitud.
+              </Text>
+            ) : null}
+            {pdfPreview.map((c) => (
+              <View key={`${c.code}-${c.description}`} style={styles.chargeRow}>
+                <Text style={styles.chargeLabel}>{c.description}</Text>
+                <Text style={styles.chargeAmt}>
+                  {currency} {c.amount.toFixed(2)}
+                </Text>
+              </View>
+            ))}
+            <View style={styles.totalRow}>
+              <Text style={styles.totalLabel}>Total</Text>
+              <Text style={styles.totalAmt}>
+                {currency} {totalPreview.toFixed(2)}
+              </Text>
+            </View>
+          </View>
         </View>
-      )}
+      ) : step1.sinTarifa ? (
+        <Text style={styles.pending}>
+          Pendiente de tarifa: el ejecutivo recibirá tu solicitud.
+        </Text>
+      ) : null}
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
       {doneMsg ? <Text style={styles.ok}>{doneMsg}</Text> : null}
 
-      <Pressable
-        style={[styles.primaryBtn, !canSubmit && styles.primaryDisabled]}
-        disabled={!canSubmit}
-        onPress={() => void handleSubmit()}
-      >
-        {submitting ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.primaryBtnText}>Generar cotización</Text>
-        )}
-      </Pressable>
+      {quoteGenerated ? (
+        <View style={styles.postActions}>
+          <Pressable
+            style={[styles.primaryBtn, sharing && styles.primaryDisabled]}
+            disabled={sharing || !generatedPdfUri}
+            onPress={() => void handleShare()}
+          >
+            {sharing ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.primaryBtnText}>Compartir PDF</Text>
+            )}
+          </Pressable>
+          <Pressable style={styles.secondaryBtn} onPress={() => onCloseHome?.()}>
+            <Text style={styles.secondaryBtnText}>Cerrar</Text>
+          </Pressable>
+        </View>
+      ) : (
+        <Pressable
+          style={[styles.primaryBtn, !canSubmit && styles.primaryDisabled]}
+          disabled={!canSubmit}
+          onPress={() => void handleSubmit()}
+        >
+          {submitting ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.primaryBtnText}>Generar cotización</Text>
+          )}
+        </Pressable>
+      )}
     </View>
   );
 }
@@ -403,6 +464,20 @@ const styles = StyleSheet.create({
     fontFamily: fonts.semiBold,
     color: brand.navy,
     marginBottom: 4,
+  },
+  chargesWrap: { gap: 8 },
+  staffWarn: {
+    backgroundColor: "#fef3c7",
+    borderWidth: 1,
+    borderColor: "#f59e0b",
+    borderRadius: radii.md,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  staffWarnText: {
+    fontSize: 12,
+    fontFamily: fonts.semiBold,
+    color: "#92400e",
   },
   chargesBox: {
     backgroundColor: brand.surface,
@@ -464,6 +539,7 @@ const styles = StyleSheet.create({
   offerAmt: { fontSize: 13, fontFamily: fonts.medium, color: brand.primary },
   error: { fontSize: 13, fontFamily: fonts.medium, color: "#b42318" },
   ok: { fontSize: 13, fontFamily: fonts.medium, color: "#15803d" },
+  postActions: { gap: 10, marginTop: 4 },
   primaryBtn: {
     marginTop: 4,
     backgroundColor: brand.navy,
@@ -473,4 +549,17 @@ const styles = StyleSheet.create({
   },
   primaryDisabled: { opacity: 0.4 },
   primaryBtnText: { color: "#fff", fontSize: 15, fontFamily: fonts.semiBold },
+  secondaryBtn: {
+    backgroundColor: brand.surface,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: brand.border,
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  secondaryBtnText: {
+    color: brand.navy,
+    fontSize: 15,
+    fontFamily: fonts.semiBold,
+  },
 });

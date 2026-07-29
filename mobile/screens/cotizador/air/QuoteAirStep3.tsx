@@ -309,7 +309,6 @@ export default function QuoteAirStep3({
                 airportCoords={{ lat: airport.lat, lng: airport.lng }}
                 address={ultimaMillaDireccion}
                 onAddressChange={setUltimaMillaDireccion}
-                extendedPct={aereoConfig.vespucioExtendedSurchargePct}
                 onZoneChange={(zone) => {
                   setUltimaMillaZone(zone);
                   if (zone && zone !== "outside" && umBracket) {
