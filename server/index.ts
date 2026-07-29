@@ -2189,7 +2189,10 @@ app.post('/api/places/autocomplete', auth, async (req, res) => {
       headers: googleMapsHeaders(),
       body: JSON.stringify(body),
     });
-    const data = await r.json();
+    const data = (await r.json()) as {
+      error?: { message?: string };
+      suggestions?: Array<{ placePrediction?: any }>;
+    };
     if (!r.ok) {
       return res.status(r.status).json({
         error: data?.error?.message || 'Error en Places Autocomplete',
@@ -2197,7 +2200,7 @@ app.post('/api/places/autocomplete', auth, async (req, res) => {
     }
 
     const suggestions = (data.suggestions || [])
-      .map((s: any) => s.placePrediction)
+      .map((s) => s.placePrediction)
       .filter((p: any) => p?.placeId)
       .map((p: any) => {
         const description = p.text?.text || '';
@@ -2235,7 +2238,11 @@ app.get('/api/places/details', auth, async (req, res) => {
         }),
       },
     );
-    const data = await r.json();
+    const data = (await r.json()) as {
+      error?: { message?: string };
+      formattedAddress?: string;
+      location?: { latitude?: number; longitude?: number };
+    };
     if (!r.ok) {
       return res.status(r.status).json({
         error: data?.error?.message || 'Error en Place Details',
