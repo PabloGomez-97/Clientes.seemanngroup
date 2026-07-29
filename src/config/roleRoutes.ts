@@ -9,7 +9,7 @@
 //   - pricing:        Acceso a tarifas y cotizador
 //   - ejecutivo:      Acceso a clientes, trackeos, reportería y cotizador
 //   - proveedor:      Acceso exclusivo al portal de proveedores
-//   - operaciones:    Acceso a cotizador, reportería global, trackeos globales y Reportes
+//   - operaciones:    Acceso a cotizador, reportería global de clientes y trackeos globales
 //
 // REGLAS DE COMBINACIÓN:
 //   - Administrador es exclusivo (no se combina con ningún otro rol)
@@ -79,9 +79,6 @@ export const OPERACIONES_ROUTES: string[] = [
   '/admin/operaciones/clientes/documentacion',
   '/admin/operaciones/tracking',
   '/admin/operaciones/clientes/comportamiento',
-  '/admin/analisys-system',
-  '/admin/reporteria/financiera/ejecutivo',
-  '/admin/reporteria/financiera/operacional',
   '/admin/settings',
   '/admin/consultar-tarifas',
   '/admin/historico-precios',
