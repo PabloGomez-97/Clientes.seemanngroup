@@ -9,6 +9,10 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { brand, radii } from "../../theme/brand";
 
+export type ChipAddResult =
+  | { ok: true; value: string }
+  | { ok: false; error: string };
+
 type ChipEditorProps = {
   label: string;
   placeholder: string;
@@ -16,9 +20,22 @@ type ChipEditorProps = {
   maxItems: number;
   onChange: (values: string[]) => void;
   keyboardType?: "default" | "email-address";
+  /** Validación simple (p. ej. email). Se usa si no hay validateAdd. */
   validate?: (value: string) => boolean;
+  /**
+   * Validación completa al agregar (manual o sugerencia).
+   * Preferible para tags ShipsGo (límites, duplicados case-insensitive).
+   */
+  validateAdd?: (values: string[], candidate: string) => ChipAddResult;
   suggestions?: string[];
+  maxLength?: number;
+  onError?: (message: string | null) => void;
+  suggestionsTitle?: string;
 };
+
+function normalizeCompare(value: string): string {
+  return value.trim().toLowerCase();
+}
 
 export default function ChipEditor({
   label,
@@ -28,28 +45,75 @@ export default function ChipEditor({
   onChange,
   keyboardType = "default",
   validate,
+  validateAdd,
   suggestions = [],
+  maxLength,
+  onError,
+  suggestionsTitle,
 }: ChipEditorProps) {
   const [draft, setDraft] = useState("");
 
-  const addValue = () => {
-    const trimmed = draft.trim();
-    if (!trimmed || values.includes(trimmed) || values.length >= maxItems) {
+  const tryAdd = (candidate: string) => {
+    if (validateAdd) {
+      const result = validateAdd(values, candidate);
+      if (!result.ok) {
+        onError?.(result.error);
+        return;
+      }
+      onError?.(null);
+      onChange([...values, result.value]);
+      setDraft("");
       return;
     }
-    if (validate && !validate(trimmed)) return;
+
+    const trimmed = candidate.trim();
+    if (!trimmed) return;
+
+    if (maxLength && trimmed.length > maxLength) {
+      onError?.(
+        `Cada valor puede tener máximo ${maxLength} caracteres.`,
+      );
+      return;
+    }
+
+    if (
+      values.some(
+        (item) => normalizeCompare(item) === normalizeCompare(trimmed),
+      )
+    ) {
+      onError?.("Ese valor ya fue agregado.");
+      return;
+    }
+
+    if (values.length >= maxItems) {
+      onError?.(`Máximo ${maxItems} valores permitidos.`);
+      return;
+    }
+
+    if (validate && !validate(trimmed)) {
+      onError?.("El valor ingresado no es válido.");
+      return;
+    }
+
+    onError?.(null);
     onChange([...values, trimmed]);
     setDraft("");
+  };
+
+  const addValue = () => {
+    tryAdd(draft);
   };
 
   const removeValue = (value: string) => {
     onChange(values.filter((item) => item !== value));
   };
 
-  const addSuggestion = (value: string) => {
-    if (values.includes(value) || values.length >= maxItems) return;
-    onChange([...values, value]);
-  };
+  const selectedSet = new Set(values.map((value) => normalizeCompare(value)));
+  const visibleSuggestions = suggestions
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .filter((value) => !maxLength || value.length <= maxLength)
+    .filter((value) => !selectedSet.has(normalizeCompare(value)));
 
   return (
     <View style={styles.wrap}>
@@ -64,32 +128,43 @@ export default function ChipEditor({
           placeholderTextColor={brand.mutedLight}
           keyboardType={keyboardType}
           autoCapitalize="none"
+          maxLength={maxLength}
           style={styles.input}
           onSubmitEditing={addValue}
         />
         <Pressable
           onPress={addValue}
           disabled={!draft.trim() || values.length >= maxItems}
-          style={[styles.addButton, (!draft.trim() || values.length >= maxItems) && styles.addButtonDisabled]}
+          style={[
+            styles.addButton,
+            (!draft.trim() || values.length >= maxItems) &&
+              styles.addButtonDisabled,
+          ]}
         >
           <Text style={styles.addButtonText}>Agregar</Text>
         </Pressable>
       </View>
 
-      {suggestions.length > 0 ? (
-        <View style={styles.suggestions}>
-          {suggestions
-            .filter((email) => !values.includes(email))
-            .slice(0, 5)
-            .map((email) => (
+      {visibleSuggestions.length > 0 ? (
+        <View style={styles.suggestionsWrap}>
+          {suggestionsTitle ? (
+            <Text style={styles.suggestionsTitle}>{suggestionsTitle}</Text>
+          ) : null}
+          <View style={styles.suggestions}>
+            {visibleSuggestions.slice(0, 5).map((value) => (
               <Pressable
-                key={email}
-                onPress={() => addSuggestion(email)}
-                style={styles.suggestionChip}
+                key={value}
+                onPress={() => tryAdd(value)}
+                disabled={values.length >= maxItems}
+                style={[
+                  styles.suggestionChip,
+                  values.length >= maxItems && styles.suggestionChipDisabled,
+                ]}
               >
-                <Text style={styles.suggestionText}>{email}</Text>
+                <Text style={styles.suggestionText}>+ {value}</Text>
               </Pressable>
             ))}
+          </View>
         </View>
       ) : null}
 
@@ -146,11 +221,18 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     fontSize: 13,
   },
+  suggestionsWrap: {
+    marginTop: 10,
+  },
+  suggestionsTitle: {
+    fontSize: 12,
+    color: brand.muted,
+    marginBottom: 8,
+  },
   suggestions: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8,
-    marginTop: 10,
   },
   suggestionChip: {
     backgroundColor: brand.canvasAlt,
@@ -159,6 +241,9 @@ const styles = StyleSheet.create({
     borderRadius: radii.pill,
     paddingHorizontal: 10,
     paddingVertical: 6,
+  },
+  suggestionChipDisabled: {
+    opacity: 0.5,
   },
   suggestionText: {
     fontSize: 12,

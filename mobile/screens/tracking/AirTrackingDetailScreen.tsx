@@ -85,6 +85,19 @@ export default function AirTrackingDetailScreen() {
           </View>
         </View>
 
+        {shipment.tags.length > 0 ? (
+          <View style={styles.tagsBlock}>
+            <Text style={styles.tagsLabel}>Ref. Cliente / Etiquetas</Text>
+            <View style={styles.tagsRow}>
+              {shipment.tags.map((tag) => (
+                <View key={tag.id} style={styles.tagChip}>
+                  <Text style={styles.tagText}>{tag.name}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        ) : null}
+
         {shipment.route ? (
           <RouteTimelineCard
             mode="air"
@@ -170,5 +183,30 @@ const styles = StyleSheet.create({
   statusText: {
     fontFamily: fonts.semiBold,
     fontSize: 11,
+  },
+  tagsBlock: {
+    marginTop: 12,
+  },
+  tagsLabel: {
+    fontSize: 12,
+    color: brand.muted,
+    fontFamily: fonts.semiBold,
+    marginBottom: 8,
+  },
+  tagsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  tagChip: {
+    backgroundColor: brand.primarySoft,
+    borderRadius: radii.pill,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  tagText: {
+    fontSize: 12,
+    color: brand.inkSecondary,
+    fontFamily: fonts.medium,
   },
 });

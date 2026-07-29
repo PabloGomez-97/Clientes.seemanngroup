@@ -124,6 +124,21 @@ export default function ShipmentCard({ mode, shipment }: ShipmentCardProps) {
           ) : null}
         </View>
 
+        {shipment.tags.length > 0 ? (
+          <View style={styles.tagsRow}>
+            {shipment.tags.slice(0, 4).map((tag) => (
+              <View key={tag.id} style={styles.tagChip}>
+                <Text style={styles.tagText} numberOfLines={1}>
+                  {tag.name}
+                </Text>
+              </View>
+            ))}
+            {shipment.tags.length > 4 ? (
+              <Text style={styles.tagMore}>+{shipment.tags.length - 4}</Text>
+            ) : null}
+          </View>
+        ) : null}
+
         <Text style={styles.date}>Creado {formatDate(shipment.created_at)}</Text>
       </View>
 
@@ -238,6 +253,30 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: brand.navy,
     fontFamily: fonts.semiBold,
+  },
+  tagsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    marginTop: 8,
+    alignItems: "center",
+  },
+  tagChip: {
+    maxWidth: "48%",
+    backgroundColor: brand.primarySoft,
+    borderRadius: radii.pill,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  tagText: {
+    fontSize: 11,
+    color: brand.inkSecondary,
+    fontFamily: fonts.medium,
+  },
+  tagMore: {
+    fontSize: 11,
+    color: brand.muted,
+    fontFamily: fonts.medium,
   },
   date: {
     marginTop: 4,

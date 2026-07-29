@@ -25,6 +25,11 @@ import {
   saveMobileTrackingEmailPreference,
 } from "../../services/shipsgoApi";
 import { validateOceanIdentifier } from "../../../src/services/shipsgoTrackingLogic";
+import {
+  canAddTrackTag,
+  MAX_TRACK_TAG_LENGTH,
+  MAX_TRACK_TAGS,
+} from "../../../src/services/trackingTagHelpers";
 import type { TrackeosStackParamList } from "../../navigation/TrackeosStack";
 import { brand, radii, spacing } from "../../theme/brand";
 
@@ -214,8 +219,16 @@ export default function NewOceanTrackingScreen() {
             label="Ref. Cliente / Etiquetas"
             placeholder="Escribe una etiqueta"
             values={tags}
-            maxItems={10}
+            maxItems={MAX_TRACK_TAGS}
+            maxLength={MAX_TRACK_TAG_LENGTH}
             onChange={setTags}
+            onError={setError}
+            validateAdd={(currentTags, candidate) => {
+              const result = canAddTrackTag(currentTags, candidate);
+              return result.ok
+                ? { ok: true, value: result.tag }
+                : { ok: false, error: result.error };
+            }}
           />
 
           <ChipEditor
@@ -224,6 +237,7 @@ export default function NewOceanTrackingScreen() {
             values={followers}
             maxItems={MAX_VISIBLE_TRACK_FOLLOWERS}
             onChange={setFollowers}
+            onError={setError}
             keyboardType="email-address"
             validate={isValidTrackingEmail}
             suggestions={savedEmails}
