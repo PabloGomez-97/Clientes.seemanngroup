@@ -284,12 +284,13 @@ export const PDFTemplateAIR: React.FC<PDFTemplateAIRProps> = ({
         <div
           style={{
             color: C.brand,
-            fontSize: "14pt",
-            fontWeight: 300,
+            fontSize: "16pt",
+            fontWeight: 700,
             lineHeight: 1,
+            letterSpacing: "-1px",
           }}
         >
-          ✈
+          →
         </div>
         <div style={{ flex: 1 }}>
           <div style={label}>Destination</div>

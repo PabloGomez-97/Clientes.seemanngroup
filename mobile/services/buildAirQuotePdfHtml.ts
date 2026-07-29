@@ -302,7 +302,7 @@ export function buildAirQuotePdfHtml(p: BuildAirQuotePdfHtmlParams): string {
       <div style="${label}">Origin</div>
       <div style="font-size:11pt;font-weight:700;letter-spacing:-0.3px;word-break:break-word;overflow-wrap:anywhere;white-space:normal;line-height:1.25">${esc(p.origin)}</div>
     </div>
-    <div style="color:${C.brand};font-size:14pt;font-weight:300;line-height:1;align-self:center">✈</div>
+    <div style="color:${C.brand};font-size:16pt;font-weight:700;line-height:1;align-self:center;letter-spacing:-1px">→</div>
     <div style="flex:1 1 110px;min-width:90px">
       <div style="${label}">Destination</div>
       <div style="font-size:11pt;font-weight:700;letter-spacing:-0.3px;word-break:break-word;overflow-wrap:anywhere;white-space:normal;line-height:1.25">${esc(p.destination)}</div>

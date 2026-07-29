@@ -15,6 +15,7 @@ import ExecutiveMoreStack from "./ExecutiveMoreStack";
 import type { ExecutiveMoreStackParamList } from "./ExecutiveMoreStack";
 import { StaffClientsSourceProvider } from "./StaffClientsSourceContext";
 import { StaffPortalProvider } from "./StaffPortalContext";
+import { createPopToHubTabListener } from "./popToHubTabListener";
 import { brand } from "../theme/brand";
 import { fonts } from "../theme/typography";
 
@@ -99,12 +100,7 @@ export default function ExecutiveTabs() {
             <Tab.Screen
               name="More"
               component={ExecutiveMoreStack}
-              listeners={({ navigation }) => ({
-                tabPress: (e) => {
-                  e.preventDefault();
-                  navigation.navigate("More", { screen: "MoreHome" });
-                },
-              })}
+              listeners={createPopToHubTabListener("More")}
             />
           </Tab.Navigator>
         </NavigationContainer>

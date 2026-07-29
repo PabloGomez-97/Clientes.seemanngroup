@@ -10,6 +10,7 @@ import ProveedorArchivosScreen from "../screens/proveedor/ProveedorArchivosScree
 import ProveedorMoreStack from "./ProveedorMoreStack";
 import type { ProveedorMoreStackParamList } from "./ProveedorMoreStack";
 import { StaffPortalProvider } from "./StaffPortalContext";
+import { createPopToHubTabListener } from "./popToHubTabListener";
 import { brand } from "../theme/brand";
 import { fonts } from "../theme/typography";
 
@@ -90,12 +91,7 @@ export default function ProveedorTabs() {
           <Tab.Screen
             name="More"
             component={ProveedorMoreStack}
-            listeners={({ navigation }) => ({
-              tabPress: (e) => {
-                e.preventDefault();
-                navigation.navigate("More", { screen: "MoreHome" });
-              },
-            })}
+            listeners={createPopToHubTabListener("More")}
           />
         </Tab.Navigator>
       </NavigationContainer>

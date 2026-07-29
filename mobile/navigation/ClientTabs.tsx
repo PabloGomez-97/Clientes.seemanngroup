@@ -15,6 +15,7 @@ import OperacionesStack from "./OperacionesStack";
 import type { OperacionesStackParamList } from "./OperacionesStack";
 import TrackeosStack from "./TrackeosStack";
 import type { TrackeosStackParamList } from "./TrackeosStack";
+import { createPopToHubTabListener } from "./popToHubTabListener";
 import { brand } from "../theme/brand";
 import { fonts } from "../theme/typography";
 
@@ -139,16 +140,7 @@ export default function ClientTabs() {
           <Tab.Screen
             name="Menu"
             component={MenuStack}
-            listeners={({ navigation }) => ({
-              tabPress: (e) => {
-                const state = navigation.getState();
-                const route = state.routes.find((r) => r.name === "Menu");
-                if (route?.state && route.state.index && route.state.index > 0) {
-                  e.preventDefault();
-                  navigation.navigate("Menu", { screen: "MenuHome" });
-                }
-              },
-            })}
+            listeners={createPopToHubTabListener("Menu")}
           />
         </Tab.Navigator>
       </NavigationContainer>
