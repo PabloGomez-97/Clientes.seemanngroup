@@ -251,32 +251,52 @@ function roundAirConnectMoney(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
+/** Normaliza "via"/"vía" para comparar airline labels de totalAmount. */
+function normalizeAirConnectAirlineLabel(label: string): string {
+  return label
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .replace(/\s+/g, " ");
+}
+
+function airConnectLabelHasVia(normalizedLabel: string): boolean {
+  return /\(\s*via\s+/.test(normalizedLabel);
+}
+
 export function matchAirConnectTotalAmount(
   offer: AirConnectAirFreightOffer,
   totals: AirConnectQuotationResponse["totalAmount"],
 ): number | null {
   if (!Array.isArray(totals) || totals.length === 0) return null;
 
-  const airline = offer.airline.trim().toLowerCase();
-  const via = offer.via?.trim().toLowerCase() || null;
+  const airline = normalizeAirConnectAirlineLabel(offer.airline);
+  const via = offer.via ? normalizeAirConnectAirlineLabel(offer.via) : null;
   const expected = via ? `${airline} (via ${via})` : airline;
 
-  const exact = totals.find(
-    (t) => t.airline.trim().toLowerCase() === expected,
-  );
+  const normalizedRows = totals.map((t) => ({
+    total: t.total,
+    name: normalizeAirConnectAirlineLabel(t.airline),
+  }));
+
+  const exact = normalizedRows.find((t) => t.name === expected);
   if (exact != null) return exact.total;
 
   if (via) {
-    const withVia = totals.find((t) => {
-      const name = t.airline.trim().toLowerCase();
-      return name.startsWith(airline) && name.includes("via") && name.includes(via);
-    });
+    const withVia = normalizedRows.find(
+      (t) =>
+        t.name.startsWith(airline) &&
+        airConnectLabelHasVia(t.name) &&
+        t.name.includes(via),
+    );
     if (withVia != null) return withVia.total;
   } else {
-    const direct = totals.find((t) => {
-      const name = t.airline.trim().toLowerCase();
-      return name === airline || (name.startsWith(airline) && !name.includes("via"));
-    });
+    const direct = normalizedRows.find(
+      (t) =>
+        t.name === airline ||
+        (t.name.startsWith(airline) && !airConnectLabelHasVia(t.name)),
+    );
     if (direct != null) return direct.total;
   }
 
@@ -325,9 +345,12 @@ export function priceAirConnectOffer(
 
 export function buildAirConnectPricedOffers(
   quote: AirConnectQuotationResponse,
-  _fallbackChargeableWeight = 0,
+  fallbackChargeableWeight = 0,
   profitMarkupPct = DEFAULT_AIR_CONNECT_SPAIN_CONFIG.profitMarkupPctFca,
 ): AirConnectPricedOffer[] {
+  // fallbackChargeableWeight conservado por compatibilidad de firma; el total
+  // oficial viene de totalAmount (no se recalcula por peso).
+  void fallbackChargeableWeight;
   return quote.airFreight.map((offer, index) => {
     const quotationTotal = resolveAirConnectQuotationTotal(offer, quote);
     return {
