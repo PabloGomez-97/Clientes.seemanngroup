@@ -6074,7 +6074,12 @@ app.post('/api/operaciones', auth, async (req, res) => {
 
         const brevoPayload: Record<string, unknown> = {
           sender: { name: 'Portal Clientes Seemann Group', email: 'noreply@sphereglobal.io' },
-          to: [{ email: ejecutivoEmail }],
+          to: [
+            { email: ejecutivoEmail },
+            ...(String(ejecutivoEmail).toLowerCase() === OPERATIONS_FOLLOWER_EMAIL.toLowerCase()
+              ? []
+              : [{ email: OPERATIONS_FOLLOWER_EMAIL }]),
+          ],
           subject,
           htmlContent,
         };
@@ -6533,12 +6538,12 @@ app.get('/api/quote-pdf/list', auth, async (req, res) => {
       ...(ownerUsername === 'Ejecutivo'
         ? { usuarioId: ownerUsername }
         : {
-            $or: [
-              { usuarioId: ownerUsername },
-              // PDFs generados por staff sin override quedaron bajo "Ejecutivo"
-              { usuarioId: 'Ejecutivo' },
-            ],
-          }),
+          $or: [
+            { usuarioId: ownerUsername },
+            // PDFs generados por staff sin override quedaron bajo "Ejecutivo"
+            { usuarioId: 'Ejecutivo' },
+          ],
+        }),
       quoteNumber: { $exists: true, $nin: ['', null] }
     })
       .select('-contenidoBase64')
