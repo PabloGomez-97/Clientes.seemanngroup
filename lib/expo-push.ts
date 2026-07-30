@@ -55,21 +55,73 @@ function statusLabel(status?: string): string {
   return map[status] || status.replace(/_/g, " ");
 }
 
+/** Une tags ShipsGo (`string` o `{ name }`) para mostrar en notificaciones. */
+export function formatTrackingTagsLabel(tags: unknown): string | undefined {
+  if (!Array.isArray(tags) || tags.length === 0) return undefined;
+
+  const names: string[] = [];
+  for (const item of tags) {
+    if (typeof item === "string") {
+      const value = item.trim();
+      if (value) names.push(value);
+      continue;
+    }
+    if (item && typeof item === "object" && "name" in item) {
+      const value = String((item as { name?: unknown }).name ?? "").trim();
+      if (value) names.push(value);
+    }
+  }
+
+  if (names.length === 0) return undefined;
+  return names.join(" · ");
+}
+
+/**
+ * Prefiere Ref. Cliente / Etiquetas; si no hay, AWB (aéreo) o contenedor
+ * (marítimo), luego fallbacks existentes.
+ */
+export function resolveTrackingPushRef(opts: {
+  shipmentMode: "AIR" | "OCEAN";
+  tagsLabel?: string | null;
+  awbNumber?: string | null;
+  containerNumber?: string | null;
+  bookingNumber?: string | null;
+  reference?: string | null;
+  shipmentId?: string | null;
+}): string {
+  const tagsLabel = String(opts.tagsLabel || "").trim();
+  if (tagsLabel) return tagsLabel;
+
+  if (opts.shipmentMode === "AIR") {
+    return (
+      String(opts.awbNumber || "").trim() ||
+      String(opts.reference || "").trim() ||
+      String(opts.shipmentId || "").trim()
+    );
+  }
+
+  return (
+    String(opts.containerNumber || "").trim() ||
+    String(opts.bookingNumber || "").trim() ||
+    String(opts.reference || "").trim() ||
+    String(opts.shipmentId || "").trim()
+  );
+}
+
 export function buildTrackingPushMessage(opts: {
   type: TrackingPushType;
   shipmentMode: "AIR" | "OCEAN";
   awbNumber?: string;
   containerNumber?: string;
+  bookingNumber?: string;
+  tagsLabel?: string;
   reference?: string;
   oldStatus?: string;
   newStatus?: string;
   shipmentId: string;
 }): { title: string; body: string; data: Record<string, string> } {
   const mode = opts.shipmentMode === "AIR" ? "Aéreo" : "Marítimo";
-  const ref =
-    opts.shipmentMode === "AIR"
-      ? opts.awbNumber || opts.reference || opts.shipmentId
-      : opts.containerNumber || opts.reference || opts.shipmentId;
+  const ref = resolveTrackingPushRef(opts);
 
   const data = {
     type: opts.type,
@@ -109,6 +161,8 @@ export async function sendTrackingPushToClient(opts: {
   shipmentId: string;
   awbNumber?: string;
   containerNumber?: string;
+  bookingNumber?: string;
+  tagsLabel?: string;
   reference?: string;
   oldStatus?: string;
   newStatus?: string;

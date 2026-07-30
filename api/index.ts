@@ -42,9 +42,16 @@ import {
 } from '../lib/behavior-tracking-stats.js';
 import { shouldResetNotificationRead } from '../lib/portal-notifications.js';
 import {
+  formatTrackingTagsLabel,
   getDevicePushTokenModel,
   sendTrackingPushToClient,
 } from '../lib/expo-push.js';
+import { processShipsgoWebhookPayload } from '../lib/shipsgo-status-notifications.js';
+import {
+  getShipsgoWebhookRawBody,
+  parseShipsgoWebhookJson,
+  verifyShipsgoWebhookSignature,
+} from '../lib/shipsgo-webhook-auth.js';
 import {
   type TenantId,
   emailExistsInRemoteDb,
@@ -1247,6 +1254,7 @@ interface IPortalNotification {
   reference?: string;        // = client username
   awbNumber?: string;
   containerNumber?: string;
+  tagsLabel?: string;
   oldStatus?: string;
   newStatus?: string;
   // Client-related
@@ -1294,6 +1302,7 @@ const PortalNotificationSchema = new mongoose.Schema<IPortalNotificationDoc>(
     reference: { type: String, trim: true },
     awbNumber: { type: String, trim: true },
     containerNumber: { type: String, trim: true },
+    tagsLabel: { type: String, trim: true },
     oldStatus: { type: String, trim: true },
     newStatus: { type: String, trim: true },
     clientEmail: { type: String, lowercase: true, trim: true },
@@ -1424,6 +1433,8 @@ async function emitTrackingNotification(opts: {
   reference: string;            // client username
   awbNumber?: string;
   containerNumber?: string;
+  bookingNumber?: string;
+  tagsLabel?: string;
   oldStatus?: string;
   newStatus?: string;
 }): Promise<void> {
@@ -1446,6 +1457,7 @@ async function emitTrackingNotification(opts: {
       reference,
       awbNumber: opts.awbNumber,
       containerNumber: opts.containerNumber,
+      tagsLabel: opts.tagsLabel,
       oldStatus: opts.oldStatus,
       newStatus: opts.newStatus,
       clientEmail: clientUser?.email,
@@ -1468,6 +1480,7 @@ async function emitTrackingNotification(opts: {
           shipmentId: opts.shipmentId,
           awbNumber: opts.awbNumber,
           containerNumber: opts.containerNumber,
+          tagsLabel: opts.tagsLabel,
         },
       });
 
@@ -1479,6 +1492,8 @@ async function emitTrackingNotification(opts: {
         shipmentId: String(opts.shipmentId),
         awbNumber: opts.awbNumber,
         containerNumber: opts.containerNumber,
+        bookingNumber: opts.bookingNumber,
+        tagsLabel: opts.tagsLabel,
         reference,
         oldStatus: opts.oldStatus,
         newStatus: opts.newStatus,
@@ -3901,6 +3916,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             shipmentId: String((data.shipment as any).id ?? ''),
             reference: String(reference),
             awbNumber: (data.shipment as any).awb_number,
+            tagsLabel: formatTrackingTagsLabel(
+              (data.shipment as any).tags ?? tags,
+            ),
             newStatus: (data.shipment as any).status,
           });
         }
@@ -4163,39 +4181,44 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    // POST /api/shipsgo/webhooks/air - Webhook endpoint para eventos de ShipsGo Air
+    // POST /api/shipsgo/webhooks/air - fallback (ruta dedicada: api/shipsgo/webhooks/air.ts)
     if (path === '/api/shipsgo/webhooks/air' && method === 'POST') {
-      console.log('🔔 [shipsgo-webhook] Received air webhook event');
+      console.log('🔔 [shipsgo-webhook] Received air webhook event (via api/index fallback)');
       try {
-        const SHIPSGO_WEBHOOK_SECRET = process.env.SHIPSGO_WEBHOOK_SECRET;
         const signature = req.headers['x-shipsgo-webhook-signature'] as string | undefined;
         const webhookId = req.headers['x-shipsgo-webhook-id'] as string | undefined;
         const webhookName = req.headers['x-shipsgo-webhook-name'] as string | undefined;
+        const rawBody = getShipsgoWebhookRawBody(req.body);
 
-        // Validate signature if secret is configured
-        if (SHIPSGO_WEBHOOK_SECRET && signature) {
-          const crypto = await import('crypto');
-          const rawBody = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
-          const expectedSignature = crypto
-            .createHmac('sha256', SHIPSGO_WEBHOOK_SECRET)
-            .update(rawBody)
-            .digest('hex');
-
-          if (signature !== expectedSignature) {
-            console.error('[shipsgo-webhook] Invalid signature');
-            return res.status(401).json({ error: 'Invalid webhook signature' });
-          }
+        const auth = verifyShipsgoWebhookSignature({
+          secret: process.env.SHIPSGO_WEBHOOK_SECRET,
+          signature,
+          rawBody,
+        });
+        if (!auth.ok) {
+          console.error('[shipsgo-webhook] Auth failed:', auth.error);
+          return res.status(401).json({ error: auth.error });
         }
 
-        const payload = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-        const eventName = payload?.event?.name || 'UNKNOWN';
-        const payloadShipmentId = payload?.shipment?.id;
+        const payload = rawBody
+          ? parseShipsgoWebhookJson(rawBody)
+          : typeof req.body === 'string'
+            ? JSON.parse(req.body)
+            : req.body;
+        const payloadShipmentId = (payload as any)?.shipment?.id;
 
-        console.log(`[shipsgo-webhook] Event: ${eventName}, Webhook-Id: ${webhookId}, Webhook-Name: ${webhookName}, Shipment: ${payloadShipmentId}`);
-        console.log('[shipsgo-webhook] Payload:', JSON.stringify(payload, null, 2));
+        const { eventName, result } = await processShipsgoWebhookPayload('AIR', payload);
 
-        // Respond immediately with 200 to acknowledge receipt
-        return res.status(200).json({ received: true, event: eventName });
+        console.log(
+          `[shipsgo-webhook] Event: ${eventName}, Webhook-Id: ${webhookId}, Webhook-Name: ${webhookName}, Shipment: ${payloadShipmentId}, statusChanged=${!!result?.statusChanged}, delayed=${!!result?.delayedNotified}`,
+        );
+
+        return res.status(200).json({
+          received: true,
+          event: eventName,
+          statusChanged: !!result?.statusChanged,
+          delayedNotified: !!result?.delayedNotified,
+        });
       } catch (error) {
         console.error('[shipsgo-webhook] Error processing webhook:', error);
         return res.status(200).json({ received: true, error: 'Processing error' });
@@ -4390,6 +4413,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             shipmentId: String((data.shipment as any).id ?? ''),
             reference: String(reference),
             containerNumber: (data.shipment as any).container_number || container_number,
+            bookingNumber: (data.shipment as any).booking_number || booking_number,
+            tagsLabel: formatTrackingTagsLabel(
+              (data.shipment as any).tags ?? tags,
+            ),
             newStatus: (data.shipment as any).status,
           });
         }
@@ -4654,39 +4681,44 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    // POST /api/shipsgo/webhooks/ocean - Webhook endpoint para eventos de ShipsGo Ocean
+    // POST /api/shipsgo/webhooks/ocean - fallback (ruta dedicada: api/shipsgo/webhooks/ocean.ts)
     if (path === '/api/shipsgo/webhooks/ocean' && method === 'POST') {
-      console.log('🔔 [shipsgo-webhook] Received ocean webhook event');
+      console.log('🔔 [shipsgo-webhook] Received ocean webhook event (via api/index fallback)');
       try {
-        const SHIPSGO_WEBHOOK_SECRET = process.env.SHIPSGO_WEBHOOK_SECRET;
         const signature = req.headers['x-shipsgo-webhook-signature'] as string | undefined;
         const webhookId = req.headers['x-shipsgo-webhook-id'] as string | undefined;
         const webhookName = req.headers['x-shipsgo-webhook-name'] as string | undefined;
+        const rawBody = getShipsgoWebhookRawBody(req.body);
 
-        // Validate signature if secret is configured
-        if (SHIPSGO_WEBHOOK_SECRET && signature) {
-          const crypto = await import('crypto');
-          const rawBody = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
-          const expectedSignature = crypto
-            .createHmac('sha256', SHIPSGO_WEBHOOK_SECRET)
-            .update(rawBody)
-            .digest('hex');
-
-          if (signature !== expectedSignature) {
-            console.error('[shipsgo-webhook] Invalid ocean webhook signature');
-            return res.status(401).json({ error: 'Invalid webhook signature' });
-          }
+        const auth = verifyShipsgoWebhookSignature({
+          secret: process.env.SHIPSGO_WEBHOOK_SECRET,
+          signature,
+          rawBody,
+        });
+        if (!auth.ok) {
+          console.error('[shipsgo-webhook] Ocean auth failed:', auth.error);
+          return res.status(401).json({ error: auth.error });
         }
 
-        const payload = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-        const eventName = payload?.event?.name || 'UNKNOWN';
-        const shipmentId = payload?.shipment?.id;
+        const payload = rawBody
+          ? parseShipsgoWebhookJson(rawBody)
+          : typeof req.body === 'string'
+            ? JSON.parse(req.body)
+            : req.body;
+        const shipmentId = (payload as any)?.shipment?.id;
 
-        console.log(`[shipsgo-webhook] Ocean Event: ${eventName}, Webhook-Id: ${webhookId}, Webhook-Name: ${webhookName}, Shipment: ${shipmentId}`);
-        console.log('[shipsgo-webhook] Ocean Payload:', JSON.stringify(payload, null, 2));
+        const { eventName, result } = await processShipsgoWebhookPayload('OCEAN', payload);
 
-        // Respond immediately with 200 to acknowledge receipt
-        return res.status(200).json({ received: true, event: eventName });
+        console.log(
+          `[shipsgo-webhook] Ocean Event: ${eventName}, Webhook-Id: ${webhookId}, Webhook-Name: ${webhookName}, Shipment: ${shipmentId}, statusChanged=${!!result?.statusChanged}, delayed=${!!result?.delayedNotified}`,
+        );
+
+        return res.status(200).json({
+          received: true,
+          event: eventName,
+          statusChanged: !!result?.statusChanged,
+          delayedNotified: !!result?.delayedNotified,
+        });
       } catch (error) {
         console.error('[shipsgo-webhook] Error processing ocean webhook:', error);
         return res.status(200).json({ received: true, error: 'Processing error' });

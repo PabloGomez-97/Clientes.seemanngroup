@@ -36,6 +36,7 @@ export interface PortalNotification {
   reference?: string;
   awbNumber?: string;
   containerNumber?: string;
+  tagsLabel?: string;
   oldStatus?: string;
   newStatus?: string;
   clientEmail?: string;

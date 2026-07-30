@@ -66,9 +66,10 @@ function buildTitleAndMessage(
 ): { title: string; message: string } {
   const clientName = n.clientUsername || n.clientNombre || "";
   const ref =
-    n.shipmentMode === "AIR"
+    n.tagsLabel ||
+    (n.shipmentMode === "AIR"
       ? n.awbNumber || n.reference || ""
-      : n.containerNumber || n.reference || "";
+      : n.containerNumber || n.reference || "");
   const mode =
     n.shipmentMode === "AIR"
       ? t("home.navbar.notifications.modeAir")
