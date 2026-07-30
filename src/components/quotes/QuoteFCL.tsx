@@ -2540,6 +2540,14 @@ export default function QuoteFCL({
             quoteId: (apiResponse || response)?.quote?.id,
             agente: rutaSeleccionada.company || undefined,
             quoteNumber: quoteNumber || undefined,
+            operacionDetalle: buildFclOperacionDetalle({
+              ruta: rutaSeleccionada,
+              containerType: containerSeleccionado?.type,
+              cantidadContenedores,
+              expenseAmount: oceanFreightValues.expenseAmount,
+              expenseRate: oceanFreightValues.expenseRate,
+              ventaTotal: total,
+            }),
           }),
           keepalive: true,
         }).catch((error) => {

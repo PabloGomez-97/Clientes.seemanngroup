@@ -252,7 +252,7 @@ export function buildOperacionDetalleSectionHTML(
                             Detalle de la operación
                           </p>
                           <p style="margin:4px 0 0;font-family:${FONT};font-size:12px;color:${C.muted};line-height:1.4;">
-                            Resumen de la cotización convertida
+                            Resumen de la cotización
                           </p>
                         </td>
                       </tr>

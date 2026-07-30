@@ -5856,6 +5856,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           agente,
           quoteNumber,
           proveedor,
+          operacionDetalle,
         } = req.body;
 
         const ejecutivoResolved = await resolveEjecutivoForEmail(
@@ -5919,6 +5920,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             agente: agente || undefined,
             quoteNumber: quoteNumber || undefined,
             proveedor: proveedor || undefined,
+            operacionDetalle:
+              operacionDetalle && typeof operacionDetalle === 'object'
+                ? operacionDetalle
+                : undefined,
           };
           subject = getFclQuoteEmailSubject(emailData);
           htmlContent = buildFclQuoteEmailHTML(emailData);
@@ -5943,6 +5948,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             agente: agente || undefined,
             quoteNumber: quoteNumber || undefined,
             proveedor: proveedor || undefined,
+            operacionDetalle:
+              operacionDetalle && typeof operacionDetalle === 'object'
+                ? operacionDetalle
+                : undefined,
           };
           subject = getLclQuoteEmailSubject(emailData);
           htmlContent = buildLclQuoteEmailHTML(emailData);
@@ -5973,6 +5982,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             agente: agente || undefined,
             quoteNumber: quoteNumber || undefined,
             proveedor: proveedor || undefined,
+            operacionDetalle:
+              operacionDetalle && typeof operacionDetalle === 'object'
+                ? operacionDetalle
+                : undefined,
             pdfAdjunto: Boolean(pdfAttachment),
           };
           subject = getAirQuoteEmailSubject(emailData);

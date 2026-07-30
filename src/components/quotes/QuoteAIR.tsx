@@ -3104,6 +3104,20 @@ function QuoteAPITester({
           quoteId: (apiResponse as { quote?: { id?: string } })?.quote?.id,
           agente: rutaSeleccionada.company || undefined,
           quoteNumber: quoteNumber || undefined,
+          operacionDetalle: buildAirOperacionDetalle({
+            ruta: {
+              ...rutaSeleccionada,
+              carrier: airlineLabel || rutaSeleccionada.carrier,
+            },
+            description: description || "Cargamento Aéreo",
+            chargeableWeight: Number(chargeableWeight) || 0,
+            expenseAmount: offer.apiWithLand,
+            expenseRate:
+              Number(chargeableWeight) > 0
+                ? offer.apiWithLand / Number(chargeableWeight)
+                : 0,
+            ventaTotal: totalEmail,
+          }),
         }),
         keepalive: true,
       }).catch((emailErr) => {
@@ -4060,6 +4074,14 @@ function QuoteAPITester({
             quoteId: (apiResponse || response)?.quote?.id,
             agente: rutaSeleccionada.company || undefined,
             quoteNumber: quoteNumber || undefined,
+            operacionDetalle: buildAirOperacionDetalle({
+              ruta: rutaSeleccionada,
+              description: description || "Cargamento Aéreo",
+              chargeableWeight: pesoAirFreight,
+              expenseAmount: airFreightQuoteValues.expenseAmount,
+              expenseRate: airFreightQuoteValues.expenseRate,
+              ventaTotal: total,
+            }),
           }),
           keepalive: true,
         }).catch((emailErr) => {

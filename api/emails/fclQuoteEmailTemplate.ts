@@ -109,7 +109,7 @@ export function buildFclQuoteEmailHTML(data: FclQuoteEmailData): string {
     : '';
   const detalleSection = buildOperacionDetalleSectionHTML(
     data.operacionDetalle,
-    operacion,
+    Boolean(data.operacionDetalle),
   );
   const documentosSection = buildDocumentosReferenciaSectionHTML(
     data.documentosReferencia,

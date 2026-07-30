@@ -2994,6 +2994,18 @@ export default function QuoteLCL({
             quoteId: (apiResponse || response)?.quote?.id,
             agente: rutaSeleccionada.operador || undefined,
             quoteNumber: quoteNumber || undefined,
+            operacionDetalle: buildLclOperacionDetalle({
+              ruta: rutaSeleccionada,
+              chargeableVolume,
+              expenseAmount: tarifaOceanFreight?.expense ?? 0,
+              expenseRate:
+                tarifaOceanFreight?.expenseRate ?? rutaSeleccionada.ofWM,
+              ventaTotal: showPendingQuote
+                ? "PENDIENTE"
+                : typeof total === "string"
+                  ? total
+                  : String(total),
+            }),
           }),
           keepalive: true,
         }).catch((error) => {

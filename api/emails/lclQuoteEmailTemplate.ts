@@ -107,7 +107,7 @@ export function buildLclQuoteEmailHTML(data: LclQuoteEmailData): string {
     : '';
   const detalleSection = buildOperacionDetalleSectionHTML(
     data.operacionDetalle,
-    operacion,
+    Boolean(data.operacionDetalle),
   );
   const documentosSection = buildDocumentosReferenciaSectionHTML(
     data.documentosReferencia,

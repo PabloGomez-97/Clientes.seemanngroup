@@ -5625,6 +5625,7 @@ app.post('/api/send-operation-email', auth, async (req, res) => {
       agente,
       quoteNumber,
       proveedor,
+      operacionDetalle,
     } = req.body;
 
     const ejecutivoResolved = await resolveEjecutivoForEmail(
@@ -5688,6 +5689,10 @@ app.post('/api/send-operation-email', auth, async (req, res) => {
         agente: agente || undefined,
         quoteNumber: quoteNumber || undefined,
         proveedor: proveedor || undefined,
+        operacionDetalle:
+          operacionDetalle && typeof operacionDetalle === 'object'
+            ? operacionDetalle
+            : undefined,
       };
       subject = getFclQuoteEmailSubject(emailData);
       htmlContent = buildFclQuoteEmailHTML(emailData);
@@ -5712,6 +5717,10 @@ app.post('/api/send-operation-email', auth, async (req, res) => {
         agente: agente || undefined,
         quoteNumber: quoteNumber || undefined,
         proveedor: proveedor || undefined,
+        operacionDetalle:
+          operacionDetalle && typeof operacionDetalle === 'object'
+            ? operacionDetalle
+            : undefined,
       };
       subject = getLclQuoteEmailSubject(emailData);
       htmlContent = buildLclQuoteEmailHTML(emailData);
@@ -5742,6 +5751,10 @@ app.post('/api/send-operation-email', auth, async (req, res) => {
         agente: agente || undefined,
         quoteNumber: quoteNumber || undefined,
         proveedor: proveedor || undefined,
+        operacionDetalle:
+          operacionDetalle && typeof operacionDetalle === 'object'
+            ? operacionDetalle
+            : undefined,
         pdfAdjunto: Boolean(pdfAttachment),
       };
       subject = getAirQuoteEmailSubject(emailData);
