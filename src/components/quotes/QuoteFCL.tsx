@@ -62,6 +62,7 @@ import "./QuoteAIR.css";
 import "./QuoteFCL.css";
 import "flag-icons/css/flag-icons.min.css";
 import GenerateOperationModal from "./Operations/GenerateOperationModal";
+import { buildFclOperacionDetalle } from "./Operations/buildOperacionDetalleEmail";
 import { FclPriceHistoryModal } from "./Handlers/FCL/FclPriceHistoryModal";
 import { buildCountryFclRates } from "./Handlers/FCL/buildCountryFclRates";
 import { CountryRatesDownloadButton } from "./Handlers/shared/CountryRatesDownloadButton";
@@ -2575,6 +2576,14 @@ export default function QuoteFCL({
             currency: rutaSeleccionada.currency,
             total: total,
             agente: rutaSeleccionada.company || undefined,
+            operacionDetalle: buildFclOperacionDetalle({
+              ruta: rutaSeleccionada,
+              containerType: containerSeleccionado?.type,
+              cantidadContenedores,
+              expenseAmount: oceanFreightValues.expenseAmount,
+              expenseRate: oceanFreightValues.expenseRate,
+              ventaTotal: total,
+            }),
           },
         });
       }

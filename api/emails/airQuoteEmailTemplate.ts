@@ -3,6 +3,17 @@
  * Tarjeta clara compacta — branding Seemann Group.
  */
 
+import {
+  buildDocumentosReferenciaSectionHTML,
+  buildOperacionDetalleSectionHTML,
+  buildProveedorSectionHTML,
+  OPERATION_FORM_EMAIL_MOBILE_CSS,
+  type OperacionDetalleEmail,
+  type OperacionDocumentoEmail,
+  type OperacionProveedorEmail,
+} from './operationFormEmailSections.js';
+import { EMAIL_LOGO_CID_SRC } from './emailBrand.js';
+
 export interface AirQuoteEmailData {
   ejecutivoNombre: string;
   clienteUsername: string;
@@ -24,16 +35,14 @@ export interface AirQuoteEmailData {
   ultimaMillaZonaExtendida?: boolean;
   agente?: string;
   quoteNumber?: string;
-  proveedor?: {
-    nombreEmpresa: string;
-    nombreContacto: string;
-    email: string;
-    telefono: string;
-  };
+  proveedor?: OperacionProveedorEmail;
+  /** Documentos de referencia del formulario de operación (solo operaciones) */
+  documentosReferencia?: OperacionDocumentoEmail[];
+  operacionDetalle?: OperacionDetalleEmail;
   pdfAdjunto?: boolean;
 }
 
-const LOGO_URL = 'https://portalclientes.seemanngroup.com/logocompleto.png';
+const LOGO_URL = EMAIL_LOGO_CID_SRC;
 
 const FONT = "'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 
@@ -101,6 +110,18 @@ export function buildAirQuoteEmailHTML(data: AirQuoteEmailData): string {
   const clienteLine = formatClienteLine(data);
   const quoteNumber = data.quoteNumber ? escapeHtml(data.quoteNumber) : '—';
   const totalDisplay = formatTotal(data);
+  const operacion = isOperacion(data);
+  const proveedorSection = operacion
+    ? buildProveedorSectionHTML(data.proveedor)
+    : '';
+  const detalleSection = buildOperacionDetalleSectionHTML(
+    data.operacionDetalle,
+    operacion,
+  );
+  const documentosSection = buildDocumentosReferenciaSectionHTML(
+    data.documentosReferencia,
+    operacion,
+  );
 
   return `
 <!DOCTYPE html>
@@ -122,6 +143,7 @@ export function buildAirQuoteEmailHTML(data: AirQuoteEmailData): string {
       .route-arrow { display: block !important; width: 100% !important; text-align: center !important; padding: 4px 0 !important; }
       .summary-col { display: block !important; width: 100% !important; text-align: left !important; padding: 10px 0 !important; border-left: none !important; border-right: none !important; border-top: 1px solid ${C.border} !important; }
       .summary-col-first { border-top: none !important; }
+      ${OPERATION_FORM_EMAIL_MOBILE_CSS}
     }
   </style>
 </head>
@@ -204,6 +226,10 @@ export function buildAirQuoteEmailHTML(data: AirQuoteEmailData): string {
               </table>
             </td>
           </tr>
+
+${proveedorSection}
+${detalleSection}
+${documentosSection}
 
         </table>
       </td>

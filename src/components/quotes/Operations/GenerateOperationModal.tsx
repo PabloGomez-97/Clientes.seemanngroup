@@ -353,7 +353,9 @@ export default function GenerateOperationModal({
             <div className="go-modal__body">
               {error && <div className="go-alert go-alert--error">{error}</div>}
 
-              <div className="go-section__title">Proveedor</div>
+              <div className="go-section__title go-section__title--proveedor">
+                Proveedor
+              </div>
 
               {proveedores.length > 0 && (
                 <div className="go-form__row">
@@ -383,7 +385,7 @@ export default function GenerateOperationModal({
 
               <div className="go-form__row">
                 <label className="go-label" htmlFor="empresa">
-                  Nombre de la empresa
+                  Nombre de la empresa (PROVEEDOR)
                   <span className="go-label__required">*</span>
                 </label>
                 <input
@@ -403,7 +405,7 @@ export default function GenerateOperationModal({
 
               <div className="go-form__row">
                 <label className="go-label" htmlFor="contacto">
-                  Nombre del contacto
+                  Nombre del contacto (PROVEEDOR)
                   <span className="go-label__required">*</span>
                 </label>
                 <input
@@ -424,7 +426,8 @@ export default function GenerateOperationModal({
               <div className="go-form__row go-form__row--inline">
                 <div>
                   <label className="go-label" htmlFor="email">
-                    Email<span className="go-label__required">*</span>
+                    Email (PROVEEDOR)
+                    <span className="go-label__required">*</span>
                   </label>
                   <input
                     id="email"
@@ -443,7 +446,8 @@ export default function GenerateOperationModal({
                 </div>
                 <div>
                   <label className="go-label" htmlFor="telefono">
-                    Teléfono<span className="go-label__required">*</span>
+                    Teléfono (PROVEEDOR)
+                    <span className="go-label__required">*</span>
                   </label>
                   <input
                     id="telefono"

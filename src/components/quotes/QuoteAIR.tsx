@@ -68,6 +68,7 @@ import "./QuoteAIR.css";
 import "flag-icons/css/flag-icons.min.css";
 import GenerateOperationModal from "./Operations/GenerateOperationModal";
 import { useOperationModalAfterPdf } from "./Operations/useOperationModalAfterPdf";
+import { buildAirOperacionDetalle } from "./Operations/buildOperacionDetalleEmail";
 import CotizadorAddressMap, {
   type DestinationCoords,
 } from "@/components/shared/maps/CotizadorAddressMap";
@@ -3127,6 +3128,21 @@ function QuoteAPITester({
             chargeableWeight,
             currency: AIR_CONNECT_CURRENCY,
             total: `${AIR_CONNECT_CURRENCY} ${totalCharges.toFixed(2)}`,
+            agente: rutaSeleccionada.company || undefined,
+            operacionDetalle: buildAirOperacionDetalle({
+              ruta: {
+                ...rutaSeleccionada,
+                carrier: airlineLabel || rutaSeleccionada.carrier,
+              },
+              description: description || "Cargamento Aéreo",
+              chargeableWeight: Number(chargeableWeight) || 0,
+              expenseAmount: offer.apiWithLand,
+              expenseRate:
+                Number(chargeableWeight) > 0
+                  ? offer.apiWithLand / Number(chargeableWeight)
+                  : 0,
+              ventaTotal: `${AIR_CONNECT_CURRENCY} ${totalCharges.toFixed(2)}`,
+            }),
           },
         });
       }
@@ -4071,6 +4087,15 @@ function QuoteAPITester({
             currency: rutaSeleccionada.currency,
             total: rutaSeleccionada.currency + " " + totalCharges.toFixed(2),
             agente: rutaSeleccionada.company || undefined,
+            operacionDetalle: buildAirOperacionDetalle({
+              ruta: rutaSeleccionada,
+              description: description || "Cargamento Aéreo",
+              chargeableWeight: pesoAirFreight,
+              expenseAmount: airFreightQuoteValues.expenseAmount,
+              expenseRate: airFreightQuoteValues.expenseRate,
+              ventaTotal:
+                rutaSeleccionada.currency + " " + totalCharges.toFixed(2),
+            }),
           },
         });
       }

@@ -11,6 +11,7 @@ import { buildNoRateQuoteEmailHTML, getNoRateQuoteEmailSubject, type NoRateQuote
 import { buildAirQuoteEmailHTML, getAirQuoteEmailSubject, type AirQuoteEmailData } from './emails/airQuoteEmailTemplate.js';
 import { buildFclQuoteEmailHTML, getFclQuoteEmailSubject, type FclQuoteEmailData } from './emails/fclQuoteEmailTemplate.js';
 import { buildLclQuoteEmailHTML, getLclQuoteEmailSubject, type LclQuoteEmailData } from './emails/lclQuoteEmailTemplate.js';
+import { withEmailLogoAttachment } from './emails/emailBrand.js';
 
 import { buildSpecialQuoteEmailHTML, getSpecialQuoteEmailSubject, type SpecialQuoteEmailData } from './emails/specialQuoteEmailTemplate.js';
 import { buildQuotePdfResendEmailHTML, getQuotePdfResendEmailSubject } from './emails/quotePdfResendEmailTemplate.js';
@@ -750,8 +751,16 @@ function mapDocumentSummary(doc: any) {
 }
 
 function buildCotizacionDocumentQuery(quoteNumber: string, ownerUsername: string) {
+  const qn = String(quoteNumber);
+  // Compat: operaciones antiguas guardaban quoteId como (número sin prefijo + 84)
+  const strippedNum = parseInt(qn.replace(/^[A-Za-z]+0*/, ''), 10);
+  const legacyLinbisId =
+    !isNaN(strippedNum) ? String(strippedNum + 84) : null;
+  const quoteIds =
+    legacyLinbisId && legacyLinbisId !== qn ? [qn, legacyLinbisId] : [qn];
+
   return {
-    quoteId: String(quoteNumber),
+    quoteId: { $in: quoteIds },
     $or: [{ scope: 'cotizacion' as const }, { scope: { $exists: false } }],
     ...buildDocumentOwnerScopeQuery(ownerUsername),
   };
@@ -5977,9 +5986,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           subject,
           htmlContent,
         };
-        if (pdfAttachment) {
-          brevoPayload.attachment = [pdfAttachment];
-        }
+        const baseAttachments = pdfAttachment ? [pdfAttachment] : [];
+        brevoPayload.attachment = withEmailLogoAttachment(baseAttachments);
 
         const brevoResponse = await fetch('https://api.brevo.com/v3/smtp/email', {
           method: 'POST',
@@ -6135,6 +6143,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         // Pasaron todas las validaciones → subir
+        const documentosReferencia: { tipo: string; nombreArchivo: string }[] = [];
+        const brevoAttachments: { content: string; name: string }[] = [];
+        const quoteNumberStr = String(quoteNumber);
+
         for (const d of documentos) {
           const mimeType = getMimeTypeFromBase64(d.contenidoBase64) as string;
           const fileSize = getBase64Size(d.contenidoBase64);
@@ -6143,16 +6155,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             : d.contenidoBase64;
           const fileBuffer = Buffer.from(base64Content, 'base64');
           const docId = new mongoose.Types.ObjectId();
-          // La carpeta en R2 es el número de cotización stripped + 84 (offset de IDs internos de Linbis)
-          const strippedNum = parseInt(String(quoteNumber).replace(/^[A-Za-z]+0*/, ''), 10);
-          const quoteFolder = !isNaN(strippedNum) ? String(strippedNum + 84) : String(quoteNumber);
-          const r2Key = buildDocR2Key('documentos', ownerUsername, quoteFolder, docId.toString(), String(d.nombreArchivo));
+          // Misma clave que /api/documentos/upload para que aparezcan en QuotesView → Documentos
+          const r2Key = buildQuoteDocR2Key(
+            ownerUsername,
+            quoteNumberStr,
+            'cotizacion',
+            docId.toString(),
+            String(d.nombreArchivo),
+          );
 
           await uploadDocument(r2Key, fileBuffer, mimeType);
 
           await Documento.create({
             _id: docId,
-            quoteId: quoteFolder,
+            quoteId: quoteNumberStr,
+            scope: 'cotizacion',
             tipo: d.tipo,
             nombreArchivo: String(d.nombreArchivo),
             tipoArchivo: mimeType,
@@ -6162,6 +6179,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             usuarioId: ownerUsername,
           });
           docIdsCreados.push(docId);
+          documentosReferencia.push({
+            tipo: String(d.tipo),
+            nombreArchivo: String(d.nombreArchivo),
+          });
+          brevoAttachments.push({
+            content: base64Content,
+            name: String(d.nombreArchivo),
+          });
         }
 
         // ── Crear Operacion ──
@@ -6245,6 +6270,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               agente: operacion.agente || undefined,
               quoteNumber: operacion.quoteNumber,
               proveedor: operacion.proveedor,
+              documentosReferencia,
+              operacionDetalle:
+                ec.operacionDetalle && typeof ec.operacionDetalle === 'object'
+                  ? ec.operacionDetalle
+                  : undefined,
             };
 
             if (tipoServicioLabel === 'Marítimo FCL') {
@@ -6280,15 +6310,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               htmlContent = buildAirQuoteEmailHTML(data);
             }
 
+            const brevoPayload: Record<string, unknown> = {
+              sender: { name: 'Portal Clientes Seemann Group', email: 'noreply@sphereglobal.io' },
+              to: [{ email: ejecutivoEmail }],
+              subject,
+              htmlContent,
+            };
+            brevoPayload.attachment = withEmailLogoAttachment(brevoAttachments);
+
             fetch('https://api.brevo.com/v3/smtp/email', {
               method: 'POST',
               headers: { 'api-key': process.env.BREVO_API_KEY, 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                sender: { name: 'Portal Clientes Seemann Group', email: 'noreply@sphereglobal.io' },
-                to: [{ email: ejecutivoEmail }],
-                subject,
-                htmlContent,
-              }),
+              body: JSON.stringify(brevoPayload),
             }).catch((e) => console.error('[operaciones] Error email:', e));
           }
         } catch (emailErr) {
@@ -9395,6 +9428,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             to: [{ email: ejecutivoEmail }],
             subject,
             htmlContent,
+            attachment: withEmailLogoAttachment(),
           }),
         });
 

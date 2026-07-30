@@ -47,6 +47,7 @@ import { QuoteGeneratingMessage } from "./QuoteGeneratingMessage";
 import "./QuoteAIR.css";
 import GenerateOperationModal from "./Operations/GenerateOperationModal";
 import { useOperationModalAfterPdf } from "./Operations/useOperationModalAfterPdf";
+import { buildLclOperacionDetalle } from "./Operations/buildOperacionDetalleEmail";
 import { LclPriceHistoryModal } from "./Handlers/LCL/LclPriceHistoryModal";
 import { buildCountryLclRates } from "./Handlers/LCL/buildCountryLclRates";
 import { CountryRatesDownloadButton } from "./Handlers/shared/CountryRatesDownloadButton";
@@ -3026,7 +3027,14 @@ export default function QuoteLCL({
               : {}),
             currency: rutaSeleccionada.currency,
             total: total,
-            agente: rutaSeleccionada.operador || undefined,
+            agente: rutaSeleccionada.agente || rutaSeleccionada.operador || undefined,
+            operacionDetalle: buildLclOperacionDetalle({
+              ruta: rutaSeleccionada,
+              chargeableVolume,
+              expenseAmount: tarifaOceanFreight?.expense ?? 0,
+              expenseRate: tarifaOceanFreight?.expenseRate ?? rutaSeleccionada.ofWM,
+              ventaTotal: typeof total === "string" ? total : String(total),
+            }),
           },
         });
       }

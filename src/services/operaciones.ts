@@ -20,6 +20,34 @@ export interface DocumentoOperacionPayload {
   contenidoBase64: string;
 }
 
+export interface OperacionSheetCellPayload {
+  label: string;
+  value: string;
+}
+
+export interface OperacionSheetRowPayload {
+  title: string;
+  cells: OperacionSheetCellPayload[];
+  footerLabel?: string;
+  footerValue?: string;
+}
+
+/** Detalle enriquecido para el correo al ejecutivo al generar operación */
+export interface OperacionDetallePayload {
+  origen?: string;
+  destino?: string;
+  viaTransporte?: string;
+  agente?: string;
+  carrierLabel?: string;
+  carrierValue?: string;
+  detalleCarga?: string;
+  sheetRow?: OperacionSheetRowPayload | null;
+  freightCostLabel?: string;
+  freightCostAmount?: string;
+  freightCostDetail?: string;
+  ventaTotalAmount?: string;
+}
+
 export interface CrearOperacionPayload {
   quoteNumber: string;
   quoteId?: string | null;
@@ -41,6 +69,8 @@ export interface CrearOperacionPayload {
     currency?: string;
     total?: string;
     agente?: string;
+    /** Bloque “Detalle de la operación” del correo */
+    operacionDetalle?: OperacionDetallePayload;
   };
   /** Cliente al que se asocia (si el ejecutivo opera por cuenta del cliente) */
   ownerUsername?: string;

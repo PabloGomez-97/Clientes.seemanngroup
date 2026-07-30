@@ -226,6 +226,16 @@
   margin-top: 0;
 }
 
+.go-section__title--proveedor {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-align: center;
+  color: #1f2328;
+  margin: 0 0 16px;
+  padding-bottom: 10px;
+}
+
 /* Document uploader */
 .go-doc {
   border: 1px solid #d0d7de;
