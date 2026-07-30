@@ -94,48 +94,23 @@ export default function ClientTabs() {
           <Tab.Screen
             name="Trackeos"
             component={TrackeosStack}
-            listeners={({ navigation }) => ({
-              tabPress: (e) => {
-                const state = navigation.getState();
-                const route = state.routes.find((r) => r.name === "Trackeos");
-                if (route?.state && route.state.index && route.state.index > 0) {
-                  e.preventDefault();
-                  navigation.navigate("Trackeos", { screen: "TrackeosList" });
-                }
-              },
-            })}
+            listeners={createPopToHubTabListener("Trackeos", "TrackeosList")}
           />
           <Tab.Screen
             name="Operaciones"
             component={OperacionesStack}
-            listeners={({ navigation }) => ({
-              tabPress: (e) => {
-                const state = navigation.getState();
-                const route = state.routes.find((r) => r.name === "Operaciones");
-                if (route?.state && route.state.index && route.state.index > 0) {
-                  e.preventDefault();
-                  navigation.navigate("Operaciones", {
-                    screen: "OperacionesList",
-                  });
-                }
-              },
-            })}
+            listeners={createPopToHubTabListener(
+              "Operaciones",
+              "OperacionesList",
+            )}
           />
           <Tab.Screen
             name="Cotizaciones"
             component={CotizacionesStack}
-            listeners={({ navigation }) => ({
-              tabPress: (e) => {
-                const state = navigation.getState();
-                const route = state.routes.find((r) => r.name === "Cotizaciones");
-                if (route?.state && route.state.index && route.state.index > 0) {
-                  e.preventDefault();
-                  navigation.navigate("Cotizaciones", {
-                    screen: "CotizacionesList",
-                  });
-                }
-              },
-            })}
+            listeners={createPopToHubTabListener(
+              "Cotizaciones",
+              "CotizacionesList",
+            )}
           />
           <Tab.Screen
             name="Menu"

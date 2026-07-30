@@ -3,11 +3,8 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { useAuth } from "../auth/AuthContext";
 import { isStaffUser } from "../auth/portalRouting";
 import CotizadorClientPickerScreen from "../screens/cotizador/CotizadorClientPickerScreen";
-import CotizadorComingSoonScreen from "../screens/cotizador/CotizadorComingSoonScreen";
 import CotizadorHubScreen from "../screens/cotizador/CotizadorHubScreen";
 import { noBackStackOptions } from "./noBackStackOptions";
-
-export type CotizadorMode = "air" | "fcl" | "lcl" | "lastmile";
 
 export type CotizadorStackParamList = {
   CotizadorClientPicker: undefined;
@@ -18,12 +15,6 @@ export type CotizadorStackParamList = {
     clientUserId?: string;
   };
   QuoteAir: {
-    clientUsername?: string;
-    clientName?: string;
-    clientUserId?: string;
-  };
-  CotizadorComingSoon: {
-    mode: Exclude<CotizadorMode, "air">;
     clientUsername?: string;
     clientName?: string;
     clientUserId?: string;
@@ -66,11 +57,6 @@ export default function CotizadorStack() {
       <Stack.Screen
         name="QuoteAir"
         component={QuoteAirScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="CotizadorComingSoon"
-        component={CotizadorComingSoonScreen}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>

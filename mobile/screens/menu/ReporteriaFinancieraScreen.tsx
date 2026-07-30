@@ -12,6 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useReporteriaFinanciera } from "../../hooks/useReporteria";
+import { backOrParentHub } from "../../navigation/backOrHub";
 import {
   formatShortDate,
   type InvoiceRow,
@@ -250,7 +251,7 @@ export default function ReporteriaFinancieraScreen() {
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <View style={styles.header}>
         <Pressable
-          onPress={() => navigation.goBack()}
+          onPress={() => backOrParentHub(navigation)}
           hitSlop={12}
           style={styles.backBtn}
           accessibilityLabel="Volver"

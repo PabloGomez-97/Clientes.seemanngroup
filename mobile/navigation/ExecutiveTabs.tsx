@@ -94,9 +94,27 @@ export default function ExecutiveTabs() {
             })}
           >
             <Tab.Screen name="Home" component={ExecutiveHomeScreen} />
-            <Tab.Screen name="Clients" component={ExecutiveClientsStack} />
-            <Tab.Screen name="Trackeos" component={ExecutiveTrackeosStack} />
-            <Tab.Screen name="Reporteria" component={ExecutiveReporteriaStack} />
+            <Tab.Screen
+              name="Clients"
+              component={ExecutiveClientsStack}
+              listeners={createPopToHubTabListener("Clients", "ClientsList")}
+            />
+            <Tab.Screen
+              name="Trackeos"
+              component={ExecutiveTrackeosStack}
+              listeners={createPopToHubTabListener(
+                "Trackeos",
+                "TrackeosClientPicker",
+              )}
+            />
+            <Tab.Screen
+              name="Reporteria"
+              component={ExecutiveReporteriaStack}
+              listeners={createPopToHubTabListener(
+                "Reporteria",
+                "ReporteriaClientPicker",
+              )}
+            />
             <Tab.Screen
               name="More"
               component={ExecutiveMoreStack}

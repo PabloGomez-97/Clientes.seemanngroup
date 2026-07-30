@@ -94,8 +94,19 @@ export default function AdminTabs() {
             })}
           >
             <Tab.Screen name="Home" component={AdminHomeScreen} />
-            <Tab.Screen name="Clients" component={ExecutiveClientsStack} />
-            <Tab.Screen name="Trackeos" component={ExecutiveTrackeosStack} />
+            <Tab.Screen
+              name="Clients"
+              component={ExecutiveClientsStack}
+              listeners={createPopToHubTabListener("Clients", "ClientsList")}
+            />
+            <Tab.Screen
+              name="Trackeos"
+              component={ExecutiveTrackeosStack}
+              listeners={createPopToHubTabListener(
+                "Trackeos",
+                "TrackeosClientPicker",
+              )}
+            />
             <Tab.Screen
               name="Ejecutivos"
               component={AdminEjecutivosTabScreen}

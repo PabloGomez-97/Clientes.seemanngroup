@@ -52,13 +52,20 @@ function withBack(
   };
 }
 
-export default function TrackeosStack() {
+export default function TrackeosStack({
+  initialOpenTracking,
+}: {
+  initialOpenTracking?: ShipsGoOpenTrackingTarget;
+} = {}) {
   return (
     <Stack.Navigator screenOptions={noBackStackOptions}>
       <Stack.Screen
         name="TrackeosList"
         component={TrackeosListScreen}
         options={{ headerShown: false }}
+        initialParams={
+          initialOpenTracking ? { openTracking: initialOpenTracking } : undefined
+        }
       />
       <Stack.Screen
         name="AirDetail"

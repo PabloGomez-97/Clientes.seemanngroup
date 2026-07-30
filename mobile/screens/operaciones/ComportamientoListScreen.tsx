@@ -20,6 +20,7 @@ import {
 } from "../../services/comportamientoApi";
 import { useRefreshOnFocus } from "../../hooks/useRefreshOnFocus";
 import { useStaffClientsSource } from "../../navigation/StaffClientsSourceContext";
+import { backOrHub } from "../../navigation/backOrHub";
 import { brand, radii, spacing } from "../../theme/brand";
 import { fonts } from "../../theme/typography";
 
@@ -115,10 +116,20 @@ export default function ComportamientoListScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <View style={styles.header}>
-        <Text style={styles.title}>Comportamiento</Text>
-        <Text style={styles.subtitle}>
-          Cotizaciones iniciadas, completadas y abandonos
-        </Text>
+        <Pressable
+          onPress={() => backOrHub(navigation as never, "MoreHome")}
+          hitSlop={12}
+          style={styles.backBtn}
+        >
+          <Ionicons name="chevron-back" size={26} color={brand.navy} />
+        </Pressable>
+        <View style={styles.headerText}>
+          <Text style={styles.title}>Comportamiento</Text>
+          <Text style={styles.subtitle}>
+            Cotizaciones iniciadas, completadas y abandonos
+          </Text>
+        </View>
+        <View style={styles.backBtn} />
       </View>
 
       <View style={styles.searchWrap}>
@@ -257,20 +268,31 @@ export default function ComportamientoListScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: brand.canvas },
   header: {
-    paddingHorizontal: spacing.lg,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: spacing.md,
     paddingTop: spacing.md,
     paddingBottom: spacing.sm,
+    gap: 4,
   },
+  backBtn: {
+    width: 32,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerText: { flex: 1, alignItems: "center" },
   title: {
-    fontSize: 28,
+    fontSize: 22,
     fontFamily: fonts.bold,
     color: brand.navy,
   },
   subtitle: {
-    marginTop: 4,
-    fontSize: 14,
+    marginTop: 2,
+    fontSize: 13,
     fontFamily: fonts.regular,
     color: brand.muted,
+    textAlign: "center",
   },
   searchWrap: {
     marginHorizontal: spacing.lg,

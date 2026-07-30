@@ -22,6 +22,7 @@ import {
 } from "../../../src/components/quotes/Handlers/shared/buildBrowsableRates";
 import type { CountryRateService } from "../../../src/components/quotes/Handlers/shared/countryRatesTypes";
 import ScreenHeader from "../../components/ui/ScreenHeader";
+import { backOrParentHub } from "../../navigation/backOrHub";
 import { useRefreshOnFocus } from "../../hooks/useRefreshOnFocus";
 import { brand, radii, spacing } from "../../theme/brand";
 import { fonts } from "../../theme/typography";
@@ -369,7 +370,9 @@ export default function TarifarioScreen() {
         title="Tarifario"
         subtitle="Solo consulta visual"
         onBack={
-          navigation.canGoBack() ? () => navigation.goBack() : undefined
+          navigation.canGoBack()
+            ? () => navigation.goBack()
+            : () => backOrParentHub(navigation)
         }
         right={
           <Pressable style={styles.iconBtn} onPress={() => void load(true)}>

@@ -12,6 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useReporteriaOperacional } from "../../hooks/useReporteria";
+import { backOrParentHub } from "../../navigation/backOrHub";
 import { brand, spacing } from "../../theme/brand";
 import { fonts } from "../../theme/typography";
 
@@ -185,7 +186,7 @@ export default function ReporteriaOperacionalScreen() {
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <View style={styles.header}>
         <Pressable
-          onPress={() => navigation.goBack()}
+          onPress={() => backOrParentHub(navigation)}
           hitSlop={12}
           style={styles.backBtn}
           accessibilityLabel="Volver"

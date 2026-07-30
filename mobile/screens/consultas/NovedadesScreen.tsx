@@ -15,6 +15,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import ScreenHeader from "../../components/ui/ScreenHeader";
 import type { MenuStackParamList } from "../../navigation/MenuStack";
+import { backOrParentHub } from "../../navigation/backOrHub";
 import {
   fetchBlogPosts,
   type MobileBlogPost,
@@ -103,7 +104,7 @@ export default function NovedadesScreen() {
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <ScreenHeader
         title="Novedades"
-        onBack={() => navigation.goBack()}
+        onBack={() => backOrParentHub(navigation)}
         right={
           <Pressable style={styles.iconBtn} onPress={() => void load()}>
             <Ionicons name="refresh" size={18} color={brand.navy} />

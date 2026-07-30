@@ -10,6 +10,7 @@ import { useAuth } from "../auth/AuthContext";
 import ClientsListScreen from "../screens/executive/ClientsListScreen";
 import ClientHubScreen from "../screens/executive/ClientHubScreen";
 import MisDocumentosScreen from "../screens/menu/MisDocumentosScreen";
+import type { ShipsGoOpenTrackingTarget } from "../../src/services/shipsgoTrackingNavigation";
 import CotizacionesStack from "./CotizacionesStack";
 import OperacionesStack from "./OperacionesStack";
 import TrackeosStack from "./TrackeosStack";
@@ -24,6 +25,7 @@ export type ClientScopeParams = {
   username: string;
   nombreuser?: string;
   email?: string;
+  openTracking?: ShipsGoOpenTrackingTarget;
 };
 
 export type ExecutiveClientsStackParamList = {
@@ -99,9 +101,17 @@ function ClientScopedScreen({
 }
 
 function ClientTrackeosScreen() {
+  const route =
+    useRoute<RouteProp<ExecutiveClientsStackParamList, "ClientTrackeos">>();
+  const openKey = route.params.openTracking
+    ? JSON.stringify(route.params.openTracking)
+    : "list";
   return (
     <ClientScopedScreen title="Seguimientos">
-      <TrackeosStack />
+      <TrackeosStack
+        key={openKey}
+        initialOpenTracking={route.params.openTracking}
+      />
     </ClientScopedScreen>
   );
 }

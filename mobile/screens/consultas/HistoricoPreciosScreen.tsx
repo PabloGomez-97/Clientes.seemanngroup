@@ -23,6 +23,7 @@ import {
   type HistoricalTierSeries,
 } from "../../../src/components/quotes/Handlers/shared/historicalExplorerParse";
 import ScreenHeader from "../../components/ui/ScreenHeader";
+import { backOrParentHub } from "../../navigation/backOrHub";
 import { useRefreshOnFocus } from "../../hooks/useRefreshOnFocus";
 import { brand, radii, spacing } from "../../theme/brand";
 import { fonts } from "../../theme/typography";
@@ -535,7 +536,7 @@ export default function HistoricoPreciosScreen() {
       <ScreenHeader
         title="Histórico de precios"
         subtitle="Comparación por ruta y producto"
-        onBack={() => navigation.goBack()}
+        onBack={() => backOrParentHub(navigation)}
         right={
           <Pressable style={styles.iconBtn} onPress={() => void load()}>
             <Ionicons name="refresh" size={18} color={brand.navy} />

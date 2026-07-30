@@ -230,6 +230,11 @@ function DocsClientPickerScreen() {
           : "Elige un cliente"
       }
       onSelectClient={onSelect}
+      onBack={() =>
+        navigation.canGoBack()
+          ? navigation.goBack()
+          : navigation.navigate("MoreHome")
+      }
     />
   );
 }

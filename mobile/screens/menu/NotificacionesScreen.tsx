@@ -10,6 +10,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { useAuth } from "../../auth/AuthContext";
 import ScreenHeader from "../../components/ui/ScreenHeader";
+import { backOrParentHub } from "../../navigation/backOrHub";
 import { useRefreshOnFocus } from "../../hooks/useRefreshOnFocus";
 import {
   getNotificationPreferences,
@@ -66,7 +67,7 @@ export default function NotificacionesScreen() {
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <ScreenHeader
         title="Notificaciones"
-        onBack={() => navigation.goBack()}
+        onBack={() => backOrParentHub(navigation)}
       />
 
       {loading ? (

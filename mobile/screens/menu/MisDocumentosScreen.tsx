@@ -18,6 +18,7 @@ import ScreenHeader from "../../components/ui/ScreenHeader";
 import { useMisDocumentos } from "../../hooks/useMisDocumentos";
 import { useRefreshOnFocus } from "../../hooks/useRefreshOnFocus";
 import { useEmbeddedChrome } from "../../navigation/EmbeddedChromeContext";
+import { backOrParentHub } from "../../navigation/backOrHub";
 import {
   formatDocDate,
   TRANSPORT_LABELS,
@@ -178,7 +179,7 @@ export default function MisDocumentosScreen() {
       <ScreenHeader
         title="Mis Documentos"
         subtitle={activeUsername || undefined}
-        onBack={embedded ? undefined : () => navigation.goBack()}
+        onBack={embedded ? undefined : () => backOrParentHub(navigation)}
         right={
           <Pressable style={styles.iconBtn} onPress={() => void refresh()}>
             <Ionicons name="refresh" size={18} color={brand.navy} />

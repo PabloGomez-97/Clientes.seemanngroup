@@ -3,6 +3,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useAuth } from "../../auth/AuthContext";
 import type { CotizadorStackParamList } from "../../navigation/CotizadorStack";
 import { useStaffClientsSource } from "../../navigation/StaffClientsSourceContext";
+import { backOrParentHub } from "../../navigation/backOrHub";
 import ClientsListScreen from "../executive/ClientsListScreen";
 import type { Cliente } from "../../services/ejecutivoClientesApi";
 
@@ -34,7 +35,7 @@ export default function CotizadorClientPickerScreen() {
           : "Seleccioná un cliente de tu cartera"
       }
       onSelectClient={onSelect}
-      onBack={() => navigation.getParent()?.goBack() ?? navigation.goBack()}
+      onBack={() => backOrParentHub(navigation)}
     />
   );
 }

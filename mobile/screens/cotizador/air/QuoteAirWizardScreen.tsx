@@ -213,6 +213,14 @@ export default function QuoteAirWizardScreen() {
                   : names.includes("Home")
                     ? "Home"
                     : names[0];
+                // Limpia Cotizador debajo del tab Más/Menu antes de ir al inicio.
+                if (names.includes("Menu")) {
+                  // @ts-expect-error tab route names vary by portal role
+                  tabNav.navigate("Menu", { screen: "MenuHome" });
+                } else if (names.includes("More")) {
+                  // @ts-expect-error tab route names vary by portal role
+                  tabNav.navigate("More", { screen: "MoreHome" });
+                }
                 // @ts-expect-error tab route names vary by portal role
                 tabNav.navigate(home);
                 return;

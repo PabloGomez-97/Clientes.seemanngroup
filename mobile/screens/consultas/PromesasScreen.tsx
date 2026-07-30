@@ -5,6 +5,7 @@ import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import ScreenHeader from "../../components/ui/ScreenHeader";
+import { backOrParentHub } from "../../navigation/backOrHub";
 import { brand, radii, spacing } from "../../theme/brand";
 import { fonts } from "../../theme/typography";
 
@@ -35,7 +36,7 @@ export default function PromesasScreen() {
       <ScreenHeader
         title={t("promesas.hero.title")}
         subtitle={t("promesas.hero.eyebrow")}
-        onBack={() => navigation.goBack()}
+        onBack={() => backOrParentHub(navigation)}
       />
 
       <View style={styles.tabs}>

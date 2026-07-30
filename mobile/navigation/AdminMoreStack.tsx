@@ -320,6 +320,11 @@ function DocsClientPickerScreen() {
       title="Documentación"
       subtitle="Elige un cliente del portal"
       onSelectClient={onSelect}
+      onBack={() =>
+        navigation.canGoBack()
+          ? navigation.goBack()
+          : navigation.navigate("MoreHome")
+      }
     />
   );
 }
