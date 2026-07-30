@@ -11,7 +11,6 @@ import { buildNoRateQuoteEmailHTML, getNoRateQuoteEmailSubject, type NoRateQuote
 import { buildAirQuoteEmailHTML, getAirQuoteEmailSubject, type AirQuoteEmailData } from './emails/airQuoteEmailTemplate.js';
 import { buildFclQuoteEmailHTML, getFclQuoteEmailSubject, type FclQuoteEmailData } from './emails/fclQuoteEmailTemplate.js';
 import { buildLclQuoteEmailHTML, getLclQuoteEmailSubject, type LclQuoteEmailData } from './emails/lclQuoteEmailTemplate.js';
-import { withEmailLogoAttachment } from './emails/emailBrand.js';
 
 import { buildSpecialQuoteEmailHTML, getSpecialQuoteEmailSubject, type SpecialQuoteEmailData } from './emails/specialQuoteEmailTemplate.js';
 import { buildQuotePdfResendEmailHTML, getQuotePdfResendEmailSubject } from './emails/quotePdfResendEmailTemplate.js';
@@ -5986,8 +5985,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           subject,
           htmlContent,
         };
-        const baseAttachments = pdfAttachment ? [pdfAttachment] : [];
-        brevoPayload.attachment = withEmailLogoAttachment(baseAttachments);
+        if (pdfAttachment) {
+          brevoPayload.attachment = [pdfAttachment];
+        }
 
         const brevoResponse = await fetch('https://api.brevo.com/v3/smtp/email', {
           method: 'POST',
@@ -6316,7 +6316,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               subject,
               htmlContent,
             };
-            brevoPayload.attachment = withEmailLogoAttachment(brevoAttachments);
+            if (brevoAttachments.length > 0) {
+              brevoPayload.attachment = brevoAttachments;
+            }
 
             fetch('https://api.brevo.com/v3/smtp/email', {
               method: 'POST',
@@ -9428,7 +9430,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             to: [{ email: ejecutivoEmail }],
             subject,
             htmlContent,
-            attachment: withEmailLogoAttachment(),
           }),
         });
 

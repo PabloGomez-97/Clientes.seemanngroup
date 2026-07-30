@@ -23,7 +23,6 @@ import { buildNoRateQuoteEmailHTML, getNoRateQuoteEmailSubject, type NoRateQuote
 import { buildAirQuoteEmailHTML, getAirQuoteEmailSubject, type AirQuoteEmailData } from '../api/emails/airQuoteEmailTemplate.ts';
 import { buildFclQuoteEmailHTML, getFclQuoteEmailSubject, type FclQuoteEmailData } from '../api/emails/fclQuoteEmailTemplate.ts';
 import { buildLclQuoteEmailHTML, getLclQuoteEmailSubject, type LclQuoteEmailData } from '../api/emails/lclQuoteEmailTemplate.ts';
-import { withEmailLogoAttachment } from '../api/emails/emailBrand.ts';
 
 import { buildSpecialQuoteEmailHTML, getSpecialQuoteEmailSubject, type SpecialQuoteEmailData } from '../api/emails/specialQuoteEmailTemplate.ts';
 import { buildQuotePdfResendEmailHTML, getQuotePdfResendEmailSubject } from '../api/emails/quotePdfResendEmailTemplate.ts';
@@ -5755,8 +5754,9 @@ app.post('/api/send-operation-email', auth, async (req, res) => {
       subject,
       htmlContent,
     };
-    const baseAttachments = pdfAttachment ? [pdfAttachment] : [];
-    brevoPayload.attachment = withEmailLogoAttachment(baseAttachments);
+    if (pdfAttachment) {
+      brevoPayload.attachment = [pdfAttachment];
+    }
 
     const brevoResponse = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
@@ -6065,7 +6065,9 @@ app.post('/api/operaciones', auth, async (req, res) => {
           subject,
           htmlContent,
         };
-        brevoPayload.attachment = withEmailLogoAttachment(brevoAttachments);
+        if (brevoAttachments.length > 0) {
+          brevoPayload.attachment = brevoAttachments;
+        }
 
         fetch('https://api.brevo.com/v3/smtp/email', {
           method: 'POST',
@@ -6346,7 +6348,6 @@ app.post('/api/send-simulated-quote-email', auth, async (req, res) => {
         to: [{ email: ejecutivoEmail }],
         subject,
         htmlContent,
-        attachment: withEmailLogoAttachment(),
       }),
     });
 

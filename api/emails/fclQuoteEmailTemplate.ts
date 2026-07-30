@@ -12,7 +12,7 @@ import {
   type OperacionDocumentoEmail,
   type OperacionProveedorEmail,
 } from './operationFormEmailSections.js';
-import { EMAIL_LOGO_CID_SRC } from './emailBrand.js';
+import { EMAIL_LOGO_URL } from './emailBrand.js';
 
 export interface FclQuoteEmailData {
   ejecutivoNombre: string;
@@ -40,7 +40,7 @@ export interface FclQuoteEmailData {
   operacionDetalle?: OperacionDetalleEmail;
 }
 
-const LOGO_URL = EMAIL_LOGO_CID_SRC;
+const LOGO_URL = EMAIL_LOGO_URL;
 
 const FONT = "'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 
@@ -154,7 +154,7 @@ export function buildFclQuoteEmailHTML(data: FclQuoteEmailData): string {
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                 <tr>
                   <td class="header-logo-col" valign="middle">
-                    <img src="${LOGO_URL}" alt="Seemann Group" width="140" style="display:block;max-width:140px;height:auto;" />
+                    <img src="${LOGO_URL}" alt="Seemann Group" width="48" height="48" style="display:block;width:48px;height:48px;border:0;" />
                   </td>
                   <td class="header-badge-col" align="right" valign="middle">
                     <table role="presentation" cellpadding="0" cellspacing="0">
