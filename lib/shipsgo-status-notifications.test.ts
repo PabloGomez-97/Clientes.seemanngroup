@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
+import mongoose from "mongoose";
 import { describe, it } from "node:test";
 import {
+  assertShipsgoUserModelSafeForLogin,
   evaluateShipmentTransition,
   isAirDelayed,
   isOceanDelayed,
@@ -25,6 +27,30 @@ describe("processShipsgoWebhookPayload", () => {
     const { eventName, result } = await processShipsgoWebhookPayload("OCEAN", {});
     assert.equal(eventName, "UNKNOWN");
     assert.equal(result, null);
+  });
+});
+
+describe("regresión login Chile/México (User schema)", () => {
+  it("importar shipsgo-status-notifications NO deja User sin passwordHash", () => {
+    const check = assertShipsgoUserModelSafeForLogin();
+    assert.equal(check.ok, true, check.reason);
+  });
+
+  it("detecta User incompleto si alguien lo registra mal", () => {
+    const previous = mongoose.models.User;
+    // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+    delete (mongoose.models as any).User;
+    mongoose.model(
+      "User",
+      new mongoose.Schema({ email: String, username: String }),
+    );
+    const check = assertShipsgoUserModelSafeForLogin();
+    assert.equal(check.ok, false);
+    // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+    delete (mongoose.models as any).User;
+    if (previous) {
+      (mongoose.models as any).User = previous;
+    }
   });
 });
 
@@ -150,8 +176,7 @@ describe("verifyShipsgoWebhookSignature", () => {
     if (!r.ok) assert.match(r.error, /raw body/i);
   });
 
-  it("acepta firma válida (vector ShipsGo docs)", () => {
-    // Documented example signature may differ; verify round-trip with our secret
+  it("acepta firma válida", () => {
     const r = verifyShipsgoWebhookSignature({
       secret,
       signature,

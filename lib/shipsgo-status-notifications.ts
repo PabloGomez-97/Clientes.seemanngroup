@@ -1,6 +1,11 @@
 /**
  * Shared ShipsGo status → portal notification + mobile push.
  * Used by cron (backup poll) and webhooks (instant).
+ *
+ * IMPORTANT: no registrar modelos User/Ejecutivo/PortalNotification al importar.
+ * Si se registra un User incompleto (sin passwordHash) antes que api/index o
+ * server/index, mongoose.models.User queda “congelado” y el login Chile falla
+ * (passwordHash stripped) → cuentas duales caen solo en México.
  */
 
 import mongoose from "mongoose";
@@ -11,109 +16,125 @@ import {
 
 export type ShipsgoShipmentMode = "AIR" | "OCEAN";
 
-const EjecutivoSchema = new mongoose.Schema({
-  email: String,
-  nombre: String,
-  activo: Boolean,
-  roles: {
-    administrador: Boolean,
-    pricing: Boolean,
-    ejecutivo: Boolean,
-    proveedor: Boolean,
-    operaciones: Boolean,
-  },
-});
-const Ejecutivo =
-  (mongoose.models.Ejecutivo as mongoose.Model<any>) ||
-  mongoose.model("Ejecutivo", EjecutivoSchema);
-
-const UserSchema = new mongoose.Schema({
-  email: String,
-  username: String,
-  usernames: [String],
-  nombreuser: String,
-  ejecutivoId: { type: mongoose.Schema.Types.ObjectId, ref: "Ejecutivo" },
-  mobilePushEnabled: { type: Boolean, default: true },
-});
-const User =
-  (mongoose.models.User as mongoose.Model<any>) ||
-  mongoose.model("User", UserSchema);
-
-const PortalNotificationSchema = new mongoose.Schema(
-  {
-    audience: {
-      type: String,
-      required: true,
-      enum: ["EJECUTIVO", "CLIENTE", "OPERACIONES"],
-      index: true,
+function getEjecutivoModel(): mongoose.Model<any> {
+  if (mongoose.models.Ejecutivo) {
+    return mongoose.models.Ejecutivo as mongoose.Model<any>;
+  }
+  const EjecutivoSchema = new mongoose.Schema({
+    email: String,
+    nombre: String,
+    activo: Boolean,
+    roles: {
+      administrador: Boolean,
+      pricing: Boolean,
+      ejecutivo: Boolean,
+      proveedor: Boolean,
+      operaciones: Boolean,
     },
-    recipientEmail: {
-      type: String,
-      required: true,
-      lowercase: true,
-      trim: true,
-      index: true,
-    },
-    recipientUsername: String,
-    type: {
-      type: String,
-      required: true,
-      enum: [
-        "QUOTE_COMPLETED",
-        "QUOTE_ABANDONED",
-        "TRACKING_CREATED",
-        "TRACKING_STATUS_CHANGED",
-        "TRACKING_DELAYED",
-        "CLIENT_ASSIGNED",
-        "CLIENT_COLD",
-      ],
-    },
-    dedupKey: { type: String, required: true },
-    sessionId: String,
-    quoteType: String,
-    quoteNumber: String,
-    route: { origin: String, destination: String },
-    shipmentMode: String,
-    shipmentId: String,
-    reference: String,
-    awbNumber: String,
-    containerNumber: String,
-    tagsLabel: String,
-    oldStatus: String,
-    newStatus: String,
-    clientEmail: String,
-    clientUsername: String,
-    clientNombre: String,
-    payload: { type: mongoose.Schema.Types.Mixed, default: {} },
-    read: { type: Boolean, default: false },
-    readAt: Date,
-  },
-  { timestamps: true },
-);
-PortalNotificationSchema.index(
-  { recipientEmail: 1, dedupKey: 1 },
-  { unique: true },
-);
-const PortalNotification =
-  (mongoose.models.PortalNotification as mongoose.Model<any>) ||
-  mongoose.model("PortalNotification", PortalNotificationSchema);
+  });
+  return mongoose.model("Ejecutivo", EjecutivoSchema);
+}
 
-const ShipmentStateSnapshotSchema = new mongoose.Schema(
-  {
-    mode: { type: String, required: true, enum: ["AIR", "OCEAN"] },
-    shipmentId: { type: String, required: true },
-    reference: String,
-    status: String,
-    isDelayed: { type: Boolean, default: false },
-    updatedAtIso: String,
-    lastSeenAt: { type: Date, default: () => new Date() },
-  },
-  { timestamps: true },
-);
-ShipmentStateSnapshotSchema.index({ mode: 1, shipmentId: 1 }, { unique: true });
-const ShipmentStateSnapshot =
-  (mongoose.models.ShipmentStateSnapshot as mongoose.Model<any>) ||
-  mongoose.model("ShipmentStateSnapshot", ShipmentStateSnapshotSchema);
+function getUserModel(): mongoose.Model<any> {
+  if (mongoose.models.User) {
+    return mongoose.models.User as mongoose.Model<any>;
+  }
+  // Cron / webhook cold start: schema completo mínimo (passwordHash obligatorio).
+  const UserSchema = new mongoose.Schema({
+    email: String,
+    username: String,
+    usernames: [String],
+    nombreuser: String,
+    passwordHash: String,
+    loginFailCount: { type: Number, default: 0 },
+    loginCaptchaRequired: { type: Boolean, default: false },
+    ejecutivoId: { type: mongoose.Schema.Types.ObjectId, ref: "Ejecutivo" },
+    mobilePushEnabled: { type: Boolean, default: true },
+  });
+  return mongoose.model("User", UserSchema);
+}
+
+function getPortalNotificationModel(): mongoose.Model<any> {
+  if (mongoose.models.PortalNotification) {
+    return mongoose.models.PortalNotification as mongoose.Model<any>;
+  }
+  const PortalNotificationSchema = new mongoose.Schema(
+    {
+      audience: {
+        type: String,
+        required: true,
+        enum: ["EJECUTIVO", "CLIENTE", "OPERACIONES"],
+        index: true,
+      },
+      recipientEmail: {
+        type: String,
+        required: true,
+        lowercase: true,
+        trim: true,
+        index: true,
+      },
+      recipientUsername: String,
+      type: {
+        type: String,
+        required: true,
+        enum: [
+          "QUOTE_COMPLETED",
+          "QUOTE_ABANDONED",
+          "TRACKING_CREATED",
+          "TRACKING_STATUS_CHANGED",
+          "TRACKING_DELAYED",
+          "CLIENT_ASSIGNED",
+          "CLIENT_COLD",
+        ],
+      },
+      dedupKey: { type: String, required: true },
+      sessionId: String,
+      quoteType: String,
+      quoteNumber: String,
+      route: { origin: String, destination: String },
+      shipmentMode: String,
+      shipmentId: String,
+      reference: String,
+      awbNumber: String,
+      containerNumber: String,
+      tagsLabel: String,
+      oldStatus: String,
+      newStatus: String,
+      clientEmail: String,
+      clientUsername: String,
+      clientNombre: String,
+      payload: { type: mongoose.Schema.Types.Mixed, default: {} },
+      read: { type: Boolean, default: false },
+      readAt: Date,
+    },
+    { timestamps: true },
+  );
+  PortalNotificationSchema.index(
+    { recipientEmail: 1, dedupKey: 1 },
+    { unique: true },
+  );
+  return mongoose.model("PortalNotification", PortalNotificationSchema);
+}
+
+function getShipmentStateSnapshotModel(): mongoose.Model<any> {
+  if (mongoose.models.ShipmentStateSnapshot) {
+    return mongoose.models.ShipmentStateSnapshot as mongoose.Model<any>;
+  }
+  const ShipmentStateSnapshotSchema = new mongoose.Schema(
+    {
+      mode: { type: String, required: true, enum: ["AIR", "OCEAN"] },
+      shipmentId: { type: String, required: true },
+      reference: String,
+      status: String,
+      isDelayed: { type: Boolean, default: false },
+      updatedAtIso: String,
+      lastSeenAt: { type: Date, default: () => new Date() },
+    },
+    { timestamps: true },
+  );
+  ShipmentStateSnapshotSchema.index({ mode: 1, shipmentId: 1 }, { unique: true });
+  return mongoose.model("ShipmentStateSnapshot", ShipmentStateSnapshotSchema);
+}
 
 export function isAirDelayed(s: any): boolean {
   if (!s?.route) return false;
@@ -193,6 +214,7 @@ export function evaluateShipmentTransition(
 /** @returns true si el documento se insertó (nuevo), false si ya existía. */
 async function upsertNotification(doc: any): Promise<boolean> {
   try {
+    const PortalNotification = getPortalNotificationModel();
     const recipient = String(doc.recipientEmail || "")
       .toLowerCase()
       .trim();
@@ -232,6 +254,8 @@ async function fanOut(opts: {
   newStatus?: string;
 }): Promise<void> {
   try {
+    const User = getUserModel();
+    const Ejecutivo = getEjecutivoModel();
     const reference = String(opts.reference || "").trim();
     if (!reference) return;
 
@@ -352,6 +376,7 @@ export async function processShipsgoShipmentStatus(
   const shipmentIdHint = String(s?.id ?? "").trim();
   if (!shipmentIdHint) return null;
 
+  const ShipmentStateSnapshot = getShipmentStateSnapshotModel();
   const snapshot = (await ShipmentStateSnapshot.findOne({
     mode,
     shipmentId: shipmentIdHint,
@@ -444,4 +469,25 @@ export async function processShipsgoWebhookPayload(
   }
   const result = await processShipsgoShipmentStatus(mode, shipment);
   return { eventName, result };
+}
+
+/**
+ * Guardrail: si User ya está registrado (api/server), debe tener passwordHash.
+ * Exportado para tests de regresión del bug Chile/México.
+ */
+export function assertShipsgoUserModelSafeForLogin(): {
+  ok: boolean;
+  reason?: string;
+} {
+  if (!mongoose.models.User) {
+    return { ok: true };
+  }
+  if (!mongoose.models.User.schema.paths.passwordHash) {
+    return {
+      ok: false,
+      reason:
+        "mongoose.models.User existe sin passwordHash (login Chile roto)",
+    };
+  }
+  return { ok: true };
 }
