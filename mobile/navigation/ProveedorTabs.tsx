@@ -91,7 +91,7 @@ export default function ProveedorTabs() {
           <Tab.Screen
             name="More"
             component={ProveedorMoreStack}
-            listeners={createPopToHubTabListener("More")}
+            listeners={createPopToHubTabListener("More", "MoreHome")}
           />
         </Tab.Navigator>
       </NavigationContainer>

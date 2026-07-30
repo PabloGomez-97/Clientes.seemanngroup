@@ -103,7 +103,7 @@ export default function AdminTabs() {
             <Tab.Screen
               name="More"
               component={AdminMoreStack}
-              listeners={createPopToHubTabListener("More")}
+              listeners={createPopToHubTabListener("More", "MoreHome")}
             />
           </Tab.Navigator>
         </NavigationContainer>

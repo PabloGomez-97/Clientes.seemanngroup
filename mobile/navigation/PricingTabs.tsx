@@ -93,7 +93,7 @@ export default function PricingTabs() {
           <Tab.Screen
             name="More"
             component={PricingMoreStack}
-            listeners={createPopToHubTabListener("More")}
+            listeners={createPopToHubTabListener("More", "MoreHome")}
           />
         </Tab.Navigator>
       </NavigationContainer>

@@ -140,7 +140,7 @@ export default function ClientTabs() {
           <Tab.Screen
             name="Menu"
             component={MenuStack}
-            listeners={createPopToHubTabListener("Menu")}
+            listeners={createPopToHubTabListener("Menu", "MenuHome")}
           />
         </Tab.Navigator>
       </NavigationContainer>

@@ -100,7 +100,7 @@ export default function ExecutiveTabs() {
             <Tab.Screen
               name="More"
               component={ExecutiveMoreStack}
-              listeners={createPopToHubTabListener("More")}
+              listeners={createPopToHubTabListener("More", "MoreHome")}
             />
           </Tab.Navigator>
         </NavigationContainer>
