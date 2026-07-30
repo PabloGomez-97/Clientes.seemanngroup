@@ -12,6 +12,7 @@ import {
   buildAirPdfCharges,
   computeAirFreightQuoteValues,
 } from "../../../../src/components/quotes/Handlers/Air/airQuotePricingShared";
+import { buildAirOperacionDetalle } from "../../../../src/components/quotes/Operations/buildOperacionDetalleEmail";
 import {
   DEFAULT_CONFIG as DEFAULT_ADUANA_CONFIG,
   type IAgenciaAduanaConfig,
@@ -20,16 +21,21 @@ import {
   DEFAULT_GESTION_COTIZADOR_CONFIG,
   getVespucioExtendedMultiplier,
 } from "../../../../src/types/gestionCotizador";
-import type { AirConnectPricedOffer } from "../../../../src/services/airConnectSpainQuote";
+import {
+  AIR_CONNECT_CURRENCY,
+  type AirConnectPricedOffer,
+} from "../../../../src/services/airConnectSpainQuote";
 import { useAuth } from "../../../auth/AuthContext";
 import { useLinbisToken } from "../../../hooks/useLinbisToken";
 import { isStaffUser } from "../../../auth/portalRouting";
+import GenerateOperationModal from "../../../components/cotizador/GenerateOperationModal";
 import {
   computeAirConnectStep3Extra,
   fetchMobileAirConnectOffers,
   shareAirQuotePdf,
   submitAirQuote,
 } from "../../../services/airQuoteSubmit";
+import type { CrearOperacionPayload } from "../../../services/crearOperacionApi";
 import { brand, radii, spacing } from "../../../theme/brand";
 import { fonts } from "../../../theme/typography";
 import type { AirStep1Result } from "./QuoteAirStep1";
@@ -67,6 +73,10 @@ export default function QuoteAirStep4({
   const [error, setError] = useState<string | null>(null);
   const [generatedPdfUri, setGeneratedPdfUri] = useState<string | null>(null);
   const [quoteGenerated, setQuoteGenerated] = useState(false);
+  const [generatedQuoteNumber, setGeneratedQuoteNumber] = useState<string | null>(
+    null,
+  );
+  const [showOperationModal, setShowOperationModal] = useState(false);
 
   const [acLoading, setAcLoading] = useState(false);
   const [acError, setAcError] = useState<string | null>(null);
@@ -265,6 +275,7 @@ export default function QuoteAirStep4({
         airConnectStep3Extra: step1.airConnect ? acExtra : 0,
       });
       setGeneratedPdfUri(result.pdfUri);
+      setGeneratedQuoteNumber(result.quoteNumber);
       setQuoteGenerated(true);
       setDoneMsg(`Cotización ${result.quoteNumber} creada correctamente.`);
     } catch (e) {
@@ -293,6 +304,88 @@ export default function QuoteAirStep4({
       setSharing(false);
     }
   };
+
+  const operationEmailContext =
+    useMemo((): CrearOperacionPayload["emailContext"] | undefined => {
+      if (!quoteGenerated) return undefined;
+
+      if (step1.airConnect && selectedOffer) {
+        const airlineLabel = selectedOffer.via
+          ? `${selectedOffer.airline} (vía ${selectedOffer.via})`
+          : selectedOffer.airline;
+        const totalAmount = selectedOffer.incomeWithLand + acExtra;
+        const ventaTotal = `${AIR_CONNECT_CURRENCY} ${totalAmount.toFixed(2)}`;
+        const cw = step2.chargeableWeight;
+        return {
+          origen: step1.ruta.origin,
+          destino: step1.ruta.destination,
+          carrier: airlineLabel,
+          incoterm: step1.incoterm || undefined,
+          pickupFromAddress:
+            step1.incoterm === "EXW" ? step1.pickupAddress : undefined,
+          deliveryToAddress:
+            step1.incoterm === "EXW" ? step1.ruta.destination : undefined,
+          description: "Cargamento Aéreo",
+          chargeableWeight: cw,
+          currency: AIR_CONNECT_CURRENCY,
+          total: ventaTotal,
+          agente: step1.ruta.company || undefined,
+          operacionDetalle: buildAirOperacionDetalle({
+            ruta: {
+              ...step1.ruta,
+              carrier: airlineLabel || step1.ruta.carrier,
+            },
+            description: "Cargamento Aéreo",
+            chargeableWeight: cw,
+            expenseAmount: selectedOffer.apiWithLand,
+            expenseRate: cw > 0 ? selectedOffer.apiWithLand / cw : 0,
+            ventaTotal,
+          }),
+        };
+      }
+
+      if (!freight) return undefined;
+      const ventaTotal = `${currency} ${totalPreview.toFixed(2)}`;
+      return {
+        origen: step1.ruta.origin,
+        destino: step1.ruta.destination,
+        carrier: step1.ruta.carrier || undefined,
+        incoterm: step1.incoterm || undefined,
+        pickupFromAddress:
+          step1.incoterm === "EXW" ? step1.pickupAddress : undefined,
+        deliveryToAddress:
+          step1.incoterm === "EXW" ? step1.ruta.destination : undefined,
+        description: "Cargamento Aéreo",
+        chargeableWeight: step2.chargeableWeight,
+        currency,
+        total: ventaTotal,
+        agente: step1.ruta.company || undefined,
+        operacionDetalle: buildAirOperacionDetalle({
+          ruta: step1.ruta,
+          description: "Cargamento Aéreo",
+          chargeableWeight: step2.chargeableWeight,
+          expenseAmount: freight.expenseAmount,
+          expenseRate: freight.expenseRate,
+          ventaTotal,
+        }),
+      };
+    }, [
+      quoteGenerated,
+      step1,
+      step2.chargeableWeight,
+      selectedOffer,
+      acExtra,
+      freight,
+      currency,
+      totalPreview,
+    ]);
+
+  const operationValidUntil = step1.airConnect
+    ? selectedOffer?.validity ?? null
+    : step1.ruta.validUntil ?? null;
+
+  const canConvertToOperation =
+    quoteGenerated && !step1.sinTarifa && !!generatedQuoteNumber;
 
   return (
     <View style={styles.wrap}>
@@ -405,6 +498,14 @@ export default function QuoteAirStep4({
 
       {quoteGenerated ? (
         <View style={styles.postActions}>
+          {canConvertToOperation ? (
+            <Pressable
+              style={styles.convertBtn}
+              onPress={() => setShowOperationModal(true)}
+            >
+              <Text style={styles.primaryBtnText}>Convertir en operación</Text>
+            </Pressable>
+          ) : null}
           <Pressable
             style={[styles.primaryBtn, sharing && styles.primaryDisabled]}
             disabled={sharing || !generatedPdfUri}
@@ -433,6 +534,18 @@ export default function QuoteAirStep4({
           )}
         </Pressable>
       )}
+
+      {generatedQuoteNumber ? (
+        <GenerateOperationModal
+          show={showOperationModal}
+          onClose={() => setShowOperationModal(false)}
+          quoteNumber={generatedQuoteNumber}
+          tipoServicio="AIR"
+          emailContext={operationEmailContext}
+          validUntil={operationValidUntil}
+          ownerUsername={staff ? effectiveUsername : undefined}
+        />
+      ) : null}
     </View>
   );
 }
@@ -548,6 +661,13 @@ const styles = StyleSheet.create({
   error: { fontSize: 13, fontFamily: fonts.medium, color: "#b42318" },
   ok: { fontSize: 13, fontFamily: fonts.medium, color: "#15803d" },
   postActions: { gap: 10, marginTop: 4 },
+  convertBtn: {
+    marginTop: 4,
+    backgroundColor: brand.primary,
+    borderRadius: radii.md,
+    paddingVertical: 14,
+    alignItems: "center",
+  },
   primaryBtn: {
     marginTop: 4,
     backgroundColor: brand.navy,
