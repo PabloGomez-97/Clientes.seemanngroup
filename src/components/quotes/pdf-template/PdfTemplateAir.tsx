@@ -680,17 +680,6 @@ export const PDFTemplateAIR: React.FC<PDFTemplateAIRProps> = ({
               {currency} {fmt(totalCharges)}
             </span>
           </div>
-          <div
-            style={{
-              textAlign: "right",
-              fontSize: "6.5pt",
-              color: C.sub,
-              marginTop: "2px",
-              paddingRight: "8px",
-            }}
-          >
-            * Airport Transfer: {currency} 0.15/kg — Minimum {currency} 50
-          </div>
         </div>
       )}
 

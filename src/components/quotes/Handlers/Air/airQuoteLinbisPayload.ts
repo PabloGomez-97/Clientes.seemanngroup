@@ -6,11 +6,11 @@ import {
 } from "./airQuoteCargoShared";
 import {
   AWB_AMOUNT,
+  BL_AMOUNT_EXPORT_FCA,
+  BL_SERVICE,
   DESCONSOLIDACION_AMOUNT,
   FCA_MARKUP,
-  HANDLING_AMOUNT,
   aereoTtExpenseFromIncome,
-  calculateAirportTransfer,
   calculateAduanaAmount,
   calculateAirBaseWithoutSeguro,
   calculateEXWRate,
@@ -20,7 +20,10 @@ import {
   calculateSeguroAmount,
   calculateUltimaMillaAmount,
   getCargoWeightTotals,
+  isExportFcaAirportTransfer,
   resolveAirFreightWeights,
+  resolveAirportTransfer,
+  resolveHandlingAmount,
   type AirAddonsState,
   type AirBaseChargesInput,
   type AirFreightQuoteValues,
@@ -130,25 +133,53 @@ export function buildAirLinbisPayload(input: BuildAirLinbisPayloadInput) {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const charges: any[] = [];
+  const useExportFca = isExportFcaAirportTransfer(input.base.tradeType, incoterm);
+  const handlingAmount = resolveHandlingAmount(useExportFca);
 
   charges.push({
     service: { id: 162, code: "H" },
     income: {
       quantity: 1,
       unit: "HL",
-      rate: HANDLING_AMOUNT,
-      amount: HANDLING_AMOUNT,
-      showamount: HANDLING_AMOUNT,
+      rate: handlingAmount,
+      amount: handlingAmount,
+      showamount: handlingAmount,
       payment: "Collect",
       billApplyTo: "Other",
       billTo: billTo(username),
       currency: cur,
       reference: "Amount to Handling",
       showOnDocument: true,
-      notes: "Handling charge created via Client Portal",
+      notes: useExportFca
+        ? "Handling charge (Export FCA) created via Client Portal"
+        : "Handling charge created via Client Portal",
     },
     expense: { currency: cur },
   });
+
+  if (useExportFca) {
+    charges.push({
+      service: {
+        id: BL_SERVICE.id,
+        code: BL_SERVICE.code,
+      },
+      income: {
+        quantity: 1,
+        unit: "Each",
+        rate: BL_AMOUNT_EXPORT_FCA,
+        amount: BL_AMOUNT_EXPORT_FCA,
+        showamount: BL_AMOUNT_EXPORT_FCA,
+        payment: "Collect",
+        billApplyTo: "Other",
+        billTo: billTo(username),
+        currency: cur,
+        reference: "Amount to BL",
+        showOnDocument: true,
+        notes: "BL charge (Export FCA) created via Client Portal",
+      },
+      expense: { currency: cur },
+    });
+  }
 
   if (incoterm === "EXW") {
     const exw = calculateEXWRate(totals.totalRealWeight, pesoParaCargos);
@@ -191,22 +222,26 @@ export function buildAirLinbisPayload(input: BuildAirLinbisPayloadInput) {
     expense: { currency: cur },
   });
 
-  const airportTransferAmount = calculateAirportTransfer(pesoParaCargos);
+  const airportTransfer = resolveAirportTransfer({
+    weightKg: useExportFca ? totals.chargeableWeight : pesoParaCargos,
+    useTeisaExportFca: useExportFca,
+    storageAtData: input.base.storageAtData ?? null,
+  });
   charges.push({
     service: { id: 110936, code: "A/T" },
     income: {
-      quantity: pesoParaCargos,
-      unit: "kg",
-      rate: 0.15,
-      amount: airportTransferAmount,
-      showamount: airportTransferAmount,
+      quantity: airportTransfer.quantity,
+      unit: airportTransfer.unit,
+      rate: airportTransfer.rate,
+      amount: airportTransfer.amount,
+      showamount: airportTransfer.amount,
       payment: "Collect",
       billApplyTo: "Other",
       billTo: billTo(username),
       currency: cur,
       reference: "Amount to AirPort Transfer",
       showOnDocument: true,
-      notes: `Airport Transfer charge - 0.15/kg (minimum ${ruta.currency} 50)`,
+      notes: airportTransfer.notes,
     },
     expense: { currency: cur },
   });

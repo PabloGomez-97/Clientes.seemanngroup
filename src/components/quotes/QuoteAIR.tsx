@@ -115,6 +115,18 @@ import {
   normalizeAirCarrierKey,
   resolveAirTradeType,
 } from "./Handlers/Air/airQuoteStep1Shared";
+import {
+  isExportFcaAirportTransfer,
+  resolveAirportTransfer,
+  resolveHandlingAmount,
+  BL_AMOUNT_EXPORT_FCA,
+  BL_SERVICE,
+} from "./Handlers/Air/airQuotePricingShared";
+import {
+  STORAGE_AT_POLL_MS,
+  fetchStorageAtSheet,
+  type StorageAtSheetData,
+} from "../administrador/pricing/storage-at/storageAtSheet";
 import { CountryRatesDownloadButton } from "./Handlers/shared/CountryRatesDownloadButton";
 import { COUNTRY_RATE_COLUMNS_AIR } from "./Handlers/shared/countryRatesTypes";
 import "./Handlers/shared/CountryRatesDownload.css";
@@ -609,6 +621,32 @@ function QuoteAPITester({
     ? formatAirTradeTypeLabel(airTradeType)
     : null;
   const isAirImportacion = airTradeType === "importacion";
+  const isExportFcaAt = isExportFcaAirportTransfer(airTradeType, incoterm);
+
+  const [storageAtData, setStorageAtData] =
+    useState<StorageAtSheetData | null>(null);
+
+  useEffect(() => {
+    if (!isExportFcaAt) {
+      setStorageAtData(null);
+      return;
+    }
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const sheet = await fetchStorageAtSheet();
+        if (!cancelled) setStorageAtData(sheet);
+      } catch (err) {
+        console.warn("[A/T TEISA] No se pudo sincronizar el sheet:", err);
+      }
+    };
+    void load();
+    const id = window.setInterval(() => void load(), STORAGE_AT_POLL_MS);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [isExportFcaAt]);
 
   const isAirConnectSpainFca = isAirConnectSpainFcaFlow({
     routeMode,
@@ -2246,6 +2284,41 @@ function QuoteAPITester({
   // Peso para cargos adicionales (Airport Transfer, EXW, FCA Gastos x kg, etc.):
   const pesoParaCargos = weightRangeError ? pesoChargeable : pesoAirFreight;
 
+  const airportTransferQuote = useMemo(
+    () =>
+      resolveAirportTransfer({
+        // Export+FCA TEISA usa peso cargable del Paso 2; legacy usa pesoParaCargos
+        weightKg: isExportFcaAt ? pesoChargeable : pesoParaCargos,
+        useTeisaExportFca: isExportFcaAt,
+        storageAtData,
+      }),
+    [isExportFcaAt, pesoChargeable, pesoParaCargos, storageAtData],
+  );
+
+  const handlingAmount = resolveHandlingAmount(isExportFcaAt);
+  const blAmountExportFca = isExportFcaAt ? BL_AMOUNT_EXPORT_FCA : 0;
+
+  // TEMP: verificar cálculo A/T TEISA (Exportación + FCA) en Paso 2
+  useEffect(() => {
+    if (currentStep !== 2 || !isExportFcaAt) return;
+    console.log("[A/T Export FCA — Paso 2]", {
+      pesoCargableKg: pesoChargeable,
+      sheetSyncedAt: storageAtData?.fetchedAt
+        ? new Date(storageAtData.fetchedAt).toISOString()
+        : null,
+      amountUsd: airportTransferQuote.amount,
+      appliesMinimum: airportTransferQuote.teisa?.appliesMinimum ?? null,
+      teisa: airportTransferQuote.teisa ?? null,
+      notes: airportTransferQuote.notes,
+    });
+  }, [
+    currentStep,
+    isExportFcaAt,
+    pesoChargeable,
+    storageAtData,
+    airportTransferQuote,
+  ]);
+
   // Calcular tarifa AIR FREIGHT si hay ruta seleccionada
   const tarifaAirFreight = rutaSeleccionada
     ? seleccionarTarifaPorPeso(
@@ -2350,12 +2423,13 @@ function QuoteAPITester({
     const { totalRealWeight } = calculateTotals();
 
     const totalSinSeguro =
-      45 + // Handling
+      handlingAmount + // Handling (60 en Export+FCA)
+      blAmountExportFca + // BL (solo Export+FCA)
       (incoterm === "EXW"
         ? calculateEXWRate(totalRealWeight, pesoParaCargos)
         : 0) + // EXW
       30 + // AWB
-      Math.max(pesoParaCargos * 0.15, 50) + // Airport Transfer
+      airportTransferQuote.amount + // Airport Transfer
       airFreightBaseForOptionalCharges + // Air Freight (cobrado por peso mínimo si aplica)
       (incoterm === "FCA" && rutaSeleccionada
         ? (rutaSeleccionada.localCharges > 0
@@ -2634,12 +2708,13 @@ function QuoteAPITester({
     if (!hasAirFreightCharge || !rutaSeleccionada) return 0;
     const { totalRealWeight } = calculateTotals();
     return (
-      45 + // Handling
+      handlingAmount + // Handling (60 en Export+FCA)
+      blAmountExportFca + // BL (solo Export+FCA)
       (incoterm === "EXW"
         ? calculateEXWRate(totalRealWeight, pesoParaCargos)
         : 0) +
       30 + // AWB
-      Math.max(pesoParaCargos * 0.15, 50) + // Airport Transfer
+      airportTransferQuote.amount + // Airport Transfer
       airFreightBaseForOptionalCharges + // Air Freight (cobrado por peso mínimo si aplica)
       (incoterm === "FCA" && rutaSeleccionada
         ? (rutaSeleccionada.localCharges > 0
@@ -3561,9 +3636,21 @@ function QuoteAPITester({
         description: "HANDLING",
         quantity: 1,
         unit: "Each",
-        rate: 45,
-        amount: 45,
+        rate: handlingAmount,
+        amount: handlingAmount,
       });
+
+      // BL (solo Exportación + FCA)
+      if (isExportFcaAt) {
+        pdfCharges.push({
+          code: BL_SERVICE.code,
+          description: BL_SERVICE.description,
+          quantity: 1,
+          unit: "Each",
+          rate: BL_AMOUNT_EXPORT_FCA,
+          amount: BL_AMOUNT_EXPORT_FCA,
+        });
+      }
 
       // EXW (solo si incoterm es EXW)
       if (incoterm === "EXW") {
@@ -3594,22 +3681,14 @@ function QuoteAPITester({
       });
 
       // Airport Transfer - Obligatorio
-      const chargeableWeightForTransfer = overallDimsAndWeight
-        ? Math.max(manualWeight, manualVolume * 167)
-        : calculateTotals().chargeableWeight;
-
-      const airportTransferAmount = Math.max(
-        50,
-        chargeableWeightForTransfer * 0.15,
-      );
-
+      // Export+FCA: TEISA (peso cargable). Resto: legacy 0.15/kg mín. 50
       pdfCharges.push({
         code: "A/T",
         description: "AIRPORT TRANSFER",
-        quantity: chargeableWeightForTransfer,
-        unit: "kg",
-        rate: 0.15,
-        amount: airportTransferAmount,
+        quantity: airportTransferQuote.quantity,
+        unit: airportTransferQuote.unit,
+        rate: airportTransferQuote.rate,
+        amount: airportTransferQuote.amount,
       });
 
       // Air Freight - se cobra por pesoAirFreight cuando el peso real no cae en un rango disponible
@@ -4225,9 +4304,9 @@ function QuoteAPITester({
         income: {
           quantity: 1,
           unit: "HL",
-          rate: 45,
-          amount: 45,
-          showamount: 45,
+          rate: handlingAmount,
+          amount: handlingAmount,
+          showamount: handlingAmount,
           payment: "Collect",
           billApplyTo: "Other",
           billTo: {
@@ -4238,7 +4317,9 @@ function QuoteAPITester({
           },
           reference: "Amount to Handling",
           showOnDocument: true,
-          notes: "Handling charge created via Client Portal",
+          notes: isExportFcaAt
+            ? "Handling charge (Export FCA) created via Client Portal"
+            : "Handling charge created via Client Portal",
         },
         expense: {
           currency: {
@@ -4246,6 +4327,39 @@ function QuoteAPITester({
           },
         },
       });
+
+      // Cobro de BL (solo Exportación + FCA)
+      if (isExportFcaAt) {
+        charges.push({
+          service: {
+            id: BL_SERVICE.id,
+            code: BL_SERVICE.code,
+          },
+          income: {
+            quantity: 1,
+            unit: "Each",
+            rate: BL_AMOUNT_EXPORT_FCA,
+            amount: BL_AMOUNT_EXPORT_FCA,
+            showamount: BL_AMOUNT_EXPORT_FCA,
+            payment: "Collect",
+            billApplyTo: "Other",
+            billTo: {
+              name: effectiveUsername,
+            },
+            currency: {
+              abbr: (rutaSeleccionada.currency || "USD") as any,
+            },
+            reference: "Amount to BL",
+            showOnDocument: true,
+            notes: "BL charge (Export FCA) created via Client Portal",
+          },
+          expense: {
+            currency: {
+              abbr: (rutaSeleccionada.currency || "USD") as any,
+            },
+          },
+        });
+      }
 
       // Cobro de EXW (solo si incoterm es EXW)
       if (incoterm === "EXW") {
@@ -4315,19 +4429,18 @@ function QuoteAPITester({
         },
       });
 
-      // Cobro de Airport Transfer (mínimo 50)
-      const airportTransferAmount = Math.max(pesoParaCargos * 0.15, 50);
+      // Cobro de Airport Transfer (Export+FCA: TEISA; resto: legacy)
       charges.push({
         service: {
           id: 110936,
           code: "A/T",
         },
         income: {
-          quantity: pesoParaCargos,
-          unit: "kg",
-          rate: 0.15,
-          amount: airportTransferAmount,
-          showamount: airportTransferAmount,
+          quantity: airportTransferQuote.quantity,
+          unit: airportTransferQuote.unit,
+          rate: airportTransferQuote.rate,
+          amount: airportTransferQuote.amount,
+          showamount: airportTransferQuote.amount,
           payment: "Collect",
           billApplyTo: "Other",
           billTo: {
@@ -4338,7 +4451,7 @@ function QuoteAPITester({
           },
           reference: "Amount to AirPort Transfer",
           showOnDocument: true,
-          notes: `Airport Transfer charge - 0.15/kg (minimum ${rutaSeleccionada.currency} 50)`,
+          notes: airportTransferQuote.notes,
         },
         expense: {
           currency: {
@@ -4838,9 +4951,9 @@ function QuoteAPITester({
         income: {
           quantity: 1,
           unit: "HL",
-          rate: 45,
-          amount: 45,
-          showamount: 45,
+          rate: handlingAmount,
+          amount: handlingAmount,
+          showamount: handlingAmount,
           payment: "Collect",
           billApplyTo: "Other",
           billTo: {
@@ -4851,7 +4964,9 @@ function QuoteAPITester({
           },
           reference: "Amount to HANDLING to OVERALL",
           showOnDocument: true,
-          notes: "Handling charge created via API (Overall mode)",
+          notes: isExportFcaAt
+            ? "Handling charge (Export FCA) created via API (Overall mode)"
+            : "Handling charge created via API (Overall mode)",
         },
         expense: {
           currency: {
@@ -4859,6 +4974,39 @@ function QuoteAPITester({
           },
         },
       });
+
+      // Cobro de BL (solo Exportación + FCA) - Overall
+      if (isExportFcaAt) {
+        charges.push({
+          service: {
+            id: BL_SERVICE.id,
+            code: BL_SERVICE.code,
+          },
+          income: {
+            quantity: 1,
+            unit: "Each",
+            rate: BL_AMOUNT_EXPORT_FCA,
+            amount: BL_AMOUNT_EXPORT_FCA,
+            showamount: BL_AMOUNT_EXPORT_FCA,
+            payment: "Collect",
+            billApplyTo: "Other",
+            billTo: {
+              name: effectiveUsername,
+            },
+            currency: {
+              abbr: (rutaSeleccionada.currency || "USD") as any,
+            },
+            reference: "Amount to BL to OVERALL",
+            showOnDocument: true,
+            notes: "BL charge (Export FCA) created via API (Overall mode)",
+          },
+          expense: {
+            currency: {
+              abbr: (rutaSeleccionada.currency || "USD") as any,
+            },
+          },
+        });
+      }
 
       // Cobro de EXW - Usar peso real y volumen sin conversións (solo si incoterm es EXW)
       if (incoterm === "EXW") {
@@ -4924,24 +5072,18 @@ function QuoteAPITester({
         },
       });
 
-      // Cobro de Airport Transfer (modo overall) - Mínimo 50
-      const pesoChargeableOverall = Math.max(manualWeight, manualVolume * 167);
-      const airportTransferAmountOverall = Math.max(
-        pesoChargeableOverall * 0.15,
-        50,
-      );
-
+      // Cobro de Airport Transfer (modo overall) — Export+FCA: TEISA; resto: legacy
       charges.push({
         service: {
           id: 110936,
           code: "A/T",
         },
         income: {
-          unit: "kg",
-          quantity: pesoChargeableOverall,
-          rate: 0.15,
-          amount: airportTransferAmountOverall,
-          showamount: airportTransferAmountOverall,
+          unit: airportTransferQuote.unit,
+          quantity: airportTransferQuote.quantity,
+          rate: airportTransferQuote.rate,
+          amount: airportTransferQuote.amount,
+          showamount: airportTransferQuote.amount,
           payment: "Collect",
           billApplyTo: "Other",
           billTo: {
@@ -4952,7 +5094,7 @@ function QuoteAPITester({
           },
           reference: "Amount to AIRPORT TRANSFER to OVERALL",
           showOnDocument: true,
-          notes: "Airport Transfer charge",
+          notes: airportTransferQuote.notes,
         },
         expense: {
           currency: {
@@ -7849,7 +7991,13 @@ function QuoteAPITester({
                 const { totalRealWeight: tw } = calculateTotals();
                 const items: { label: string; amount: number }[] = [];
 
-                items.push({ label: "Handling", amount: 45 });
+                items.push({ label: "Handling", amount: handlingAmount });
+                if (isExportFcaAt) {
+                  items.push({
+                    label: BL_SERVICE.description,
+                    amount: BL_AMOUNT_EXPORT_FCA,
+                  });
+                }
                 if (incoterm === "EXW") {
                   items.push({
                     label: "EXW Charges",
@@ -7859,7 +8007,7 @@ function QuoteAPITester({
                 items.push({ label: "AWB", amount: 30 });
                 items.push({
                   label: "Airport Transfer",
-                  amount: Math.max(pesoParaCargos * 0.15, 50),
+                  amount: airportTransferQuote.amount,
                 });
                 items.push({
                   label: "Air Freight",

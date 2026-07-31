@@ -26,15 +26,107 @@ import {
   applyVespucioTransportSurcharge,
   type VespucioDeliveryZone,
 } from "../../../../config/vespucioRing";
+import {
+  calculateStorageAt,
+  type StorageAtCalculation,
+  type StorageAtSheetData,
+} from "../../../administrador/pricing/storage-at/storageAtSheet";
+import type { AirTradeType } from "./airQuoteStep1Shared";
 
 /** Markup configurable para cobros FCA (Local Charges & Gastos x kg) */
 export const FCA_MARKUP = 1.2;
 export const HANDLING_AMOUNT = 45;
+export const HANDLING_AMOUNT_EXPORT_FCA = 60;
 export const AWB_AMOUNT = 30;
+export const BL_AMOUNT_EXPORT_FCA = 60;
+export const BL_SERVICE = {
+  id: 153153,
+  code: "B",
+  description: "BL",
+} as const;
 export const DESCONSOLIDACION_AMOUNT = 194.4;
 export const AIRPORT_TRANSFER_RATE = 0.15;
 export const AIRPORT_TRANSFER_MIN = 50;
 export const SEGURO_MIN = 25;
+
+export function resolveHandlingAmount(isExportFca: boolean): number {
+  return isExportFca ? HANDLING_AMOUNT_EXPORT_FCA : HANDLING_AMOUNT;
+}
+
+export type AirportTransferQuote = {
+  amount: number;
+  rate: number;
+  quantity: number;
+  unit: string;
+  source: "teisa" | "legacy";
+  notes: string;
+  teisa?: StorageAtCalculation;
+};
+
+/**
+ * A/T:
+ * - Exportación + FCA → sheet TEISA (`calculateStorageAt`) con peso cargable
+ * - Resto → tarifa legacy 0.15/kg (mín. 50)
+ */
+export function resolveAirportTransfer(params: {
+  weightKg: number;
+  useTeisaExportFca: boolean;
+  storageAtData: StorageAtSheetData | null;
+}): AirportTransferQuote {
+  const kg =
+    Number.isFinite(params.weightKg) && params.weightKg > 0
+      ? params.weightKg
+      : 0;
+
+  if (params.useTeisaExportFca) {
+    if (!params.storageAtData || kg <= 0) {
+      return {
+        amount: 0,
+        rate: 0,
+        quantity: kg,
+        unit: "kg",
+        source: "teisa",
+        notes:
+          "Airport Transfer TEISA (Export FCA) — pendiente de sincronizar sheet o kg cargable",
+      };
+    }
+    const teisa = calculateStorageAt(params.storageAtData, kg);
+    return {
+      amount: teisa.chargeUsd,
+      rate: kg > 0 ? teisa.chargeUsd / kg : teisa.chargeUsd,
+      quantity: kg,
+      unit: "kg",
+      source: "teisa",
+      notes: `Airport Transfer TEISA (Export FCA) — ${kg} kg cargable; USD ${teisa.chargeUsd}${teisa.appliesMinimum ? " (mínimo)" : ""}`,
+      teisa,
+    };
+  }
+
+  const amount = Math.max(kg * AIRPORT_TRANSFER_RATE, AIRPORT_TRANSFER_MIN);
+  return {
+    amount,
+    rate: AIRPORT_TRANSFER_RATE,
+    quantity: kg,
+    unit: "kg",
+    source: "legacy",
+    notes: `Airport Transfer charge - 0.15/kg (minimum USD ${AIRPORT_TRANSFER_MIN})`,
+  };
+}
+
+export function calculateAirportTransfer(pesoParaCargos: number): number {
+  return resolveAirportTransfer({
+    weightKg: pesoParaCargos,
+    useTeisaExportFca: false,
+    storageAtData: null,
+  }).amount;
+}
+
+export function isExportFcaAirportTransfer(
+  tradeType: AirTradeType | null | undefined,
+  incoterm: "EXW" | "FCA" | "" | null | undefined,
+): boolean {
+  return tradeType === "exportacion" && incoterm === "FCA";
+}
 
 export type AirCargoMode = "detailed" | "overall";
 
@@ -109,10 +201,6 @@ export function calculateEXWRate(
   return Math.max(chargeableWeight * ratePerKg, 250);
 }
 
-export function calculateAirportTransfer(pesoParaCargos: number): number {
-  return Math.max(pesoParaCargos * AIRPORT_TRANSFER_RATE, AIRPORT_TRANSFER_MIN);
-}
-
 export function calculateFCALocalCharges(ruta: RutaAerea | null): number {
   if (!ruta || ruta.localCharges <= 0) return 0;
   return ruta.localCharges * FCA_MARKUP;
@@ -144,6 +232,9 @@ export type AirBaseChargesInput = {
   cargo: AirCargoSnapshot;
   profitMarkupPct: number;
   noApilableActivo?: boolean;
+  /** Para A/T TEISA en Exportación + FCA */
+  tradeType?: AirTradeType | null;
+  storageAtData?: StorageAtSheetData | null;
 };
 
 export type AirFreightQuoteValues = {
@@ -216,10 +307,18 @@ export function calculateAirBaseWithoutSeguro(
     input.sinTarifa,
   );
 
+  const useExportFca = isExportFcaAirportTransfer(input.tradeType, input.incoterm);
+  const airportTransfer = resolveAirportTransfer({
+    weightKg: useExportFca ? totals.chargeableWeight : pesoParaCargos,
+    useTeisaExportFca: useExportFca,
+    storageAtData: input.storageAtData ?? null,
+  });
+
   let total =
-    HANDLING_AMOUNT +
+    resolveHandlingAmount(useExportFca) +
+    (useExportFca ? BL_AMOUNT_EXPORT_FCA : 0) +
     AWB_AMOUNT +
-    calculateAirportTransfer(pesoParaCargos) +
+    airportTransfer.amount +
     airFreightIncomeAmount;
 
   if (input.incoterm === "EXW") {
@@ -336,15 +435,28 @@ export function buildAirPdfCharges(params: {
   );
 
   const lines: PdfChargeLine[] = [];
+  const useExportFca = isExportFcaAirportTransfer(base.tradeType, base.incoterm);
+  const handlingAmount = resolveHandlingAmount(useExportFca);
 
   lines.push({
     code: "H",
     description: "HANDLING",
     quantity: 1,
     unit: "Each",
-    rate: HANDLING_AMOUNT,
-    amount: HANDLING_AMOUNT,
+    rate: handlingAmount,
+    amount: handlingAmount,
   });
+
+  if (useExportFca) {
+    lines.push({
+      code: BL_SERVICE.code,
+      description: BL_SERVICE.description,
+      quantity: 1,
+      unit: "Each",
+      rate: BL_AMOUNT_EXPORT_FCA,
+      amount: BL_AMOUNT_EXPORT_FCA,
+    });
+  }
 
   if (base.incoterm === "EXW") {
     const exw = calculateEXWRate(totals.totalRealWeight, pesoParaCargos);
@@ -367,14 +479,18 @@ export function buildAirPdfCharges(params: {
     amount: AWB_AMOUNT,
   });
 
-  const at = calculateAirportTransfer(pesoParaCargos);
+  const at = resolveAirportTransfer({
+    weightKg: useExportFca ? totals.chargeableWeight : pesoParaCargos,
+    useTeisaExportFca: useExportFca,
+    storageAtData: base.storageAtData ?? null,
+  });
   lines.push({
     code: "A/T",
     description: "AIRPORT TRANSFER",
-    quantity: pesoParaCargos,
-    unit: "kg",
-    rate: AIRPORT_TRANSFER_RATE,
-    amount: at,
+    quantity: at.quantity,
+    unit: at.unit,
+    rate: at.rate,
+    amount: at.amount,
   });
 
   lines.push({
