@@ -25,6 +25,7 @@ import GestionCotizador from "@/components/administrador/cotizador/gestion/Gesti
 import ComportamientoDeClientes from "@/components/administrador/clientes/comportamiento/ComportamientoDeClientes";
 import OPComportamientoDeClientes from "@/components/administrador/clientes/comportamiento/OP-ComportamientoDeClientes";
 import PricingAlertsPanel from "@/components/administrador/pricing/alertas/PricingAlertsPanel";
+import StorageATPanel from "@/components/administrador/pricing/storage-at/StorageATPanel";
 import ReporteriaDashboard from "@/components/administrador/reporteria/pages/ReporteriaDashboard";
 import ReporteriaKPIs from "@/components/administrador/reporteria/pages/ReporteriaKPIs";
 import ReporteriaExecutives from "@/components/administrador/reporteria/pages/ReporteriaExecutives";
@@ -109,6 +110,7 @@ export const adminRoutes = (
 
     <Route path="pricing" element={<GestorTarifas />} />
     <Route path="pricing/alertas" element={<PricingAlertsPanel />} />
+    <Route path="pricing/storage-at" element={<StorageATPanel />} />
     <Route path="tarifario-completo" element={<TarifarioCompleto />} />
     <Route path="documentos-proveedores" element={<DocumentosProveedores />} />
     <Route path="correos-proveedores" element={<CorreosProveedores />} />

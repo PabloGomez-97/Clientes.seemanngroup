@@ -110,8 +110,10 @@ import {
 import { AirPriceHistoryModal } from "./Handlers/Air/AirPriceHistoryModal";
 import { buildCountryAirRates } from "./Handlers/Air/buildCountryAirRates";
 import {
+  formatAirTradeTypeLabel,
   getAirDestinationLabel,
   normalizeAirCarrierKey,
+  resolveAirTradeType,
 } from "./Handlers/Air/airQuoteStep1Shared";
 import { CountryRatesDownloadButton } from "./Handlers/shared/CountryRatesDownloadButton";
 import { COUNTRY_RATE_COLUMNS_AIR } from "./Handlers/shared/countryRatesTypes";
@@ -583,6 +585,30 @@ function QuoteAPITester({
   const activeDestinationNormalized = isNoRecurrente
     ? (destNR?.value ?? null)
     : (destinationSeleccionado?.value ?? null);
+
+  const airTradeType = useMemo(() => {
+    const destination = isNoRecurrente
+      ? destNR
+      : destinationSeleccionado;
+    if (!destination) return null;
+    return resolveAirTradeType({
+      originCountryCode: activePais?.value,
+      originCountryLabel: activePais?.label,
+      destinationNormalized: destination.value,
+      destinationLabel: destination.label,
+    });
+  }, [
+    isNoRecurrente,
+    destNR,
+    destinationSeleccionado,
+    activePais?.value,
+    activePais?.label,
+  ]);
+
+  const airTradeTypeLabel = airTradeType
+    ? formatAirTradeTypeLabel(airTradeType)
+    : null;
+  const isAirImportacion = airTradeType === "importacion";
 
   const isAirConnectSpainFca = isAirConnectSpainFcaFlow({
     routeMode,
@@ -2563,6 +2589,17 @@ function QuoteAPITester({
       resetUltimaMilla();
     }
   }, [ultimaMillaDisponibleDestino]);
+
+  // Servicios exclusivos de importación: limpiar si la ruta pasa a exportación
+  useEffect(() => {
+    if (airTradeType !== "exportacion") return;
+    setGastolocal(false);
+    resetUltimaMilla();
+    setAduanaActivo(false);
+    setValorProductoAduana("");
+    setDerechosAduanaExcluidos(false);
+    setAduanaMaster(null);
+  }, [airTradeType]);
 
   useEffect(() => {
     if (!ultimaMillaActivo) return;
@@ -5442,10 +5479,12 @@ function QuoteAPITester({
   const activeAddonsCount = useMemo(() => {
     let count = 0;
     if (seguroActivo) count += 1;
-    if (gastolocal) count += 1;
     if (liveTrackingActivo) count += 1;
-    if (ultimaMillaActivo) count += 1;
-    if (aduanaActivo) count += 1;
+    if (isAirImportacion) {
+      if (gastolocal) count += 1;
+      if (ultimaMillaActivo) count += 1;
+      if (aduanaActivo) count += 1;
+    }
     return count;
   }, [
     seguroActivo,
@@ -5453,6 +5492,7 @@ function QuoteAPITester({
     liveTrackingActivo,
     ultimaMillaActivo,
     aduanaActivo,
+    isAirImportacion,
   ]);
 
   const airAddonsList = rutaSeleccionada ? (
@@ -5511,7 +5551,8 @@ function QuoteAPITester({
         </div>
       </div>
 
-      {/* Card: Desconsolidación */}
+      {/* Card: Desconsolidación (solo importación) */}
+      {isAirImportacion && (
       <div className={`qa-addon-card${gastolocal ? " is-active" : ""}`}>
         <div className="qa-addon-card__image">
           <img
@@ -5546,6 +5587,7 @@ function QuoteAPITester({
           )}
         </div>
       </div>
+      )}
 
       {/* Card: Live Tracking (Free) */}
       <div
@@ -5591,7 +5633,8 @@ function QuoteAPITester({
         </div>
       </div>
 
-      {/* Card: Transporte Terrestre en Destino */}
+      {/* Card: Transporte Terrestre en Destino (solo importación) */}
+      {isAirImportacion && (
       <div
         className={`qa-addon-card${ultimaMillaActivo ? " is-active" : ""}`}
       >
@@ -5670,9 +5713,10 @@ function QuoteAPITester({
           )}
         </div>
       </div>
+      )}
 
-      {/* Card: Agencia de Aduanas */}
-      {!aduanaConfigLoading && (
+      {/* Card: Agencia de Aduanas (solo importación) */}
+      {isAirImportacion && !aduanaConfigLoading && (
         <div className={`qa-addon-card${aduanaActivo ? " is-active" : ""}`}>
           <div className="qa-addon-card__image">
             <img
@@ -5729,7 +5773,11 @@ function QuoteAPITester({
   ) : null;
 
   const airAduanaBreakdown =
-    aduanaActivo && !aduanaConfigLoading && aduanaConfig && rutaSeleccionada ? (
+    isAirImportacion &&
+    aduanaActivo &&
+    !aduanaConfigLoading &&
+    aduanaConfig &&
+    rutaSeleccionada ? (
       <div className="mt-3 px-1">
         <AduanaSection
           activo={aduanaActivo}
@@ -5773,13 +5821,15 @@ function QuoteAPITester({
           setShowSeguroModal(true);
         }}
       />
-      <ReviewAddonCard
-        title={t("QuoteAIR.desconsolidacion")}
-        description="Gastos de desconsolidación en destino para retirar el cargamento del almacén aéreo."
-        imageSrc={imgUrl("addcargos/gastos-locales.png")}
-        active={gastolocal}
-        onToggle={() => setGastolocal(!gastolocal)}
-      />
+      {isAirImportacion && (
+        <ReviewAddonCard
+          title={t("QuoteAIR.desconsolidacion")}
+          description="Gastos de desconsolidación en destino para retirar el cargamento del almacén aéreo."
+          imageSrc={imgUrl("addcargos/gastos-locales.png")}
+          active={gastolocal}
+          onToggle={() => setGastolocal(!gastolocal)}
+        />
+      )}
       <ReviewAddonCard
         title="Live Tracking"
         description="Monitoreo en tiempo real con notificaciones automáticas en cada hito del envío."
@@ -5788,38 +5838,40 @@ function QuoteAPITester({
         badge="Gratuito"
         onToggle={() => setLiveTrackingActivo(!liveTrackingActivo)}
       />
-      <ReviewAddonCard
-        title="Transporte Terrestre en Destino"
-        description="Entrega desde el aeropuerto de Santiago hasta su bodega."
-        imageSrc={imgUrl("addcargos/ultima-milla.png")}
-        active={ultimaMillaActivo}
-        disabled={
-          !ultimaMillaDisponibleDestino ||
-          (!ultimaMillaActivo && !ultimaMillaCargaEnRango)
-        }
-        warning={
-          !ultimaMillaDisponibleDestino
-            ? "Solo disponible para rutas con destino Santiago de Chile."
-            : ultimaMillaDisponibleDestino && !ultimaMillaCargaEnRango
-              ? `Ingrese el peso real de las piezas (máx. ${aereoTtConfig.maxKg} kg).`
-              : undefined
-        }
-        detail={
-          ultimaMillaActivo && ultimaMillaDireccion
-            ? `Entrega: ${ultimaMillaDireccion}`
-            : undefined
-        }
-        onToggle={() => {
-          if (ultimaMillaActivo) {
-            resetUltimaMilla();
-            return;
+      {isAirImportacion && (
+        <ReviewAddonCard
+          title="Transporte Terrestre en Destino"
+          description="Entrega desde el aeropuerto de Santiago hasta su bodega."
+          imageSrc={imgUrl("addcargos/ultima-milla.png")}
+          active={ultimaMillaActivo}
+          disabled={
+            !ultimaMillaDisponibleDestino ||
+            (!ultimaMillaActivo && !ultimaMillaCargaEnRango)
           }
-          setTempUltimaMillaDireccion("");
-          setTempUltimaMillaZone(null);
-          setShowUltimaMillaModal(true);
-        }}
-      />
-      {!aduanaConfigLoading && (
+          warning={
+            !ultimaMillaDisponibleDestino
+              ? "Solo disponible para rutas con destino Santiago de Chile."
+              : ultimaMillaDisponibleDestino && !ultimaMillaCargaEnRango
+                ? `Ingrese el peso real de las piezas (máx. ${aereoTtConfig.maxKg} kg).`
+                : undefined
+          }
+          detail={
+            ultimaMillaActivo && ultimaMillaDireccion
+              ? `Entrega: ${ultimaMillaDireccion}`
+              : undefined
+          }
+          onToggle={() => {
+            if (ultimaMillaActivo) {
+              resetUltimaMilla();
+              return;
+            }
+            setTempUltimaMillaDireccion("");
+            setTempUltimaMillaZone(null);
+            setShowUltimaMillaModal(true);
+          }}
+        />
+      )}
+      {isAirImportacion && !aduanaConfigLoading && (
         <ReviewAddonCard
           title={t("AgenciaAduana.toggle")}
           description="Despacho aduanero y nacionalización del cargamento en destino."
@@ -6215,6 +6267,20 @@ function QuoteAPITester({
                         </select>
                       </div>
                     </div>
+
+                    {airTradeTypeLabel && (
+                      <p
+                        className="text-center mb-3"
+                        style={{
+                          fontSize: "0.72rem",
+                          color: "var(--qa-text-secondary)",
+                          opacity: 0.55,
+                          letterSpacing: "0.02em",
+                        }}
+                      >
+                        {airTradeTypeLabel}
+                      </p>
+                    )}
 
                     <AirConnectSpainStep1Fields
                       routeMode={routeMode}
@@ -6777,6 +6843,20 @@ function QuoteAPITester({
                         </select>
                       </div>
                     </div>
+
+                    {airTradeTypeLabel && (
+                      <p
+                        className="text-center mb-3"
+                        style={{
+                          fontSize: "0.72rem",
+                          color: "var(--qa-text-secondary)",
+                          opacity: 0.55,
+                          letterSpacing: "0.02em",
+                        }}
+                      >
+                        {airTradeTypeLabel}
+                      </p>
+                    )}
 
                     {incoterm === "FCA" && paisNR && (
                       <div className="row g-3 mb-4">

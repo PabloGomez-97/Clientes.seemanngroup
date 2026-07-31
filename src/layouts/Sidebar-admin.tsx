@@ -199,6 +199,11 @@ function SidebarAdmin({
             name: t("admin.sidebar.tariffAlerts"),
             icon: "fa fa-exclamation-triangle",
           },
+          {
+            path: "/admin/pricing/storage-at",
+            name: t("admin.sidebar.storageAt"),
+            icon: "fa fa-warehouse",
+          },
         ],
       },
 

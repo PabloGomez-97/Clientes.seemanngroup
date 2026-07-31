@@ -12,7 +12,114 @@ import {
   type RutaAerea,
 } from "./HandlerQuoteAir";
 import { getValidityClass, parseValidUntilToISO } from "../handlerFechas";
-import { getAirportByOrigin } from "../../../../config/airportCoordinates";
+import {
+  getAirportByOrigin,
+  getOriginCountryCode,
+} from "../../../../config/airportCoordinates";
+
+/** Tipo de operación comercial aéreo (export / import). */
+export type AirTradeType = "exportacion" | "importacion";
+
+const CHILE_COUNTRY_CODE = "CL";
+const CHILE_IATA_CODES = new Set(["SCL"]);
+
+function looksLikeChileLabel(value: string | null | undefined): boolean {
+  if (!value) return false;
+  const n = normalize(value);
+  return (
+    n === "chile" ||
+    n.includes("chile") ||
+    n.includes("santiago_de_chile") ||
+    n.includes("merino_benitez") ||
+    n.includes("arturo_merino")
+  );
+}
+
+/** País de origen Chile: código ISO `CL` o label "Chile". */
+export function isChileOriginCountry(params: {
+  countryCode?: string | null;
+  countryLabel?: string | null;
+}): boolean {
+  const code = params.countryCode?.trim().toUpperCase();
+  if (code === CHILE_COUNTRY_CODE) return true;
+  return looksLikeChileLabel(params.countryLabel);
+}
+
+/**
+ * Destino en Chile: prioriza countryCode del catálogo de aeropuertos,
+ * luego IATA conocidos (SCL), y por último label/normalized.
+ */
+export function isChileAirportDestination(params: {
+  destinationNormalized?: string | null;
+  destinationLabel?: string | null;
+}): boolean {
+  const normalized = params.destinationNormalized?.trim() ?? "";
+  if (normalized) {
+    // AirConnect y selectores que guardan IATA (ej. "SCL") en el value
+    if (CHILE_IATA_CODES.has(normalized.toUpperCase())) {
+      return true;
+    }
+
+    const airport = getAirportByOrigin(normalized);
+    if (airport?.countryCode?.toUpperCase() === CHILE_COUNTRY_CODE) {
+      return true;
+    }
+    if (getOriginCountryCode(normalized) === CHILE_COUNTRY_CODE) {
+      return true;
+    }
+    if (airport?.iata && CHILE_IATA_CODES.has(airport.iata.toUpperCase())) {
+      return true;
+    }
+  }
+
+  return (
+    looksLikeChileLabel(params.destinationNormalized) ||
+    looksLikeChileLabel(params.destinationLabel)
+  );
+}
+
+/**
+ * Resuelve Exportación / Importación del cotizador aéreo.
+ * - Destino Chile → Importación (incluye el caso borde origen Chile + destino Chile)
+ * - Origen Chile (sin destino Chile) → Exportación
+ * - Cualquier otro caso → Exportación (default)
+ * - Sin destino → null (aún no se muestra en UI)
+ */
+export function resolveAirTradeType(params: {
+  originCountryCode?: string | null;
+  originCountryLabel?: string | null;
+  destinationNormalized?: string | null;
+  destinationLabel?: string | null;
+}): AirTradeType | null {
+  const hasDestination = Boolean(
+    params.destinationNormalized?.trim() || params.destinationLabel?.trim(),
+  );
+  if (!hasDestination) return null;
+
+  if (
+    isChileAirportDestination({
+      destinationNormalized: params.destinationNormalized,
+      destinationLabel: params.destinationLabel,
+    })
+  ) {
+    return "importacion";
+  }
+
+  if (
+    isChileOriginCountry({
+      countryCode: params.originCountryCode,
+      countryLabel: params.originCountryLabel,
+    })
+  ) {
+    return "exportacion";
+  }
+
+  return "exportacion";
+}
+
+export function formatAirTradeTypeLabel(tradeType: AirTradeType): string {
+  return tradeType === "importacion" ? "Tipo: Importación" : "Tipo: Exportación";
+}
 
 export const INITIAL_VISIBLE_AIR_ROUTES = 5;
 
