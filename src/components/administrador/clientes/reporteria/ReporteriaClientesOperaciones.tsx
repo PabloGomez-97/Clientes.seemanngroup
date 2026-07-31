@@ -94,7 +94,8 @@ const FONT =
 
 function OPReporteriaClientes() {
   useOutletContext<OutletContext>();
-  const { token } = useAuth();
+  const { token, user } = useAuth();
+  const isAdmin = !!user?.roles?.administrador;
   const { clientUsername, trackingMode, trackingIdentifier } = useParams<{
     clientUsername?: string;
     trackingMode?: string;
@@ -149,7 +150,7 @@ function OPReporteriaClientes() {
     getEffectiveForClient,
     saveOverride,
     clearOverride,
-  } = useClientProfitOverrides();
+  } = useClientProfitOverrides({ enabled: isAdmin });
 
   // ── Fetch ALL clients list (via /api/admin/users, with cache) ──
   useEffect(() => {
@@ -987,37 +988,41 @@ function OPReporteriaClientes() {
         font={FONT}
         pageResetKey={`${searchQuery}-${sortMode}`}
         metaColumns={[
-          {
-            header: "Profit",
-            width: "200px",
-            align: "right",
-            render: (client) => {
-              if (!client.id) return "—";
-              const effective = getEffectiveForClient(client.id);
-              const ov = profitOverrides[client.id];
-              const hasCustom = !!(
-                ov &&
-                (ov.air != null || ov.fcl != null || ov.lcl != null)
-              );
-              return (
-                <ProfitDirectoryCell
-                  summary={
-                    profitLoading
-                      ? "…"
-                      : formatProfitColumnSummary(effective)
-                  }
-                  hasCustom={hasCustom}
-                  disabled={!profitDataReady}
-                  disabledReason={
-                    profitListError
-                      ? `Error al cargar profit: ${profitListError}`
-                      : "Cargando profit…"
-                  }
-                  onEdit={() => setProfitModalClient(client as Cliente)}
-                />
-              );
-            },
-          },
+          ...(isAdmin
+            ? [
+                {
+                  header: "Profit",
+                  width: "200px",
+                  align: "right" as const,
+                  render: (client: { id?: string }) => {
+                    if (!client.id) return "—";
+                    const effective = getEffectiveForClient(client.id);
+                    const ov = profitOverrides[client.id];
+                    const hasCustom = !!(
+                      ov &&
+                      (ov.air != null || ov.fcl != null || ov.lcl != null)
+                    );
+                    return (
+                      <ProfitDirectoryCell
+                        summary={
+                          profitLoading
+                            ? "…"
+                            : formatProfitColumnSummary(effective)
+                        }
+                        hasCustom={hasCustom}
+                        disabled={!profitDataReady}
+                        disabledReason={
+                          profitListError
+                            ? `Error al cargar profit: ${profitListError}`
+                            : "Cargando profit…"
+                        }
+                        onEdit={() => setProfitModalClient(client as Cliente)}
+                      />
+                    );
+                  },
+                },
+              ]
+            : []),
           {
             header: "Registro",
             width: "120px",
@@ -1050,7 +1055,7 @@ function OPReporteriaClientes() {
         }
       />
 
-      {profitModalClient?.id && (
+      {isAdmin && profitModalClient?.id && (
         <ClientProfitEditModal
           open={!!profitModalClient}
           onClose={() => setProfitModalClient(null)}

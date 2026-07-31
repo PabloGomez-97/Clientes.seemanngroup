@@ -1940,27 +1940,18 @@ async function assertCanManageClientProfit(
     throw err;
   }
 
+  if (!ctx.isAdmin) {
+    const err: any = new Error(
+      'Solo el administrador puede gestionar profit de clientes',
+    );
+    err.status = 403;
+    throw err;
+  }
+
   const client = await User.findById(clientUserId);
   if (!client) {
     const err: any = new Error('Cliente no encontrado');
     err.status = 404;
-    throw err;
-  }
-
-  if (ctx.canManageAllClients) {
-    return { ...ctx, client };
-  }
-
-  if (!ctx.ejecutivoObjectId) {
-    const err: any = new Error('No autorizado');
-    err.status = 403;
-    throw err;
-  }
-
-  const clientEjId = (client as any).ejecutivoId;
-  if (String(clientEjId) !== String(ctx.ejecutivoObjectId)) {
-    const err: any = new Error('Solo puedes gestionar profit de tus clientes asignados');
-    err.status = 403;
     throw err;
   }
 
@@ -8008,29 +7999,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    // GET /api/client-profit-overrides — listado (ejecutivo: sus clientes; admin: todos)
+    // GET /api/client-profit-overrides — listado (solo administrador)
     if (path === '/api/client-profit-overrides' && method === 'GET') {
       try {
         const currentUser = requireAuth(req);
         const ctx = await resolveEjecutivoContext(currentUser.sub);
-        if (!ctx || (!ctx.canManageAllClients && !ctx.ejecutivoObjectId)) {
+        if (!ctx?.isAdmin) {
           return res.status(403).json({ error: 'No autorizado' });
         }
 
         const config = await getOrCreateGestionConfig();
         const global = normalizeGlobalProfitMarkup((config as any).profitMarkup);
 
-        let clientFilter: Record<string, unknown> = {
-          username: { $ne: 'Ejecutivo' },
-        };
-        if (!ctx.canManageAllClients) {
-          clientFilter = {
-            ...clientFilter,
-            ejecutivoId: ctx.ejecutivoObjectId,
-          };
-        }
-
-        const clients = await User.find(clientFilter, { _id: 1 }).lean();
+        const clients = await User.find(
+          { username: { $ne: 'Ejecutivo' } },
+          { _id: 1 },
+        ).lean();
         const clientIds = clients.map((c: any) => c._id);
 
         const overrides = await ClientProfitOverride.find({

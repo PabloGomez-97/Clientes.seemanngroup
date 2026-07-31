@@ -212,22 +212,24 @@ export function useEffectiveProfitMarkup(
   };
 }
 
-export function useClientProfitOverrides() {
+export function useClientProfitOverrides(options?: { enabled?: boolean }) {
+  const enabled = options?.enabled !== false;
   const { token } = useAuth();
   const [overrides, setOverrides] = useState<
     Record<string, IClientProfitOverrideFields>
   >({});
   const [globalMarkup, setGlobalMarkup] =
     useState<IProfitMarkupConfig>(DEFAULT_PROFIT_MARKUP);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(!enabled);
 
   const requestIdRef = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
 
   const fetchAll = useCallback(async () => {
+    if (!enabled) return;
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -269,17 +271,26 @@ export function useClientProfitOverrides() {
         setLoading(false);
       }
     }
-  }, [token]);
+  }, [token, enabled]);
 
   useEffect(() => {
+    if (!enabled) {
+      abortRef.current?.abort();
+      setLoading(false);
+      setHasLoadedOnce(true);
+      setError(null);
+      setOverrides({});
+      return;
+    }
     void fetchAll();
     return () => {
       abortRef.current?.abort();
     };
-  }, [fetchAll]);
+  }, [fetchAll, enabled]);
 
   // Refresco al volver a la pestaña del directorio
   useEffect(() => {
+    if (!enabled) return;
     const refreshIfVisible = () => {
       if (document.visibilityState !== "visible") return;
       void fetchAll();
@@ -293,7 +304,7 @@ export function useClientProfitOverrides() {
       document.removeEventListener("visibilitychange", refreshIfVisible);
       window.removeEventListener("focus", onFocus);
     };
-  }, [fetchAll]);
+  }, [fetchAll, enabled]);
 
   const getEffectiveForClient = useCallback(
     (clientUserId: string): IEffectiveProfitMarkup =>
