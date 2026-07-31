@@ -116,11 +116,21 @@ import {
   resolveAirTradeType,
 } from "./Handlers/Air/airQuoteStep1Shared";
 import {
-  isExportFcaAirportTransfer,
+  isExportExw,
+  isExportFcaOrExw,
   resolveAirportTransfer,
   resolveHandlingAmount,
-  BL_AMOUNT_EXPORT_FCA,
+  BL_AMOUNT_EXPORT,
   BL_SERVICE,
+  BANK_FEE_AMOUNT,
+  BANK_FEE_SERVICE,
+  CUSTOM_BROKER_SERVICE,
+  CUSTOMS_DECLARATION_AMOUNT,
+  CUSTOMS_DECLARATION_SERVICE,
+  EXPORT_EXW_DELIVERY_ADDRESS,
+  EXPORT_EXW_TT_SERVICE,
+  calculateCustomBrokerAmount,
+  calculateExportExwCif,
 } from "./Handlers/Air/airQuotePricingShared";
 import {
   STORAGE_AT_POLL_MS,
@@ -621,13 +631,20 @@ function QuoteAPITester({
     ? formatAirTradeTypeLabel(airTradeType)
     : null;
   const isAirImportacion = airTradeType === "importacion";
-  const isExportFcaAt = isExportFcaAirportTransfer(airTradeType, incoterm);
+  const isExportSpecial = isExportFcaOrExw(airTradeType, incoterm);
+  const isExportExwFlow = isExportExw(airTradeType, incoterm);
+  /** Solo Export+EXW: dirección de entrega fija en el mapa */
+  const mapDeliveryAddress = isExportExwFlow
+    ? EXPORT_EXW_DELIVERY_ADDRESS
+    : deliveryToAddressDerived;
 
   const [storageAtData, setStorageAtData] =
     useState<StorageAtSheetData | null>(null);
+  /** Valor de carga en Paso 4 cuando Export+EXW sin seguro */
+  const [valorCargaExportExw, setValorCargaExportExw] = useState("");
 
   useEffect(() => {
-    if (!isExportFcaAt) {
+    if (!isExportSpecial) {
       setStorageAtData(null);
       return;
     }
@@ -646,7 +663,13 @@ function QuoteAPITester({
       cancelled = true;
       window.clearInterval(id);
     };
-  }, [isExportFcaAt]);
+  }, [isExportSpecial]);
+
+  useEffect(() => {
+    if (!isExportExwFlow) {
+      setValorCargaExportExw("");
+    }
+  }, [isExportExwFlow]);
 
   const isAirConnectSpainFca = isAirConnectSpainFcaFlow({
     routeMode,
@@ -2288,20 +2311,46 @@ function QuoteAPITester({
     () =>
       resolveAirportTransfer({
         // Export+FCA TEISA usa peso cargable del Paso 2; legacy usa pesoParaCargos
-        weightKg: isExportFcaAt ? pesoChargeable : pesoParaCargos,
-        useTeisaExportFca: isExportFcaAt,
+        weightKg: isExportSpecial ? pesoChargeable : pesoParaCargos,
+        useTeisaExportFca: isExportSpecial,
         storageAtData,
       }),
-    [isExportFcaAt, pesoChargeable, pesoParaCargos, storageAtData],
+    [isExportSpecial, pesoChargeable, pesoParaCargos, storageAtData],
   );
 
-  const handlingAmount = resolveHandlingAmount(isExportFcaAt);
-  const blAmountExportFca = isExportFcaAt ? BL_AMOUNT_EXPORT_FCA : 0;
+  const handlingAmount = resolveHandlingAmount(isExportSpecial);
+  const blAmountExport = isExportSpecial ? BL_AMOUNT_EXPORT : 0;
 
-  // TEMP: verificar cálculo A/T TEISA (Exportación + FCA) en Paso 2
+  const exportExwTtBracket = useMemo(() => {
+    if (!isExportExwFlow) return null;
+    return findAereoTtBracket(totalRealWeightKg, aereoTtConfig);
+  }, [isExportExwFlow, totalRealWeightKg, aereoTtConfig]);
+
+  const exportExwTtAmount = exportExwTtBracket?.amount ?? 0;
+  const bankFeeExportExw = isExportExwFlow ? BANK_FEE_AMOUNT : 0;
+
+  const valorCargaForExportExwCif = useMemo(() => {
+    if (!isExportExwFlow) return 0;
+    if (seguroActivo) {
+      return parseFloat(valorMercaderia.replace(",", ".")) || 0;
+    }
+    return parseFloat(valorCargaExportExw.replace(",", ".")) || 0;
+  }, [
+    isExportExwFlow,
+    seguroActivo,
+    valorMercaderia,
+    valorCargaExportExw,
+  ]);
+
+  const exportExwMissingCargoValue =
+    isExportExwFlow &&
+    !seguroActivo &&
+    valorCargaForExportExwCif <= 0;
+
+  // TEMP: verificar cálculo A/T TEISA (Exportación) en Paso 2
   useEffect(() => {
-    if (currentStep !== 2 || !isExportFcaAt) return;
-    console.log("[A/T Export FCA — Paso 2]", {
+    if (currentStep !== 2 || !isExportSpecial) return;
+    console.log("[A/T Export — Paso 2]", {
       pesoCargableKg: pesoChargeable,
       sheetSyncedAt: storageAtData?.fetchedAt
         ? new Date(storageAtData.fetchedAt).toISOString()
@@ -2310,13 +2359,17 @@ function QuoteAPITester({
       appliesMinimum: airportTransferQuote.teisa?.appliesMinimum ?? null,
       teisa: airportTransferQuote.teisa ?? null,
       notes: airportTransferQuote.notes,
+      isExportExw: isExportExwFlow,
+      ttAmount: exportExwTtAmount,
     });
   }, [
     currentStep,
-    isExportFcaAt,
+    isExportSpecial,
+    isExportExwFlow,
     pesoChargeable,
     storageAtData,
     airportTransferQuote,
+    exportExwTtAmount,
   ]);
 
   // Calcular tarifa AIR FREIGHT si hay ruta seleccionada
@@ -2423,14 +2476,15 @@ function QuoteAPITester({
     const { totalRealWeight } = calculateTotals();
 
     const totalSinSeguro =
-      handlingAmount + // Handling (60 en Export+FCA)
-      blAmountExportFca + // BL (solo Export+FCA)
+      handlingAmount + // Handling (60 en Export FCA/EXW)
+      blAmountExport + // BL (Export FCA/EXW)
       (incoterm === "EXW"
         ? calculateEXWRate(totalRealWeight, pesoParaCargos)
         : 0) + // EXW
       30 + // AWB
       airportTransferQuote.amount + // Airport Transfer
       airFreightBaseForOptionalCharges + // Air Freight (cobrado por peso mínimo si aplica)
+      (isExportExwFlow ? exportExwTtAmount + bankFeeExportExw : 0) +
       (incoterm === "FCA" && rutaSeleccionada
         ? (rutaSeleccionada.localCharges > 0
           ? rutaSeleccionada.localCharges * FCA_MARKUP
@@ -2704,18 +2758,20 @@ function QuoteAPITester({
   };
 
   // Función para calcular el costo de transporte base (sin opcionales)
+  // Para CIF Export EXW: incluye TT; Bank Fee / CBA / CUSD no entran al CIF.
   const calculateCostoTransporteBase = (): number => {
     if (!hasAirFreightCharge || !rutaSeleccionada) return 0;
     const { totalRealWeight } = calculateTotals();
     return (
-      handlingAmount + // Handling (60 en Export+FCA)
-      blAmountExportFca + // BL (solo Export+FCA)
+      handlingAmount +
+      blAmountExport +
       (incoterm === "EXW"
         ? calculateEXWRate(totalRealWeight, pesoParaCargos)
         : 0) +
       30 + // AWB
-      airportTransferQuote.amount + // Airport Transfer
-      airFreightBaseForOptionalCharges + // Air Freight (cobrado por peso mínimo si aplica)
+      airportTransferQuote.amount +
+      airFreightBaseForOptionalCharges +
+      (isExportExwFlow ? exportExwTtAmount : 0) +
       (incoterm === "FCA" && rutaSeleccionada
         ? (rutaSeleccionada.localCharges > 0
           ? rutaSeleccionada.localCharges * FCA_MARKUP
@@ -2731,6 +2787,39 @@ function QuoteAPITester({
         : 0)
     );
   };
+
+  const exportExwCifQuote = useMemo(() => {
+    if (!isExportExwFlow || valorCargaForExportExwCif <= 0) {
+      return { cif: 0, seguroParaCif: 0, customBroker: 0 };
+    }
+    const costoTransporte = calculateCostoTransporteBase();
+    const seguroMonto = seguroActivo ? calculateSeguro() : 0;
+    const { cif, seguroParaCif } = calculateExportExwCif({
+      valorProducto: valorCargaForExportExwCif,
+      costoTransporte,
+      seguroActivo,
+      seguroMonto,
+    });
+    return {
+      cif,
+      seguroParaCif,
+      customBroker: calculateCustomBrokerAmount(cif),
+    };
+  }, [
+    isExportExwFlow,
+    valorCargaForExportExwCif,
+    seguroActivo,
+    valorMercaderia,
+    handlingAmount,
+    blAmountExport,
+    airportTransferQuote.amount,
+    airFreightBaseForOptionalCharges,
+    exportExwTtAmount,
+    pesoParaCargos,
+    incoterm,
+    rutaSeleccionada,
+    hasAirFreightCharge,
+  ]);
 
   // Función para calcular el monto de Agencia de Aduanas
   const calculateAduana = (): number => {
@@ -3456,6 +3545,20 @@ function QuoteAPITester({
       return;
     }
 
+    if (isExportExwFlow && exportExwMissingCargoValue) {
+      setError(
+        "En Exportación EXW debes agregar Seguro de Carga o ingresar el valor de la carga en el Paso 4 para calcular CIF.",
+      );
+      return;
+    }
+
+    if (isExportExwFlow && exportExwTtAmount <= 0) {
+      setError(
+        `El peso real debe estar entre 1 y ${aereoTtConfig.maxKg} kg para cotizar el Transporte Terrestre (Export EXW).`,
+      );
+      return;
+    }
+
     if (isSimulationMode && !hasSimulationBaseRate) {
       setError(
         "Debes ingresar la tarifa manual de Air Freight antes de generar la cotización",
@@ -3641,14 +3744,14 @@ function QuoteAPITester({
       });
 
       // BL (solo Exportación + FCA)
-      if (isExportFcaAt) {
+      if (isExportSpecial) {
         pdfCharges.push({
           code: BL_SERVICE.code,
           description: BL_SERVICE.description,
           quantity: 1,
           unit: "Each",
-          rate: BL_AMOUNT_EXPORT_FCA,
-          amount: BL_AMOUNT_EXPORT_FCA,
+          rate: BL_AMOUNT_EXPORT,
+          amount: BL_AMOUNT_EXPORT,
         });
       }
 
@@ -3681,7 +3784,7 @@ function QuoteAPITester({
       });
 
       // Airport Transfer - Obligatorio
-      // Export+FCA: TEISA (peso cargable). Resto: legacy 0.15/kg mín. 50
+      // Export FCA/EXW: TEISA (peso cargable). Resto: legacy 0.15/kg mín. 50
       pdfCharges.push({
         code: "A/T",
         description: "AIRPORT TRANSFER",
@@ -3690,6 +3793,46 @@ function QuoteAPITester({
         rate: airportTransferQuote.rate,
         amount: airportTransferQuote.amount,
       });
+
+      // Export+EXW: TT obligatorio + Bank Fee + Custom Broker + Customs Declaration
+      if (isExportExwFlow) {
+        if (exportExwTtAmount > 0) {
+          pdfCharges.push({
+            code: EXPORT_EXW_TT_SERVICE.code,
+            description: EXPORT_EXW_TT_SERVICE.description,
+            quantity: 1,
+            unit: "Shipment",
+            rate: exportExwTtAmount,
+            amount: exportExwTtAmount,
+          });
+        }
+        pdfCharges.push({
+          code: BANK_FEE_SERVICE.code,
+          description: BANK_FEE_SERVICE.description,
+          quantity: 1,
+          unit: "Each",
+          rate: BANK_FEE_AMOUNT,
+          amount: BANK_FEE_AMOUNT,
+        });
+        if (valorCargaForExportExwCif > 0 && exportExwCifQuote.cif > 0) {
+          pdfCharges.push({
+            code: CUSTOM_BROKER_SERVICE.code,
+            description: CUSTOM_BROKER_SERVICE.description,
+            quantity: 1,
+            unit: "Shipment",
+            rate: exportExwCifQuote.customBroker,
+            amount: exportExwCifQuote.customBroker,
+          });
+          pdfCharges.push({
+            code: CUSTOMS_DECLARATION_SERVICE.code,
+            description: CUSTOMS_DECLARATION_SERVICE.description,
+            quantity: 1,
+            unit: "Each",
+            rate: CUSTOMS_DECLARATION_AMOUNT,
+            amount: CUSTOMS_DECLARATION_AMOUNT,
+          });
+        }
+      }
 
       // Air Freight - se cobra por pesoAirFreight cuando el peso real no cae en un rango disponible
       const chargeableWeight = overallDimsAndWeight
@@ -4317,8 +4460,8 @@ function QuoteAPITester({
           },
           reference: "Amount to Handling",
           showOnDocument: true,
-          notes: isExportFcaAt
-            ? "Handling charge (Export FCA) created via Client Portal"
+          notes: isExportSpecial
+            ? "Handling charge (Export) created via Client Portal"
             : "Handling charge created via Client Portal",
         },
         expense: {
@@ -4329,7 +4472,7 @@ function QuoteAPITester({
       });
 
       // Cobro de BL (solo Exportación + FCA)
-      if (isExportFcaAt) {
+      if (isExportSpecial) {
         charges.push({
           service: {
             id: BL_SERVICE.id,
@@ -4338,9 +4481,9 @@ function QuoteAPITester({
           income: {
             quantity: 1,
             unit: "Each",
-            rate: BL_AMOUNT_EXPORT_FCA,
-            amount: BL_AMOUNT_EXPORT_FCA,
-            showamount: BL_AMOUNT_EXPORT_FCA,
+            rate: BL_AMOUNT_EXPORT,
+            amount: BL_AMOUNT_EXPORT,
+            showamount: BL_AMOUNT_EXPORT,
             payment: "Collect",
             billApplyTo: "Other",
             billTo: {
@@ -4351,7 +4494,7 @@ function QuoteAPITester({
             },
             reference: "Amount to BL",
             showOnDocument: true,
-            notes: "BL charge (Export FCA) created via Client Portal",
+            notes: "BL charge (Export) created via Client Portal",
           },
           expense: {
             currency: {
@@ -4429,7 +4572,7 @@ function QuoteAPITester({
         },
       });
 
-      // Cobro de Airport Transfer (Export+FCA: TEISA; resto: legacy)
+      // Cobro de Airport Transfer (Export FCA/EXW: TEISA; resto: legacy)
       charges.push({
         service: {
           id: 110936,
@@ -4459,6 +4602,137 @@ function QuoteAPITester({
           },
         },
       });
+
+      if (isExportExwFlow) {
+        if (exportExwTtAmount > 0) {
+          const ttExpense = aereoTtExpenseFromIncome(exportExwTtAmount);
+          charges.push({
+            service: {
+              id: EXPORT_EXW_TT_SERVICE.id,
+              code: EXPORT_EXW_TT_SERVICE.code,
+              description: EXPORT_EXW_TT_SERVICE.description,
+            },
+            income: {
+              quantity: 1,
+              unit: "SHIPMENT",
+              rate: exportExwTtAmount,
+              amount: exportExwTtAmount,
+              showamount: exportExwTtAmount,
+              payment: "Collect",
+              billApplyTo: "Other",
+              billTo: { name: effectiveUsername },
+              currency: {
+                abbr: (rutaSeleccionada.currency || "USD") as any,
+              },
+              reference: "Amount to TT Export EXW",
+              showOnDocument: true,
+              notes: `Transporte Terrestre Export EXW - tramo ≤${aereoTtConfig.brackets[exportExwTtBracket?.bracketIndex ?? -1]?.maxKg ?? "?"} kg (peso real ${totalRealWeightKg.toFixed(2)} kg)`,
+            },
+            expense: {
+              quantity: 1,
+              unit: "SHIPMENT",
+              rate: ttExpense,
+              amount: ttExpense,
+              showamount: ttExpense,
+              payment: "Collect",
+              billApplyTo: "Other",
+              billTo: { name: effectiveUsername },
+              currency: {
+                abbr: (rutaSeleccionada.currency || "USD") as any,
+              },
+              reference: "Expense TT Export EXW",
+              showOnDocument: false,
+              notes: "Transporte Terrestre Export EXW expense - income / 1.10",
+            },
+          });
+        }
+        charges.push({
+          service: {
+            id: BANK_FEE_SERVICE.id,
+            code: BANK_FEE_SERVICE.code,
+            description: BANK_FEE_SERVICE.description,
+          },
+          income: {
+            quantity: 1,
+            unit: "Each",
+            rate: BANK_FEE_AMOUNT,
+            amount: BANK_FEE_AMOUNT,
+            showamount: BANK_FEE_AMOUNT,
+            payment: "Collect",
+            billApplyTo: "Other",
+            billTo: { name: effectiveUsername },
+            currency: {
+              abbr: (rutaSeleccionada.currency || "USD") as any,
+            },
+            reference: "Amount to BANK FEE",
+            showOnDocument: true,
+            notes: "BANK FEE (Export EXW) created via Client Portal",
+          },
+          expense: {
+            currency: {
+              abbr: (rutaSeleccionada.currency || "USD") as any,
+            },
+          },
+        });
+        if (valorCargaForExportExwCif > 0 && exportExwCifQuote.cif > 0) {
+          charges.push({
+            service: {
+              id: CUSTOM_BROKER_SERVICE.id,
+              code: CUSTOM_BROKER_SERVICE.code,
+              description: CUSTOM_BROKER_SERVICE.description,
+            },
+            income: {
+              quantity: 1,
+              unit: "Shipment",
+              rate: exportExwCifQuote.customBroker,
+              amount: exportExwCifQuote.customBroker,
+              showamount: exportExwCifQuote.customBroker,
+              payment: "Collect",
+              billApplyTo: "Other",
+              billTo: { name: effectiveUsername },
+              currency: {
+                abbr: (rutaSeleccionada.currency || "USD") as any,
+              },
+              reference: "Amount to CUSTOM BROKER",
+              showOnDocument: true,
+              notes: `Custom Broker 0.25% CIF ${exportExwCifQuote.cif.toFixed(2)} (min 175)`,
+            },
+            expense: {
+              currency: {
+                abbr: (rutaSeleccionada.currency || "USD") as any,
+              },
+            },
+          });
+          charges.push({
+            service: {
+              id: CUSTOMS_DECLARATION_SERVICE.id,
+              code: CUSTOMS_DECLARATION_SERVICE.code,
+              description: CUSTOMS_DECLARATION_SERVICE.description,
+            },
+            income: {
+              quantity: 1,
+              unit: "Each",
+              rate: CUSTOMS_DECLARATION_AMOUNT,
+              amount: CUSTOMS_DECLARATION_AMOUNT,
+              showamount: CUSTOMS_DECLARATION_AMOUNT,
+              payment: "Collect",
+              billApplyTo: "Other",
+              billTo: { name: effectiveUsername },
+              currency: {
+                abbr: (rutaSeleccionada.currency || "USD") as any,
+              },
+              reference: "Amount to CUSTOMS DECLARATION",
+              showOnDocument: true,
+              notes: "Customs Declaration (Export EXW) fixed charge",
+            },
+            expense: {
+              currency: {
+                abbr: (rutaSeleccionada.currency || "USD") as any,
+              },
+            },
+          });
+        }
+      }
 
       // Cobro de AIR FREIGHT
       charges.push({
@@ -4964,8 +5238,8 @@ function QuoteAPITester({
           },
           reference: "Amount to HANDLING to OVERALL",
           showOnDocument: true,
-          notes: isExportFcaAt
-            ? "Handling charge (Export FCA) created via API (Overall mode)"
+          notes: isExportSpecial
+            ? "Handling charge (Export) created via API (Overall mode)"
             : "Handling charge created via API (Overall mode)",
         },
         expense: {
@@ -4976,7 +5250,7 @@ function QuoteAPITester({
       });
 
       // Cobro de BL (solo Exportación + FCA) - Overall
-      if (isExportFcaAt) {
+      if (isExportSpecial) {
         charges.push({
           service: {
             id: BL_SERVICE.id,
@@ -4985,9 +5259,9 @@ function QuoteAPITester({
           income: {
             quantity: 1,
             unit: "Each",
-            rate: BL_AMOUNT_EXPORT_FCA,
-            amount: BL_AMOUNT_EXPORT_FCA,
-            showamount: BL_AMOUNT_EXPORT_FCA,
+            rate: BL_AMOUNT_EXPORT,
+            amount: BL_AMOUNT_EXPORT,
+            showamount: BL_AMOUNT_EXPORT,
             payment: "Collect",
             billApplyTo: "Other",
             billTo: {
@@ -4998,7 +5272,7 @@ function QuoteAPITester({
             },
             reference: "Amount to BL to OVERALL",
             showOnDocument: true,
-            notes: "BL charge (Export FCA) created via API (Overall mode)",
+            notes: "BL charge (Export) created via API (Overall mode)",
           },
           expense: {
             currency: {
@@ -5072,7 +5346,7 @@ function QuoteAPITester({
         },
       });
 
-      // Cobro de Airport Transfer (modo overall) — Export+FCA: TEISA; resto: legacy
+      // Cobro de Airport Transfer (modo overall) — Export FCA/EXW: TEISA; resto: legacy
       charges.push({
         service: {
           id: 110936,
@@ -5102,6 +5376,137 @@ function QuoteAPITester({
           },
         },
       });
+
+      if (isExportExwFlow) {
+        if (exportExwTtAmount > 0) {
+          const ttExpense = aereoTtExpenseFromIncome(exportExwTtAmount);
+          charges.push({
+            service: {
+              id: EXPORT_EXW_TT_SERVICE.id,
+              code: EXPORT_EXW_TT_SERVICE.code,
+              description: EXPORT_EXW_TT_SERVICE.description,
+            },
+            income: {
+              quantity: 1,
+              unit: "SHIPMENT",
+              rate: exportExwTtAmount,
+              amount: exportExwTtAmount,
+              showamount: exportExwTtAmount,
+              payment: "Collect",
+              billApplyTo: "Other",
+              billTo: { name: effectiveUsername },
+              currency: {
+                abbr: (rutaSeleccionada.currency || "USD") as any,
+              },
+              reference: "Amount to TT Export EXW OVERALL",
+              showOnDocument: true,
+              notes: `Transporte Terrestre Export EXW - tramo ≤${aereoTtConfig.brackets[exportExwTtBracket?.bracketIndex ?? -1]?.maxKg ?? "?"} kg (peso real ${totalRealWeightKg.toFixed(2)} kg)`,
+            },
+            expense: {
+              quantity: 1,
+              unit: "SHIPMENT",
+              rate: ttExpense,
+              amount: ttExpense,
+              showamount: ttExpense,
+              payment: "Collect",
+              billApplyTo: "Other",
+              billTo: { name: effectiveUsername },
+              currency: {
+                abbr: (rutaSeleccionada.currency || "USD") as any,
+              },
+              reference: "Expense TT Export EXW OVERALL",
+              showOnDocument: false,
+              notes: "Transporte Terrestre Export EXW expense - income / 1.10",
+            },
+          });
+        }
+        charges.push({
+          service: {
+            id: BANK_FEE_SERVICE.id,
+            code: BANK_FEE_SERVICE.code,
+            description: BANK_FEE_SERVICE.description,
+          },
+          income: {
+            quantity: 1,
+            unit: "Each",
+            rate: BANK_FEE_AMOUNT,
+            amount: BANK_FEE_AMOUNT,
+            showamount: BANK_FEE_AMOUNT,
+            payment: "Collect",
+            billApplyTo: "Other",
+            billTo: { name: effectiveUsername },
+            currency: {
+              abbr: (rutaSeleccionada.currency || "USD") as any,
+            },
+            reference: "Amount to BANK FEE OVERALL",
+            showOnDocument: true,
+            notes: "BANK FEE (Export EXW) created via API (Overall mode)",
+          },
+          expense: {
+            currency: {
+              abbr: (rutaSeleccionada.currency || "USD") as any,
+            },
+          },
+        });
+        if (valorCargaForExportExwCif > 0 && exportExwCifQuote.cif > 0) {
+          charges.push({
+            service: {
+              id: CUSTOM_BROKER_SERVICE.id,
+              code: CUSTOM_BROKER_SERVICE.code,
+              description: CUSTOM_BROKER_SERVICE.description,
+            },
+            income: {
+              quantity: 1,
+              unit: "Shipment",
+              rate: exportExwCifQuote.customBroker,
+              amount: exportExwCifQuote.customBroker,
+              showamount: exportExwCifQuote.customBroker,
+              payment: "Collect",
+              billApplyTo: "Other",
+              billTo: { name: effectiveUsername },
+              currency: {
+                abbr: (rutaSeleccionada.currency || "USD") as any,
+              },
+              reference: "Amount to CUSTOM BROKER OVERALL",
+              showOnDocument: true,
+              notes: `Custom Broker 0.25% CIF ${exportExwCifQuote.cif.toFixed(2)} (min 175)`,
+            },
+            expense: {
+              currency: {
+                abbr: (rutaSeleccionada.currency || "USD") as any,
+              },
+            },
+          });
+          charges.push({
+            service: {
+              id: CUSTOMS_DECLARATION_SERVICE.id,
+              code: CUSTOMS_DECLARATION_SERVICE.code,
+              description: CUSTOMS_DECLARATION_SERVICE.description,
+            },
+            income: {
+              quantity: 1,
+              unit: "Each",
+              rate: CUSTOMS_DECLARATION_AMOUNT,
+              amount: CUSTOMS_DECLARATION_AMOUNT,
+              showamount: CUSTOMS_DECLARATION_AMOUNT,
+              payment: "Collect",
+              billApplyTo: "Other",
+              billTo: { name: effectiveUsername },
+              currency: {
+                abbr: (rutaSeleccionada.currency || "USD") as any,
+              },
+              reference: "Amount to CUSTOMS DECLARATION OVERALL",
+              showOnDocument: true,
+              notes: "Customs Declaration (Export EXW) fixed charge",
+            },
+            expense: {
+              currency: {
+                abbr: (rutaSeleccionada.currency || "USD") as any,
+              },
+            },
+          });
+        }
+      }
 
       // Cobro de AIR FREIGHT - NUEVO
       charges.push({
@@ -6516,7 +6921,7 @@ function QuoteAPITester({
                             placeholder="Ingrese dirección de recogida"
                             rows={2}
                             pickupLabel={t("QuoteAIR.pickup")}
-                            deliveryValue={deliveryToAddressDerived}
+                            deliveryValue={mapDeliveryAddress}
                             deliveryLabel={t("QuoteAIR.delivery")}
                             onPickupCoordsChange={setPickupCoords}
                             destinationCoords={exwMapDestination}
@@ -7034,7 +7439,7 @@ function QuoteAPITester({
                           placeholder="Ingrese dirección de recogida"
                           rows={2}
                           pickupLabel={t("QuoteAIR.pickup")}
-                          deliveryValue={deliveryToAddressDerived}
+                          deliveryValue={mapDeliveryAddress}
                           deliveryLabel={t("QuoteAIR.delivery")}
                           onPickupCoordsChange={setPickupCoords}
                           destinationCoords={exwMapDestination}
@@ -7619,7 +8024,7 @@ function QuoteAPITester({
                             value={pickupFromAddress}
                             onChange={() => undefined}
                             pickupLabel={t("QuoteAIR.pickup")}
-                            deliveryValue={deliveryToAddressDerived}
+                            deliveryValue={mapDeliveryAddress}
                             deliveryLabel={t("QuoteAIR.delivery")}
                             destinationCoords={exwMapDestination}
                             initialPickupCoords={pickupCoords}
@@ -7807,6 +8212,57 @@ function QuoteAPITester({
 
                     {airReviewAddonsGrid}
                   </div>
+
+                  {isExportExwFlow && rutaSeleccionada && (
+                    <div className="mb-4 p-3 rounded border bg-light">
+                      <h4 className="fs-6 fw-bold mb-2">
+                        Valor de la carga / CIF (Exportación EXW)
+                      </h4>
+                      <p
+                        className="text-muted small mb-3"
+                        style={{ maxWidth: 640 }}
+                      >
+                        Custom Broker y Customs Declaration se calculan sobre el
+                        CIF. Si no agregaste Seguro en el Paso 3, ingresa el
+                        valor de la carga aquí.
+                      </p>
+                      <AduanaSection
+                        activo
+                        cifOnly
+                        showValorProductoInput={!seguroActivo}
+                        valorProducto={
+                          seguroActivo ? valorMercaderia : valorCargaExportExw
+                        }
+                        onValorProductoChange={(v) => {
+                          if (seguroActivo) return;
+                          setValorCargaExportExw(v);
+                        }}
+                        costoTransporte={calculateCostoTransporteBase()}
+                        seguroActivo={seguroActivo}
+                        seguroMonto={seguroActivo ? calculateSeguro() : 0}
+                        currency={
+                          (rutaSeleccionada.currency ||
+                            "USD") as SupportedCurrency
+                        }
+                        config={aduanaConfig}
+                        configLoading={aduanaConfigLoading}
+                        valorProductoDisabled={seguroActivo}
+                        valorProductoLabel="Valor de la carga"
+                      />
+                      {exportExwMissingCargoValue && (
+                        <div className="alert alert-warning py-2 px-3 mt-3 mb-0 small">
+                          Debes ingresar el valor de la carga o agregar Seguro
+                          de Carga para generar la cotización.
+                        </div>
+                      )}
+                      {isExportExwFlow && exportExwTtAmount <= 0 && (
+                        <div className="alert alert-warning py-2 px-3 mt-3 mb-0 small">
+                          Transporte Terrestre: el peso real debe estar entre 1
+                          y {aereoTtConfig.maxKg} kg.
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </>
               );
             })()}
@@ -7884,7 +8340,9 @@ function QuoteAPITester({
                         !sinTarifa &&
                         weightRangeValidation?.pesoMinimoRequerido == null) ||
                       (isSimulationMode && !hasSimulationBaseRate) ||
-                      !rutaSeleccionada
+                      !rutaSeleccionada ||
+                      exportExwMissingCargoValue ||
+                      (isExportExwFlow && exportExwTtAmount <= 0)
                     }
                   >
                     <span className="quote-btn-content">
@@ -7992,10 +8450,10 @@ function QuoteAPITester({
                 const items: { label: string; amount: number }[] = [];
 
                 items.push({ label: "Handling", amount: handlingAmount });
-                if (isExportFcaAt) {
+                if (isExportSpecial) {
                   items.push({
                     label: BL_SERVICE.description,
-                    amount: BL_AMOUNT_EXPORT_FCA,
+                    amount: BL_AMOUNT_EXPORT,
                   });
                 }
                 if (incoterm === "EXW") {
@@ -8009,6 +8467,28 @@ function QuoteAPITester({
                   label: "Airport Transfer",
                   amount: airportTransferQuote.amount,
                 });
+                if (isExportExwFlow) {
+                  if (exportExwTtAmount > 0) {
+                    items.push({
+                      label: EXPORT_EXW_TT_SERVICE.description,
+                      amount: exportExwTtAmount,
+                    });
+                  }
+                  items.push({
+                    label: BANK_FEE_SERVICE.description,
+                    amount: BANK_FEE_AMOUNT,
+                  });
+                  if (valorCargaForExportExwCif > 0 && exportExwCifQuote.cif > 0) {
+                    items.push({
+                      label: "Custom Broker",
+                      amount: exportExwCifQuote.customBroker,
+                    });
+                    items.push({
+                      label: CUSTOMS_DECLARATION_SERVICE.description,
+                      amount: CUSTOMS_DECLARATION_AMOUNT,
+                    });
+                  }
+                }
                 items.push({
                   label: "Air Freight",
                   amount:

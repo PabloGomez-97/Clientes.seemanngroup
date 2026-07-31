@@ -36,21 +36,113 @@ import type { AirTradeType } from "./airQuoteStep1Shared";
 /** Markup configurable para cobros FCA (Local Charges & Gastos x kg) */
 export const FCA_MARKUP = 1.2;
 export const HANDLING_AMOUNT = 45;
-export const HANDLING_AMOUNT_EXPORT_FCA = 60;
+export const HANDLING_AMOUNT_EXPORT = 60;
+/** @deprecated use HANDLING_AMOUNT_EXPORT */
+export const HANDLING_AMOUNT_EXPORT_FCA = HANDLING_AMOUNT_EXPORT;
 export const AWB_AMOUNT = 30;
-export const BL_AMOUNT_EXPORT_FCA = 60;
+export const BL_AMOUNT_EXPORT = 60;
+/** @deprecated use BL_AMOUNT_EXPORT */
+export const BL_AMOUNT_EXPORT_FCA = BL_AMOUNT_EXPORT;
 export const BL_SERVICE = {
   id: 153153,
   code: "B",
   description: "BL",
 } as const;
+
+export const CUSTOM_BROKER_SERVICE = {
+  id: 86900,
+  code: "CBA",
+  description: "CUSTOM BROKER",
+} as const;
+export const CUSTOM_BROKER_PCT = 0.0025;
+export const CUSTOM_BROKER_MIN = 175;
+
+export const CUSTOMS_DECLARATION_SERVICE = {
+  id: 86901,
+  code: "CUSD",
+  description: "CUSTOMS DECLARATION",
+} as const;
+export const CUSTOMS_DECLARATION_AMOUNT = 105;
+
+export const BANK_FEE_SERVICE = {
+  id: 86902,
+  code: "b",
+  description: "BANK FEE",
+} as const;
+export const BANK_FEE_AMOUNT = 50;
+
+export const EXPORT_EXW_TT_SERVICE = {
+  id: 153185,
+  code: "TT",
+  description: "TRANSPORTE TERRESTRE",
+} as const;
+
+export const EXPORT_EXW_DELIVERY_ADDRESS =
+  "Aeropuerto Internacional Arturo Merino Benitez";
+
 export const DESCONSOLIDACION_AMOUNT = 194.4;
 export const AIRPORT_TRANSFER_RATE = 0.15;
 export const AIRPORT_TRANSFER_MIN = 50;
 export const SEGURO_MIN = 25;
 
-export function resolveHandlingAmount(isExportFca: boolean): number {
-  return isExportFca ? HANDLING_AMOUNT_EXPORT_FCA : HANDLING_AMOUNT;
+/** Handling 60 en Exportación + FCA/EXW */
+export function resolveHandlingAmount(isExportSpecial: boolean): number {
+  return isExportSpecial ? HANDLING_AMOUNT_EXPORT : HANDLING_AMOUNT;
+}
+
+export function isExportFca(
+  tradeType: AirTradeType | null | undefined,
+  incoterm: "EXW" | "FCA" | "" | null | undefined,
+): boolean {
+  return tradeType === "exportacion" && incoterm === "FCA";
+}
+
+export function isExportExw(
+  tradeType: AirTradeType | null | undefined,
+  incoterm: "EXW" | "FCA" | "" | null | undefined,
+): boolean {
+  return tradeType === "exportacion" && incoterm === "EXW";
+}
+
+/** Exportación + FCA o EXW: Handling/BL/A-T TEISA */
+export function isExportFcaOrExw(
+  tradeType: AirTradeType | null | undefined,
+  incoterm: "EXW" | "FCA" | "" | null | undefined,
+): boolean {
+  return isExportFca(tradeType, incoterm) || isExportExw(tradeType, incoterm);
+}
+
+/** @deprecated use isExportFcaOrExw */
+export function isExportFcaAirportTransfer(
+  tradeType: AirTradeType | null | undefined,
+  incoterm: "EXW" | "FCA" | "" | null | undefined,
+): boolean {
+  return isExportFcaOrExw(tradeType, incoterm);
+}
+
+export function calculateCustomBrokerAmount(cif: number): number {
+  if (!(cif > 0)) return CUSTOM_BROKER_MIN;
+  return Math.max(cif * CUSTOM_BROKER_PCT, CUSTOM_BROKER_MIN);
+}
+
+/** CIF para Export EXW (mismo criterio que AduanaSection). */
+export function calculateExportExwCif(params: {
+  valorProducto: number;
+  costoTransporte: number;
+  seguroActivo: boolean;
+  seguroMonto: number;
+}): { cif: number; seguroParaCif: number } {
+  const valor = params.valorProducto > 0 ? params.valorProducto : 0;
+  const seguroParaCif =
+    params.seguroActivo && params.seguroMonto > 0
+      ? params.seguroMonto
+      : valor > 0
+        ? (valor + params.costoTransporte) * 1.1 * 0.02
+        : 0;
+  return {
+    cif: valor + params.costoTransporte + seguroParaCif,
+    seguroParaCif,
+  };
 }
 
 export type AirportTransferQuote = {
@@ -65,7 +157,7 @@ export type AirportTransferQuote = {
 
 /**
  * A/T:
- * - Exportación + FCA → sheet TEISA (`calculateStorageAt`) con peso cargable
+ * - Exportación + FCA/EXW → sheet TEISA (`calculateStorageAt`) con peso cargable
  * - Resto → tarifa legacy 0.15/kg (mín. 50)
  */
 export function resolveAirportTransfer(params: {
@@ -87,7 +179,7 @@ export function resolveAirportTransfer(params: {
         unit: "kg",
         source: "teisa",
         notes:
-          "Airport Transfer TEISA (Export FCA) — pendiente de sincronizar sheet o kg cargable",
+          "Airport Transfer TEISA (Export) — pendiente de sincronizar sheet o kg cargable",
       };
     }
     const teisa = calculateStorageAt(params.storageAtData, kg);
@@ -97,7 +189,7 @@ export function resolveAirportTransfer(params: {
       quantity: kg,
       unit: "kg",
       source: "teisa",
-      notes: `Airport Transfer TEISA (Export FCA) — ${kg} kg cargable; USD ${teisa.chargeUsd}${teisa.appliesMinimum ? " (mínimo)" : ""}`,
+      notes: `Airport Transfer TEISA (Export) — ${kg} kg cargable; USD ${teisa.chargeUsd}${teisa.appliesMinimum ? " (mínimo)" : ""}`,
       teisa,
     };
   }
@@ -119,13 +211,6 @@ export function calculateAirportTransfer(pesoParaCargos: number): number {
     useTeisaExportFca: false,
     storageAtData: null,
   }).amount;
-}
-
-export function isExportFcaAirportTransfer(
-  tradeType: AirTradeType | null | undefined,
-  incoterm: "EXW" | "FCA" | "" | null | undefined,
-): boolean {
-  return tradeType === "exportacion" && incoterm === "FCA";
 }
 
 export type AirCargoMode = "detailed" | "overall";
@@ -232,9 +317,11 @@ export type AirBaseChargesInput = {
   cargo: AirCargoSnapshot;
   profitMarkupPct: number;
   noApilableActivo?: boolean;
-  /** Para A/T TEISA en Exportación + FCA */
+  /** Para A/T TEISA / Handling / BL en Exportación + FCA/EXW */
   tradeType?: AirTradeType | null;
   storageAtData?: StorageAtSheetData | null;
+  /** Para TT obligatorio Export+EXW */
+  aereoTtConfig?: IAereoCotizadorConfig | null;
 };
 
 export type AirFreightQuoteValues = {
@@ -307,22 +394,32 @@ export function calculateAirBaseWithoutSeguro(
     input.sinTarifa,
   );
 
-  const useExportFca = isExportFcaAirportTransfer(input.tradeType, input.incoterm);
+  const useExportSpecial = isExportFcaOrExw(input.tradeType, input.incoterm);
+  const useExportExw = isExportExw(input.tradeType, input.incoterm);
   const airportTransfer = resolveAirportTransfer({
-    weightKg: useExportFca ? totals.chargeableWeight : pesoParaCargos,
-    useTeisaExportFca: useExportFca,
+    weightKg: useExportSpecial ? totals.chargeableWeight : pesoParaCargos,
+    useTeisaExportFca: useExportSpecial,
     storageAtData: input.storageAtData ?? null,
   });
 
   let total =
-    resolveHandlingAmount(useExportFca) +
-    (useExportFca ? BL_AMOUNT_EXPORT_FCA : 0) +
+    resolveHandlingAmount(useExportSpecial) +
+    (useExportSpecial ? BL_AMOUNT_EXPORT : 0) +
     AWB_AMOUNT +
     airportTransfer.amount +
     airFreightIncomeAmount;
 
   if (input.incoterm === "EXW") {
     total += calculateEXWRate(totals.totalRealWeight, pesoParaCargos);
+  }
+
+  if (useExportExw) {
+    const tt = findAereoTtBracket(
+      totals.totalRealWeight,
+      input.aereoTtConfig ?? undefined,
+    );
+    if (tt) total += tt.amount;
+    total += BANK_FEE_AMOUNT;
   }
 
   if (input.incoterm === "FCA") {
@@ -435,8 +532,9 @@ export function buildAirPdfCharges(params: {
   );
 
   const lines: PdfChargeLine[] = [];
-  const useExportFca = isExportFcaAirportTransfer(base.tradeType, base.incoterm);
-  const handlingAmount = resolveHandlingAmount(useExportFca);
+  const useExportSpecial = isExportFcaOrExw(base.tradeType, base.incoterm);
+  const useExportExw = isExportExw(base.tradeType, base.incoterm);
+  const handlingAmount = resolveHandlingAmount(useExportSpecial);
 
   lines.push({
     code: "H",
@@ -447,14 +545,14 @@ export function buildAirPdfCharges(params: {
     amount: handlingAmount,
   });
 
-  if (useExportFca) {
+  if (useExportSpecial) {
     lines.push({
       code: BL_SERVICE.code,
       description: BL_SERVICE.description,
       quantity: 1,
       unit: "Each",
-      rate: BL_AMOUNT_EXPORT_FCA,
-      amount: BL_AMOUNT_EXPORT_FCA,
+      rate: BL_AMOUNT_EXPORT,
+      amount: BL_AMOUNT_EXPORT,
     });
   }
 
@@ -480,8 +578,8 @@ export function buildAirPdfCharges(params: {
   });
 
   const at = resolveAirportTransfer({
-    weightKg: useExportFca ? totals.chargeableWeight : pesoParaCargos,
-    useTeisaExportFca: useExportFca,
+    weightKg: useExportSpecial ? totals.chargeableWeight : pesoParaCargos,
+    useTeisaExportFca: useExportSpecial,
     storageAtData: base.storageAtData ?? null,
   });
   lines.push({
@@ -492,6 +590,31 @@ export function buildAirPdfCharges(params: {
     rate: at.rate,
     amount: at.amount,
   });
+
+  if (useExportExw) {
+    const tt = findAereoTtBracket(
+      totals.totalRealWeight,
+      base.aereoTtConfig ?? undefined,
+    );
+    if (tt) {
+      lines.push({
+        code: EXPORT_EXW_TT_SERVICE.code,
+        description: EXPORT_EXW_TT_SERVICE.description,
+        quantity: 1,
+        unit: "Shipment",
+        rate: tt.amount,
+        amount: tt.amount,
+      });
+    }
+    lines.push({
+      code: BANK_FEE_SERVICE.code,
+      description: BANK_FEE_SERVICE.description,
+      quantity: 1,
+      unit: "Each",
+      rate: BANK_FEE_AMOUNT,
+      amount: BANK_FEE_AMOUNT,
+    });
+  }
 
   lines.push({
     code: "AF",

@@ -6,13 +6,21 @@ import {
 } from "./airQuoteCargoShared";
 import {
   AWB_AMOUNT,
-  BL_AMOUNT_EXPORT_FCA,
+  BL_AMOUNT_EXPORT,
   BL_SERVICE,
+  BANK_FEE_AMOUNT,
+  BANK_FEE_SERVICE,
+  CUSTOM_BROKER_SERVICE,
+  CUSTOMS_DECLARATION_AMOUNT,
+  CUSTOMS_DECLARATION_SERVICE,
   DESCONSOLIDACION_AMOUNT,
+  EXPORT_EXW_TT_SERVICE,
   FCA_MARKUP,
   aereoTtExpenseFromIncome,
   calculateAduanaAmount,
   calculateAirBaseWithoutSeguro,
+  calculateCustomBrokerAmount,
+  calculateExportExwCif,
   calculateEXWRate,
   calculateFCALocalCharges,
   calculateGastosXKg,
@@ -20,7 +28,8 @@ import {
   calculateSeguroAmount,
   calculateUltimaMillaAmount,
   getCargoWeightTotals,
-  isExportFcaAirportTransfer,
+  isExportExw,
+  isExportFcaOrExw,
   resolveAirFreightWeights,
   resolveAirportTransfer,
   resolveHandlingAmount,
@@ -28,6 +37,7 @@ import {
   type AirBaseChargesInput,
   type AirFreightQuoteValues,
 } from "./airQuotePricingShared";
+import { findAereoTtBracket } from "../../../../types/gestionCotizador";
 import type { IAgenciaAduanaConfig } from "../../../../types/agenciaAduana";
 import type { IAereoCotizadorConfig } from "../../../../types/gestionCotizador";
 import {
@@ -133,8 +143,9 @@ export function buildAirLinbisPayload(input: BuildAirLinbisPayloadInput) {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const charges: any[] = [];
-  const useExportFca = isExportFcaAirportTransfer(input.base.tradeType, incoterm);
-  const handlingAmount = resolveHandlingAmount(useExportFca);
+  const useExportSpecial = isExportFcaOrExw(input.base.tradeType, incoterm);
+  const useExportExw = isExportExw(input.base.tradeType, incoterm);
+  const handlingAmount = resolveHandlingAmount(useExportSpecial);
 
   charges.push({
     service: { id: 162, code: "H" },
@@ -150,14 +161,14 @@ export function buildAirLinbisPayload(input: BuildAirLinbisPayloadInput) {
       currency: cur,
       reference: "Amount to Handling",
       showOnDocument: true,
-      notes: useExportFca
-        ? "Handling charge (Export FCA) created via Client Portal"
+      notes: useExportSpecial
+        ? "Handling charge (Export) created via Client Portal"
         : "Handling charge created via Client Portal",
     },
     expense: { currency: cur },
   });
 
-  if (useExportFca) {
+  if (useExportSpecial) {
     charges.push({
       service: {
         id: BL_SERVICE.id,
@@ -166,16 +177,16 @@ export function buildAirLinbisPayload(input: BuildAirLinbisPayloadInput) {
       income: {
         quantity: 1,
         unit: "Each",
-        rate: BL_AMOUNT_EXPORT_FCA,
-        amount: BL_AMOUNT_EXPORT_FCA,
-        showamount: BL_AMOUNT_EXPORT_FCA,
+        rate: BL_AMOUNT_EXPORT,
+        amount: BL_AMOUNT_EXPORT,
+        showamount: BL_AMOUNT_EXPORT,
         payment: "Collect",
         billApplyTo: "Other",
         billTo: billTo(username),
         currency: cur,
         reference: "Amount to BL",
         showOnDocument: true,
-        notes: "BL charge (Export FCA) created via Client Portal",
+        notes: "BL charge (Export) created via Client Portal",
       },
       expense: { currency: cur },
     });
@@ -223,8 +234,8 @@ export function buildAirLinbisPayload(input: BuildAirLinbisPayloadInput) {
   });
 
   const airportTransfer = resolveAirportTransfer({
-    weightKg: useExportFca ? totals.chargeableWeight : pesoParaCargos,
-    useTeisaExportFca: useExportFca,
+    weightKg: useExportSpecial ? totals.chargeableWeight : pesoParaCargos,
+    useTeisaExportFca: useExportSpecial,
     storageAtData: input.base.storageAtData ?? null,
   });
   charges.push({
@@ -245,6 +256,146 @@ export function buildAirLinbisPayload(input: BuildAirLinbisPayloadInput) {
     },
     expense: { currency: cur },
   });
+
+  if (useExportExw) {
+    const tt = findAereoTtBracket(
+      totals.totalRealWeight,
+      input.aereoTtConfig,
+    );
+    if (tt) {
+      const ttExpense = aereoTtExpenseFromIncome(tt.amount);
+      charges.push({
+        service: {
+          id: EXPORT_EXW_TT_SERVICE.id,
+          code: EXPORT_EXW_TT_SERVICE.code,
+          description: EXPORT_EXW_TT_SERVICE.description,
+        },
+        income: {
+          quantity: 1,
+          unit: "SHIPMENT",
+          rate: tt.amount,
+          amount: tt.amount,
+          showamount: tt.amount,
+          payment: "Collect",
+          billApplyTo: "Other",
+          billTo: billTo(username),
+          currency: cur,
+          reference: "Amount to TT Export EXW",
+          showOnDocument: true,
+          notes: `Transporte Terrestre Export EXW - peso real ${totals.totalRealWeight.toFixed(2)} kg`,
+        },
+        expense: {
+          quantity: 1,
+          unit: "SHIPMENT",
+          rate: ttExpense,
+          amount: ttExpense,
+          showamount: ttExpense,
+          payment: "Collect",
+          billApplyTo: "Other",
+          billTo: billTo(username),
+          currency: cur,
+          reference: "Expense TT Export EXW",
+          showOnDocument: false,
+          notes: "Transporte Terrestre Export EXW expense - income / 1.10",
+        },
+      });
+    }
+    charges.push({
+      service: {
+        id: BANK_FEE_SERVICE.id,
+        code: BANK_FEE_SERVICE.code,
+        description: BANK_FEE_SERVICE.description,
+      },
+      income: {
+        quantity: 1,
+        unit: "Each",
+        rate: BANK_FEE_AMOUNT,
+        amount: BANK_FEE_AMOUNT,
+        showamount: BANK_FEE_AMOUNT,
+        payment: "Collect",
+        billApplyTo: "Other",
+        billTo: billTo(username),
+        currency: cur,
+        reference: "Amount to BANK FEE",
+        showOnDocument: true,
+        notes: "BANK FEE (Export EXW) created via Client Portal",
+      },
+      expense: { currency: cur },
+    });
+
+    const valorProducto =
+      parseFloat(String(addons.valorMercaderia ?? "").replace(",", ".")) || 0;
+    if (valorProducto > 0) {
+      const costoTransporte =
+        resolveHandlingAmount(true) +
+        BL_AMOUNT_EXPORT +
+        (incoterm === "EXW"
+          ? calculateEXWRate(totals.totalRealWeight, pesoParaCargos)
+          : 0) +
+        AWB_AMOUNT +
+        airportTransfer.amount +
+        freight.incomeAmount +
+        (tt?.amount ?? 0);
+      const seguroMonto = addons.seguroActivo
+        ? calculateSeguroAmount({
+            activo: true,
+            valorMercaderia: addons.valorMercaderia,
+            baseWithoutSeguro: costoTransporte + BANK_FEE_AMOUNT,
+          })
+        : 0;
+      const { cif } = calculateExportExwCif({
+        valorProducto,
+        costoTransporte,
+        seguroActivo: addons.seguroActivo,
+        seguroMonto,
+      });
+      const customBroker = calculateCustomBrokerAmount(cif);
+      charges.push({
+        service: {
+          id: CUSTOM_BROKER_SERVICE.id,
+          code: CUSTOM_BROKER_SERVICE.code,
+          description: CUSTOM_BROKER_SERVICE.description,
+        },
+        income: {
+          quantity: 1,
+          unit: "Shipment",
+          rate: customBroker,
+          amount: customBroker,
+          showamount: customBroker,
+          payment: "Collect",
+          billApplyTo: "Other",
+          billTo: billTo(username),
+          currency: cur,
+          reference: "Amount to CUSTOM BROKER",
+          showOnDocument: true,
+          notes: `Custom Broker 0.25% CIF ${cif.toFixed(2)} (min 175)`,
+        },
+        expense: { currency: cur },
+      });
+      charges.push({
+        service: {
+          id: CUSTOMS_DECLARATION_SERVICE.id,
+          code: CUSTOMS_DECLARATION_SERVICE.code,
+          description: CUSTOMS_DECLARATION_SERVICE.description,
+        },
+        income: {
+          quantity: 1,
+          unit: "Each",
+          rate: CUSTOMS_DECLARATION_AMOUNT,
+          amount: CUSTOMS_DECLARATION_AMOUNT,
+          showamount: CUSTOMS_DECLARATION_AMOUNT,
+          payment: "Collect",
+          billApplyTo: "Other",
+          billTo: billTo(username),
+          currency: cur,
+          reference: "Amount to CUSTOMS DECLARATION",
+          showOnDocument: true,
+          notes: "Customs Declaration (Export EXW) fixed charge",
+        },
+        expense: { currency: cur },
+      });
+    }
+  }
 
   charges.push({
     service: { id: 4, code: "AF" },
