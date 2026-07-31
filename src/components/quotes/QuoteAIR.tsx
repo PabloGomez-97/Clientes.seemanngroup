@@ -2347,31 +2347,6 @@ function QuoteAPITester({
     !seguroActivo &&
     valorCargaForExportExwCif <= 0;
 
-  // TEMP: verificar cálculo A/T TEISA (Exportación) en Paso 2
-  useEffect(() => {
-    if (currentStep !== 2 || !isExportSpecial) return;
-    console.log("[A/T Export — Paso 2]", {
-      pesoCargableKg: pesoChargeable,
-      sheetSyncedAt: storageAtData?.fetchedAt
-        ? new Date(storageAtData.fetchedAt).toISOString()
-        : null,
-      amountUsd: airportTransferQuote.amount,
-      appliesMinimum: airportTransferQuote.teisa?.appliesMinimum ?? null,
-      teisa: airportTransferQuote.teisa ?? null,
-      notes: airportTransferQuote.notes,
-      isExportExw: isExportExwFlow,
-      ttAmount: exportExwTtAmount,
-    });
-  }, [
-    currentStep,
-    isExportSpecial,
-    isExportExwFlow,
-    pesoChargeable,
-    storageAtData,
-    airportTransferQuote,
-    exportExwTtAmount,
-  ]);
-
   // Calcular tarifa AIR FREIGHT si hay ruta seleccionada
   const tarifaAirFreight = rutaSeleccionada
     ? seleccionarTarifaPorPeso(
@@ -6505,14 +6480,29 @@ function QuoteAPITester({
       {currentStep === 1 && (
         <div className="qa-card">
           <div className="qa-card-header open">
-            <div className="d-flex align-items-center">
-              <h3>
+            <div className="d-flex align-items-center gap-2 flex-wrap">
+              <h3 className="mb-0">
                 <i
                   className=""
                   style={{ color: "var(--qa-primary)" }}
                 ></i>
                 Paso 1: Seleccionar Ruta
               </h3>
+              {airTradeTypeLabel && (
+                <span
+                  className="qa-badge"
+                  style={{
+                    fontSize: "0.68rem",
+                    fontWeight: 500,
+                    letterSpacing: "0.02em",
+                    background: "rgba(35, 47, 62, 0.06)",
+                    color: "var(--qa-text-secondary)",
+                    border: "1px solid rgba(35, 47, 62, 0.1)",
+                  }}
+                >
+                  {airTradeTypeLabel}
+                </span>
+              )}
             </div>
             <div className="d-flex align-items-center gap-2">
               {!rutaSeleccionada && (
@@ -6814,20 +6804,6 @@ function QuoteAPITester({
                         </select>
                       </div>
                     </div>
-
-                    {airTradeTypeLabel && (
-                      <p
-                        className="text-center mb-3"
-                        style={{
-                          fontSize: "0.72rem",
-                          color: "var(--qa-text-secondary)",
-                          opacity: 0.55,
-                          letterSpacing: "0.02em",
-                        }}
-                      >
-                        {airTradeTypeLabel}
-                      </p>
-                    )}
 
                     <AirConnectSpainStep1Fields
                       routeMode={routeMode}
@@ -7390,20 +7366,6 @@ function QuoteAPITester({
                         </select>
                       </div>
                     </div>
-
-                    {airTradeTypeLabel && (
-                      <p
-                        className="text-center mb-3"
-                        style={{
-                          fontSize: "0.72rem",
-                          color: "var(--qa-text-secondary)",
-                          opacity: 0.55,
-                          letterSpacing: "0.02em",
-                        }}
-                      >
-                        {airTradeTypeLabel}
-                      </p>
-                    )}
 
                     {incoterm === "FCA" && paisNR && (
                       <div className="row g-3 mb-4">

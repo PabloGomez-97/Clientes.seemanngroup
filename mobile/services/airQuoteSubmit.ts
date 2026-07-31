@@ -12,9 +12,14 @@ import {
   calculateUltimaMillaAmount,
   computeAirFreightQuoteValues,
   getCargoWeightTotals,
+  isExportFcaOrExw,
   resolveAirFreightWeights,
   type AirAddonsState,
 } from "../../src/components/quotes/Handlers/Air/airQuotePricingShared";
+import {
+  fetchStorageAtSheet,
+  type StorageAtSheetData,
+} from "../../src/components/administrador/pricing/storage-at/storageAtSheet";
 import {
   DEFAULT_AIR_CONNECT_SPAIN_CONFIG,
   getAirConnectProfitMarkupPct,
@@ -56,6 +61,8 @@ export type SubmitAirQuoteParams = {
   step1: AirStep1Result;
   step2: AirStep2Result;
   step3: AirStep3Result;
+  /** Valor carga Paso 4 cuando Export+EXW sin seguro */
+  valorCargaExportExw?: string;
   effectiveUsername: string;
   clientName?: string;
   salesRep: SalesRepPayload;
@@ -108,10 +115,18 @@ async function fetchConfigs(portalToken: string): Promise<{
   return { aereo, aduana };
 }
 
-function toAddons(step2: AirStep2Result, step3: AirStep3Result): AirAddonsState {
+function toAddons(
+  step2: AirStep2Result,
+  step3: AirStep3Result,
+  valorCargaExportExw?: string,
+): AirAddonsState {
+  const valorMercaderia =
+    step3.seguroActivo || !valorCargaExportExw
+      ? step3.valorMercaderia
+      : valorCargaExportExw;
   return {
     seguroActivo: step3.seguroActivo,
-    valorMercaderia: step3.valorMercaderia,
+    valorMercaderia,
     gastolocal: step3.gastolocal,
     liveTrackingActivo: step3.liveTrackingActivo,
     ultimaMillaActivo: step3.ultimaMillaActivo,
@@ -423,7 +438,17 @@ export async function submitAirQuote(
   const vespucioMult = getVespucioExtendedMultiplier(
     aereo.vespucioExtendedSurchargePct,
   );
-  const addons = toAddons(step2, step3);
+  const addons = toAddons(step2, step3, params.valorCargaExportExw);
+
+  let storageAtData: StorageAtSheetData | null = null;
+  if (isExportFcaOrExw(step1.tradeType, step1.incoterm)) {
+    try {
+      storageAtData = await fetchStorageAtSheet();
+    } catch {
+      storageAtData = null;
+    }
+  }
+
   const base = {
     ruta: step1.ruta,
     incoterm: step1.incoterm,
@@ -435,6 +460,9 @@ export async function submitAirQuote(
     },
     profitMarkupPct,
     noApilableActivo: step2.noApilableActivo,
+    tradeType: step1.tradeType,
+    storageAtData,
+    aereoTtConfig: aereo,
   };
   const freight = computeAirFreightQuoteValues(base);
   if (!freight && !step1.airConnect) {

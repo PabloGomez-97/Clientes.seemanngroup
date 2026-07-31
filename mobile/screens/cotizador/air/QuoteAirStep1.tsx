@@ -17,8 +17,11 @@ import {
   createPendingAirRoute,
   fetchAirRatesFromSheet,
   filterAirRoutesForOd,
+  formatAirTradeTypeLabel,
   getAirDestinationLabel,
   isAirRouteSelectable,
+  resolveAirTradeType,
+  type AirTradeType,
 } from "../../../../src/components/quotes/Handlers/Air/airQuoteStep1Shared";
 import { getValidityClass } from "../../../../src/components/quotes/Handlers/handlerFechas";
 import {
@@ -67,6 +70,8 @@ export type AirStep1Result = {
   pickupCoords?: PickupCoords;
   spainPostalCode?: string;
   airConnect: boolean;
+  /** Exportación / Importación — mismas reglas que web */
+  tradeType: AirTradeType;
 };
 
 type Props = {
@@ -198,6 +203,20 @@ export default function QuoteAirStep1({ onConfirm }: Props) {
     incoterm: incoterm || "FCA",
     isSimulationMode: false,
   });
+
+  const airTradeType = useMemo(() => {
+    if (!destination) return null;
+    return resolveAirTradeType({
+      originCountryCode: pais?.value,
+      originCountryLabel: pais?.label,
+      destinationNormalized: destination.value,
+      destinationLabel: destination.label,
+    });
+  }, [pais?.value, pais?.label, destination]);
+
+  const airTradeTypeLabel = airTradeType
+    ? formatAirTradeTypeLabel(airTradeType)
+    : null;
 
   const destinationOptions = useMemo((): CotizadorOption[] => {
     if (!pais || !activeIndex) return [];
@@ -392,6 +411,15 @@ export default function QuoteAirStep1({ onConfirm }: Props) {
     setRutaSeleccionada(ruta);
     setDetailRuta(null);
     setDetailPending(false);
+    const tradeType =
+      airTradeType ??
+      resolveAirTradeType({
+        originCountryCode: pais.value,
+        originCountryLabel: pais.label,
+        destinationNormalized: destination.value,
+        destinationLabel: destination.label,
+      }) ??
+      "exportacion";
     onConfirm({
       routeMode,
       incoterm: incoterm as "EXW" | "FCA",
@@ -404,6 +432,7 @@ export default function QuoteAirStep1({ onConfirm }: Props) {
       pickupCoords: pickupCoords || undefined,
       spainPostalCode: spainPostal || undefined,
       airConnect,
+      tradeType,
     });
   };
 
@@ -453,7 +482,14 @@ export default function QuoteAirStep1({ onConfirm }: Props) {
 
   return (
     <View style={styles.root}>
-      <Text style={styles.section}>Tipo de ruta</Text>
+      <View style={styles.sectionHead}>
+        <Text style={styles.section}>Tipo de ruta</Text>
+        {airTradeTypeLabel ? (
+          <View style={styles.tradeBadge}>
+            <Text style={styles.tradeBadgeText}>{airTradeTypeLabel}</Text>
+          </View>
+        ) : null}
+      </View>
       <View style={styles.modeRow}>
         {(
           [
@@ -678,6 +714,28 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: fonts.semiBold,
     color: brand.navy,
+  },
+  sectionHead: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+    flexWrap: "wrap",
+  },
+  tradeBadge: {
+    marginTop: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: radii.sm,
+    backgroundColor: "rgba(35, 47, 62, 0.06)",
+    borderWidth: 1,
+    borderColor: "rgba(35, 47, 62, 0.1)",
+  },
+  tradeBadgeText: {
+    fontSize: 11,
+    fontFamily: fonts.medium,
+    color: brand.inkSecondary,
+    letterSpacing: 0.2,
   },
   modeRow: { flexDirection: "row", gap: 8 },
   modeBtn: {

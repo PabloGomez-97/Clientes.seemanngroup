@@ -670,6 +670,50 @@ export function buildAirPdfCharges(params: {
     });
   }
 
+  if (useExportExw) {
+    const valorProducto =
+      parseFloat(String(addons.valorMercaderia ?? "").replace(",", ".")) || 0;
+    if (valorProducto > 0) {
+      const ttForCif = findAereoTtBracket(
+        totals.totalRealWeight,
+        base.aereoTtConfig ?? undefined,
+      );
+      const costoTransporteCif =
+        resolveHandlingAmount(true) +
+        BL_AMOUNT_EXPORT +
+        (base.incoterm === "EXW"
+          ? calculateEXWRate(totals.totalRealWeight, pesoParaCargos)
+          : 0) +
+        AWB_AMOUNT +
+        at.amount +
+        freight.incomeAmount +
+        (ttForCif?.amount ?? 0);
+      const { cif } = calculateExportExwCif({
+        valorProducto,
+        costoTransporte: costoTransporteCif,
+        seguroActivo: addons.seguroActivo,
+        seguroMonto: seguro,
+      });
+      const customBroker = calculateCustomBrokerAmount(cif);
+      lines.push({
+        code: CUSTOM_BROKER_SERVICE.code,
+        description: CUSTOM_BROKER_SERVICE.description,
+        quantity: 1,
+        unit: "Shipment",
+        rate: customBroker,
+        amount: customBroker,
+      });
+      lines.push({
+        code: CUSTOMS_DECLARATION_SERVICE.code,
+        description: CUSTOMS_DECLARATION_SERVICE.description,
+        quantity: 1,
+        unit: "Each",
+        rate: CUSTOMS_DECLARATION_AMOUNT,
+        amount: CUSTOMS_DECLARATION_AMOUNT,
+      });
+    }
+  }
+
   if (addons.gastolocal) {
     lines.push({
       code: "D",

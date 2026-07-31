@@ -5,13 +5,25 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { MOBILE_API_BASE } from "../../../../src/auth/authApi";
 import {
+  BANK_FEE_AMOUNT,
   buildAirPdfCharges,
+  calculateAirBaseWithoutSeguro,
+  calculateExportExwCif,
+  calculateSeguroAmount,
   computeAirFreightQuoteValues,
+  isExportExw,
+  isExportFcaOrExw,
 } from "../../../../src/components/quotes/Handlers/Air/airQuotePricingShared";
+import { formatAirTradeTypeLabel } from "../../../../src/components/quotes/Handlers/Air/airQuoteStep1Shared";
+import {
+  fetchStorageAtSheet,
+  type StorageAtSheetData,
+} from "../../../../src/components/administrador/pricing/storage-at/storageAtSheet";
 import { buildAirOperacionDetalle } from "../../../../src/components/quotes/Operations/buildOperacionDetalleEmail";
 import {
   DEFAULT_CONFIG as DEFAULT_ADUANA_CONFIG,
@@ -19,7 +31,9 @@ import {
 } from "../../../../src/types/agenciaAduana";
 import {
   DEFAULT_GESTION_COTIZADOR_CONFIG,
+  findAereoTtBracket,
   getVespucioExtendedMultiplier,
+  type IAereoCotizadorConfig,
 } from "../../../../src/types/gestionCotizador";
 import {
   AIR_CONNECT_CURRENCY,
@@ -85,7 +99,17 @@ export default function QuoteAirStep4({
     useState<AirConnectPricedOffer | null>(null);
   const [aduanaConfig, setAduanaConfig] =
     useState<IAgenciaAduanaConfig>(DEFAULT_ADUANA_CONFIG);
+  const [aereoConfig, setAereoConfig] = useState<IAereoCotizadorConfig>(
+    DEFAULT_GESTION_COTIZADOR_CONFIG.aereo,
+  );
   const [vespucioMult, setVespucioMult] = useState(1.45);
+  const [storageAtData, setStorageAtData] =
+    useState<StorageAtSheetData | null>(null);
+  const [valorCargaExportExw, setValorCargaExportExw] = useState("");
+
+  const isExportSpecial = isExportFcaOrExw(step1.tradeType, step1.incoterm);
+  const isExportExwFlow = isExportExw(step1.tradeType, step1.incoterm);
+  const tradeTypeLabel = formatAirTradeTypeLabel(step1.tradeType);
 
   const effectiveUsername = staff
     ? clientUsername || ""
@@ -112,8 +136,11 @@ export default function QuoteAirStep4({
       },
       profitMarkupPct,
       noApilableActivo: step2.noApilableActivo,
+      tradeType: step1.tradeType,
+      storageAtData,
+      aereoTtConfig: aereoConfig,
     }),
-    [step1, step2, profitMarkupPct],
+    [step1, step2, profitMarkupPct, storageAtData, aereoConfig],
   );
 
   const freight = useMemo(
@@ -149,34 +176,10 @@ export default function QuoteAirStep4({
         }
         if (cancelled) return;
         setAduanaConfig(aduana);
-        const mult = getVespucioExtendedMultiplier(
-          aereo.vespucioExtendedSurchargePct,
+        setAereoConfig(aereo);
+        setVespucioMult(
+          getVespucioExtendedMultiplier(aereo.vespucioExtendedSurchargePct),
         );
-        setVespucioMult(mult);
-        if (freight) {
-          setPdfPreview(
-            buildAirPdfCharges({
-              base,
-              freight,
-              addons: {
-                seguroActivo: step3.seguroActivo,
-                valorMercaderia: step3.valorMercaderia,
-                gastolocal: step3.gastolocal,
-                liveTrackingActivo: step3.liveTrackingActivo,
-                ultimaMillaActivo: step3.ultimaMillaActivo,
-                ultimaMillaDireccion: step3.ultimaMillaDireccion,
-                ultimaMillaZone: step3.ultimaMillaZone,
-                ultimaMillaBracket: step3.ultimaMillaBracket,
-                aduanaActivo: step3.aduanaActivo,
-                valorProductoAduana: step3.valorProductoAduana,
-                noApilableActivo: step2.noApilableActivo,
-              },
-              aduanaConfig: aduana,
-              vespucioExtendedMultiplier: mult,
-              zeroAmounts: step1.sinTarifa,
-            }),
-          );
-        }
       } catch {
         // ignore
       }
@@ -184,7 +187,141 @@ export default function QuoteAirStep4({
     return () => {
       cancelled = true;
     };
-  }, [base, freight, step1.sinTarifa, step2.noApilableActivo, step3]);
+  }, []);
+
+  useEffect(() => {
+    if (!isExportSpecial) {
+      setStorageAtData(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const sheet = await fetchStorageAtSheet();
+        if (!cancelled) setStorageAtData(sheet);
+      } catch {
+        // A/T TEISA usa mínimo si falla
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isExportSpecial]);
+
+  useEffect(() => {
+    if (!isExportExwFlow) setValorCargaExportExw("");
+  }, [isExportExwFlow]);
+
+  const valorMercaderiaForCharges = useMemo(() => {
+    if (step3.seguroActivo) return step3.valorMercaderia;
+    if (isExportExwFlow) return valorCargaExportExw;
+    return step3.valorMercaderia;
+  }, [
+    step3.seguroActivo,
+    step3.valorMercaderia,
+    isExportExwFlow,
+    valorCargaExportExw,
+  ]);
+
+  useEffect(() => {
+    if (!freight) {
+      setPdfPreview([]);
+      return;
+    }
+    setPdfPreview(
+      buildAirPdfCharges({
+        base,
+        freight,
+        addons: {
+          seguroActivo: step3.seguroActivo,
+          valorMercaderia: valorMercaderiaForCharges,
+          gastolocal: step3.gastolocal,
+          liveTrackingActivo: step3.liveTrackingActivo,
+          ultimaMillaActivo: step3.ultimaMillaActivo,
+          ultimaMillaDireccion: step3.ultimaMillaDireccion,
+          ultimaMillaZone: step3.ultimaMillaZone,
+          ultimaMillaBracket: step3.ultimaMillaBracket,
+          aduanaActivo: step3.aduanaActivo,
+          valorProductoAduana: step3.valorProductoAduana,
+          noApilableActivo: step2.noApilableActivo,
+        },
+        aduanaConfig,
+        vespucioExtendedMultiplier: vespucioMult,
+        zeroAmounts: step1.sinTarifa,
+      }),
+    );
+  }, [
+    base,
+    freight,
+    step1.sinTarifa,
+    step2.noApilableActivo,
+    step3,
+    valorMercaderiaForCharges,
+    aduanaConfig,
+    vespucioMult,
+  ]);
+
+  const baseWithoutSeguro = useMemo(() => {
+    if (!freight) return 0;
+    return calculateAirBaseWithoutSeguro(base, freight.incomeAmount);
+  }, [base, freight]);
+
+  /** CIF Export EXW: sin Bank Fee / CBA / CUSD */
+  const costoTransporteCif = useMemo(() => {
+    if (!isExportExwFlow) return baseWithoutSeguro;
+    return Math.max(0, baseWithoutSeguro - BANK_FEE_AMOUNT);
+  }, [isExportExwFlow, baseWithoutSeguro]);
+
+  const seguroMonto = useMemo(
+    () =>
+      calculateSeguroAmount({
+        activo: step3.seguroActivo,
+        valorMercaderia: step3.valorMercaderia,
+        baseWithoutSeguro,
+      }),
+    [step3.seguroActivo, step3.valorMercaderia, baseWithoutSeguro],
+  );
+
+  const valorCargaForExportExwCif = useMemo(() => {
+    if (!isExportExwFlow) return 0;
+    if (step3.seguroActivo) {
+      return parseFloat(step3.valorMercaderia.replace(",", ".")) || 0;
+    }
+    return parseFloat(valorCargaExportExw.replace(",", ".")) || 0;
+  }, [
+    isExportExwFlow,
+    step3.seguroActivo,
+    step3.valorMercaderia,
+    valorCargaExportExw,
+  ]);
+
+  const exportExwCif = useMemo(() => {
+    if (!isExportExwFlow || valorCargaForExportExwCif <= 0) {
+      return { cif: 0, seguroParaCif: 0 };
+    }
+    return calculateExportExwCif({
+      valorProducto: valorCargaForExportExwCif,
+      costoTransporte: costoTransporteCif,
+      seguroActivo: step3.seguroActivo,
+      seguroMonto,
+    });
+  }, [
+    isExportExwFlow,
+    valorCargaForExportExwCif,
+    costoTransporteCif,
+    step3.seguroActivo,
+    seguroMonto,
+  ]);
+
+  const exportExwTtAmount =
+    isExportExwFlow
+      ? findAereoTtBracket(step2.totalRealWeight, aereoConfig)?.amount ?? 0
+      : 0;
+
+  const exportExwMissingCargoValue =
+    isExportExwFlow &&
+    !step3.seguroActivo &&
+    valorCargaForExportExwCif <= 0;
 
   useEffect(() => {
     if (!step1.airConnect || !token) return;
@@ -244,11 +381,20 @@ export default function QuoteAirStep4({
     !!effectiveUsername &&
     !linbisLoading &&
     !submitting &&
+    !exportExwMissingCargoValue &&
+    (!isExportExwFlow || exportExwTtAmount > 0) &&
     (!step1.airConnect || !!selectedOffer) &&
     (step1.airConnect || !!freight || step1.sinTarifa);
 
   const handleSubmit = async () => {
     if (!token || !canSubmit) return;
+    if (exportExwMissingCargoValue) {
+      Alert.alert(
+        "Valor de carga",
+        "Debes ingresar el valor de la carga o agregar Seguro de Carga para generar la cotización.",
+      );
+      return;
+    }
     setSubmitting(true);
     setError(null);
     setDoneMsg(null);
@@ -257,6 +403,7 @@ export default function QuoteAirStep4({
         step1,
         step2,
         step3,
+        valorCargaExportExw: isExportExwFlow ? valorCargaExportExw : undefined,
         effectiveUsername,
         clientName: clientName || effectiveUsername,
         salesRep,
@@ -394,10 +541,12 @@ export default function QuoteAirStep4({
         {step1.ruta.origin} → {step1.ruta.destination} · {step1.incoterm}
         {step1.sinTarifa ? " · Sin tarifa" : ""}
         {step1.airConnect ? " · AirConnect" : ""}
+        {` · ${tradeTypeLabel.replace(/^Tipo:\s*/i, "")}`}
       </Text>
 
       <View style={styles.summary}>
         <Row label="Cliente" value={clientName || effectiveUsername} />
+        <Row label="Tipo" value={tradeTypeLabel.replace(/^Tipo:\s*/i, "")} />
         <Row
           label="Modo carga"
           value={step2.mode === "overall" ? "Overall" : "Piezas detalladas"}
@@ -419,6 +568,71 @@ export default function QuoteAirStep4({
             .join(", ") || "Ninguno"}
         />
       </View>
+
+      {isExportExwFlow ? (
+        <View style={styles.cifBox}>
+          <Text style={styles.sectionTitle}>
+            Valor de la carga / CIF (Exportación EXW)
+          </Text>
+          <Text style={styles.cifHint}>
+            Custom Broker y Customs Declaration se calculan sobre el CIF. Si no
+            agregaste Seguro en el Paso 3, ingresa el valor de la carga aquí.
+          </Text>
+          {!step3.seguroActivo ? (
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>
+                Valor de la carga ({currency}) *
+              </Text>
+              <TextInput
+                style={styles.input}
+                keyboardType="decimal-pad"
+                value={valorCargaExportExw}
+                onChangeText={setValorCargaExportExw}
+                placeholder="0"
+                placeholderTextColor={brand.muted}
+                editable={!quoteGenerated}
+              />
+            </View>
+          ) : (
+            <Text style={styles.cifHint}>
+              Usando valor de mercadería del Seguro: {currency}{" "}
+              {valorCargaForExportExwCif.toFixed(2)}
+            </Text>
+          )}
+          {valorCargaForExportExwCif > 0 ? (
+            <View style={styles.cifRows}>
+              <Row
+                label="Valor producto"
+                value={`${currency} ${valorCargaForExportExwCif.toFixed(2)}`}
+              />
+              <Row
+                label="Costo transporte"
+                value={`${currency} ${costoTransporteCif.toFixed(2)}`}
+              />
+              <Row
+                label="Seguro (CIF)"
+                value={`${currency} ${exportExwCif.seguroParaCif.toFixed(2)}`}
+              />
+              <Row
+                label="CIF"
+                value={`${currency} ${exportExwCif.cif.toFixed(2)}`}
+              />
+            </View>
+          ) : null}
+          {exportExwMissingCargoValue ? (
+            <Text style={styles.warn}>
+              Debes ingresar el valor de la carga o agregar Seguro de Carga para
+              generar la cotización.
+            </Text>
+          ) : null}
+          {isExportExwFlow && exportExwTtAmount <= 0 ? (
+            <Text style={styles.warn}>
+              Transporte Terrestre: el peso real debe estar entre 1 y{" "}
+              {aereoConfig.maxKg} kg.
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
 
       {step1.airConnect ? (
         <View style={styles.acBox}>
@@ -571,6 +785,35 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     gap: 8,
   },
+  cifBox: {
+    backgroundColor: brand.surface,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: brand.border,
+    padding: spacing.md,
+    gap: 10,
+  },
+  cifHint: {
+    fontSize: 12,
+    fontFamily: fonts.regular,
+    color: brand.muted,
+    lineHeight: 17,
+  },
+  cifRows: { gap: 6 },
+  field: { gap: 4 },
+  fieldLabel: { fontSize: 12, fontFamily: fonts.medium, color: brand.muted },
+  input: {
+    borderWidth: 1,
+    borderColor: brand.border,
+    borderRadius: radii.sm,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    fontFamily: fonts.regular,
+    fontSize: 14,
+    color: brand.navy,
+    backgroundColor: brand.canvas,
+  },
+  warn: { fontSize: 12, fontFamily: fonts.medium, color: "#b42318" },
   row: { flexDirection: "row", justifyContent: "space-between", gap: 8 },
   rowLabel: { fontSize: 12, fontFamily: fonts.medium, color: brand.muted },
   rowValue: {

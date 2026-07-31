@@ -27,8 +27,13 @@ import {
   calculateSeguroAmount,
   calculateUltimaMillaAmount,
   computeAirFreightQuoteValues,
+  isExportFcaOrExw,
   resolveUltimaMillaBracket,
 } from "../../../../src/components/quotes/Handlers/Air/airQuotePricingShared";
+import {
+  fetchStorageAtSheet,
+  type StorageAtSheetData,
+} from "../../../../src/components/administrador/pricing/storage-at/storageAtSheet";
 import { MOBILE_API_BASE } from "../../../../src/auth/authApi";
 import { useAuth } from "../../../auth/AuthContext";
 import UltimaMillaDeliveryMap from "../../../components/cotizador/UltimaMillaDeliveryMap";
@@ -51,6 +56,9 @@ export default function QuoteAirStep3({
   onConfirm,
 }: Props) {
   const { token } = useAuth();
+  const isImportacion = step1.tradeType === "importacion";
+  const isExportSpecial = isExportFcaOrExw(step1.tradeType, step1.incoterm);
+
   const [seguroActivo, setSeguroActivo] = useState(false);
   const [valorMercaderia, setValorMercaderia] = useState("");
   const [gastolocal, setGastolocal] = useState(false);
@@ -71,7 +79,21 @@ export default function QuoteAirStep3({
   );
   const [aduanaConfig, setAduanaConfig] =
     useState<IAgenciaAduanaConfig>(DEFAULT_ADUANA_CONFIG);
+  const [storageAtData, setStorageAtData] =
+    useState<StorageAtSheetData | null>(null);
   const [loadingCfg, setLoadingCfg] = useState(true);
+
+  useEffect(() => {
+    if (isImportacion) return;
+    setGastolocal(false);
+    setUltimaMillaActivo(false);
+    setUltimaMillaDireccion("");
+    setUltimaMillaZone(null);
+    setUltimaMillaBracket(null);
+    setAduanaActivo(false);
+    setValorProductoAduana("");
+    setAduanaMaster(null);
+  }, [isImportacion]);
 
   useEffect(() => {
     let cancelled = false;
@@ -107,6 +129,25 @@ export default function QuoteAirStep3({
     };
   }, [token]);
 
+  useEffect(() => {
+    if (!isExportSpecial) {
+      setStorageAtData(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const sheet = await fetchStorageAtSheet();
+        if (!cancelled) setStorageAtData(sheet);
+      } catch {
+        // A/T TEISA cae a mínimo si no hay sheet
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isExportSpecial]);
+
   const baseInput = useMemo(
     () => ({
       ruta: step1.ruta,
@@ -119,8 +160,11 @@ export default function QuoteAirStep3({
       },
       profitMarkupPct,
       noApilableActivo: step2.noApilableActivo,
+      tradeType: step1.tradeType,
+      storageAtData,
+      aereoTtConfig: aereoConfig,
     }),
-    [step1, step2, profitMarkupPct],
+    [step1, step2, profitMarkupPct, storageAtData, aereoConfig],
   );
 
   const freight = useMemo(
@@ -148,10 +192,12 @@ export default function QuoteAirStep3({
     [aereoConfig.vespucioExtendedSurchargePct],
   );
 
-  const umEligible = isAirUltimaMillaEligibleDestination(
-    step1.ruta.destinationNormalized,
-    step1.ruta.destination,
-  );
+  const umEligible =
+    isImportacion &&
+    isAirUltimaMillaEligibleDestination(
+      step1.ruta.destinationNormalized,
+      step1.ruta.destination,
+    );
   const umBracket = resolveUltimaMillaBracket(step2.totalRealWeight, aereoConfig);
   const umInRange = umBracket !== null;
 
@@ -264,13 +310,15 @@ export default function QuoteAirStep3({
         ) : null}
       </AddonCard>
 
-      <AddonCard
-        title="Desconsolidación (gastos locales)"
-        active={gastolocal}
-        onToggle={setGastolocal}
-        amount={gastolocal ? DESCONSOLIDACION_AMOUNT : null}
-        currency={freight?.currency}
-      />
+      {isImportacion ? (
+        <AddonCard
+          title="Desconsolidación (gastos locales)"
+          active={gastolocal}
+          onToggle={setGastolocal}
+          amount={gastolocal ? DESCONSOLIDACION_AMOUNT : null}
+          currency={freight?.currency}
+        />
+      ) : null}
 
       <AddonCard
         title="Live Tracking"
@@ -281,90 +329,94 @@ export default function QuoteAirStep3({
         subtitle="Sin costo adicional"
       />
 
-      {umEligible ? (
-        <AddonCard
-          title="Última milla SCL"
-          active={ultimaMillaActivo}
-          onToggle={(on) => {
-            if (!on) {
-              setUltimaMillaActivo(false);
-              setUltimaMillaBracket(null);
-              setUltimaMillaZone(null);
-              return;
-            }
-            if (!umInRange) return;
-            // Se activa al confirmar dirección
-          }}
-          amount={ultimaMillaActivo ? umAmount : null}
-          currency={freight?.currency}
-          hideSwitch
-        >
-          {!umInRange ? (
-            <Text style={styles.warn}>
-              El peso real debe estar entre 1 y {aereoConfig.maxKg} kg.
+      {isImportacion ? (
+        umEligible ? (
+          <AddonCard
+            title="Última milla SCL"
+            active={ultimaMillaActivo}
+            onToggle={(on) => {
+              if (!on) {
+                setUltimaMillaActivo(false);
+                setUltimaMillaBracket(null);
+                setUltimaMillaZone(null);
+                return;
+              }
+              if (!umInRange) return;
+              // Se activa al confirmar dirección
+            }}
+            amount={ultimaMillaActivo ? umAmount : null}
+            currency={freight?.currency}
+            hideSwitch
+          >
+            {!umInRange ? (
+              <Text style={styles.warn}>
+                El peso real debe estar entre 1 y {aereoConfig.maxKg} kg.
+              </Text>
+            ) : (
+              <>
+                <UltimaMillaDeliveryMap
+                  airportCoords={{ lat: airport.lat, lng: airport.lng }}
+                  address={ultimaMillaDireccion}
+                  onAddressChange={setUltimaMillaDireccion}
+                  onZoneChange={(zone) => {
+                    setUltimaMillaZone(zone);
+                    if (zone && zone !== "outside" && umBracket) {
+                      setUltimaMillaBracket(umBracket);
+                      setUltimaMillaActivo(true);
+                    } else {
+                      setUltimaMillaActivo(false);
+                      setUltimaMillaBracket(null);
+                    }
+                  }}
+                />
+                {canConfirmUltimaMilla && ultimaMillaActivo ? (
+                  <Text style={styles.ok}>
+                    Última milla activa · {freight?.currency} {umAmount.toFixed(2)}
+                  </Text>
+                ) : null}
+              </>
+            )}
+          </AddonCard>
+        ) : (
+          <View style={styles.disabledCard}>
+            <Text style={styles.disabledTitle}>Última milla SCL</Text>
+            <Text style={styles.disabledBody}>
+              Disponible solo con destino Santiago de Chile.
             </Text>
-          ) : (
-            <>
-              <UltimaMillaDeliveryMap
-                airportCoords={{ lat: airport.lat, lng: airport.lng }}
-                address={ultimaMillaDireccion}
-                onAddressChange={setUltimaMillaDireccion}
-                onZoneChange={(zone) => {
-                  setUltimaMillaZone(zone);
-                  if (zone && zone !== "outside" && umBracket) {
-                    setUltimaMillaBracket(umBracket);
-                    setUltimaMillaActivo(true);
-                  } else {
-                    setUltimaMillaActivo(false);
-                    setUltimaMillaBracket(null);
-                  }
-                }}
+          </View>
+        )
+      ) : null}
+
+      {isImportacion ? (
+        <AddonCard
+          title="Agencia de aduana"
+          active={aduanaActivo}
+          onToggle={toggleAduana}
+          amount={aduanaActivo ? aduanaAmount : null}
+          currency={freight?.currency}
+        >
+          {aduanaActivo ? (
+            <View style={styles.field}>
+              <Text style={styles.label}>
+                Valor producto ({freight?.currency || "USD"}) *
+              </Text>
+              <TextInput
+                style={styles.input}
+                keyboardType="decimal-pad"
+                value={valorProductoAduana}
+                onChangeText={onValorProducto}
+                placeholder="0"
+                placeholderTextColor={brand.muted}
               />
-              {canConfirmUltimaMilla && ultimaMillaActivo ? (
-                <Text style={styles.ok}>
-                  Última milla activa · {freight?.currency} {umAmount.toFixed(2)}
+              {seguroActivo ? (
+                <Text style={styles.syncHint}>
+                  Se sincroniza con el valor de mercadería del seguro.
                 </Text>
               ) : null}
-            </>
-          )}
+            </View>
+          ) : null}
         </AddonCard>
-      ) : (
-        <View style={styles.disabledCard}>
-          <Text style={styles.disabledTitle}>Última milla SCL</Text>
-          <Text style={styles.disabledBody}>
-            Disponible solo con destino Santiago de Chile.
-          </Text>
-        </View>
-      )}
-
-      <AddonCard
-        title="Agencia de aduana"
-        active={aduanaActivo}
-        onToggle={toggleAduana}
-        amount={aduanaActivo ? aduanaAmount : null}
-        currency={freight?.currency}
-      >
-        {aduanaActivo ? (
-          <View style={styles.field}>
-            <Text style={styles.label}>
-              Valor producto ({freight?.currency || "USD"}) *
-            </Text>
-            <TextInput
-              style={styles.input}
-              keyboardType="decimal-pad"
-              value={valorProductoAduana}
-              onChangeText={onValorProducto}
-              placeholder="0"
-              placeholderTextColor={brand.muted}
-            />
-            {seguroActivo ? (
-              <Text style={styles.syncHint}>
-                Se sincroniza con el valor de mercadería del seguro.
-              </Text>
-            ) : null}
-          </View>
-        ) : null}
-      </AddonCard>
+      ) : null}
 
       <Pressable
         style={[styles.primaryBtn, !canContinue && styles.primaryDisabled]}
@@ -373,15 +425,15 @@ export default function QuoteAirStep3({
           onConfirm({
             seguroActivo,
             valorMercaderia,
-            gastolocal,
+            gastolocal: isImportacion ? gastolocal : false,
             liveTrackingActivo,
-            ultimaMillaActivo,
-            ultimaMillaDireccion,
-            ultimaMillaZone,
-            ultimaMillaBracket,
-            aduanaActivo,
-            valorProductoAduana,
-            aduanaMaster,
+            ultimaMillaActivo: isImportacion ? ultimaMillaActivo : false,
+            ultimaMillaDireccion: isImportacion ? ultimaMillaDireccion : "",
+            ultimaMillaZone: isImportacion ? ultimaMillaZone : null,
+            ultimaMillaBracket: isImportacion ? ultimaMillaBracket : null,
+            aduanaActivo: isImportacion ? aduanaActivo : false,
+            valorProductoAduana: isImportacion ? valorProductoAduana : "",
+            aduanaMaster: isImportacion ? aduanaMaster : seguroActivo ? false : null,
           })
         }
       >
