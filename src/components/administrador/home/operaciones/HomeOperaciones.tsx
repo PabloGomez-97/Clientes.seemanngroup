@@ -64,17 +64,6 @@ interface ClientShipmentCount {
   ejecutivoNombre?: string;
 }
 
-interface EjecutivoPortfolioRow {
-  id: string;
-  nombre: string;
-  email: string;
-  clientCount: number;
-  clientsWithTracking: number;
-  trackings: number;
-  delayed: number;
-  stale: number;
-}
-
 interface ShipsGoMeta {
   more: boolean;
   total: number;
@@ -882,71 +871,6 @@ export default function HomeOperaciones() {
       ),
     [filteredClients, documentCounts],
   );
-
-  const ejecutivoPortfolio = useMemo<EjecutivoPortfolioRow[]>(() => {
-    const rows = new Map<string, EjecutivoPortfolioRow>();
-
-    const ensureRow = (ej: OpEjecutivoRef | null | undefined): string => {
-      const key = ej?.id || "unassigned";
-      if (!rows.has(key)) {
-        rows.set(key, {
-          id: key,
-          nombre: ej?.nombre || "Sin ejecutivo",
-          email: ej?.email || "",
-          clientCount: 0,
-          clientsWithTracking: 0,
-          trackings: 0,
-          delayed: 0,
-          stale: 0,
-        });
-      }
-      return key;
-    };
-
-    clients.forEach((c) => {
-      const key = ensureRow(c.ejecutivo);
-      const row = rows.get(key)!;
-      row.clientCount += 1;
-      const usernames = getClientUsernames(c);
-      const hasTracking = usernames.some(
-        (u) =>
-          allAir.some((s) => s.reference === u) ||
-          allOcean.some((s) => s.reference === u),
-      );
-      if (hasTracking) row.clientsWithTracking += 1;
-    });
-
-    allAir.forEach((s) => {
-      const client = clients.find((c) =>
-        getClientUsernames(c).includes(s.reference ?? ""),
-      );
-      const key = ensureRow(client?.ejecutivo);
-      const row = rows.get(key)!;
-      row.trackings += 1;
-      if (isAirDelayed(s)) row.delayed += 1;
-      if (isAirInTransit(s) && isStaleTracking(s.updated_at, s.checked_at)) {
-        row.stale += 1;
-      }
-    });
-
-    allOcean.forEach((s) => {
-      const client = clients.find((c) =>
-        getClientUsernames(c).includes(s.reference ?? ""),
-      );
-      const key = ensureRow(client?.ejecutivo);
-      const row = rows.get(key)!;
-      row.trackings += 1;
-      if (isOceanDelayed(s)) row.delayed += 1;
-      if (
-        isOceanInTransit(s) &&
-        isStaleTracking(s.updated_at, s.checked_at)
-      ) {
-        row.stale += 1;
-      }
-    });
-
-    return Array.from(rows.values()).sort((a, b) => b.trackings - a.trackings);
-  }, [clients, allAir, allOcean]);
 
   // Total active = air in-transit + ocean in-transit
   const totalActive = airInTransit.length + oceanInTransit.length;
@@ -1972,54 +1896,6 @@ export default function HomeOperaciones() {
           </div>
         </div>
       </details>
-
-      {/* ── Cartera por ejecutivo ───────────────────────────────────────── */}
-      <div className="ops-section">
-        <div className="ops-section-header">
-          <h3 className="ops-section-title" style={{ margin: 0 }}>
-            Cartera por ejecutivo
-          </h3>
-        </div>
-        <div className="ops-panel">
-          <table className="ops-ejecutivo-table">
-            <thead>
-              <tr>
-                <th>Ejecutivo</th>
-                <th>Clientes</th>
-                <th>Con tracking</th>
-                <th>Seguimientos</th>
-                <th>Retrasos</th>
-                <th>Stale</th>
-              </tr>
-            </thead>
-            <tbody>
-              {ejecutivoPortfolio.map((row) => (
-                <tr
-                  key={row.id}
-                  className="ops-clickable-row"
-                  onClick={() =>
-                    setEjecutivoFilter(
-                      row.id === "unassigned" ? "unassigned" : row.id,
-                    )
-                  }
-                >
-                  <td>
-                    <div className="ops-ejecutivo-table__name">{row.nombre}</div>
-                    {row.email && (
-                      <div className="ops-ejecutivo-table__sub">{row.email}</div>
-                    )}
-                  </td>
-                  <td>{row.clientCount}</td>
-                  <td>{row.clientsWithTracking}</td>
-                  <td>{row.trackings}</td>
-                  <td>{row.delayed > 0 ? row.delayed : "—"}</td>
-                  <td>{row.stale > 0 ? row.stale : "—"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
 
       {/* ═══════════════════════════════════════════════════════════════════
           MODALS
