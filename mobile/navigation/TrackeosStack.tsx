@@ -22,8 +22,19 @@ export type TrackeosStackParamList = {
     | undefined;
   AirDetail: { shipment: AirShipment };
   OceanDetail: { shipment: OceanShipment };
-  NewAirTracking: undefined;
-  NewOceanTracking: undefined;
+  NewAirTracking:
+    | {
+        initialAwb?: string;
+        initialTag?: string;
+      }
+    | undefined;
+  NewOceanTracking:
+    | {
+        initialIdentifierType?: "container_number" | "booking_number";
+        initialIdentifierValue?: string;
+        initialTag?: string;
+      }
+    | undefined;
 };
 
 const Stack = createNativeStackNavigator<TrackeosStackParamList>();

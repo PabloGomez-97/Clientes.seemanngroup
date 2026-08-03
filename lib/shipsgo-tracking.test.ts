@@ -11,6 +11,8 @@ import {
   computeAirStats,
   computeOceanStats,
   filterShipmentsByUsername,
+  getAirDisplayTitle,
+  getOceanDisplayTitle,
   getOceanTrackingLabel,
   isAirDelayed,
   isOceanDelayed,
@@ -244,6 +246,48 @@ describe("getOceanTrackingLabel", () => {
       ),
       "MSCU1234567",
     );
+  });
+});
+
+describe("getOceanDisplayTitle", () => {
+  it("prioriza Ref. Cliente / Etiquetas sobre contenedor", () => {
+    const display = getOceanDisplayTitle(
+      oceanShipment({
+        container_number: "ONEU5771706",
+        tags: [{ id: 1, name: "ORDEN 14827 FETAMED" }],
+      }),
+    );
+    assert.equal(display.kicker, "Ref. Cliente / Etiquetas");
+    assert.equal(display.title, "ORDEN 14827 FETAMED");
+    assert.equal(display.secondaryKicker, "Contenedor / Booking");
+    assert.equal(display.secondaryTitle, "ONEU5771706");
+  });
+
+  it("usa Contenedor / Booking si no hay etiquetas", () => {
+    const display = getOceanDisplayTitle(
+      oceanShipment({
+        container_number: "ONEU5771706",
+        tags: [],
+      }),
+    );
+    assert.equal(display.kicker, "Contenedor / Booking");
+    assert.equal(display.title, "ONEU5771706");
+    assert.equal(display.secondaryKicker, null);
+  });
+});
+
+describe("getAirDisplayTitle", () => {
+  it("prioriza Ref. Cliente / Etiquetas sobre AWB", () => {
+    const display = getAirDisplayTitle(
+      airShipment({
+        awb_number: "04512345675",
+        tags: [{ id: 1, name: "PO-999" }],
+      }),
+    );
+    assert.equal(display.kicker, "Ref. Cliente / Etiquetas");
+    assert.equal(display.title, "PO-999");
+    assert.equal(display.secondaryKicker, "AWB");
+    assert.equal(display.secondaryTitle, "04512345675");
   });
 });
 

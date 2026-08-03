@@ -20,8 +20,8 @@ import {
 } from "../../components/tracking/statusTone";
 import { fetchOceanShipmentDetail } from "../../services/shipsgoApi";
 import {
+  getOceanDisplayTitle,
   getOceanEmbedQuery,
-  getOceanTrackingLabel,
   isOceanDelayed,
 } from "../../../src/services/shipsgoTrackingLogic";
 import type { TrackeosStackParamList } from "../../navigation/TrackeosStack";
@@ -57,6 +57,7 @@ export default function OceanTrackingDetailScreen() {
     : OCEAN_STATUS_LABELS[shipment.status] || shipment.status;
   const toneKey = toneForStatus("ocean", shipment.status, delayed);
   const tone = STATUS_TONE[toneKey];
+  const display = getOceanDisplayTitle(shipment);
 
   return (
     <SafeAreaView style={styles.safe} edges={["bottom"]}>
@@ -64,8 +65,8 @@ export default function OceanTrackingDetailScreen() {
         <View style={styles.hero}>
           <View style={styles.heroTop}>
             <View style={styles.heroText}>
-              <Text style={styles.kicker}>Contenedor / Booking</Text>
-              <Text style={styles.title}>{getOceanTrackingLabel(shipment)}</Text>
+              <Text style={styles.kicker}>{display.kicker}</Text>
+              <Text style={styles.title}>{display.title}</Text>
               <Text style={styles.subtitle}>
                 {shipment.carrier?.name || "Sin naviera"}
               </Text>
@@ -90,16 +91,10 @@ export default function OceanTrackingDetailScreen() {
           </View>
         </View>
 
-        {shipment.tags.length > 0 ? (
-          <View style={styles.tagsBlock}>
-            <Text style={styles.tagsLabel}>Ref. Cliente / Etiquetas</Text>
-            <View style={styles.tagsRow}>
-              {shipment.tags.map((tag) => (
-                <View key={tag.id} style={styles.tagChip}>
-                  <Text style={styles.tagText}>{tag.name}</Text>
-                </View>
-              ))}
-            </View>
+        {display.secondaryKicker && display.secondaryTitle ? (
+          <View style={styles.secondaryBlock}>
+            <Text style={styles.secondaryLabel}>{display.secondaryKicker}</Text>
+            <Text style={styles.secondaryValue}>{display.secondaryTitle}</Text>
           </View>
         ) : null}
 
@@ -196,29 +191,18 @@ const styles = StyleSheet.create({
     fontFamily: fonts.semiBold,
     fontSize: 11,
   },
-  tagsBlock: {
-    marginTop: 12,
+  secondaryBlock: {
+    marginTop: 4,
   },
-  tagsLabel: {
+  secondaryLabel: {
     fontSize: 12,
     color: brand.muted,
     fontFamily: fonts.semiBold,
-    marginBottom: 8,
   },
-  tagsRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  tagChip: {
-    backgroundColor: brand.primarySoft,
-    borderRadius: radii.pill,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  tagText: {
-    fontSize: 12,
+  secondaryValue: {
+    marginTop: 4,
+    fontSize: 14,
     color: brand.inkSecondary,
-    fontFamily: fonts.medium,
+    fontFamily: fonts.semiBold,
   },
 });

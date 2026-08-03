@@ -252,6 +252,66 @@ export function getOceanTrackingLabel(shipment: OceanShipment): string {
   );
 }
 
+/** Une etiquetas/ref. cliente para título de UI; null si no hay. */
+export function getShipmentTagsLabel(
+  shipment: { tags: Array<{ name: string }> },
+): string | null {
+  const names = shipment.tags
+    .map((tag) => tag.name.trim())
+    .filter(Boolean);
+  if (names.length === 0) return null;
+  return names.join(" · ");
+}
+
+/** Título hero: Ref. Cliente / Etiquetas, o Contenedor / Booking si no hay tags. */
+export function getOceanDisplayTitle(shipment: OceanShipment): {
+  kicker: string;
+  title: string;
+  secondaryKicker: string | null;
+  secondaryTitle: string | null;
+} {
+  const tagsLabel = getShipmentTagsLabel(shipment);
+  const trackingLabel = getOceanTrackingLabel(shipment);
+  if (tagsLabel) {
+    return {
+      kicker: "Ref. Cliente / Etiquetas",
+      title: tagsLabel,
+      secondaryKicker: "Contenedor / Booking",
+      secondaryTitle: trackingLabel,
+    };
+  }
+  return {
+    kicker: "Contenedor / Booking",
+    title: trackingLabel,
+    secondaryKicker: null,
+    secondaryTitle: null,
+  };
+}
+
+/** Título hero: Ref. Cliente / Etiquetas, o AWB si no hay tags. */
+export function getAirDisplayTitle(shipment: AirShipment): {
+  kicker: string;
+  title: string;
+  secondaryKicker: string | null;
+  secondaryTitle: string | null;
+} {
+  const tagsLabel = getShipmentTagsLabel(shipment);
+  if (tagsLabel) {
+    return {
+      kicker: "Ref. Cliente / Etiquetas",
+      title: tagsLabel,
+      secondaryKicker: "AWB",
+      secondaryTitle: shipment.awb_number,
+    };
+  }
+  return {
+    kicker: "AWB",
+    title: shipment.awb_number,
+    secondaryKicker: null,
+    secondaryTitle: null,
+  };
+}
+
 export function getOceanEmbedQuery(shipment: OceanShipment): string {
   return (
     shipment.container_number?.trim() ||

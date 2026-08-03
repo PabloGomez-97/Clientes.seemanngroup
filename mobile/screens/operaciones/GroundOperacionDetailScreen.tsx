@@ -1,4 +1,4 @@
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRoute } from "@react-navigation/native";
 import type { RouteProp } from "@react-navigation/native";
@@ -7,9 +7,13 @@ import {
   formatOperacionDate,
 } from "../../../src/services/operacionesFiltersLogic";
 import { DetailField, DetailSection } from "../../components/operaciones/DetailFields";
+import {
+  OperacionHero,
+  OperacionNotesSection,
+} from "../../components/operaciones/OperacionDetailChrome";
+import OperacionDocumentosSection from "../../components/operaciones/OperacionDocumentosSection";
 import type { OperacionesStackParamList } from "../../navigation/OperacionesStack";
-import { brand, radii, spacing } from "../../theme/brand";
-import { fonts } from "../../theme/typography";
+import { brand, spacing } from "../../theme/brand";
 
 type RouteProps = RouteProp<OperacionesStackParamList, "GroundOperacionDetail">;
 
@@ -17,31 +21,40 @@ export default function GroundOperacionDetailScreen() {
   const route = useRoute<RouteProps>();
   const { shipment } = route.params;
 
+  const title = formatOperacionCustomerReference(shipment.customerReference);
+  const routeLabel = `${shipment.from || "-"} → ${shipment.to || "-"}`;
+
   return (
     <SafeAreaView style={styles.safe} edges={["bottom"]}>
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.hero}>
-          <Text style={styles.heroNumber}>
-            {formatOperacionCustomerReference(shipment.customerReference)}
-          </Text>
-          <Text style={styles.heroRoute}>
-            {shipment.from || "-"} → {shipment.to || "-"}
-          </Text>
-        </View>
+        <OperacionHero title={title} routeLabel={routeLabel} mode="Terrestre" />
 
-        <DetailSection title="Información general">
-          <DetailField label="Número" value={shipment.number} accent />
-          <DetailField label="Referencia cliente" value={shipment.customerReference} />
+        <DetailSection title="Detalles del envío">
+          <DetailField label="Número de envío" value={shipment.number} accent />
+          <DetailField
+            label="Referencia cliente"
+            value={shipment.customerReference}
+          />
+          <DetailField label="Clase" value={shipment.shipmentClass} />
+          <DetailField label="Categoría tarifa" value={shipment.rateCategory} />
+          <DetailField label="ID interno" value={shipment.id} />
+        </DetailSection>
+
+        <DetailSection title="Transporte terrestre">
           <DetailField label="Transportista" value={shipment.carrier} />
           <DetailField label="Conductor" value={shipment.driver} />
           <DetailField label="Camión" value={shipment.truckNumber} />
           <DetailField label="Tracking" value={shipment.trackingNumber} />
           <DetailField label="PRO" value={shipment.proNumber} />
-          <DetailField label="Clase" value={shipment.shipmentClass} />
-          <DetailField label="Categoría tarifa" value={shipment.rateCategory} />
         </DetailSection>
 
-        <DetailSection title="Fechas y ruta">
+        <DetailSection title="Documentos y referencias">
+          <DetailField label="Booking" value={shipment.bookingNumber} />
+          <DetailField label="Waybill" value={shipment.waybillNumber} />
+          <DetailField label="Contenedor" value={shipment.containerNumber} />
+        </DetailSection>
+
+        <DetailSection title="Fechas">
           <DetailField
             label="Salida"
             value={formatOperacionDate(shipment.departure)}
@@ -58,26 +71,62 @@ export default function GroundOperacionDetailScreen() {
           />
         </DetailSection>
 
-        <DetailSection title="Carga y documentos">
+        <DetailSection title="Información de carga">
           <DetailField label="Descripción" value={shipment.cargoDescription} />
           <DetailField label="Estado carga" value={shipment.cargoStatus} />
           <DetailField
             label="Piezas"
-            value={shipment.totalCargo_Pieces?.toString()}
+            value={
+              shipment.totalCargo_Pieces != null
+                ? String(shipment.totalCargo_Pieces)
+                : null
+            }
           />
           <DetailField
-            label="Peso"
+            label="Peso total"
             value={shipment.totalCargo_WeightDisplayValue}
           />
           <DetailField
-            label="Volumen"
+            label="Volumen total"
             value={shipment.totalCargo_VolumeDisplayValue}
           />
-          <DetailField label="Booking" value={shipment.bookingNumber} />
-          <DetailField label="Waybill" value={shipment.waybillNumber} />
-          <DetailField label="Contenedor" value={shipment.containerNumber} />
-          <DetailField label="Notas" value={shipment.notes} />
+          <DetailField
+            label="Carga peligrosa"
+            value={
+              shipment.hazardous == null
+                ? null
+                : shipment.hazardous
+                  ? "Sí"
+                  : "No"
+            }
+          />
         </DetailSection>
+
+        <OperacionDocumentosSection
+          mode="ground"
+          shipmentId={shipment.id}
+        />
+
+        {(shipment.totalCharge_IncomeDisplayValue ||
+          shipment.totalCharge_ExpenseDisplayValue ||
+          shipment.totalCharge_ProfitDisplayValue) && (
+          <DetailSection title="Financiero">
+            <DetailField
+              label="Ingreso"
+              value={shipment.totalCharge_IncomeDisplayValue}
+            />
+            <DetailField
+              label="Costo"
+              value={shipment.totalCharge_ExpenseDisplayValue}
+            />
+            <DetailField
+              label="Profit"
+              value={shipment.totalCharge_ProfitDisplayValue}
+            />
+          </DetailSection>
+        )}
+
+        <OperacionNotesSection notes={shipment.notes} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -86,24 +135,4 @@ export default function GroundOperacionDetailScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: brand.canvas },
   content: { padding: spacing.lg, paddingBottom: spacing.xl },
-  hero: {
-    backgroundColor: brand.surface,
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    borderColor: brand.border,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-  },
-  heroNumber: {
-    fontSize: 20,
-    fontFamily: fonts.bold,
-    color: brand.navy,
-    marginBottom: 4,
-  },
-  heroRoute: {
-    fontSize: 13,
-    color: brand.muted,
-    lineHeight: 18,
-    fontFamily: fonts.medium,
-  },
 });

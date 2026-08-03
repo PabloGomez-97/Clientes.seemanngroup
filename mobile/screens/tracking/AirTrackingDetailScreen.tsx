@@ -19,7 +19,10 @@ import {
   toneForStatus,
 } from "../../components/tracking/statusTone";
 import { fetchAirShipmentDetail } from "../../services/shipsgoApi";
-import { isAirDelayed } from "../../../src/services/shipsgoTrackingLogic";
+import {
+  getAirDisplayTitle,
+  isAirDelayed,
+} from "../../../src/services/shipsgoTrackingLogic";
 import type { TrackeosStackParamList } from "../../navigation/TrackeosStack";
 import { brand, radii, spacing } from "../../theme/brand";
 import { fonts } from "../../theme/typography";
@@ -52,6 +55,7 @@ export default function AirTrackingDetailScreen() {
     : AIR_STATUS_LABELS[shipment.status] || shipment.status;
   const toneKey = toneForStatus("air", shipment.status, delayed);
   const tone = STATUS_TONE[toneKey];
+  const display = getAirDisplayTitle(shipment);
 
   return (
     <SafeAreaView style={styles.safe} edges={["bottom"]}>
@@ -59,8 +63,8 @@ export default function AirTrackingDetailScreen() {
         <View style={styles.hero}>
           <View style={styles.heroTop}>
             <View style={styles.heroText}>
-              <Text style={styles.kicker}>AWB</Text>
-              <Text style={styles.title}>{shipment.awb_number}</Text>
+              <Text style={styles.kicker}>{display.kicker}</Text>
+              <Text style={styles.title}>{display.title}</Text>
               <Text style={styles.subtitle}>
                 {shipment.airline?.name || "Sin aerolínea"}
               </Text>
@@ -85,16 +89,10 @@ export default function AirTrackingDetailScreen() {
           </View>
         </View>
 
-        {shipment.tags.length > 0 ? (
-          <View style={styles.tagsBlock}>
-            <Text style={styles.tagsLabel}>Ref. Cliente / Etiquetas</Text>
-            <View style={styles.tagsRow}>
-              {shipment.tags.map((tag) => (
-                <View key={tag.id} style={styles.tagChip}>
-                  <Text style={styles.tagText}>{tag.name}</Text>
-                </View>
-              ))}
-            </View>
+        {display.secondaryKicker && display.secondaryTitle ? (
+          <View style={styles.secondaryBlock}>
+            <Text style={styles.secondaryLabel}>{display.secondaryKicker}</Text>
+            <Text style={styles.secondaryValue}>{display.secondaryTitle}</Text>
           </View>
         ) : null}
 
@@ -184,29 +182,18 @@ const styles = StyleSheet.create({
     fontFamily: fonts.semiBold,
     fontSize: 11,
   },
-  tagsBlock: {
-    marginTop: 12,
+  secondaryBlock: {
+    marginTop: 4,
   },
-  tagsLabel: {
+  secondaryLabel: {
     fontSize: 12,
     color: brand.muted,
     fontFamily: fonts.semiBold,
-    marginBottom: 8,
   },
-  tagsRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  tagChip: {
-    backgroundColor: brand.primarySoft,
-    borderRadius: radii.pill,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  tagText: {
-    fontSize: 12,
+  secondaryValue: {
+    marginTop: 4,
+    fontSize: 14,
     color: brand.inkSecondary,
-    fontFamily: fonts.medium,
+    fontFamily: fonts.semiBold,
   },
 });

@@ -1,23 +1,42 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useMemo } from "react";
+import { ScrollView, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import type { RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { Ionicons } from "@expo/vector-icons";
+import type { CompositeNavigationProp } from "@react-navigation/native";
+import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
+import {
+  getOceanOperacionContainerNumber,
+} from "../../../src/services/operacionesTrackingLink";
 import {
   formatLocationName,
   formatOperacionCustomerReference,
   formatOperacionDate,
 } from "../../../src/services/operacionesFiltersLogic";
 import { DetailField, DetailSection } from "../../components/operaciones/DetailFields";
+import {
+  OperacionActions,
+  OperacionCommoditiesSection,
+  OperacionHero,
+  OperacionNotesSection,
+} from "../../components/operaciones/OperacionDetailChrome";
+import OperacionDocumentosSection from "../../components/operaciones/OperacionDocumentosSection";
+import { useOperacionQuoteNumber } from "../../hooks/useOperacionQuoteNumber";
 import { useOperaciones } from "../../hooks/useOperaciones";
-import type { OperacionesStackParamList } from "../../navigation/OperacionesStack";
-import { openTrackeosFromOperacion } from "../../navigation/openTrackeosFromOperacion";
 import type { ClientTabParamList } from "../../navigation/ClientTabs";
-import { brand, radii, spacing } from "../../theme/brand";
-import { fonts } from "../../theme/typography";
-import type { CompositeNavigationProp } from "@react-navigation/native";
-import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
+import {
+  openCotizacionesFromOperacion,
+  openNewOceanTrackingFromOperacion,
+  openTrackeosFromOperacion,
+} from "../../navigation/openTrackeosFromOperacion";
+import type { OperacionesStackParamList } from "../../navigation/OperacionesStack";
+import {
+  formatMetric,
+  getOperacionCommodities,
+  summarizeCommodities,
+} from "../../services/operacionDetailLogic";
+import { brand, spacing } from "../../theme/brand";
 
 type RouteProps = RouteProp<OperacionesStackParamList, "OceanOperacionDetail">;
 type NavigationProp = CompositeNavigationProp<
@@ -31,92 +50,151 @@ export default function OceanOperacionDetailScreen() {
   const { shipment } = route.params;
   const { getOceanTrackingStatus } = useOperaciones();
   const trackingStatus = getOceanTrackingStatus(shipment);
+  const { quoteNumber, loading: quoteLoading } = useOperacionQuoteNumber({
+    sogNumber: shipment.number,
+    shipmentId: shipment.id,
+  });
+
+  const commodities = useMemo(
+    () => getOperacionCommodities(shipment),
+    [shipment],
+  );
+  const cargoSummary = useMemo(
+    () => summarizeCommodities(commodities),
+    [commodities],
+  );
+  const containerNumber = getOceanOperacionContainerNumber(shipment);
+
+  const title = formatOperacionCustomerReference(shipment.customerReference);
+  const origin = formatLocationName(shipment.executedAt);
+  const destination = formatLocationName(shipment.destination);
+
+  const actions = [];
+  if (trackingStatus.isTracked && trackingStatus.openTarget) {
+    actions.push({
+      key: "view-tracking",
+      label: "Ver seguimiento",
+      icon: "navigate" as const,
+      primary: true,
+      onPress: () =>
+        openTrackeosFromOperacion(navigation, trackingStatus.openTarget!),
+    });
+  } else if (containerNumber || shipment.bookingNumber) {
+    actions.push({
+      key: "create-tracking",
+      label: "Trackea tu envío",
+      icon: "add-circle-outline" as const,
+      primary: true,
+      onPress: () =>
+        openNewOceanTrackingFromOperacion(navigation, {
+          containerNumber,
+          bookingNumber: shipment.bookingNumber,
+          tagHint: shipment.customerReference,
+        }),
+    });
+  }
+  if (quoteNumber) {
+    actions.push({
+      key: "quote",
+      label: "Ver cotización",
+      icon: "document-text-outline" as const,
+      onPress: () => openCotizacionesFromOperacion(navigation),
+    });
+  }
 
   return (
     <SafeAreaView style={styles.safe} edges={["bottom"]}>
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.hero}>
-          <View style={styles.heroTop}>
-            <View style={styles.heroText}>
-              <Text style={styles.heroNumber}>
-                {formatOperacionCustomerReference(shipment.customerReference)}
-              </Text>
-              <Text style={styles.heroRoute}>
-                {formatLocationName(shipment.executedAt)} →{" "}
-                {formatLocationName(shipment.destination)}
-              </Text>
-            </View>
-            {trackingStatus.isTracked ? (
-              <View style={[styles.statusChip, styles.statusChipLive]}>
-                <View style={[styles.statusDot, styles.statusDotLive]} />
-                <Text style={[styles.statusText, styles.statusTextLive]}>
-                  En seguimiento
-                </Text>
-              </View>
-            ) : null}
-          </View>
-        </View>
+        <OperacionHero
+          title={title}
+          routeLabel={`${origin} → ${destination}`}
+          mode="Marítimo"
+          tracked={trackingStatus.isTracked}
+        />
 
-        {trackingStatus.isTracked && trackingStatus.openTarget ? (
-          <Pressable
-            style={styles.trackingButton}
-            onPress={() =>
-              openTrackeosFromOperacion(navigation, trackingStatus.openTarget!)
-            }
-          >
-            <Ionicons name="navigate" size={18} color="#fff" />
-            <Text style={styles.trackingButtonText}>Ver seguimiento activo</Text>
-          </Pressable>
-        ) : null}
+        <OperacionActions actions={actions} />
 
-        <DetailSection title="Información general">
+        <DetailSection title="Detalles del envío">
+          <DetailField label="Número de envío" value={shipment.number} />
           <DetailField
             label="Referencia cliente"
             value={shipment.customerReference}
             accent
           />
           <DetailField
+            label="Número de cotización"
+            value={quoteLoading ? "Cargando…" : quoteNumber}
+            accent={Boolean(quoteNumber)}
+          />
+          <DetailField label="Booking" value={shipment.bookingNumber} />
+          <DetailField label="Waybill / BL" value={shipment.waybillNumber} />
+          <DetailField label="ID interno" value={shipment.id} />
+        </DetailSection>
+
+        <DetailSection title="Seguimiento y operación">
+          <DetailField label="Transportista" value={shipment.carrier?.name} />
+          <DetailField
             label="Número de seguimiento"
             value={trackingStatus.trackingLabel}
             accent={trackingStatus.isTracked}
           />
-          <DetailField label="Transportista" value={shipment.carrier?.name} />
-        </DetailSection>
-
-        <DetailSection title="Fechas y ruta">
+          <DetailField label="Contenedor" value={containerNumber} />
           <DetailField
-            label="Salida"
+            label="Fecha salida"
             value={formatOperacionDate(shipment.departureDate)}
           />
           <DetailField
-            label="Llegada"
+            label="Fecha llegada"
             value={formatOperacionDate(shipment.arrivalDate)}
           />
+          <DetailField label="Origen" value={origin} />
+          <DetailField label="Destino" value={destination} />
+        </DetailSection>
+
+        <DetailSection title="Información de carga">
           <DetailField
-            label="Origen"
-            value={formatLocationName(shipment.executedAt)}
+            label="Piezas"
+            value={
+              shipment.totalCargo?.pieces != null
+                ? String(shipment.totalCargo.pieces)
+                : cargoSummary.pieces > 0
+                  ? String(cargoSummary.pieces)
+                  : null
+            }
           />
           <DetailField
-            label="Destino"
-            value={formatLocationName(shipment.destination)}
+            label="Peso total"
+            value={
+              shipment.totalCargo?.weight?.userDisplay ||
+              formatMetric(cargoSummary.weight, "kg")
+            }
+          />
+          <DetailField
+            label="Volumen total"
+            value={
+              shipment.totalCargo?.volume?.userDisplay ||
+              formatMetric(cargoSummary.volume, "m³")
+            }
+          />
+          <DetailField
+            label="Contenedores"
+            value={
+              shipment.totalCargo?.containers != null
+                ? String(shipment.totalCargo.containers)
+                : null
+            }
           />
         </DetailSection>
 
-        <DetailSection title="Carga">
-          <DetailField
-            label="Piezas"
-            value={shipment.totalCargo?.pieces?.toString()}
-          />
-          <DetailField
-            label="Peso"
-            value={shipment.totalCargo?.weight?.userDisplay}
-          />
-          <DetailField
-            label="Volumen"
-            value={shipment.totalCargo?.volume?.userDisplay}
-          />
-          <DetailField label="Notas" value={shipment.notes} />
-        </DetailSection>
+        <OperacionCommoditiesSection items={commodities} />
+
+        <OperacionDocumentosSection
+          mode="ocean"
+          quoteNumber={quoteNumber}
+          quoteLoading={quoteLoading}
+        />
+
+        <OperacionNotesSection notes={shipment.notes} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -125,78 +203,4 @@ export default function OceanOperacionDetailScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: brand.canvas },
   content: { padding: spacing.lg, paddingBottom: spacing.xl },
-  hero: {
-    backgroundColor: brand.surface,
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    borderColor: brand.border,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-  },
-  heroTop: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    gap: 12,
-  },
-  heroText: {
-    flex: 1,
-    minWidth: 0,
-  },
-  heroNumber: {
-    fontSize: 18,
-    fontFamily: fonts.bold,
-    color: brand.navy,
-    marginBottom: 4,
-  },
-  heroRoute: {
-    fontSize: 13,
-    color: brand.muted,
-    lineHeight: 18,
-    fontFamily: fonts.medium,
-  },
-  statusChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: radii.pill,
-    borderWidth: 1,
-    marginTop: 2,
-  },
-  statusChipLive: {
-    backgroundColor: "#eff4ff",
-    borderColor: "#c7d7fc",
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  statusDotLive: {
-    backgroundColor: "#2f6fed",
-  },
-  statusText: {
-    fontSize: 11,
-    fontFamily: fonts.semiBold,
-  },
-  statusTextLive: {
-    color: "#1d4ed8",
-  },
-  trackingButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: brand.navy,
-    borderRadius: radii.md,
-    paddingVertical: 12,
-    marginBottom: spacing.md,
-  },
-  trackingButtonText: {
-    color: "#fff",
-    fontFamily: fonts.semiBold,
-    fontSize: 14,
-  },
 });

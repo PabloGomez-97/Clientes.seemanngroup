@@ -17,6 +17,7 @@ function formatDetailValue(value?: string | number | null): string {
 
 export function DetailField({ label, value, accent }: DetailFieldProps) {
   const display = formatDetailValue(value);
+  if (display === "-") return null;
   return (
     <View style={styles.field}>
       <Text style={styles.label}>{label}</Text>

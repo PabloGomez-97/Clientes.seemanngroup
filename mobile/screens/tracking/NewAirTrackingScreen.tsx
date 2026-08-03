@@ -12,7 +12,8 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
+import type { RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import ChipEditor from "../../components/tracking/ChipEditor";
 import { useAuth } from "../../auth/AuthContext";
@@ -37,13 +38,17 @@ type NavigationProp = NativeStackNavigationProp<
   TrackeosStackParamList,
   "NewAirTracking"
 >;
+type RouteProps = RouteProp<TrackeosStackParamList, "NewAirTracking">;
 
 export default function NewAirTrackingScreen() {
   const navigation = useNavigation<NavigationProp>();
+  const { params } = useRoute<RouteProps>();
   const { token, activeUsername } = useAuth();
-  const [awbNumber, setAwbNumber] = useState("");
+  const [awbNumber, setAwbNumber] = useState(params?.initialAwb ?? "");
   const [followers, setFollowers] = useState<string[]>([]);
-  const [tags, setTags] = useState<string[]>([]);
+  const [tags, setTags] = useState<string[]>(
+    params?.initialTag ? [params.initialTag] : [],
+  );
   const [savedEmails, setSavedEmails] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

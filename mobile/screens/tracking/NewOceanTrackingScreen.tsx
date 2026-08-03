@@ -12,7 +12,8 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
+import type { RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import ChipEditor from "../../components/tracking/ChipEditor";
 import { useAuth } from "../../auth/AuthContext";
@@ -37,16 +38,22 @@ type NavigationProp = NativeStackNavigationProp<
   TrackeosStackParamList,
   "NewOceanTracking"
 >;
+type RouteProps = RouteProp<TrackeosStackParamList, "NewOceanTracking">;
 
 export default function NewOceanTrackingScreen() {
   const navigation = useNavigation<NavigationProp>();
+  const { params } = useRoute<RouteProps>();
   const { token, activeUsername } = useAuth();
   const [identifierType, setIdentifierType] = useState<
     "container_number" | "booking_number"
-  >("container_number");
-  const [identifierValue, setIdentifierValue] = useState("");
+  >(params?.initialIdentifierType ?? "container_number");
+  const [identifierValue, setIdentifierValue] = useState(
+    params?.initialIdentifierValue ?? "",
+  );
   const [followers, setFollowers] = useState<string[]>([]);
-  const [tags, setTags] = useState<string[]>([]);
+  const [tags, setTags] = useState<string[]>(
+    params?.initialTag ? [params.initialTag] : [],
+  );
   const [savedEmails, setSavedEmails] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
