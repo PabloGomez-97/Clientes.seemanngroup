@@ -20,6 +20,7 @@ import {
 import OceanShipmentRoute from "./OceanShipmentRoute";
 import TrackingEmailSuggestions from "@/components/shared/tracking/TrackingEmailSuggestions";
 import ShipmentMetaStrip from "./ShipmentMetaStrip";
+import { getOceanDisplayTitle } from "@/services/shipsgoTrackingLogic";
 
 const API_BASE_URL =
   import.meta.env.MODE === "development"
@@ -78,6 +79,7 @@ function OceanShipmentDetail({
   }, [shipment.id]);
 
   const s = detail || shipment;
+  const display = getOceanDisplayTitle(s);
   const containers: OceanContainer[] = detail?.containers || [];
   const followers = detail?.followers || [];
   const preferenceReference =
@@ -261,8 +263,14 @@ function OceanShipmentDetail({
                 {OCEAN_STATUS_LABELS[s.status] || s.status}
               </span>
             </div>
-            <h2 className="sg-detail-header-awb">
-              {s.container_number || s.booking_number || "Envío Marítimo"}
+            <h2
+              className={
+                display.secondaryTitle
+                  ? "sg-detail-header-title"
+                  : "sg-detail-header-awb"
+              }
+            >
+              {display.title}
             </h2>
             <div className="sg-detail-header-meta">
               {s.carrier && (
@@ -270,10 +278,17 @@ function OceanShipmentDetail({
                   {s.carrier.scac} — {s.carrier.name}
                 </span>
               )}
-              {s.reference && <span>Ref: {s.reference}</span>}
-              {s.container_number && s.booking_number && (
-                <span>Booking: {s.booking_number}</span>
+              {display.secondaryTitle && (
+                <span>
+                  {display.secondaryKicker}: {display.secondaryTitle}
+                </span>
               )}
+              {!display.secondaryTitle &&
+                s.container_number &&
+                s.booking_number && (
+                  <span>Booking: {s.booking_number}</span>
+                )}
+              {s.reference && <span>Ref: {s.reference}</span>}
             </div>
           </div>
           <button className="sg-modal-close" onClick={onClose}>

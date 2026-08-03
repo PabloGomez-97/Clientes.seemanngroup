@@ -10,6 +10,7 @@ import { faCloudflare } from "@fortawesome/free-brands-svg-icons";
 import TenantPicker from "./TenantPicker";
 import type { TenantId, TenantOption } from "./authApi";
 import { getPostLoginPath } from "./tenantRouting";
+import StoreDownloadBadges from "../components/store/StoreDownloadBadges";
 
 const FONT =
   'var(--portal-font)';
@@ -602,25 +603,7 @@ export default function Login() {
                 {t("home.login.proveedorLinkText")}
               </Link>
             </p>
-            <p
-              style={{
-                margin: 0,
-                fontSize: "12px",
-                color: "#aaa",
-                textAlign: "center",
-              }}
-            >
-              {t("home.login.helpText")}{" "}
-              <span
-                style={{
-                  color: "#888",
-                  fontWeight: "500",
-                  cursor: "pointer",
-                }}
-              >
-                {t("home.login.helpLink")}
-              </span>
-            </p>
+            <StoreDownloadBadges variant="login" />
           </div>
         </div>
       </div>

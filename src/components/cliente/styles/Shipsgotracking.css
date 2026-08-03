@@ -1457,6 +1457,15 @@
   letter-spacing: 0.5px;
 }
 
+.sg-detail-header-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 0.25rem 0;
+  line-height: 1.3;
+  word-break: break-word;
+}
+
 .sg-detail-header-meta {
   display: flex;
   flex-wrap: wrap;
@@ -1897,7 +1906,8 @@
   border-bottom-color: #0369a1;
 }
 
-.sg-detail-header--ocean .sg-detail-header-awb {
+.sg-detail-header--ocean .sg-detail-header-awb,
+.sg-detail-header--ocean .sg-detail-header-title {
   color: #0369a1;
 }
 

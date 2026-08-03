@@ -8,6 +8,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCloudflare } from "@fortawesome/free-brands-svg-icons";
 import TenantPicker from "./TenantPicker";
 import type { TenantId, TenantOption } from "./authApi";
+import StoreDownloadBadges from "../components/store/StoreDownloadBadges";
 
 const FONT =
   'var(--portal-font)';
@@ -475,6 +476,7 @@ export default function LoginAdmin() {
                   Ingresa aquí
                 </Link>
               </p>
+              <StoreDownloadBadges variant="login" />
             </div>
           </div>
         </div>

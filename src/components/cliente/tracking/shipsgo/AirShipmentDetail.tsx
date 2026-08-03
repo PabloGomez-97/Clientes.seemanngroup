@@ -18,6 +18,7 @@ import {
 import AirShipmentRoute from "./AirShipmentRoute";
 import TrackingEmailSuggestions from "@/components/shared/tracking/TrackingEmailSuggestions";
 import ShipmentMetaStrip from "./ShipmentMetaStrip";
+import { getAirDisplayTitle } from "@/services/shipsgoTrackingLogic";
 
 const API_BASE_URL =
   import.meta.env.MODE === "development"
@@ -77,6 +78,7 @@ function AirShipmentDetails({
 
   // Use detail data if available, otherwise fallback to basic shipment
   const s = detail || shipment;
+  const display = getAirDisplayTitle(s);
   const movements: AirMovement[] = detail?.movements || [];
   const followers = detail?.followers || [];
   const preferenceReference =
@@ -266,11 +268,24 @@ function AirShipmentDetails({
                 </span>
               )}
             </div>
-            <h2 className="sg-detail-header-awb">AWB {s.awb_number}</h2>
+            <h2
+              className={
+                display.secondaryTitle
+                  ? "sg-detail-header-title"
+                  : "sg-detail-header-awb"
+              }
+            >
+              {display.secondaryTitle ? display.title : `AWB ${display.title}`}
+            </h2>
             <div className="sg-detail-header-meta">
               {s.airline && (
                 <span>
                   {s.airline.iata} — {s.airline.name}
+                </span>
+              )}
+              {display.secondaryTitle && (
+                <span>
+                  {display.secondaryKicker}: {display.secondaryTitle}
                 </span>
               )}
               {s.reference && <span>Ref: {s.reference}</span>}
