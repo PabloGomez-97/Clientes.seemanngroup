@@ -425,6 +425,8 @@
   "footer": {
     "tagline": "Leader in international logistics solutions with more than 35 years of experience. We connect your business with the world.",
     "socialsAriaLabel": "Social media",
+    "appsTitle": "Seemann Group Apps",
+    "storeBadgesAriaLabel": "Download the app",
     "navigationAriaLabel": "Footer",
     "columns": {
       "product": {

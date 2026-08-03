@@ -93,6 +93,26 @@ const SOCIALS = [
   },
 ];
 
+/** Enlaces públicos de la app móvil (App Store + Google Play). */
+const STORE_BADGES = [
+  {
+    key: "app-store",
+    href: "https://apps.apple.com/app/id6793726585",
+    src: "/store/badge-app-store.svg",
+    alt: "Download on the App Store",
+    width: 120,
+    height: 40,
+  },
+  {
+    key: "google-play",
+    href: "https://play.google.com/store/apps/details?id=com.seemanngroup.portalclientes",
+    src: "/store/badge-google-play.png",
+    alt: "Disponible en Google Play",
+    width: 135,
+    height: 52,
+  },
+] as const;
+
 function Footer() {
   const { t } = useTranslation();
   const year = new Date().getFullYear();
@@ -138,31 +158,67 @@ function Footer() {
           className="sg-footer__cols"
           aria-label={t("footer.navigationAriaLabel")}
         >
-          {COLUMNS.map((col) => (
-            <div className="sg-footer__col" key={col.titleKey}>
-              <h4 className="sg-footer__col-title">{t(col.titleKey)}</h4>
-              <ul className="sg-footer__col-list">
-                {col.links.map((link) => (
-                  <li key={link.labelKey}>
-                    {link.external ? (
-                      <a
-                        href={link.to}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="sg-footer__link"
-                      >
-                        {t(link.labelKey)}
-                      </a>
-                    ) : (
-                      <Link to={link.to} className="sg-footer__link">
-                        {t(link.labelKey)}
-                      </Link>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+          {COLUMNS.map((col) => {
+            const isCompany = col.titleKey === "footer.columns.company.title";
+            return (
+              <div className="sg-footer__col" key={col.titleKey}>
+                <h4 className="sg-footer__col-title">{t(col.titleKey)}</h4>
+                <ul className="sg-footer__col-list">
+                  {col.links.map((link) => (
+                    <li key={link.labelKey}>
+                      {link.external ? (
+                        <a
+                          href={link.to}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="sg-footer__link"
+                        >
+                          {t(link.labelKey)}
+                        </a>
+                      ) : (
+                        <Link to={link.to} className="sg-footer__link">
+                          {t(link.labelKey)}
+                        </Link>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+                {isCompany ? (
+                  <div className="sg-footer__apps">
+                    <p className="sg-footer__apps-title">
+                      {t("footer.appsTitle", {
+                        defaultValue: "Apps de Seemann Group",
+                      })}
+                    </p>
+                    <div
+                      className="sg-footer__store-badges"
+                      aria-label={t("footer.storeBadgesAriaLabel", {
+                        defaultValue: "Descargar la aplicación",
+                      })}
+                    >
+                      {STORE_BADGES.map((badge) => (
+                        <a
+                          key={badge.key}
+                          href={badge.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={`sg-footer__store-badge sg-footer__store-badge--${badge.key}`}
+                        >
+                          <img
+                            src={badge.src}
+                            alt={badge.alt}
+                            width={badge.width}
+                            height={badge.height}
+                            loading="lazy"
+                          />
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            );
+          })}
         </nav>
       </div>
 

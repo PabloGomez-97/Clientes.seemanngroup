@@ -14,8 +14,8 @@
 
 .sg-footer__top {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr;
-  gap: 2.5rem;
+  grid-template-columns: 1.7fr 1fr 1fr 1.35fr;
+  gap: 2.25rem;
   align-items: start;
   padding: 2.5rem 2.5rem 1.75rem;
 }
@@ -120,6 +120,75 @@
 .sg-footer__link:focus-visible {
   color: var(--primary-color, #232f3e);
   outline: none;
+}
+
+.sg-footer__apps {
+  margin-top: 1.15rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line-color, #e6e8ec);
+}
+
+.sg-footer__apps-title {
+  margin: 0 0 0.7rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--secondary-color, #1a2332);
+}
+
+.sg-footer__store-badges {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.sg-footer__store-badge {
+  display: inline-flex;
+  flex-shrink: 0;
+  line-height: 0;
+  text-decoration: none;
+  opacity: 0.94;
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease;
+}
+
+.sg-footer__store-badge:hover,
+.sg-footer__store-badge:focus-visible {
+  opacity: 1;
+  transform: translateY(-1px);
+  outline: none;
+}
+
+.sg-footer__store-badge img {
+  display: block;
+  height: 44px;
+  width: auto;
+  object-fit: contain;
+}
+
+/* Play badge: recorta el padding transparente del PNG oficial. */
+.sg-footer__store-badge--google-play img {
+  height: 64px;
+  margin: -10px -8px -10px -12px;
+}
+
+.sg-footer__store-badge--app-store img {
+  height: 52px;
+  width: auto;
+}
+
+@media (max-width: 767.98px) {
+  .sg-footer__apps {
+    text-align: center;
+  }
+
+  .sg-footer__store-badges {
+    justify-content: center;
+  }
 }
 
 .sg-footer__divider {
