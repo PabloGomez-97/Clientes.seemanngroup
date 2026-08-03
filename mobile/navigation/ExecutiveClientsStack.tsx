@@ -26,6 +26,13 @@ export type ClientScopeParams = {
   nombreuser?: string;
   email?: string;
   openTracking?: ShipsGoOpenTrackingTarget;
+  openNewTracking?: {
+    mode: "air" | "ocean";
+    initialAwb?: string;
+    initialIdentifierType?: "container_number" | "booking_number";
+    initialIdentifierValue?: string;
+    initialTag?: string;
+  };
 };
 
 export type ExecutiveClientsStackParamList = {
@@ -105,12 +112,15 @@ function ClientTrackeosScreen() {
     useRoute<RouteProp<ExecutiveClientsStackParamList, "ClientTrackeos">>();
   const openKey = route.params.openTracking
     ? JSON.stringify(route.params.openTracking)
-    : "list";
+    : route.params.openNewTracking
+      ? JSON.stringify(route.params.openNewTracking)
+      : "list";
   return (
     <ClientScopedScreen title="Seguimientos">
       <TrackeosStack
         key={openKey}
         initialOpenTracking={route.params.openTracking}
+        initialNewTracking={route.params.openNewTracking}
       />
     </ClientScopedScreen>
   );

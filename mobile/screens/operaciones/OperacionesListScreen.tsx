@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -73,7 +73,15 @@ export default function OperacionesListScreen() {
     pagination,
   } = useOperaciones();
 
-  useRefreshOnFocus(refreshActiveTab);
+  // Soft refresh al foco: no invalida caché ni muestra pantalla completa de carga.
+  const softRefresh = useCallback(() => {
+    void refreshActiveTab();
+  }, [refreshActiveTab]);
+  useRefreshOnFocus(softRefresh);
+
+  const hardRefresh = useCallback(() => {
+    void refreshActiveTab({ hard: true });
+  }, [refreshActiveTab]);
 
   const loading =
     activeTab === "air"
@@ -93,6 +101,8 @@ export default function OperacionesListScreen() {
       : activeTab === "ocean"
         ? filteredOcean
         : filteredGround;
+  // Mantener lista visible si ya hay datos (evita flicker "Cargando operaciones").
+  const showFullScreenLoading = loading && displayedItems.length === 0;
 
   const isCatalogEmpty =
     !loading &&
@@ -209,7 +219,7 @@ export default function OperacionesListScreen() {
           <Text style={styles.subtitle}>{activeUsername}</Text>
         </View>
         <View style={styles.headerActions}>
-          <Pressable style={styles.iconButton} onPress={() => void refreshActiveTab()}>
+          <Pressable style={styles.iconButton} onPress={hardRefresh}>
             <Ionicons name="refresh" size={18} color={brand.navy} />
           </Pressable>
           <Pressable
@@ -258,7 +268,7 @@ export default function OperacionesListScreen() {
         ))}
       </View>
 
-      {loading ? (
+      {showFullScreenLoading ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color={brand.navy} />
           <Text style={styles.loadingText}>Cargando operaciones...</Text>
@@ -267,7 +277,7 @@ export default function OperacionesListScreen() {
         <View style={styles.center}>
           <Text style={styles.errorTitle}>Error</Text>
           <Text style={styles.errorText}>{error}</Text>
-          <Pressable style={styles.retryButton} onPress={() => void refreshActiveTab()}>
+          <Pressable style={styles.retryButton} onPress={hardRefresh}>
             <Text style={styles.retryButtonText}>Reintentar</Text>
           </Pressable>
         </View>
@@ -298,7 +308,7 @@ export default function OperacionesListScreen() {
           refreshControl={
             <RefreshControl
               refreshing={airLoading}
-              onRefresh={() => void refreshActiveTab()}
+              onRefresh={hardRefresh}
               tintColor={brand.primary}
             />
           }
@@ -318,7 +328,7 @@ export default function OperacionesListScreen() {
           refreshControl={
             <RefreshControl
               refreshing={oceanLoading}
-              onRefresh={() => void refreshActiveTab()}
+              onRefresh={hardRefresh}
               tintColor={brand.primary}
             />
           }
@@ -338,7 +348,7 @@ export default function OperacionesListScreen() {
           refreshControl={
             <RefreshControl
               refreshing={groundLoading}
-              onRefresh={() => void refreshActiveTab()}
+              onRefresh={hardRefresh}
               tintColor={brand.primary}
             />
           }

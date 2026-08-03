@@ -72,7 +72,11 @@ export function resolveOceanOperacionTrackingNumber(
 
 export function getOceanOperacionContainerNumber(
   shipment: OceanListItem,
+  containerHint?: string | null,
 ): string | null {
+  const hint = containerHint?.trim();
+  if (hint) return hint;
+
   const fromCommodities = extractHbliFromCommodities(shipment.commodities);
   if (fromCommodities.containerNumber) {
     return fromCommodities.containerNumber;
@@ -89,11 +93,12 @@ export function getOceanOperacionContainerNumber(
 export function getOceanOperacionShipsgoLookupKeys(
   shipment: OceanListItem,
   trackingIndex: Record<string, string>,
+  containerHint?: string | null,
 ): string[] {
   const raw = [
     resolveOceanOperacionTrackingNumber(shipment, trackingIndex),
     shipment.bookingNumber,
-    getOceanOperacionContainerNumber(shipment),
+    getOceanOperacionContainerNumber(shipment, containerHint),
     shipment.waybillNumber,
   ];
   return [
@@ -149,11 +154,14 @@ export function isOceanOperacionTracked(
   shipment: OceanListItem,
   trackingIndex: Record<string, string>,
   trackedOceanKeys: Set<string>,
+  containerHint?: string | null,
 ): boolean {
   if (!trackedOceanKeys.size) return false;
-  return getOceanOperacionShipsgoLookupKeys(shipment, trackingIndex).some((key) =>
-    trackedOceanKeys.has(key),
-  );
+  return getOceanOperacionShipsgoLookupKeys(
+    shipment,
+    trackingIndex,
+    containerHint,
+  ).some((key) => trackedOceanKeys.has(key));
 }
 
 export function getAirOperacionTrackingStatus(
@@ -176,17 +184,22 @@ export function getOceanOperacionTrackingStatus(
   shipment: OceanListItem,
   trackingIndex: Record<string, string>,
   trackedOceanKeys: Set<string>,
+  containerHint?: string | null,
 ): OperacionTrackingStatus {
   const trackingNumber = resolveOceanOperacionTrackingNumber(
     shipment,
     trackingIndex,
   );
   const hbli = extractHbliFromCharges(shipment.charges);
-  const containerNumber = getOceanOperacionContainerNumber(shipment);
+  const containerNumber = getOceanOperacionContainerNumber(
+    shipment,
+    containerHint,
+  );
   const isTracked = isOceanOperacionTracked(
     shipment,
     trackingIndex,
     trackedOceanKeys,
+    containerHint,
   );
   const openTarget = isTracked
     ? buildOceanOpenTrackingTarget({
@@ -199,15 +212,52 @@ export function getOceanOperacionTrackingStatus(
   return {
     isTracked,
     openTarget,
-    // Igual que web: "Número de seguimiento" (trackingNumber / índice),
-    // con fallback a booking/contenedor solo si no hay número de seguimiento.
     trackingLabel:
       trackingNumber ||
       shipment.bookingNumber?.trim() ||
       containerNumber ||
+      shipment.waybillNumber?.trim() ||
       hbli ||
       null,
   };
+}
+
+/** Identificador usable para crear seguimiento (paridad web). */
+export function getOceanTrackCreateIdentifier(
+  shipment: OceanListItem,
+  trackingIndex: Record<string, string>,
+  containerHint?: string | null,
+): {
+  type: "container_number" | "booking_number";
+  value: string;
+} | null {
+  const trackingNumber = resolveOceanOperacionTrackingNumber(
+    shipment,
+    trackingIndex,
+  );
+  const containerNumber = getOceanOperacionContainerNumber(
+    shipment,
+    containerHint,
+  );
+  const booking = shipment.bookingNumber?.trim();
+  const waybill = shipment.waybillNumber?.trim();
+
+  if (containerNumber) {
+    return { type: "container_number", value: containerNumber };
+  }
+  if (booking) {
+    return { type: "booking_number", value: booking };
+  }
+  if (trackingNumber && /^[A-Z]{4}[0-9]{7}$/i.test(trackingNumber)) {
+    return { type: "container_number", value: trackingNumber };
+  }
+  if (trackingNumber) {
+    return { type: "booking_number", value: trackingNumber };
+  }
+  if (waybill) {
+    return { type: "booking_number", value: waybill };
+  }
+  return null;
 }
 
 export function findTrackedAirShipment(

@@ -9,6 +9,7 @@ import {
   runWithConcurrency,
 } from "../../src/services/linbisListFetch";
 import { linbisFetch } from "../../src/services/linbisFetch";
+import { extractHbliFromCommodities } from "../../src/services/linbisQuoteLookup";
 import {
   flattenAirShipmentRecords,
   mapLinbisAirToAirShipment,
@@ -22,12 +23,15 @@ import {
   sortOceanOperaciones,
 } from "../../src/services/operacionesFiltersLogic";
 import { OPERACIONES_PAGE_SIZE } from "../../src/services/operacionesPagination";
+import {
+  clearOpsCache,
+  readOpsCache,
+  writeOpsCache,
+} from "./operacionesCache";
 
 const LINBIS_AIR_URL = "https://api.linbis.com/air-shipments";
-/**
- * Ocean y ground: el listado paginado con ConsigneeName responde 400.
- * Misma estrategia que la web: /all + filtro local por consignatario.
- */
+const LINBIS_OCEAN_URL = "https://api.linbis.com/ocean-shipments";
+/** Fallback / ground: paginado con ConsigneeName hace timeout 400. */
 const LINBIS_OCEAN_ALL_URL = "https://api.linbis.com/ocean-shipments/all";
 const LINBIS_GROUND_ALL_URL = "https://api.linbis.com/ground-shipments/all";
 
@@ -46,6 +50,12 @@ export type OperacionesPageResult<T> = {
 };
 
 export type AirOperacionesPageResult = OperacionesPageResult<AirShipment>;
+export type OceanOperacionesPageResult = OperacionesPageResult<OceanListItem>;
+
+export type OceanContainerHint = {
+  containerNumber: string | null;
+  hbliNumber: string | null;
+};
 
 function extractArrayPayload(data: unknown): unknown[] {
   if (Array.isArray(data)) return data;
@@ -64,7 +74,6 @@ async function fetchLinbisPage(
   options: LinbisOptions,
 ): Promise<unknown[]> {
   const name = consigneeName.trim();
-  // Sin ConsigneeName Linbis puede devolver el catálogo completo (muy lento).
   if (!name) {
     throw new Error(
       "Falta ConsigneeName: no se puede consultar operaciones aéreas/marítimas.",
@@ -129,6 +138,10 @@ export async function fetchAirOperacionesPage(
   options: LinbisOptions,
   pageSize = OPERACIONES_PAGE_SIZE,
 ): Promise<AirOperacionesPageResult> {
+  const cacheParts = ["air", consigneeName.trim().toLowerCase(), String(page)];
+  const cached = await readOpsCache<AirOperacionesPageResult>(cacheParts);
+  if (cached) return cached;
+
   const records = await fetchLinbisPage(
     LINBIS_AIR_URL,
     consigneeName,
@@ -140,21 +153,82 @@ export async function fetchAirOperacionesPage(
   const mapped = flat.map((record) => mapLinbisAirToAirShipment(record));
   const items = sortAirOperaciones(mapped);
 
-  return {
+  const result: AirOperacionesPageResult = {
     items,
     page,
     hasMore: records.length >= pageSize,
   };
+  await writeOpsCache(cacheParts, result);
+  return result;
+}
+
+function mapOceanRecords(records: unknown[]): OceanListItem[] {
+  return sortOceanOperaciones(
+    records
+      .map((record) =>
+        mapLinbisOceanToShippingOrder(record as Record<string, unknown>),
+      )
+      .filter((order) => order.id && order.number),
+  );
 }
 
 /**
- * Marítimo: Linbis /ocean-shipments?ConsigneeName=… responde 400.
- * Igual que la web → GET /ocean-shipments/all y filtrar por consignatario.
+ * Marítimo paginado (mismo patrón que aéreo).
+ * Si Linbis devuelve vacío, fallback a /all filtrado (cache 1h).
  */
-export async function fetchOceanOperacionesCatalog(
+export async function fetchOceanOperacionesPage(
+  consigneeName: string,
+  page: number,
+  options: LinbisOptions,
+  pageSize = OPERACIONES_PAGE_SIZE,
+): Promise<OceanOperacionesPageResult> {
+  const name = consigneeName.trim();
+  const cacheParts = ["ocean-page", name.toLowerCase(), String(page)];
+  const cached = await readOpsCache<OceanOperacionesPageResult>(cacheParts);
+  if (cached) return cached;
+
+  try {
+    const records = await fetchLinbisPage(
+      LINBIS_OCEAN_URL,
+      name,
+      page,
+      pageSize,
+      options,
+    );
+    if (records.length > 0) {
+      const result: OceanOperacionesPageResult = {
+        items: mapOceanRecords(records),
+        page,
+        hasMore: records.length >= pageSize,
+      };
+      await writeOpsCache(cacheParts, result);
+      return result;
+    }
+  } catch {
+    // Continúa a fallback /all
+  }
+
+  const catalog = await fetchOceanOperacionesCatalogFallback(name, options);
+  const start = (page - 1) * pageSize;
+  const slice = catalog.slice(start, start + pageSize);
+  const result: OceanOperacionesPageResult = {
+    items: slice,
+    page,
+    hasMore: start + pageSize < catalog.length,
+  };
+  await writeOpsCache(cacheParts, result);
+  return result;
+}
+
+/** /all + filtro local; cache 1h por consignatario. */
+async function fetchOceanOperacionesCatalogFallback(
   consigneeName: string,
   options: LinbisOptions,
 ): Promise<OceanListItem[]> {
+  const cacheParts = ["ocean-all", consigneeName.trim().toLowerCase()];
+  const cached = await readOpsCache<OceanListItem[]>(cacheParts);
+  if (cached) return cached;
+
   const response = await linbisFetch(
     LINBIS_OCEAN_ALL_URL,
     {
@@ -188,17 +262,80 @@ export async function fetchOceanOperacionesCatalog(
     )
     .filter((order) => order.id && order.number);
 
-  return sortOceanOperaciones(mapped);
+  const sorted = sortOceanOperaciones(mapped);
+  await writeOpsCache(cacheParts, sorted);
+  return sorted;
+}
+
+/** Resuelve contenedor/HBLI via commodities (igual que web). */
+export async function fetchOceanContainerHint(
+  sogNumber: string,
+  options: LinbisOptions,
+): Promise<OceanContainerHint> {
+  const empty: OceanContainerHint = {
+    containerNumber: null,
+    hbliNumber: null,
+  };
+  const number = sogNumber.trim();
+  if (!number) return empty;
+
+  try {
+    const resp1 = await linbisFetch(
+      `https://api.linbis.com/commodities?Number=${encodeURIComponent(number)}&PageNumber=1&PageSize=5`,
+      {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        signal: options.signal,
+      },
+      options.accessToken,
+      options.refreshAccessToken,
+    );
+    if (!resp1.ok) return empty;
+    const data1 = await resp1.json();
+    const items1: Array<{ moduleId?: number | string }> = data1.items || [];
+    if (!items1.length || !items1[0]?.moduleId) return empty;
+
+    const moduleId = items1[0].moduleId;
+    const resp2 = await linbisFetch(
+      `https://api.linbis.com/commodities/by-module/${moduleId}?pageNumber=1&pageSize=50`,
+      {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        signal: options.signal,
+      },
+      options.accessToken,
+      options.refreshAccessToken,
+    );
+    if (!resp2.ok) return empty;
+    const data2 = await resp2.json();
+    const extracted = extractHbliFromCommodities(data2.items || []);
+    return {
+      containerNumber: extracted.containerNumber,
+      hbliNumber: extracted.hbliNumber,
+    };
+  } catch {
+    return empty;
+  }
 }
 
 /**
- * Terrestre: Linbis /ground-shipments rechaza ConsigneeName con 400.
- * Igual que la web → GET /ground-shipments/all y filtrar por consignatario.
+ * Terrestre: Linbis /ground-shipments?ConsigneeName hace timeout 400.
+ * Usa /all + filtro local, con cache 1h.
  */
 export async function fetchGroundOperacionesCatalog(
   consigneeName: string,
   options: LinbisOptions,
 ): Promise<GroundShipment[]> {
+  const cacheParts = ["ground-all", consigneeName.trim().toLowerCase()];
+  const cached = await readOpsCache<GroundShipment[]>(cacheParts);
+  if (cached) return cached;
+
   const response = await linbisFetch(
     LINBIS_GROUND_ALL_URL,
     {
@@ -226,7 +363,6 @@ export async function fetchGroundOperacionesCatalog(
       return {} as GroundShipment;
     }
     const raw = record as Record<string, unknown>;
-    // /all suele venir ya en shape GroundShipment; normalizamos consignee por si viene como objeto.
     if ("from" in raw || "to" in raw || typeof raw.consignee === "string") {
       return {
         ...(raw as GroundShipment),
@@ -239,7 +375,9 @@ export async function fetchGroundOperacionesCatalog(
   const filtered = mapped.filter((record) =>
     consigneeMatches(record.consignee, consigneeName),
   );
-  return sortGroundOperaciones(filtered);
+  const sorted = sortGroundOperaciones(filtered);
+  await writeOpsCache(cacheParts, sorted);
+  return sorted;
 }
 
 function getConsigneeNameFallback(consignee: unknown): string | undefined {
@@ -256,6 +394,22 @@ export async function fetchOperacionesTrackingIndex(
   options: LinbisOptions,
 ): Promise<Record<string, string>> {
   return fetchShippingOrderTrackingIndex(consigneeName, options);
+}
+
+export async function invalidateOperacionesCache(
+  consigneeName?: string,
+): Promise<void> {
+  if (consigneeName?.trim()) {
+    const n = consigneeName.trim().toLowerCase();
+    await Promise.all([
+      clearOpsCache(["air", n]),
+      clearOpsCache(["ocean-page", n]),
+      clearOpsCache(["ocean-all", n]),
+      clearOpsCache(["ground-all", n]),
+    ]);
+    return;
+  }
+  await clearOpsCache([]);
 }
 
 export type { OceanListItem };

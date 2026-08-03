@@ -10,6 +10,14 @@ type LooseNav = {
   navigate: (...args: any[]) => void;
 };
 
+type NewTrackingParams = {
+  mode: "air" | "ocean";
+  initialAwb?: string;
+  initialIdentifierType?: "container_number" | "booking_number";
+  initialIdentifierValue?: string;
+  initialTag?: string;
+};
+
 function findParentWithRoute(
   navigation: LooseNav,
   routeName: string,
@@ -29,6 +37,22 @@ function findParentWithRoute(
   return null;
 }
 
+function readClientScopeParams(nav: LooseNav): {
+  username?: string;
+  nombreuser?: string;
+  email?: string;
+} {
+  const state = nav.getState?.();
+  const focused = state?.routes?.[state.index ?? 0] as
+    | { params?: Record<string, unknown> }
+    | undefined;
+  return (focused?.params ?? {}) as {
+    username?: string;
+    nombreuser?: string;
+    email?: string;
+  };
+}
+
 /**
  * Abre el seguimiento desde Operaciones.
  * - Portal cliente: tab Trackeos.
@@ -38,34 +62,85 @@ export function openTrackeosFromOperacion(
   navigation: LooseNav,
   target: ShipsGoOpenTrackingTarget,
 ) {
+  const clientTrackeos = findParentWithRoute(navigation, "ClientTrackeos");
+  if (clientTrackeos) {
+    const params = readClientScopeParams(clientTrackeos);
+    if (params.username) {
+      (clientTrackeos as NavigationProp<ParamListBase>).navigate(
+        "ClientTrackeos",
+        {
+          username: params.username,
+          nombreuser: params.nombreuser,
+          email: params.email,
+          openTracking: target,
+        },
+      );
+      return;
+    }
+  }
+
   const trackeosParent = findParentWithRoute(navigation, "Trackeos");
-  if (trackeosParent) {
+  if (!trackeosParent) return;
+  (trackeosParent as NavigationProp<ParamListBase>).navigate("Trackeos", {
+    screen: "TrackeosList",
+    params: { openTracking: target },
+  });
+}
+
+function openNewTrackingFromOperacion(
+  navigation: LooseNav,
+  tracking: NewTrackingParams,
+) {
+  const clientTrackeos = findParentWithRoute(navigation, "ClientTrackeos");
+  if (clientTrackeos) {
+    const params = readClientScopeParams(clientTrackeos);
+    // Si estamos dentro de ClientOperaciones, los params están en esa ruta.
+    const state = clientTrackeos.getState?.();
+    const opsRoute = state?.routes?.find(
+      (r: { name: string }) => r.name === "ClientOperaciones",
+    ) as { params?: Record<string, unknown> } | undefined;
+    const scope = {
+      username:
+        params.username ||
+        (opsRoute?.params?.username as string | undefined),
+      nombreuser:
+        params.nombreuser ||
+        (opsRoute?.params?.nombreuser as string | undefined),
+      email: params.email || (opsRoute?.params?.email as string | undefined),
+    };
+    if (scope.username) {
+      (clientTrackeos as NavigationProp<ParamListBase>).navigate(
+        "ClientTrackeos",
+        {
+          ...scope,
+          openNewTracking: tracking,
+        },
+      );
+      return;
+    }
+  }
+
+  const trackeosParent = findParentWithRoute(navigation, "Trackeos");
+  if (!trackeosParent) return;
+
+  if (tracking.mode === "air") {
     (trackeosParent as NavigationProp<ParamListBase>).navigate("Trackeos", {
-      screen: "TrackeosList",
-      params: { openTracking: target },
+      screen: "NewAirTracking",
+      params: {
+        initialAwb: tracking.initialAwb,
+        initialTag: tracking.initialTag,
+      },
     });
     return;
   }
 
-  const clientTrackeos = findParentWithRoute(navigation, "ClientTrackeos");
-  if (!clientTrackeos) return;
-
-  const state = clientTrackeos.getState?.();
-  const focused = state?.routes?.[state.index ?? 0] as
-    | { params?: Record<string, unknown> }
-    | undefined;
-  const params = (focused?.params ?? {}) as {
-    username?: string;
-    nombreuser?: string;
-    email?: string;
-  };
-  if (!params.username) return;
-
-  (clientTrackeos as NavigationProp<ParamListBase>).navigate("ClientTrackeos", {
-    username: params.username,
-    nombreuser: params.nombreuser,
-    email: params.email,
-    openTracking: target,
+  (trackeosParent as NavigationProp<ParamListBase>).navigate("Trackeos", {
+    screen: "NewOceanTracking",
+    params: {
+      initialIdentifierType: tracking.initialIdentifierType,
+      initialIdentifierValue: tracking.initialIdentifierValue,
+      initialTag: tracking.initialTag,
+    },
   });
 }
 
@@ -74,14 +149,10 @@ export function openNewAirTrackingFromOperacion(
   awbNumber: string,
   tagHint?: string | null,
 ) {
-  const parent = findParentWithRoute(navigation, "Trackeos");
-  if (!parent) return;
-  (parent as NavigationProp<ParamListBase>).navigate("Trackeos", {
-    screen: "NewAirTracking",
-    params: {
-      initialAwb: awbNumber,
-      initialTag: tagHint?.trim() || undefined,
-    },
+  openNewTrackingFromOperacion(navigation, {
+    mode: "air",
+    initialAwb: awbNumber,
+    initialTag: tagHint?.trim() || undefined,
   });
 }
 
@@ -93,17 +164,13 @@ export function openNewOceanTrackingFromOperacion(
     tagHint?: string | null;
   },
 ) {
-  const parent = findParentWithRoute(navigation, "Trackeos");
-  if (!parent) return;
   const container = params.containerNumber?.trim();
   const booking = params.bookingNumber?.trim();
-  (parent as NavigationProp<ParamListBase>).navigate("Trackeos", {
-    screen: "NewOceanTracking",
-    params: {
-      initialIdentifierType: container ? "container_number" : "booking_number",
-      initialIdentifierValue: container || booking || undefined,
-      initialTag: params.tagHint?.trim() || undefined,
-    },
+  openNewTrackingFromOperacion(navigation, {
+    mode: "ocean",
+    initialIdentifierType: container ? "container_number" : "booking_number",
+    initialIdentifierValue: container || booking || undefined,
+    initialTag: params.tagHint?.trim() || undefined,
   });
 }
 

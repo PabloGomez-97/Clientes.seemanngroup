@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ScrollView, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
@@ -8,6 +8,7 @@ import type { CompositeNavigationProp } from "@react-navigation/native";
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import {
   getOceanOperacionContainerNumber,
+  getOceanTrackCreateIdentifier,
 } from "../../../src/services/operacionesTrackingLink";
 import {
   formatLocationName,
@@ -24,6 +25,7 @@ import {
 import OperacionDocumentosSection from "../../components/operaciones/OperacionDocumentosSection";
 import { useOperacionQuoteNumber } from "../../hooks/useOperacionQuoteNumber";
 import { useOperaciones } from "../../hooks/useOperaciones";
+import { useLinbisToken } from "../../hooks/useLinbisToken";
 import type { ClientTabParamList } from "../../navigation/ClientTabs";
 import {
   openCotizacionesFromOperacion,
@@ -31,6 +33,7 @@ import {
   openTrackeosFromOperacion,
 } from "../../navigation/openTrackeosFromOperacion";
 import type { OperacionesStackParamList } from "../../navigation/OperacionesStack";
+import { fetchOceanContainerHint } from "../../services/operacionesApi";
 import {
   formatMetric,
   getOperacionCommodities,
@@ -48,12 +51,16 @@ export default function OceanOperacionDetailScreen() {
   const route = useRoute<RouteProps>();
   const navigation = useNavigation<NavigationProp>();
   const { shipment } = route.params;
-  const { getOceanTrackingStatus } = useOperaciones();
+  const { getOceanTrackingStatus, oceanContainerHints } = useOperaciones();
+  const { accessToken, refreshAccessToken } = useLinbisToken();
   const trackingStatus = getOceanTrackingStatus(shipment);
   const { quoteNumber, loading: quoteLoading } = useOperacionQuoteNumber({
     sogNumber: shipment.number,
     shipmentId: shipment.id,
   });
+  const [localContainerHint, setLocalContainerHint] = useState<string | null>(
+    null,
+  );
 
   const commodities = useMemo(
     () => getOperacionCommodities(shipment),
@@ -63,7 +70,46 @@ export default function OceanOperacionDetailScreen() {
     () => summarizeCommodities(commodities),
     [commodities],
   );
-  const containerNumber = getOceanOperacionContainerNumber(shipment);
+
+  const containerHint =
+    localContainerHint ||
+    oceanContainerHints[shipment.number?.trim() || ""] ||
+    null;
+
+  useEffect(() => {
+    const number = shipment.number?.trim();
+    if (!accessToken || !number) return;
+    if (containerHint || shipment.bookingNumber?.trim()) return;
+
+    let cancelled = false;
+    void fetchOceanContainerHint(number, {
+      accessToken,
+      refreshAccessToken,
+    }).then((hint) => {
+      if (!cancelled && hint.containerNumber) {
+        setLocalContainerHint(hint.containerNumber);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    accessToken,
+    containerHint,
+    refreshAccessToken,
+    shipment.bookingNumber,
+    shipment.number,
+  ]);
+
+  const containerNumber = getOceanOperacionContainerNumber(
+    shipment,
+    containerHint,
+  );
+  const createId = getOceanTrackCreateIdentifier(
+    shipment,
+    {},
+    containerHint,
+  );
 
   const title = formatOperacionCustomerReference(shipment.customerReference);
   const origin = formatLocationName(shipment.executedAt);
@@ -79,19 +125,31 @@ export default function OceanOperacionDetailScreen() {
       onPress: () =>
         openTrackeosFromOperacion(navigation, trackingStatus.openTarget!),
     });
-  } else if (containerNumber || shipment.bookingNumber) {
-    actions.push({
-      key: "create-tracking",
-      label: "Trackea tu envío",
-      icon: "add-circle-outline" as const,
-      primary: true,
-      onPress: () =>
-        openNewOceanTrackingFromOperacion(navigation, {
-          containerNumber,
-          bookingNumber: shipment.bookingNumber,
-          tagHint: shipment.customerReference,
-        }),
-    });
+  } else {
+    const identifier =
+      createId ||
+      (trackingStatus.trackingLabel
+        ? {
+            type: "booking_number" as const,
+            value: trackingStatus.trackingLabel,
+          }
+        : null);
+    if (identifier) {
+      actions.push({
+        key: "create-tracking",
+        label: "Trackea tu envío",
+        icon: "add-circle-outline" as const,
+        primary: true,
+        onPress: () =>
+          openNewOceanTrackingFromOperacion(navigation, {
+            containerNumber:
+              identifier.type === "container_number" ? identifier.value : null,
+            bookingNumber:
+              identifier.type === "booking_number" ? identifier.value : null,
+            tagHint: shipment.customerReference,
+          }),
+      });
+    }
   }
   if (quoteNumber) {
     actions.push({

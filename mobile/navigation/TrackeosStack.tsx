@@ -37,6 +37,14 @@ export type TrackeosStackParamList = {
     | undefined;
 };
 
+export type TrackeosInitialNewTracking = {
+  mode: "air" | "ocean";
+  initialAwb?: string;
+  initialIdentifierType?: "container_number" | "booking_number";
+  initialIdentifierValue?: string;
+  initialTag?: string;
+};
+
 const Stack = createNativeStackNavigator<TrackeosStackParamList>();
 
 function withBack(
@@ -65,11 +73,23 @@ function withBack(
 
 export default function TrackeosStack({
   initialOpenTracking,
+  initialNewTracking,
 }: {
   initialOpenTracking?: ShipsGoOpenTrackingTarget;
+  initialNewTracking?: TrackeosInitialNewTracking;
 } = {}) {
+  const initialRouteName =
+    initialNewTracking?.mode === "air"
+      ? "NewAirTracking"
+      : initialNewTracking?.mode === "ocean"
+        ? "NewOceanTracking"
+        : "TrackeosList";
+
   return (
-    <Stack.Navigator screenOptions={noBackStackOptions}>
+    <Stack.Navigator
+      screenOptions={noBackStackOptions}
+      initialRouteName={initialRouteName}
+    >
       <Stack.Screen
         name="TrackeosList"
         component={TrackeosListScreen}
@@ -96,12 +116,30 @@ export default function TrackeosStack({
         options={({ navigation }) =>
           withBack(navigation, "Nuevo seguimiento aéreo")
         }
+        initialParams={
+          initialNewTracking?.mode === "air"
+            ? {
+                initialAwb: initialNewTracking.initialAwb,
+                initialTag: initialNewTracking.initialTag,
+              }
+            : undefined
+        }
       />
       <Stack.Screen
         name="NewOceanTracking"
         component={NewOceanTrackingScreen}
         options={({ navigation }) =>
           withBack(navigation, "Nuevo seguimiento marítimo")
+        }
+        initialParams={
+          initialNewTracking?.mode === "ocean"
+            ? {
+                initialIdentifierType: initialNewTracking.initialIdentifierType,
+                initialIdentifierValue:
+                  initialNewTracking.initialIdentifierValue,
+                initialTag: initialNewTracking.initialTag,
+              }
+            : undefined
         }
       />
     </Stack.Navigator>
