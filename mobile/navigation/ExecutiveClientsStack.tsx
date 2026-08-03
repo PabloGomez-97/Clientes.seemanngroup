@@ -9,7 +9,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../auth/AuthContext";
 import ClientsListScreen from "../screens/executive/ClientsListScreen";
 import ClientHubScreen from "../screens/executive/ClientHubScreen";
-import MisDocumentosScreen from "../screens/menu/MisDocumentosScreen";
+import MisDocumentosStack from "./MisDocumentosStack";
 import type { ShipsGoOpenTrackingTarget } from "../../src/services/shipsgoTrackingNavigation";
 import CotizacionesStack from "./CotizacionesStack";
 import OperacionesStack from "./OperacionesStack";
@@ -145,7 +145,7 @@ function ClientCotizacionesScreen() {
 function ClientDocumentosScreen() {
   return (
     <ClientScopedScreen title="Documentación">
-      <MisDocumentosScreen />
+      <MisDocumentosStack />
     </ClientScopedScreen>
   );
 }

@@ -171,6 +171,115 @@ export function filterDocs(
   });
 }
 
+/** Clave de carpeta para docs sin cotización/operación asociada. */
+export const DOC_FOLDER_NONE_KEY = "__none__";
+
+export type DocFolder = {
+  key: string;
+  reference: string | null;
+  title: string;
+  types: DocGroupType[];
+  docs: UnifiedDoc[];
+  count: number;
+  latestDate: string;
+};
+
+function folderTitle(reference: string | null, types: DocGroupType[]): string {
+  if (!reference) return "Sin referencia";
+  const unique = [...new Set(types)];
+  if (unique.length === 1) {
+    const only = unique[0];
+    if (only === "quotes") return `Cotización ${reference}`;
+    return `${TRANSPORT_LABELS[only]} · ${reference}`;
+  }
+  return `Ref. ${reference}`;
+}
+
+function folderTypesLabel(types: DocGroupType[]): string {
+  const unique = [...new Set(types)];
+  if (unique.length === 0) return "";
+  if (unique.length === 1) return TRANSPORT_LABELS[unique[0]];
+  return unique.map((t) => TRANSPORT_LABELS[t]).join(" · ");
+}
+
+export function folderMetaLabel(folder: DocFolder): string {
+  const typeLabel = folderTypesLabel(folder.types);
+  const countLabel =
+    folder.count === 1 ? "1 documento" : `${folder.count} documentos`;
+  return typeLabel ? `${countLabel} · ${typeLabel}` : countLabel;
+}
+
+export function groupDocsByReference(docs: UnifiedDoc[]): DocFolder[] {
+  const map = new Map<string, UnifiedDoc[]>();
+  for (const doc of docs) {
+    const ref = (doc.shipmentId || "").trim();
+    const key = ref || DOC_FOLDER_NONE_KEY;
+    const list = map.get(key);
+    if (list) list.push(doc);
+    else map.set(key, [doc]);
+  }
+
+  const folders: DocFolder[] = [];
+  for (const [key, folderDocs] of map) {
+    const reference = key === DOC_FOLDER_NONE_KEY ? null : key;
+    const types = folderDocs.map((d) => d._type);
+    let latestDate = folderDocs[0]?.fechaSubida || "";
+    for (const d of folderDocs) {
+      if (
+        !latestDate ||
+        new Date(d.fechaSubida).getTime() > new Date(latestDate).getTime()
+      ) {
+        latestDate = d.fechaSubida;
+      }
+    }
+    folders.push({
+      key,
+      reference,
+      title: folderTitle(reference, types),
+      types: [...new Set(types)],
+      docs: folderDocs,
+      count: folderDocs.length,
+      latestDate,
+    });
+  }
+
+  return folders.sort((a, b) => {
+    const ta = new Date(a.latestDate).getTime() || 0;
+    const tb = new Date(b.latestDate).getTime() || 0;
+    return tb - ta;
+  });
+}
+
+/** Filtra carpetas por búsqueda (referencia, título o archivos internos). */
+export function filterFolders(
+  folders: DocFolder[],
+  search: string,
+): DocFolder[] {
+  const q = search.trim().toLowerCase();
+  if (!q) return folders;
+  return folders.filter((folder) => {
+    if (folder.title.toLowerCase().includes(q)) return true;
+    if ((folder.reference || "").toLowerCase().includes(q)) return true;
+    return folder.docs.some(
+      (doc) =>
+        doc.nombreArchivo.toLowerCase().includes(q) ||
+        doc.tipo.toLowerCase().includes(q) ||
+        (doc.shipmentId || "").toLowerCase().includes(q),
+    );
+  });
+}
+
+export function docsForReference(
+  docs: UnifiedDoc[],
+  reference: string,
+): UnifiedDoc[] {
+  if (reference === DOC_FOLDER_NONE_KEY) {
+    return docs.filter((d) => !(d.shipmentId || "").trim());
+  }
+  const key = reference.trim();
+  return docs.filter((d) => (d.shipmentId || "").trim() === key);
+}
+
 export function countByType(docs: AllDocs): Record<DocTransportType, number> {
   return {
     all:

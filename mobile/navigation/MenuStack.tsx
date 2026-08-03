@@ -2,7 +2,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import MenuScreen from "../screens/MenuScreen";
 import LegalDocumentScreen from "../screens/menu/LegalDocumentScreen";
 import DeleteAccountScreen from "../screens/menu/DeleteAccountScreen";
-import MisDocumentosScreen from "../screens/menu/MisDocumentosScreen";
+import MisDocumentosStack from "./MisDocumentosStack";
 import ReporteriaFinancieraScreen from "../screens/menu/ReporteriaFinancieraScreen";
 import ReporteriaOperacionalScreen from "../screens/menu/ReporteriaOperacionalScreen";
 import TarifarioScreen from "../screens/consultas/TarifarioScreen";
@@ -52,7 +52,7 @@ export default function MenuStack() {
       />
       <Stack.Screen
         name="MisDocumentos"
-        component={MisDocumentosScreen}
+        component={MisDocumentosStack}
         options={{ headerShown: false }}
       />
       <Stack.Screen

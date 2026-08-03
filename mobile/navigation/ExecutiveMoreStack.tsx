@@ -10,7 +10,7 @@ import { useAuth } from "../auth/AuthContext";
 import ClientsListScreen from "../screens/executive/ClientsListScreen";
 import type { Cliente } from "../services/ejecutivoClientesApi";
 import ChangePasswordScreen from "../screens/menu/ChangePasswordScreen";
-import MisDocumentosScreen from "../screens/menu/MisDocumentosScreen";
+import MisDocumentosStack from "./MisDocumentosStack";
 import TarifarioScreen from "../screens/consultas/TarifarioScreen";
 import HistoricoPreciosScreen from "../screens/consultas/HistoricoPreciosScreen";
 import CotizadorStack from "./CotizadorStack";
@@ -302,7 +302,7 @@ function DocsWorkspaceScreen() {
           </View>
           <View style={{ width: 40 }} />
         </View>
-        <MisDocumentosScreen />
+        <MisDocumentosStack />
       </View>
     </EmbeddedChromeProvider>
   );

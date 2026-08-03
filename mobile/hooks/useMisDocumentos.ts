@@ -3,11 +3,15 @@ import { useAuth } from "../auth/AuthContext";
 import {
   countByType,
   deleteDocument,
+  docsForReference,
   downloadDocumentFile,
   fetchAllDocuments,
   filterDocs,
+  filterFolders,
   flattenDocs,
+  groupDocsByReference,
   type AllDocs,
+  type DocFolder,
   type DocTransportType,
   type UnifiedDoc,
 } from "../services/documentsApi";
@@ -51,11 +55,39 @@ export function useMisDocumentos() {
   }, [load]);
 
   const flat = useMemo(() => flattenDocs(docs), [docs]);
+
+  /** Docs filtrados solo por tipo (sin search); la búsqueda aplica a carpetas. */
+  const typedDocs = useMemo(
+    () => filterDocs(flat, activeType, ""),
+    [activeType, flat],
+  );
+
+  const folders = useMemo(
+    () => filterFolders(groupDocsByReference(typedDocs), search),
+    [search, typedDocs],
+  );
+
+  /** Lista plana filtrada (tipo + búsqueda) — útil en pantalla de carpeta. */
   const visible = useMemo(
     () => filterDocs(flat, activeType, search),
     [activeType, flat, search],
   );
+
   const counts = useMemo(() => countByType(docs), [docs]);
+
+  const getDocsForReference = useCallback(
+    (reference: string): UnifiedDoc[] => docsForReference(flat, reference),
+    [flat],
+  );
+
+  const getFolder = useCallback(
+    (reference: string): DocFolder | undefined => {
+      const folderDocs = docsForReference(flat, reference);
+      if (folderDocs.length === 0) return undefined;
+      return groupDocsByReference(folderDocs)[0];
+    },
+    [flat],
+  );
 
   const remove = useCallback(
     async (doc: UnifiedDoc) => {
@@ -87,6 +119,9 @@ export function useMisDocumentos() {
   return {
     activeUsername,
     docs: visible,
+    folders,
+    getDocsForReference,
+    getFolder,
     counts,
     loading,
     error,
