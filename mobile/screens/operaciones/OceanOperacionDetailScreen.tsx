@@ -85,6 +85,7 @@ export default function OceanOperacionDetailScreen() {
     void fetchOceanContainerHint(number, {
       accessToken,
       refreshAccessToken,
+      moduleId: shipment.id,
     }).then((hint) => {
       if (!cancelled && hint.containerNumber) {
         setLocalContainerHint(hint.containerNumber);
@@ -98,6 +99,7 @@ export default function OceanOperacionDetailScreen() {
     containerHint,
     refreshAccessToken,
     shipment.bookingNumber,
+    shipment.id,
     shipment.number,
   ]);
 

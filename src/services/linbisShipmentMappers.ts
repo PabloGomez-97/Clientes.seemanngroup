@@ -1,4 +1,5 @@
 import type { AirShipment } from "../types/shipments";
+import { extractHbliFromCommodities } from "./linbisQuoteLookup";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type RawRecord = Record<string, any>;
@@ -183,6 +184,12 @@ function locationLabel(field: unknown): string {
   return loc.name || loc.code || "";
 }
 
+function asTrimmedString(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed || null;
+}
+
 /** Convierte un registro de ocean-shipments (lista o /all) al shape de OceanShipmentsView. */
 export function mapLinbisOceanToShippingOrder(raw: RawRecord): OceanListItem {
   const origin =
@@ -204,6 +211,9 @@ export function mapLinbisOceanToShippingOrder(raw: RawRecord): OceanListItem {
   const arrival =
     extractDateString(raw.arrival) ?? extractDateString(raw.arrivalDate);
 
+  const commodities = Array.isArray(raw.commodities) ? raw.commodities : [];
+  const fromCommodities = extractHbliFromCommodities(commodities);
+
   return {
     id: Number(raw.id) || 0,
     number: String(raw.number ?? ""),
@@ -216,7 +226,11 @@ export function mapLinbisOceanToShippingOrder(raw: RawRecord): OceanListItem {
     carrier: normalizeCarrier(raw.carrier ?? raw.carrierBroker),
     executedAt: origin,
     destination,
-    trackingNumber: raw.trackingNumber ?? raw.containerNumber ?? null,
+    trackingNumber:
+      asTrimmedString(raw.trackingNumber) ??
+      asTrimmedString(raw.containerNumber) ??
+      fromCommodities.containerNumber ??
+      null,
     totalCargo: {
       pieces: raw.totalCargo_Pieces ?? raw.totalCargo?.pieces ?? undefined,
       weight: {
@@ -233,7 +247,7 @@ export function mapLinbisOceanToShippingOrder(raw: RawRecord): OceanListItem {
       },
       containers: raw.totalCargo?.containers ?? undefined,
     },
-    commodities: Array.isArray(raw.commodities) ? raw.commodities : [],
+    commodities,
     charges: Array.isArray(raw.charges) ? raw.charges : [],
   };
 }

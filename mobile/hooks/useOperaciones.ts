@@ -252,7 +252,10 @@ export function useOperaciones() {
           LINBIS_CLIENT_CONCURRENCY,
           async (shipment) => {
             const number = shipment.number!.trim();
-            const hint = await fetchOceanContainerHint(number, linbisOptions);
+            const hint = await fetchOceanContainerHint(number, {
+              ...linbisOptions,
+              moduleId: shipment.id,
+            });
             return { number, containerNumber: hint.containerNumber };
           },
         );

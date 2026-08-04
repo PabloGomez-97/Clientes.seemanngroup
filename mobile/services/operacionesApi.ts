@@ -9,7 +9,7 @@ import {
   runWithConcurrency,
 } from "../../src/services/linbisListFetch";
 import { linbisFetch } from "../../src/services/linbisFetch";
-import { extractHbliFromCommodities } from "../../src/services/linbisQuoteLookup";
+import { fetchOceanCommodityTracking } from "../../src/services/linbisQuoteLookup";
 import {
   flattenAirShipmentRecords,
   mapLinbisAirToAirShipment,
@@ -270,58 +270,20 @@ async function fetchOceanOperacionesCatalogFallback(
 /** Resuelve contenedor/HBLI via commodities (igual que web). */
 export async function fetchOceanContainerHint(
   sogNumber: string,
-  options: LinbisOptions,
+  options: LinbisOptions & { moduleId?: number | null },
 ): Promise<OceanContainerHint> {
-  const empty: OceanContainerHint = {
-    containerNumber: null,
-    hbliNumber: null,
-  };
   const number = sogNumber.trim();
-  if (!number) return empty;
-
-  try {
-    const resp1 = await linbisFetch(
-      `https://api.linbis.com/commodities?Number=${encodeURIComponent(number)}&PageNumber=1&PageSize=5`,
-      {
-        method: "GET",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
-        signal: options.signal,
-      },
-      options.accessToken,
-      options.refreshAccessToken,
-    );
-    if (!resp1.ok) return empty;
-    const data1 = await resp1.json();
-    const items1: Array<{ moduleId?: number | string }> = data1.items || [];
-    if (!items1.length || !items1[0]?.moduleId) return empty;
-
-    const moduleId = items1[0].moduleId;
-    const resp2 = await linbisFetch(
-      `https://api.linbis.com/commodities/by-module/${moduleId}?pageNumber=1&pageSize=50`,
-      {
-        method: "GET",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
-        signal: options.signal,
-      },
-      options.accessToken,
-      options.refreshAccessToken,
-    );
-    if (!resp2.ok) return empty;
-    const data2 = await resp2.json();
-    const extracted = extractHbliFromCommodities(data2.items || []);
-    return {
-      containerNumber: extracted.containerNumber,
-      hbliNumber: extracted.hbliNumber,
-    };
-  } catch {
-    return empty;
+  if (!number) {
+    return { containerNumber: null, hbliNumber: null };
   }
+
+  return fetchOceanCommodityTracking({
+    accessToken: options.accessToken,
+    refreshAccessToken: options.refreshAccessToken,
+    signal: options.signal,
+    shipmentNumber: number,
+    moduleId: options.moduleId,
+  });
 }
 
 /**

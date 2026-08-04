@@ -60,12 +60,41 @@ export function extractHbliFromCharges(charges: unknown): string | null {
   return null;
 }
 
+const OCEAN_CONTAINER_NUMBER_RE = /^[A-Z]{4}[0-9]{7}$/i;
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type CommodityLike = {
   number?: string | null;
   description?: string | null;
+  trackingNumber?: string | null;
+  containerNumber?: string | null;
 };
 
+function extractOceanContainerCandidate(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim().toUpperCase();
+  return OCEAN_CONTAINER_NUMBER_RE.test(trimmed) ? trimmed : null;
+}
+
+function extractContainerFromCommodity(item: CommodityLike): string | null {
+  const fromFields =
+    extractOceanContainerCandidate(item.trackingNumber) ??
+    extractOceanContainerCandidate(item.containerNumber);
+  if (fromFields) return fromFields;
+
+  if (typeof item.description !== "string") return null;
+  for (const line of item.description.split("\n")) {
+    const fromLine = extractOceanContainerCandidate(line);
+    if (fromLine) return fromLine;
+  }
+  return null;
+}
+
+/**
+ * Extrae HBLI y número de contenedor desde commodities.
+ * El contenedor puede venir en trackingNumber/containerNumber/description
+ * aunque el commodity.number sea un SOG (no HBLI).
+ */
 export function extractHbliFromCommodities(items: unknown): {
   hbliNumber: string | null;
   containerNumber: string | null;
@@ -74,27 +103,96 @@ export function extractHbliFromCommodities(items: unknown): {
     return { hbliNumber: null, containerNumber: null };
   }
 
-  const hbliItem = (items as CommodityLike[]).find((item) =>
-    isHbliNumber(item.number),
-  );
+  const commodities = items as CommodityLike[];
+  const hbliItem = commodities.find((item) => isHbliNumber(item.number));
+  const hbliNumber = hbliItem?.number?.trim() || null;
 
-  if (!hbliItem?.number) {
-    return { hbliNumber: null, containerNumber: null };
-  }
+  const ordered = hbliItem
+    ? [hbliItem, ...commodities.filter((item) => item !== hbliItem)]
+    : commodities;
 
   let containerNumber: string | null = null;
-  const description = hbliItem.description;
-  if (typeof description === "string") {
-    for (const line of description.split("\n")) {
-      const trimmed = line.trim();
-      if (/^[A-Z]{4}[0-9]{7}$/.test(trimmed)) {
-        containerNumber = trimmed;
-        break;
-      }
-    }
+  for (const item of ordered) {
+    containerNumber = extractContainerFromCommodity(item);
+    if (containerNumber) break;
   }
 
-  return { hbliNumber: hbliItem.number.trim(), containerNumber };
+  return { hbliNumber, containerNumber };
+}
+
+/** Carga commodities del módulo ocean y resuelve contenedor/HBLI. */
+export async function fetchOceanCommodityTracking(
+  options: LinbisFetchOptions & {
+    shipmentNumber: string;
+    moduleId?: number | null;
+  },
+): Promise<{ hbliNumber: string | null; containerNumber: string | null }> {
+  const empty = { hbliNumber: null, containerNumber: null };
+  const shipmentNumber = options.shipmentNumber.trim();
+  const moduleId =
+    typeof options.moduleId === "number" && options.moduleId > 0
+      ? options.moduleId
+      : null;
+
+  const loadByModule = async (id: number | string) => {
+    const response = await linbisFetch(
+      `https://api.linbis.com/commodities/by-module/${id}?pageNumber=1&pageSize=50`,
+      {
+        method: "GET",
+        headers: LINBIS_JSON_HEADERS,
+        signal: options.signal,
+      },
+      options.accessToken,
+      options.refreshAccessToken,
+    );
+    if (!response.ok) return [] as unknown[];
+    const data = (await response.json()) as { items?: unknown[] };
+    return data.items || [];
+  };
+
+  try {
+    let items: unknown[] = [];
+
+    // /ocean-shipments/all no trae commodities; moduleId (= shipment.id) sí resuelve.
+    if (moduleId) {
+      items = await loadByModule(moduleId);
+    }
+
+    // Fallback legacy: commodities?Number=… (sirve para SOG, no para HBLI puro).
+    if (!items.length && shipmentNumber) {
+      const resp1 = await linbisFetch(
+        `https://api.linbis.com/commodities?Number=${encodeURIComponent(shipmentNumber)}&PageNumber=1&PageSize=5`,
+        {
+          method: "GET",
+          headers: LINBIS_JSON_HEADERS,
+          signal: options.signal,
+        },
+        options.accessToken,
+        options.refreshAccessToken,
+      );
+      if (resp1.ok) {
+        const data1 = (await resp1.json()) as {
+          items?: Array<{ moduleId?: number | string }>;
+        };
+        const firstModuleId = data1.items?.[0]?.moduleId;
+        if (firstModuleId) {
+          items = await loadByModule(firstModuleId);
+        }
+      }
+    }
+
+    if (!items.length) return empty;
+
+    const extracted = extractHbliFromCommodities(items);
+    return {
+      hbliNumber:
+        extracted.hbliNumber ??
+        (isHbliNumber(shipmentNumber) ? shipmentNumber : null),
+      containerNumber: extracted.containerNumber,
+    };
+  } catch {
+    return empty;
+  }
 }
 
 function unwrapProfitRows(data: unknown): unknown[] {

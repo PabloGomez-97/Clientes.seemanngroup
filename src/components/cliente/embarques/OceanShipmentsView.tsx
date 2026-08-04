@@ -37,7 +37,7 @@ import {
 } from "@/services/linbisListFetch";
 import {
   extractHbliFromCharges,
-  extractHbliFromCommodities,
+  fetchOceanCommodityTracking,
   fetchQuoteProfitIndex,
   lookupQuoteFromProfitIndex,
   type QuoteProfitIndex,
@@ -1202,7 +1202,7 @@ function OceanShipmentsView({
     [hbliCache, profitIndex, resolveShipmentHbli],
   );
 
-  /* -- HBLI fetch (tracking): commodities chain, sin búsqueda de QUO */
+  /* -- HBLI fetch (tracking): by-module/{id} (Number=HBLI suele venir vacío) */
   const fetchHbliModuleForShipment = useCallback(
     async (sogNumber: string, shipment?: OceanShippingOrder) => {
       if (!accessToken) return;
@@ -1243,60 +1243,13 @@ function OceanShipmentsView({
       };
 
       try {
-        const resp1 = await linbisFetch(
-          `https://api.linbis.com/commodities?Number=${encodeURIComponent(sogNumber)}&PageNumber=1&PageSize=5`,
-          {
-            method: "GET",
-            headers: {
-              Accept: "application/json",
-              "Content-Type": "application/json",
-            },
-          },
-          accessToken,
-          refreshAccessToken,
-        );
-
-        if (!resp1.ok) {
-          finishHbli({ hbliNumber: null, containerNumber: null });
-          return;
-        }
-
-        const data1 = await resp1.json();
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const items1: any[] = data1.items || [];
-        if (items1.length === 0) {
-          finishHbli({ hbliNumber: null, containerNumber: null });
-          return;
-        }
-
-        const moduleId = items1[0].moduleId;
-        if (!moduleId) {
-          finishHbli({ hbliNumber: null, containerNumber: null });
-          return;
-        }
-
-        const resp2 = await linbisFetch(
-          `https://api.linbis.com/commodities/by-module/${moduleId}?pageNumber=1&pageSize=50`,
-          {
-            method: "GET",
-            headers: {
-              Accept: "application/json",
-              "Content-Type": "application/json",
-            },
-          },
-          accessToken,
-          refreshAccessToken,
-        );
-
-        if (!resp2.ok) {
-          finishHbli({ hbliNumber: null, containerNumber: null });
-          return;
-        }
-
-        const data2 = await resp2.json();
-        const items2: unknown[] = data2.items || [];
         const { hbliNumber, containerNumber } =
-          extractHbliFromCommodities(items2);
+          await fetchOceanCommodityTracking({
+            accessToken,
+            refreshAccessToken,
+            shipmentNumber: sogNumber,
+            moduleId: shipment?.id,
+          });
         const hbliFromCharges = shipment
           ? getHBLIFromShipment(shipment)
           : null;
