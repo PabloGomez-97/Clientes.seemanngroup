@@ -24,6 +24,115 @@ export type LinbisFetchOptions = {
   signal?: AbortSignal;
 };
 
+/** Custom field Linbis: Tracking Number (QuotesView). */
+export const QUOTE_TRACKING_CUSTOM_FIELD_ID = 17;
+
+export function extractTrackingNumberFromQuoteFields(
+  customFieldValues: unknown,
+): string | null {
+  if (!Array.isArray(customFieldValues)) return null;
+
+  for (const field of customFieldValues) {
+    if (!field || typeof field !== "object") continue;
+    const record = field as {
+      customFieldId?: unknown;
+      fieldName?: unknown;
+      value?: unknown;
+    };
+    if (record.customFieldId !== QUOTE_TRACKING_CUSTOM_FIELD_ID) continue;
+    const name = String(record.fieldName ?? "")
+      .trim()
+      .toLowerCase();
+    if (name !== "tracking number") continue;
+    if (typeof record.value !== "string") return null;
+    const trimmed = record.value.trim();
+    return trimmed || null;
+  }
+
+  return null;
+}
+
+/**
+ * Índice QUO → trackingNumber desde GET /Quotes?ConsigneeName=…
+ * (incluye customFieldValues; /Quotes/filter y Profit no).
+ */
+export async function fetchQuoteTrackingIndex(
+  consigneeName: string,
+  options: LinbisFetchOptions & { maxPages?: number },
+): Promise<Record<string, string>> {
+  const { accessToken, refreshAccessToken, signal, maxPages = 40 } = options;
+  const name = consigneeName.trim();
+  const index: Record<string, string> = {};
+  if (!name) return index;
+
+  let page = 1;
+  const pageSize = 50;
+
+  while (page <= maxPages) {
+    if (signal?.aborted) break;
+
+    const params = new URLSearchParams({
+      ConsigneeName: name,
+      Page: page.toString(),
+      ItemsPerPage: pageSize.toString(),
+      SortBy: "newest",
+    });
+    const response = await linbisFetch(
+      `https://api.linbis.com/Quotes?${params}`,
+      { method: "GET", headers: LINBIS_JSON_HEADERS, signal },
+      accessToken,
+      refreshAccessToken,
+    );
+
+    if (!response.ok) {
+      if (page === 1) return index;
+      break;
+    }
+
+    const data = await response.json();
+    const items: unknown[] = Array.isArray(data)
+      ? data
+      : data && typeof data === "object" && Array.isArray((data as { items?: unknown[] }).items)
+        ? ((data as { items: unknown[] }).items)
+        : [];
+
+    if (!items.length) break;
+
+    for (const item of items) {
+      if (!item || typeof item !== "object") continue;
+      const record = item as {
+        number?: unknown;
+        customFieldValues?: unknown;
+      };
+      const quoteNumber = normalizeQuoteNumber(
+        typeof record.number === "string" ? record.number : null,
+      );
+      if (!quoteNumber) continue;
+      const tracking = extractTrackingNumberFromQuoteFields(
+        record.customFieldValues,
+      );
+      if (tracking) {
+        index[normalizeLookupKey(quoteNumber)] = tracking;
+      }
+    }
+
+    if (items.length < pageSize) break;
+    page++;
+  }
+
+  return index;
+}
+
+export function lookupTrackingFromQuoteIndex(
+  quoteTrackingIndex: Record<string, string> | undefined,
+  quoteNumber: string | null | undefined,
+): string | null {
+  if (!quoteTrackingIndex || !quoteNumber) return null;
+  const normalized = normalizeQuoteNumber(quoteNumber);
+  if (!normalized) return null;
+  return quoteTrackingIndex[normalizeLookupKey(normalized)] ?? null;
+}
+
 function normalizeLookupKey(value?: string | null): string {
   return (value ?? "").trim().toUpperCase();
 }

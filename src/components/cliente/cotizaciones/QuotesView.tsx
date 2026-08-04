@@ -35,6 +35,7 @@ import QuotePdfResendCell from "./QuotePdfResendCell";
 import { linbisFetch } from "@/services/linbisFetch";
 import { buildLinbisListParams } from "@/services/linbisListFetch";
 import {
+  extractTrackingNumberFromQuoteFields,
   fetchQuoteProfitIndex,
   getShipmentFilterNumberFromProfitLink,
   lookupShipmentLinkFromProfitIndex,
@@ -133,15 +134,9 @@ function getQuoteTrackType(quote: Quote): "air" | "ocean" | null {
 }
 
 function getQuoteTrackingNumber(quote: Quote): string {
-  const fields = quote.customFieldValues;
-  if (!Array.isArray(fields)) return "";
-  const entry = fields.find(
-    (field) =>
-      field.customFieldId === QUOTE_TRACKING_CUSTOM_FIELD_ID &&
-      (field.fieldName || "").trim().toLowerCase() === "tracking number",
+  return (
+    extractTrackingNumberFromQuoteFields(quote.customFieldValues) ?? ""
   );
-  const value = entry?.value;
-  return typeof value === "string" ? value.trim() : "";
 }
 
 function shouldShowQuoteTracking(quote: Quote): boolean {
@@ -150,7 +145,6 @@ function shouldShowQuoteTracking(quote: Quote): boolean {
 
 const ITEMS_PER_PAGE = 10;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const QUOTE_TRACKING_CUSTOM_FIELD_ID = 17;
 const API_BASE_URL =
   import.meta.env.MODE === "development"
     ? "http://localhost:4000"

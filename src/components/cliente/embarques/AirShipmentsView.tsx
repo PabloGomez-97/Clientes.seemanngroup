@@ -52,7 +52,9 @@ import {
 } from "@/services/shipsgoTrackingNavigation";
 import {
   fetchQuoteProfitIndex,
+  fetchQuoteTrackingIndex,
   lookupQuoteFromProfitIndex,
+  lookupTrackingFromQuoteIndex,
   type QuoteProfitIndex,
 } from "@/services/linbisQuoteLookup";
 
@@ -84,6 +86,12 @@ interface TrackingNumberCacheEntry {
   loading: boolean;
   fetched: boolean;
   byNumber: Record<string, string>;
+}
+
+interface QuoteTrackingCacheEntry {
+  loading: boolean;
+  fetched: boolean;
+  byQuote: Record<string, string>;
 }
 
 function formatFieldValue(value: unknown): string {
@@ -858,6 +866,15 @@ function AirShipmentsView({
     byNumber: {},
   });
 
+  // Tracking Number desde QUO custom field 17 (prioridad sobre SOG)
+  const [quoteTrackingIndex, setQuoteTrackingIndex] =
+    useState<QuoteTrackingCacheEntry>({
+      loading: false,
+      fetched: false,
+      byQuote: {},
+    });
+  const quoteTrackingAbortRef = useRef<AbortController | null>(null);
+
   // Already-tracked AWBs (from ShipsGo)
   const [trackedAwbs, setTrackedAwbs] = useState<Set<string>>(new Set());
   /** ETA aerolínea (date_of_rcf + date_of_rcf_initial) por AWB, desde ShipsGo */
@@ -910,6 +927,62 @@ function AirShipmentsView({
             loading: false,
             fetched: true,
             byNumber: prev.byNumber,
+          }));
+        }
+      })();
+    },
+    [accessToken, activeUsername, refreshAccessToken],
+  );
+
+  const loadQuoteTrackingIndex = useCallback(
+    (options?: { reset?: boolean }) => {
+      if (!accessToken || !activeUsername) return;
+
+      quoteTrackingAbortRef.current?.abort();
+      const controller = new AbortController();
+      quoteTrackingAbortRef.current = controller;
+
+      setQuoteTrackingIndex((prev) => ({
+        loading: true,
+        fetched: options?.reset ? false : prev.fetched,
+        byQuote: options?.reset ? {} : prev.byQuote,
+      }));
+      setProfitIndex((prev) => ({
+        loading: true,
+        fetched: options?.reset ? false : prev.fetched,
+        index: options?.reset
+          ? { byHbli: {}, bySog: {}, byShipmentId: {}, byQuote: {} }
+          : prev.index,
+      }));
+
+      void (async () => {
+        try {
+          const index = await fetchQuoteProfitIndex({
+            accessToken,
+            refreshAccessToken,
+            signal: controller.signal,
+          });
+          if (controller.signal.aborted) return;
+          setProfitIndex({ loading: false, fetched: true, index });
+
+          const byQuote = await fetchQuoteTrackingIndex(activeUsername, {
+            accessToken,
+            refreshAccessToken,
+            signal: controller.signal,
+          });
+          if (controller.signal.aborted) return;
+          setQuoteTrackingIndex({ loading: false, fetched: true, byQuote });
+        } catch {
+          if (controller.signal.aborted) return;
+          setProfitIndex((prev) => ({
+            loading: false,
+            fetched: true,
+            index: prev.index,
+          }));
+          setQuoteTrackingIndex((prev) => ({
+            loading: false,
+            fetched: true,
+            byQuote: prev.byQuote,
           }));
         }
       })();
@@ -1044,7 +1117,30 @@ function AirShipmentsView({
   const normalizeAirAwbKey = (value?: string | null) =>
     (value ?? "").replace(/[\s-]/g, "");
 
+  const resolveLinkedQuoteNumber = (
+    shipment: AirShipment,
+  ): string | null => {
+    const shipmentId = shipment.id;
+    if (shipmentId != null && quoteNumberCache[shipmentId]?.quoteNumber) {
+      return quoteNumberCache[shipmentId].quoteNumber;
+    }
+    if (!profitIndex.fetched) return null;
+    return lookupQuoteFromProfitIndex(profitIndex.index, {
+      sogNumber: shipment.number,
+      shipmentId:
+        typeof shipment.id === "number"
+          ? shipment.id
+          : Number(shipment.id) || null,
+    });
+  };
+
   const resolveTrackingNumber = (shipment: AirShipment): string | null => {
+    const fromQuote = lookupTrackingFromQuoteIndex(
+      quoteTrackingIndex.byQuote,
+      resolveLinkedQuoteNumber(shipment),
+    );
+    if (fromQuote) return fromQuote;
+
     const shipmentNumber = shipment.number?.trim();
     if (shipmentNumber && trackingIndex.byNumber[shipmentNumber]) {
       return trackingIndex.byNumber[shipmentNumber];
@@ -1536,8 +1632,12 @@ function AirShipmentsView({
     const reset = prevTrackingUsernameRef.current !== activeUsername;
     prevTrackingUsernameRef.current = activeUsername;
     loadTrackingIndex({ reset });
-    return () => trackingIndexAbortRef.current?.abort();
-  }, [loadTrackingIndex, activeUsername]);
+    loadQuoteTrackingIndex({ reset });
+    return () => {
+      trackingIndexAbortRef.current?.abort();
+      quoteTrackingAbortRef.current?.abort();
+    };
+  }, [loadTrackingIndex, loadQuoteTrackingIndex, activeUsername]);
 
   const toggleShipmentSelection = (shipmentId: string | number) => {
     setSelectedShipmentId((prev) => (prev === shipmentId ? null : shipmentId));
@@ -1561,6 +1661,11 @@ function AirShipmentsView({
       loading: false,
       fetched: false,
       index: { byHbli: {}, bySog: {}, byShipmentId: {}, byQuote: {} },
+    });
+    setQuoteTrackingIndex({
+      loading: false,
+      fetched: false,
+      byQuote: {},
     });
     setRouteCache({});
     routeInFlightRef.current.clear();
@@ -1795,6 +1900,7 @@ function AirShipmentsView({
     routeInFlightRef.current.clear();
     routeFetchedRef.current.clear();
     loadTrackingIndex();
+    loadQuoteTrackingIndex({ reset: true });
     setShipments([]);
     setDisplayedShipments([]);
     fetchAirShipments();
@@ -1843,6 +1949,14 @@ function AirShipmentsView({
 
   const isTrackAwbLoading = (shipment: AirShipment): boolean => {
     if (hasConfirmedAwb(shipment)) return false;
+    if (
+      quoteTrackingIndex.loading ||
+      !quoteTrackingIndex.fetched ||
+      profitIndex.loading ||
+      !profitIndex.fetched
+    ) {
+      return true;
+    }
     return trackingIndex.loading || !trackingIndex.fetched;
   };
 

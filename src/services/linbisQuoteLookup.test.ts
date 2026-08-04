@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { extractHbliFromCommodities } from "./linbisQuoteLookup.ts";
+import {
+  extractHbliFromCommodities,
+  extractTrackingNumberFromQuoteFields,
+  lookupTrackingFromQuoteIndex,
+} from "./linbisQuoteLookup.ts";
 
 describe("extractHbliFromCommodities", () => {
   it("lee contenedor desde trackingNumber aunque number no sea HBLI", () => {
@@ -41,5 +45,42 @@ describe("extractHbliFromCommodities", () => {
       },
     ]);
     assert.equal(result.containerNumber, null);
+  });
+});
+
+describe("extractTrackingNumberFromQuoteFields", () => {
+  it("lee custom field 17 Tracking Number", () => {
+    assert.equal(
+      extractTrackingNumberFromQuoteFields([
+        { customFieldId: 14, fieldName: "Customer Service", value: "x" },
+        {
+          customFieldId: 17,
+          fieldName: "Tracking Number",
+          value: " CAIU8617731 ",
+        },
+      ]),
+      "CAIU8617731",
+    );
+  });
+
+  it("devuelve null si el campo está vacío", () => {
+    assert.equal(
+      extractTrackingNumberFromQuoteFields([
+        { customFieldId: 17, fieldName: "Tracking Number", value: "  " },
+      ]),
+      null,
+    );
+  });
+});
+
+describe("lookupTrackingFromQuoteIndex", () => {
+  it("normaliza la clave QUO", () => {
+    assert.equal(
+      lookupTrackingFromQuoteIndex(
+        { QUO0020811: "CAIU8617731" },
+        "QUO0020811-000847-006",
+      ),
+      "CAIU8617731",
+    );
   });
 });

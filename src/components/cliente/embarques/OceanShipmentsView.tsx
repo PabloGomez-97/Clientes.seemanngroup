@@ -39,7 +39,9 @@ import {
   extractHbliFromCharges,
   fetchOceanCommodityTracking,
   fetchQuoteProfitIndex,
+  fetchQuoteTrackingIndex,
   lookupQuoteFromProfitIndex,
+  lookupTrackingFromQuoteIndex,
   type QuoteProfitIndex,
 } from "@/services/linbisQuoteLookup";
 import { mapLinbisOceanToShippingOrder } from "@/services/linbisShipmentMappers";
@@ -141,6 +143,12 @@ interface TrackingNumberCacheEntry {
   loading: boolean;
   fetched: boolean;
   byNumber: Record<string, string>;
+}
+
+interface QuoteTrackingCacheEntry {
+  loading: boolean;
+  fetched: boolean;
+  byQuote: Record<string, string>;
 }
 
 interface ProfitIndexCacheEntry {
@@ -852,6 +860,21 @@ function OceanShipmentsView({
   const trackingIndexAbortRef = useRef<AbortController | null>(null);
   const prevTrackingUsernameRef = useRef(activeUsername);
 
+  // Tracking Number desde QUO custom field 17 (prioridad sobre SOG/HBLI)
+  const [quoteTrackingIndex, setQuoteTrackingIndex] =
+    useState<QuoteTrackingCacheEntry>({
+      loading: false,
+      fetched: false,
+      byQuote: {},
+    });
+  const quoteTrackingAbortRef = useRef<AbortController | null>(null);
+
+  const [profitIndex, setProfitIndex] = useState<ProfitIndexCacheEntry>({
+    loading: false,
+    fetched: false,
+    index: { byHbli: {}, bySog: {}, byShipmentId: {}, byQuote: {} },
+  });
+
   const loadTrackingIndex = useCallback(
     (options?: { reset?: boolean }) => {
       if (!accessToken || !activeUsername) return;
@@ -891,11 +914,61 @@ function OceanShipmentsView({
     [accessToken, activeUsername, refreshAccessToken],
   );
 
-  const [profitIndex, setProfitIndex] = useState<ProfitIndexCacheEntry>({
-    loading: false,
-    fetched: false,
-    index: { byHbli: {}, bySog: {}, byShipmentId: {}, byQuote: {} },
-  });
+  const loadQuoteTrackingIndex = useCallback(
+    (options?: { reset?: boolean }) => {
+      if (!accessToken || !activeUsername) return;
+
+      quoteTrackingAbortRef.current?.abort();
+      const controller = new AbortController();
+      quoteTrackingAbortRef.current = controller;
+
+      setQuoteTrackingIndex((prev) => ({
+        loading: true,
+        fetched: options?.reset ? false : prev.fetched,
+        byQuote: options?.reset ? {} : prev.byQuote,
+      }));
+      setProfitIndex((prev) => ({
+        loading: true,
+        fetched: options?.reset ? false : prev.fetched,
+        index: options?.reset
+          ? { byHbli: {}, bySog: {}, byShipmentId: {}, byQuote: {} }
+          : prev.index,
+      }));
+
+      void (async () => {
+        try {
+          const index = await fetchQuoteProfitIndex({
+            accessToken,
+            refreshAccessToken,
+            signal: controller.signal,
+          });
+          if (controller.signal.aborted) return;
+          setProfitIndex({ loading: false, fetched: true, index });
+
+          const byQuote = await fetchQuoteTrackingIndex(activeUsername, {
+            accessToken,
+            refreshAccessToken,
+            signal: controller.signal,
+          });
+          if (controller.signal.aborted) return;
+          setQuoteTrackingIndex({ loading: false, fetched: true, byQuote });
+        } catch {
+          if (controller.signal.aborted) return;
+          setProfitIndex((prev) => ({
+            loading: false,
+            fetched: true,
+            index: prev.index,
+          }));
+          setQuoteTrackingIndex((prev) => ({
+            loading: false,
+            fetched: true,
+            byQuote: prev.byQuote,
+          }));
+        }
+      })();
+    },
+    [accessToken, activeUsername, refreshAccessToken],
+  );
 
   const [showingAll, setShowingAll] = useState(false);
 
@@ -1019,9 +1092,28 @@ function OceanShipmentsView({
   const normalizeOceanTrackKey = (value?: string | null) =>
     (value ?? "").replace(/[\s-]/g, "").toUpperCase();
 
+  const resolveLinkedQuoteNumber = (
+    shipment: OceanShippingOrder,
+  ): string | null => {
+    const fromCache = hbliCache[shipment.number]?.quoteNumber;
+    if (fromCache) return fromCache;
+    if (!profitIndex.fetched) return null;
+    return lookupQuoteFromProfitIndex(profitIndex.index, {
+      hbli: resolveShipmentHbli(shipment),
+      sogNumber: shipment.number,
+      shipmentId: shipment.id,
+    });
+  };
+
   const resolveShippingOrderTracking = (
     shipment: OceanShippingOrder,
   ): string | null => {
+    const fromQuote = lookupTrackingFromQuoteIndex(
+      quoteTrackingIndex.byQuote,
+      resolveLinkedQuoteNumber(shipment),
+    );
+    if (fromQuote) return fromQuote;
+
     const shipmentNumber = shipment.number?.trim();
     if (shipmentNumber && trackingIndex.byNumber[shipmentNumber]) {
       return trackingIndex.byNumber[shipmentNumber];
@@ -1614,6 +1706,11 @@ function OceanShipmentsView({
       fetched: false,
       index: { byHbli: {}, bySog: {}, byShipmentId: {}, byQuote: {} },
     });
+    setQuoteTrackingIndex({
+      loading: false,
+      fetched: false,
+      byQuote: {},
+    });
     setTrackedOceanNumbers(new Set());
     setShipsgoArrivalByNumber({});
   }, [activeUsername]);
@@ -1622,8 +1719,12 @@ function OceanShipmentsView({
     const reset = prevTrackingUsernameRef.current !== activeUsername;
     prevTrackingUsernameRef.current = activeUsername;
     loadTrackingIndex({ reset });
-    return () => trackingIndexAbortRef.current?.abort();
-  }, [loadTrackingIndex, activeUsername]);
+    loadQuoteTrackingIndex({ reset });
+    return () => {
+      trackingIndexAbortRef.current?.abort();
+      quoteTrackingAbortRef.current?.abort();
+    };
+  }, [loadTrackingIndex, loadQuoteTrackingIndex, activeUsername]);
 
   // Fetch tracked ocean shipments from ShipsGo
   useEffect(() => {
@@ -1713,6 +1814,15 @@ function OceanShipmentsView({
   const isTrackingLoading = (shipment: OceanShippingOrder): boolean => {
     if (resolveShippingOrderTracking(shipment)) return false;
     if (shipment.bookingNumber?.trim()) return false;
+    // Esperar índice QUO (prioridad) + shipping-orders antes de caer a commodities.
+    if (
+      quoteTrackingIndex.loading ||
+      !quoteTrackingIndex.fetched ||
+      profitIndex.loading ||
+      !profitIndex.fetched
+    ) {
+      return true;
+    }
     if (trackingIndex.loading || !trackingIndex.fetched) return true;
     if (needsHbliResolution(shipment)) {
       const hbli = hbliCache[shipment.number];
@@ -2101,11 +2211,7 @@ function OceanShipmentsView({
     localStorage.removeItem(OCEAN_ALL_CACHE_KEY);
     localStorage.removeItem(OCEAN_ALL_CACHE_TS_KEY);
     loadTrackingIndex();
-    setProfitIndex({
-      loading: false,
-      fetched: false,
-      index: { byHbli: {}, bySog: {}, byShipmentId: {}, byQuote: {} },
-    });
+    loadQuoteTrackingIndex({ reset: true });
     setOceanShipments([]);
     setDisplayedOceanShipments([]);
     fetchOceanShipments();

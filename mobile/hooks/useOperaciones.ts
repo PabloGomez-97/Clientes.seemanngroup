@@ -11,10 +11,18 @@ import {
 } from "../../src/services/operacionesFiltersLogic";
 import { paginateList } from "../../src/services/operacionesPagination";
 import {
+  fetchQuoteProfitIndex,
+  fetchQuoteTrackingIndex,
+  lookupQuoteFromProfitIndex,
+  type QuoteProfitIndex,
+} from "../../src/services/linbisQuoteLookup";
+import {
   buildTrackedAwbSet,
   buildTrackedOceanKeySet,
   getAirOperacionTrackingStatus,
   getOceanOperacionTrackingStatus,
+  getOceanOperacionContainerNumber,
+  resolveOceanOperacionTrackingNumber,
 } from "../../src/services/operacionesTrackingLink";
 import { useAuth } from "../auth/AuthContext";
 import { useLinbisToken } from "./useLinbisToken";
@@ -36,10 +44,6 @@ import {
   LINBIS_CLIENT_CONCURRENCY,
   runWithConcurrency,
 } from "../../src/services/linbisListFetch";
-import {
-  getOceanOperacionContainerNumber,
-  resolveOceanOperacionTrackingNumber,
-} from "../../src/services/operacionesTrackingLink";
 
 const EMPTY_AIR_FILTERS: AirOceanOperacionesFilters = {};
 const EMPTY_GROUND_FILTERS: GroundOperacionesFilters = {};
@@ -98,6 +102,15 @@ export function useOperaciones() {
   const [trackingIndex, setTrackingIndex] = useState<Record<string, string>>(
     {},
   );
+  const [quoteTrackingIndex, setQuoteTrackingIndex] = useState<
+    Record<string, string>
+  >({});
+  const [profitIndex, setProfitIndex] = useState<QuoteProfitIndex>({
+    byHbli: {},
+    bySog: {},
+    byShipmentId: {},
+    byQuote: {},
+  });
   const [trackedAwbs, setTrackedAwbs] = useState<Set<string>>(new Set());
   const [trackedOceanKeys, setTrackedOceanKeys] = useState<Set<string>>(
     new Set(),
@@ -120,9 +133,31 @@ export function useOperaciones() {
     [accessToken, refreshAccessToken],
   );
 
+  const quoteOptionsForShipment = useCallback(
+    (shipment: { number?: string | null; id?: number | null }) => {
+      const quoteNumber = lookupQuoteFromProfitIndex(profitIndex, {
+        hbli: shipment.number,
+        sogNumber: shipment.number,
+        shipmentId: shipment.id ?? null,
+      });
+      return {
+        quoteNumber,
+        quoteTrackingIndex,
+      };
+    },
+    [profitIndex, quoteTrackingIndex],
+  );
+
   const loadTrackingData = useCallback(async () => {
     if (!accessToken || !activeUsername) {
       setTrackingIndex({});
+      setQuoteTrackingIndex({});
+      setProfitIndex({
+        byHbli: {},
+        bySog: {},
+        byShipmentId: {},
+        byQuote: {},
+      });
       setTrackedAwbs(new Set());
       setTrackedOceanKeys(new Set());
       trackingLoadedRef.current = false;
@@ -131,12 +166,17 @@ export function useOperaciones() {
 
     setTrackingLoading(true);
     try {
-      const [index, airTrackings, oceanTrackings] = await Promise.all([
-        fetchOperacionesTrackingIndex(activeUsername, linbisOptions),
-        fetchAirShipments(),
-        fetchOceanShipments(),
-      ]);
+      const [index, quoteIndex, profit, airTrackings, oceanTrackings] =
+        await Promise.all([
+          fetchOperacionesTrackingIndex(activeUsername, linbisOptions),
+          fetchQuoteTrackingIndex(activeUsername, linbisOptions),
+          fetchQuoteProfitIndex(linbisOptions),
+          fetchAirShipments(),
+          fetchOceanShipments(),
+        ]);
       setTrackingIndex(index);
+      setQuoteTrackingIndex(quoteIndex);
+      setProfitIndex(profit);
       setTrackedAwbs(buildTrackedAwbSet(airTrackings, activeUsername));
       setTrackedOceanKeys(
         buildTrackedOceanKeySet(oceanTrackings, activeUsername),
@@ -144,6 +184,13 @@ export function useOperaciones() {
       trackingLoadedRef.current = true;
     } catch {
       setTrackingIndex({});
+      setQuoteTrackingIndex({});
+      setProfitIndex({
+        byHbli: {},
+        bySog: {},
+        byShipmentId: {},
+        byQuote: {},
+      });
       setTrackedAwbs(new Set());
       setTrackedOceanKeys(new Set());
     } finally {
@@ -236,7 +283,13 @@ export function useOperaciones() {
       const needs = shipments.filter((shipment) => {
         const number = shipment.number?.trim();
         if (!number) return false;
-        if (resolveOceanOperacionTrackingNumber(shipment, trackingIndex)) {
+        if (
+          resolveOceanOperacionTrackingNumber(
+            shipment,
+            trackingIndex,
+            quoteOptionsForShipment(shipment),
+          )
+        ) {
           return false;
         }
         if (shipment.bookingNumber?.trim()) return false;
@@ -277,7 +330,7 @@ export function useOperaciones() {
         // Silencioso: badges pueden quedar sin contenedor.
       }
     },
-    [accessToken, linbisOptions, trackingIndex],
+    [accessToken, linbisOptions, quoteOptionsForShipment, trackingIndex],
   );
 
   const loadOceanPage = useCallback(
@@ -595,8 +648,13 @@ export function useOperaciones() {
 
   const getAirTrackingStatus = useCallback(
     (shipment: AirShipment) =>
-      getAirOperacionTrackingStatus(shipment, trackingIndex, trackedAwbs),
-    [trackedAwbs, trackingIndex],
+      getAirOperacionTrackingStatus(
+        shipment,
+        trackingIndex,
+        trackedAwbs,
+        quoteOptionsForShipment(shipment),
+      ),
+    [quoteOptionsForShipment, trackedAwbs, trackingIndex],
   );
 
   const getOceanTrackingStatus = useCallback(
@@ -607,9 +665,15 @@ export function useOperaciones() {
         trackingIndex,
         trackedOceanKeys,
         oceanContainerHints[number] ?? null,
+        quoteOptionsForShipment(shipment),
       );
     },
-    [oceanContainerHints, trackedOceanKeys, trackingIndex],
+    [
+      oceanContainerHints,
+      quoteOptionsForShipment,
+      trackedOceanKeys,
+      trackingIndex,
+    ],
   );
 
   const clearAirFilters = useCallback(() => {
