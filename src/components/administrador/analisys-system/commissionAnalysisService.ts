@@ -3,6 +3,7 @@ import {
   linbisFetch,
 } from "@/services/linbisFetch";
 import { parseInputDate } from "@/components/administrador/reporteria/financiera/invoiceUtils";
+import { getPeriodRange } from "@/components/administrador/reporteria/financiera/quoteUtils";
 import {
   applyModuleSalesRepPropagation,
   buildBillToSalesRepIndex,
@@ -22,12 +23,11 @@ import type {
 } from "./types";
 
 /**
- * Linbis API notes (Phase 3 investigation — client-side only today):
- * - Analysis uses bulk ".../all" endpoints with NO date query params; date filtering is client-side.
- * - Client reportería uses paginated GET /invoices?ConsigneeName&Page&ItemsPerPage (scoped to one consignee),
- *   which is not a drop-in for whole-team commission analysis.
- * - No codebase evidence that /shipments/allCharges accepts from/to filters.
- * - Petition for Linbis: allCharges?from&to and/or charges-by-moduleId would cut payload size dramatically.
+ * Linbis API notes (swagger 2026-08):
+ * - GET /invoices/all?StartDate&EndDate&ModuleNumbers&ModuleIds&Page&ItemsPerPage
+ * - GET /shipments/allCharges?startDate&endDate&invoiceNumbers
+ * - GET /shipments|air-shipments|ground-shipments/all?StartDate&EndDate&ModuleNumbers&ModuleIds
+ * Date axis for Commission Analysis: invoice.date. Shipments preferably by ModuleNumbers.
  */
 
 const LINBIS_JSON_HEADERS = {
@@ -41,7 +41,19 @@ const SHIPMENTS_URL = "https://api.linbis.com/shipments/all";
 const AIR_SHIPMENTS_URL = "https://api.linbis.com/air-shipments/all";
 const GROUND_SHIPMENTS_URL = "https://api.linbis.com/ground-shipments/all";
 const ACCOUNTS_LIST_URL = "https://api.linbis.com/accounts/list?take=10000";
-const SALESREPS_LIST_URL = "https://api.linbis.com/salesreps/list?take=100";
+const SALESREPS_LIST_URL = "https://api.linbis.com/salesreps/list?take=10000";
+
+/**
+ * The API gateway rejects URLs over 2048 chars with a 404 that carries no CORS
+ * headers, so the browser reports it as a CORS failure. Stay well under it.
+ */
+const MAX_QUERY_URL_LENGTH = 1800;
+const MAX_PARALLEL_CHUNK_REQUESTS = 6;
+/** invoiceNumbers on allCharges only for small scoped fetches (e.g. operation modal). */
+const MAX_INVOICE_NUMBERS_IN_QUERY = 40;
+/** Bulk endpoints default to 50 rows after the Linbis filter update. */
+const BULK_PAGE_SIZE = 500;
+const MAX_BULK_PAGES = 100;
 
 export const CORE_FETCH_TIMEOUT_MS = 120_000;
 export const CHARGES_FETCH_TIMEOUT_MS = 180_000;
@@ -60,6 +72,8 @@ type LinbisSalesRepListRecord = {
 const PENDING_SALES_REP = "Pendiente de asignación";
 
 type DatasetCache = {
+  /** ISO start|end key for invoices/shipments/charges scoped to the report range. */
+  rangeKey: string;
   coreFetchedAt: number;
   chargesFetchedAt: number | null;
   invoices: LinbisInvoiceRecord[];
@@ -69,6 +83,12 @@ type DatasetCache = {
   accounts: LinbisAccountListRecord[];
   salesReps: LinbisSalesRepListRecord[];
   charges: LinbisChargeRecord[] | null;
+};
+
+type LookupCache = {
+  fetchedAt: number;
+  accounts: LinbisAccountListRecord[];
+  salesReps: LinbisSalesRepListRecord[];
 };
 
 type ModuleReconciliation = {
@@ -105,22 +125,29 @@ export class AnalysisFetchError extends Error {
 }
 
 let datasetCache: DatasetCache | null = null;
+let lookupCache: LookupCache | null = null;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 let cacheGeneration = 0;
 
-let coreInflight: Promise<
-  Pick<
-    DatasetCache,
-    | "coreFetchedAt"
-    | "invoices"
-    | "shipments"
-    | "airShipments"
-    | "groundShipments"
-    | "accounts"
-    | "salesReps"
-  >
-> | null = null;
-let chargesInflight: Promise<LinbisChargeRecord[]> | null = null;
+let coreInflight: {
+  rangeKey: string;
+  promise: Promise<
+    Pick<
+      DatasetCache,
+      | "coreFetchedAt"
+      | "invoices"
+      | "shipments"
+      | "airShipments"
+      | "groundShipments"
+      | "accounts"
+      | "salesReps"
+    >
+  >;
+} | null = null;
+let chargesInflight: {
+  rangeKey: string;
+  promise: Promise<LinbisChargeRecord[]>;
+} | null = null;
 
 function isAbortError(error: unknown): boolean {
   return (
@@ -487,9 +514,223 @@ async function fetchJson<T>(
   }
 }
 
+/**
+ * Linbis bulk endpoints expose Page/ItemsPerPage but return a bare array (no total).
+ * Continue until an empty page. A repeated-page signature prevents an infinite loop
+ * if a deployment ignores Page.
+ */
+async function fetchAllPages<T>(
+  baseUrl: string,
+  params: Record<string, QueryValue>,
+  accessToken: string,
+  refreshAccessToken: () => Promise<string>,
+  signal?: AbortSignal,
+): Promise<T[]> {
+  const rows: T[] = [];
+  let previousSignature = "";
+
+  for (let page = 1; page <= MAX_BULK_PAGES; page += 1) {
+    throwIfAborted(signal);
+    const pageRows = await fetchJson<T>(
+      buildLinbisUrl(baseUrl, {
+        ...params,
+        Page: page,
+        ItemsPerPage: BULK_PAGE_SIZE,
+      }),
+      accessToken,
+      refreshAccessToken,
+      signal,
+    );
+
+    if (pageRows.length === 0) break;
+
+    const signature = JSON.stringify([
+      pageRows.length,
+      pageRows[0],
+      pageRows[pageRows.length - 1],
+    ]);
+    if (page > 1 && signature === previousSignature) break;
+
+    rows.push(...pageRows);
+    previousSignature = signature;
+  }
+
+  return rows;
+}
+
+function rangeKeyOf(startDate: string, endDate: string): string {
+  return `${startDate}|${endDate}`;
+}
+
+/** Linbis date-time query value (aligned with Quotes/filter usage). */
+function toLinbisDateTime(isoDate: string, endOfDay = false): string {
+  return endOfDay ? `${isoDate}T23:59:59` : `${isoDate}T00:00:00`;
+}
+
+type QueryValue = string | number | Array<string | number> | undefined | null;
+
+function buildLinbisUrl(
+  baseUrl: string,
+  params: Record<string, QueryValue>,
+): string {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value == null) continue;
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        if (item == null || item === "") continue;
+        search.append(key, String(item));
+      }
+      continue;
+    }
+    if (value === "") continue;
+    search.set(key, String(value));
+  }
+  const qs = search.toString();
+  return qs ? `${baseUrl}?${qs}` : baseUrl;
+}
+
+function collectModuleNumbers(invoices: LinbisInvoiceRecord[]): string[] {
+  const set = new Set<string>();
+  for (const invoice of invoices) {
+    const moduleNumber = (invoice.moduleNumber || "").trim();
+    if (moduleNumber) set.add(moduleNumber);
+  }
+  return [...set];
+}
+
+/**
+ * Split ModuleNumbers so every request URL stays under the gateway limit.
+ * Chunk size is measured on the encoded URL, since module numbers vary in length
+ * and base URLs differ per transport endpoint.
+ */
+function chunkModuleNumbersByUrlLength(
+  baseUrl: string,
+  moduleNumbers: string[],
+): string[][] {
+  const chunks: string[][] = [];
+  let current: string[] = [];
+
+  const urlLengthOf = (values: string[]) =>
+    buildLinbisUrl(baseUrl, {
+      ModuleNumbers: values,
+      Page: MAX_BULK_PAGES,
+      ItemsPerPage: BULK_PAGE_SIZE,
+    }).length;
+
+  for (const moduleNumber of moduleNumbers) {
+    const candidate = [...current, moduleNumber];
+    if (current.length > 0 && urlLengthOf(candidate) > MAX_QUERY_URL_LENGTH) {
+      chunks.push(current);
+      current = [moduleNumber];
+      continue;
+    }
+    current = candidate;
+  }
+
+  if (current.length > 0) chunks.push(current);
+  return chunks;
+}
+
+async function mapWithConcurrency<TInput, TOutput>(
+  items: TInput[],
+  limit: number,
+  worker: (item: TInput) => Promise<TOutput>,
+): Promise<TOutput[]> {
+  const results = new Array<TOutput>(items.length);
+  let nextIndex = 0;
+
+  const runners = Array.from(
+    { length: Math.min(limit, items.length) },
+    async () => {
+      while (nextIndex < items.length) {
+        const index = nextIndex;
+        nextIndex += 1;
+        results[index] = await worker(items[index]);
+      }
+    },
+  );
+
+  await Promise.all(runners);
+  return results;
+}
+
+async function fetchByModuleNumberChunks<T extends {
+  id?: number;
+  number?: string | null;
+}>(
+  baseUrl: string,
+  moduleNumbers: string[],
+  accessToken: string,
+  refreshAccessToken: () => Promise<string>,
+  signal?: AbortSignal,
+): Promise<T[]> {
+  const chunks = chunkModuleNumbersByUrlLength(baseUrl, moduleNumbers);
+  const pages = await mapWithConcurrency(
+    chunks,
+    MAX_PARALLEL_CHUNK_REQUESTS,
+    (chunk) =>
+      fetchAllPages<T>(
+        baseUrl,
+        { ModuleNumbers: chunk },
+        accessToken,
+        refreshAccessToken,
+        signal,
+      ),
+  );
+
+  const deduped = new Map<string, T>();
+  for (const row of pages.flat()) {
+    const key =
+      row.id != null
+        ? `id:${row.id}`
+        : `number:${(row.number || "").trim()}`;
+    if (key !== "number:") deduped.set(key, row);
+  }
+  return [...deduped.values()];
+}
+
+async function fetchLookups(
+  accessToken: string,
+  refreshAccessToken: () => Promise<string>,
+  force: boolean,
+  signal?: AbortSignal,
+): Promise<LookupCache> {
+  const now = Date.now();
+  if (
+    !force &&
+    lookupCache &&
+    now - lookupCache.fetchedAt < CACHE_TTL_MS
+  ) {
+    return lookupCache;
+  }
+
+  const timeoutSignal = createTimeoutSignal(CORE_FETCH_TIMEOUT_MS);
+  const [accounts, salesReps] = await Promise.all([
+    fetchJson<LinbisAccountListRecord>(
+      ACCOUNTS_LIST_URL,
+      accessToken,
+      refreshAccessToken,
+      timeoutSignal,
+    ),
+    fetchJson<LinbisSalesRepListRecord>(
+      SALESREPS_LIST_URL,
+      accessToken,
+      refreshAccessToken,
+      timeoutSignal,
+    ),
+  ]);
+  throwIfAborted(signal);
+
+  lookupCache = { fetchedAt: Date.now(), accounts, salesReps };
+  return lookupCache;
+}
+
 async function fetchCoreDataset(
   accessToken: string,
   refreshAccessToken: () => Promise<string>,
+  startDate: string,
+  endDate: string,
   force = false,
   signal?: AbortSignal,
 ): Promise<
@@ -505,11 +746,13 @@ async function fetchCoreDataset(
   >
 > {
   throwIfAborted(signal);
-
+  const rangeKey = rangeKeyOf(startDate, endDate);
   const now = Date.now();
+
   if (
     !force &&
     datasetCache &&
+    datasetCache.rangeKey === rangeKey &&
     now - datasetCache.coreFetchedAt < CACHE_TTL_MS
   ) {
     return {
@@ -523,8 +766,8 @@ async function fetchCoreDataset(
     };
   }
 
-  if (coreInflight && !force) {
-    return awaitSharedInflight(coreInflight, signal);
+  if (coreInflight && !force && coreInflight.rangeKey === rangeKey) {
+    return awaitSharedInflight(coreInflight.promise, signal);
   }
 
   const generation = cacheGeneration;
@@ -541,63 +784,91 @@ async function fetchCoreDataset(
     >
   >;
   run = (async () => {
-    // Shared fetch uses only a timeout — never the caller's cancel signal —
-    // so prewarm abort / regenerate cancel cannot poison other waiters.
     const timeoutSignal = createTimeoutSignal(CORE_FETCH_TIMEOUT_MS);
+    const startDt = toLinbisDateTime(startDate, false);
+    const endDt = toLinbisDateTime(endDate, true);
 
     try {
-      const [invoices, shipments, airShipments, groundShipments, accounts, salesReps] =
-        await Promise.all([
-          fetchJson<LinbisInvoiceRecord>(
-            INVOICES_URL,
-            accessToken,
-            refreshAccessToken,
-            timeoutSignal,
-          ),
-          fetchJson<LinbisShipmentRecord>(
+      const lookupsPromise = fetchLookups(
+        accessToken,
+        refreshAccessToken,
+        force,
+        signal,
+      );
+
+      const invoices = await fetchAllPages<LinbisInvoiceRecord>(
+        INVOICES_URL,
+        {
+          StartDate: startDt,
+          EndDate: endDt,
+          SortBy: "date",
+        },
+        accessToken,
+        refreshAccessToken,
+        timeoutSignal,
+      );
+      throwIfAborted(signal);
+
+      const moduleNumbers = collectModuleNumbers(invoices);
+      let shipments: LinbisShipmentRecord[] = [];
+      let airShipments: TransportShipmentRecord[] = [];
+      let groundShipments: TransportShipmentRecord[] = [];
+
+      if (moduleNumbers.length > 0) {
+        [shipments, airShipments, groundShipments] = await Promise.all([
+          fetchByModuleNumberChunks<LinbisShipmentRecord>(
             SHIPMENTS_URL,
+            moduleNumbers,
             accessToken,
             refreshAccessToken,
             timeoutSignal,
           ),
-          fetchJson<TransportShipmentRecord>(
+          fetchByModuleNumberChunks<TransportShipmentRecord>(
             AIR_SHIPMENTS_URL,
+            moduleNumbers,
             accessToken,
             refreshAccessToken,
             timeoutSignal,
           ),
-          fetchJson<TransportShipmentRecord>(
+          fetchByModuleNumberChunks<TransportShipmentRecord>(
             GROUND_SHIPMENTS_URL,
-            accessToken,
-            refreshAccessToken,
-            timeoutSignal,
-          ),
-          fetchJson<LinbisAccountListRecord>(
-            ACCOUNTS_LIST_URL,
-            accessToken,
-            refreshAccessToken,
-            timeoutSignal,
-          ),
-          fetchJson<LinbisSalesRepListRecord>(
-            SALESREPS_LIST_URL,
+            moduleNumbers,
             accessToken,
             refreshAccessToken,
             timeoutSignal,
           ),
         ]);
+      }
+
+      const lookups = await lookupsPromise;
+      throwIfAborted(signal);
 
       const fetchedAt = Date.now();
       if (generation === cacheGeneration) {
+        const keepCharges =
+          !force &&
+          datasetCache &&
+          datasetCache.rangeKey === rangeKey
+            ? datasetCache.charges
+            : null;
+        const keepChargesAt =
+          !force &&
+          datasetCache &&
+          datasetCache.rangeKey === rangeKey
+            ? datasetCache.chargesFetchedAt
+            : null;
+
         datasetCache = {
+          rangeKey,
           coreFetchedAt: fetchedAt,
-          chargesFetchedAt: force ? null : (datasetCache?.chargesFetchedAt ?? null),
+          chargesFetchedAt: keepChargesAt,
           invoices,
           shipments,
           airShipments,
           groundShipments,
-          accounts,
-          salesReps,
-          charges: force ? null : (datasetCache?.charges ?? null),
+          accounts: lookups.accounts,
+          salesReps: lookups.salesReps,
+          charges: keepCharges,
         };
       }
 
@@ -607,8 +878,8 @@ async function fetchCoreDataset(
         shipments,
         airShipments,
         groundShipments,
-        accounts,
-        salesReps,
+        accounts: lookups.accounts,
+        salesReps: lookups.salesReps,
       };
     } catch (error) {
       const classified = classifyAnalysisError(error);
@@ -624,52 +895,83 @@ async function fetchCoreDataset(
       }
       throw classified;
     } finally {
-      if (coreInflight === run) coreInflight = null;
+      if (coreInflight?.promise === run) coreInflight = null;
     }
   })();
 
-  coreInflight = run;
+  coreInflight = { rangeKey, promise: run };
   return awaitSharedInflight(run, signal);
 }
 
 async function ensureChargesLoaded(
   accessToken: string,
   refreshAccessToken: () => Promise<string>,
+  startDate: string,
+  endDate: string,
   force = false,
   signal?: AbortSignal,
+  invoiceNumbers?: string[],
 ): Promise<LinbisChargeRecord[]> {
   throwIfAborted(signal);
-
+  const rangeKey = rangeKeyOf(startDate, endDate);
   const now = Date.now();
+
+  const scopedByInvoices =
+    invoiceNumbers != null &&
+    invoiceNumbers.length > 0 &&
+    invoiceNumbers.length <= MAX_INVOICE_NUMBERS_IN_QUERY &&
+    buildLinbisUrl(CHARGES_URL, {
+      startDate: toLinbisDateTime(startDate, false),
+      endDate: toLinbisDateTime(endDate, true),
+      invoiceNumbers,
+    }).length <= MAX_QUERY_URL_LENGTH;
+
+  // Scoped invoice fetches bypass the shared range cache.
   if (
     !force &&
+    !scopedByInvoices &&
     datasetCache?.charges &&
+    datasetCache.rangeKey === rangeKey &&
     datasetCache.chargesFetchedAt != null &&
     now - datasetCache.chargesFetchedAt < CACHE_TTL_MS
   ) {
     return datasetCache.charges;
   }
 
-  if (chargesInflight && !force) {
-    return awaitSharedInflight(chargesInflight, signal);
+  if (
+    chargesInflight &&
+    !force &&
+    !scopedByInvoices &&
+    chargesInflight.rangeKey === rangeKey
+  ) {
+    return awaitSharedInflight(chargesInflight.promise, signal);
   }
 
   const generation = cacheGeneration;
   let run!: Promise<LinbisChargeRecord[]>;
   run = (async () => {
     const timeoutSignal = createTimeoutSignal(CHARGES_FETCH_TIMEOUT_MS);
+    const startDt = toLinbisDateTime(startDate, false);
+    const endDt = toLinbisDateTime(endDate, true);
 
     try {
+      const chargesUrl = buildLinbisUrl(CHARGES_URL, {
+        startDate: startDt,
+        endDate: endDt,
+        invoiceNumbers: scopedByInvoices ? invoiceNumbers : undefined,
+      });
+
       const charges = await fetchJson<LinbisChargeRecord>(
-        CHARGES_URL,
+        chargesUrl,
         accessToken,
         refreshAccessToken,
         timeoutSignal,
       );
+      throwIfAborted(signal);
 
       const fetchedAt = Date.now();
-      if (generation === cacheGeneration) {
-        if (datasetCache) {
+      if (generation === cacheGeneration && !scopedByInvoices) {
+        if (datasetCache && datasetCache.rangeKey === rangeKey) {
           datasetCache = {
             ...datasetCache,
             chargesFetchedAt: fetchedAt,
@@ -677,14 +979,15 @@ async function ensureChargesLoaded(
           };
         } else {
           datasetCache = {
+            rangeKey,
             coreFetchedAt: fetchedAt,
             chargesFetchedAt: fetchedAt,
             invoices: [],
             shipments: [],
             airShipments: [],
             groundShipments: [],
-            accounts: [],
-            salesReps: [],
+            accounts: lookupCache?.accounts ?? [],
+            salesReps: lookupCache?.salesReps ?? [],
             charges,
           };
         }
@@ -705,22 +1008,33 @@ async function ensureChargesLoaded(
       }
       throw classified;
     } finally {
-      if (chargesInflight === run) chargesInflight = null;
+      if (chargesInflight?.promise === run) chargesInflight = null;
     }
   })();
 
-  chargesInflight = run;
+  if (!scopedByInvoices) {
+    chargesInflight = { rangeKey, promise: run };
+  }
   return awaitSharedInflight(run, signal);
 }
 
-/** Pre-warm core datasets in background (ignore failures). */
+/** Pre-warm lookups + current-month core datasets in background. */
 export async function prewarmCommissionCoreDataset(
   accessToken: string,
   refreshAccessToken: () => Promise<string>,
   signal?: AbortSignal,
 ): Promise<void> {
   try {
-    await fetchCoreDataset(accessToken, refreshAccessToken, false, signal);
+    const range = getPeriodRange("this-month");
+    if (!range.startDate || !range.endDate) return;
+    await fetchCoreDataset(
+      accessToken,
+      refreshAccessToken,
+      range.startDate,
+      range.endDate,
+      false,
+      signal,
+    );
   } catch {
     // Background warm — swallow errors
   }
@@ -1016,12 +1330,22 @@ export async function fetchOperationInvoiceDetails(
 
   const filterSet = new Set(invoiceNumbers);
   const { invoices, shipments, airShipments, groundShipments, accounts, salesReps } =
-    await fetchCoreDataset(accessToken, refreshAccessToken, false, signal);
+    await fetchCoreDataset(
+      accessToken,
+      refreshAccessToken,
+      startDate,
+      endDate,
+      false,
+      signal,
+    );
   const charges = await ensureChargesLoaded(
     accessToken,
     refreshAccessToken,
+    startDate,
+    endDate,
     false,
     signal,
+    invoiceNumbers,
   );
 
   let scopedCharges = charges;
@@ -1048,6 +1372,7 @@ export async function fetchOperationInvoiceDetails(
 export function clearCommissionAnalysisCache(): void {
   cacheGeneration += 1;
   datasetCache = null;
+  lookupCache = null;
   coreInflight = null;
   chargesInflight = null;
   clearCommissionAnalyticsDerivatives();
@@ -1331,7 +1656,14 @@ export async function buildCommissionAnalysisReport(
 
   onProgress?.(null, "loadingCore");
   const { invoices, shipments, airShipments, groundShipments, accounts, salesReps } =
-    await fetchCoreDataset(accessToken, refreshAccessToken, forceRefresh, signal);
+    await fetchCoreDataset(
+      accessToken,
+      refreshAccessToken,
+      startDate,
+      endDate,
+      forceRefresh,
+      signal,
+    );
   throwIfAborted(signal);
 
   const previewRows = buildPreviewRows(
@@ -1351,6 +1683,8 @@ export async function buildCommissionAnalysisReport(
   const charges = await ensureChargesLoaded(
     accessToken,
     refreshAccessToken,
+    startDate,
+    endDate,
     forceRefresh,
     signal,
   );
