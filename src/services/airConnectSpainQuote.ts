@@ -9,7 +9,6 @@ export interface AirConnectCalculateParcel {
   width: number;
   height: number;
   length: number;
-  weight: number;
   nonStackable: boolean;
 }
 
@@ -20,6 +19,7 @@ export interface AirConnectFcaCalculateInput {
     incoterm: "FCA";
     awbType: "CONSOLIDATED";
     parcelsOrigin: "AIRPORT";
+    weight: number;
     parcels: AirConnectCalculateParcel[];
   };
   contactCompanyName?: string;
@@ -30,6 +30,7 @@ export interface AirConnectExwCalculateInput {
   airportDest: string;
   parcelsInput: {
     incoterm: "EXW";
+    weight: number;
     parcels: AirConnectCalculateParcel[];
   };
   contactCompanyName?: string;
@@ -120,6 +121,23 @@ export type AirConnectCargoInput = {
   }[];
 };
 
+/** Medidas máximas por bulto (cm); excederlas hace fallar la cotización con un 502. */
+export const AIR_CONNECT_MAX_PARCEL_CM = {
+  length: 315,
+  width: 240,
+  height: 160,
+} as const;
+
+/** Al usar cubos, la altura es el límite que manda: 160 cm → 4,096 m³ por bulto. */
+const MAX_CUBE_SIDE_CM = AIR_CONNECT_MAX_PARCEL_CM.height;
+const MAX_CUBE_VOLUME_M3 = (MAX_CUBE_SIDE_CM / 100) ** 3;
+
+/** AirConnect declara length/width/height como Int: cualquier decimal rompe su serialización. */
+function toParcelDimensionCm(value: number): number {
+  if (!Number.isFinite(value) || value <= 0) return 0;
+  return Math.max(1, Math.ceil(value));
+}
+
 /** Volumen (m³) → lado de cubo equivalente en cm para la API */
 export function volumeM3ToCubeSidesCm(volumeM3: number): {
   length: number;
@@ -129,62 +147,57 @@ export function volumeM3ToCubeSidesCm(volumeM3: number): {
   if (volumeM3 <= 0) {
     return { length: 0, width: 0, height: 0 };
   }
-  const sideCm = Math.cbrt(volumeM3) * 100;
-  const side = Math.max(1, Math.round(sideCm * 10) / 10);
+  const side = toParcelDimensionCm(Math.cbrt(volumeM3) * 100);
   return { length: side, width: side, height: side };
 }
 
-export function buildAirConnectParcels(params: {
-  overallDimsAndWeight: boolean;
-  manualWeight: number;
-  manualVolume: number;
-  pieces: {
-    weight: number;
-    totalVolume: number;
-    volume: number;
-    noApilable: boolean;
-  }[];
-}): AirConnectCalculateParcel[] {
-  let grossWeight = 0;
-  let volumeM3 = 0;
-  let nonStackable = false;
-
+export function resolveAirConnectCargoTotals(params: AirConnectCargoInput): {
+  grossWeight: number;
+  volumeM3: number;
+  nonStackable: boolean;
+} {
   if (params.overallDimsAndWeight) {
-    grossWeight = params.manualWeight;
-    volumeM3 = params.manualVolume;
-  } else {
-    grossWeight = params.pieces.reduce((sum, p) => sum + (p.weight || 0), 0);
-    volumeM3 = params.pieces.reduce(
+    return {
+      grossWeight: params.manualWeight,
+      volumeM3: params.manualVolume,
+      nonStackable: false,
+    };
+  }
+  return {
+    grossWeight: params.pieces.reduce((sum, p) => sum + (p.weight || 0), 0),
+    volumeM3: params.pieces.reduce(
       (sum, p) => sum + (p.totalVolume || p.volume || 0),
       0,
-    );
-    nonStackable = params.pieces.some((p) => p.noApilable);
-  }
+    ),
+    nonStackable: params.pieces.some((p) => p.noApilable),
+  };
+}
 
-  let length: number;
-  let width: number;
-  let height: number;
-  if (volumeM3 > 0) {
-    ({ length, width, height } = volumeM3ToCubeSidesCm(volumeM3));
-  } else if (grossWeight > 0) {
+export function resolveAirConnectGrossWeight(params: AirConnectCargoInput): number {
+  return resolveAirConnectCargoTotals(params).grossWeight;
+}
+
+export function buildAirConnectParcels(
+  params: AirConnectCargoInput,
+): AirConnectCalculateParcel[] {
+  const { grossWeight, volumeM3, nonStackable } =
+    resolveAirConnectCargoTotals(params);
+
+  if (volumeM3 <= 0) {
     // Peso sin volumen declarado: cubo mínimo para que la API acepte el bulto
-    length = 10;
-    width = 10;
-    height = 10;
-  } else {
-    ({ length, width, height } = { length: 0, width: 0, height: 0 });
+    const side = grossWeight > 0 ? 10 : 0;
+    return [
+      { qty: 1, length: side, width: side, height: side, nonStackable },
+    ];
   }
 
-  return [
-    {
-      qty: 1,
-      length,
-      width,
-      height,
-      weight: grossWeight,
-      nonStackable,
-    },
-  ];
+  const qty = Math.max(1, Math.ceil(volumeM3 / MAX_CUBE_VOLUME_M3));
+  const side = Math.min(
+    MAX_CUBE_SIDE_CM,
+    toParcelDimensionCm(Math.cbrt(volumeM3 / qty) * 100),
+  );
+
+  return [{ qty, length: side, width: side, height: side, nonStackable }];
 }
 
 export function buildAirConnectFcaCalculateInput(params: {
@@ -198,6 +211,8 @@ export function buildAirConnectFcaCalculateInput(params: {
       incoterm: "FCA",
       awbType: "CONSOLIDATED",
       parcelsOrigin: "AIRPORT",
+      // Peso total en parcelsInput: con varios bultos, weight por bulto se multiplicaría por qty
+      weight: resolveAirConnectGrossWeight(params),
       parcels: buildAirConnectParcels(params),
     },
     contactCompanyName: params.contactCompanyName,
@@ -213,6 +228,7 @@ export function buildAirConnectExwCalculateInput(params: {
     airportDest: SANTIAGO_IATA,
     parcelsInput: {
       incoterm: "EXW",
+      weight: resolveAirConnectGrossWeight(params),
       parcels: buildAirConnectParcels(params),
     },
     contactCompanyName: params.contactCompanyName,

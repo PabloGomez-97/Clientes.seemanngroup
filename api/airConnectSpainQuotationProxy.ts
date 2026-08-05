@@ -27,6 +27,41 @@ export class AirConnectProxyError extends Error {
   }
 }
 
+const INTEGER_PARCEL_FIELDS = ['qty', 'width', 'height', 'length'] as const;
+
+/**
+ * AirConnect declara qty/width/height/length como Int. Los clientes ya publicados
+ * (móvil incluido) pueden seguir enviando decimales, así que se normalizan aquí.
+ */
+export function normalizeAirConnectQuotationInput(input: unknown): unknown {
+  if (!input || typeof input !== 'object') return input;
+
+  const root = input as Record<string, unknown>;
+  const parcelsInput = root.parcelsInput;
+  if (!parcelsInput || typeof parcelsInput !== 'object') return input;
+
+  const parcels = (parcelsInput as Record<string, unknown>).parcels;
+  if (!Array.isArray(parcels)) return input;
+
+  const normalizedParcels = parcels.map((parcel) => {
+    if (!parcel || typeof parcel !== 'object') return parcel;
+    const source = parcel as Record<string, unknown>;
+    const normalized: Record<string, unknown> = { ...source };
+    for (const field of INTEGER_PARCEL_FIELDS) {
+      const value = source[field];
+      if (typeof value === 'number' && Number.isFinite(value) && !Number.isInteger(value)) {
+        normalized[field] = Math.max(1, Math.ceil(value));
+      }
+    }
+    return normalized;
+  });
+
+  return {
+    ...root,
+    parcelsInput: { ...(parcelsInput as Record<string, unknown>), parcels: normalizedParcels },
+  };
+}
+
 export async function callAirConnectQuotationApi(
   input: unknown,
 ): Promise<Record<string, unknown>> {
@@ -47,7 +82,7 @@ export async function callAirConnectQuotationApi(
       'Content-Type': 'application/json',
       'X-Api-Key': apiKey,
     },
-    body: JSON.stringify(input),
+    body: JSON.stringify(normalizeAirConnectQuotationInput(input)),
   });
 
   const body = (await response.json().catch(() => null)) as

@@ -10,8 +10,6 @@ import {
 
   buildAirConnectFcaCalculateInput,
 
-  buildAirConnectParcels,
-
   buildAirConnectPricedOffers,
 
   createAirConnectMockRuta,
@@ -23,6 +21,8 @@ import {
   formatAirConnectFetchError,
 
   mapAirConnectQuoteToRuta,
+
+  resolveAirConnectGrossWeight,
 
   type AirConnectPricedOffer,
 
@@ -439,9 +439,7 @@ export function useAirConnectSpain(params: UseAirConnectSpainParams) {
 
 
 
-    const parcelProbe = buildAirConnectParcels(cargo)[0];
-
-    if (!parcelProbe.weight) {
+    if (!resolveAirConnectGrossWeight(cargo)) {
 
       setError(
 
