@@ -27,6 +27,7 @@ import type {
  * - GET /invoices/all?StartDate&EndDate&ModuleNumbers&ModuleIds&Page&ItemsPerPage
  * - GET /shipments/allCharges?startDate&endDate&invoiceNumbers
  * - GET /shipments|air-shipments|ground-shipments/all?StartDate&EndDate&ModuleNumbers&ModuleIds
+ * - GET /accounts/list?searchTerm&take (take=10000 costs ~36s; always narrow it)
  * Date axis for Commission Analysis: invoice.date. Shipments preferably by ModuleNumbers.
  */
 
@@ -40,8 +41,17 @@ const INVOICES_URL = "https://api.linbis.com/invoices/all";
 const SHIPMENTS_URL = "https://api.linbis.com/shipments/all";
 const AIR_SHIPMENTS_URL = "https://api.linbis.com/air-shipments/all";
 const GROUND_SHIPMENTS_URL = "https://api.linbis.com/ground-shipments/all";
-const ACCOUNTS_LIST_URL = "https://api.linbis.com/accounts/list?take=10000";
+const ACCOUNTS_LIST_URL = "https://api.linbis.com/accounts/list";
 const SALESREPS_LIST_URL = "https://api.linbis.com/salesreps/list?take=10000";
+
+/**
+ * accounts/list?take=10000 takes ~36s (85% of the whole report). It only feeds the
+ * bill-to → sales rep index, which is consulted exclusively for invoices whose
+ * salesRep is empty, so resolve those few accounts by searchTerm (~0.5s each)
+ * instead of pulling the catalog.
+ */
+const ACCOUNTS_SEARCH_TAKE = 50;
+const MAX_PARALLEL_ACCOUNT_LOOKUPS = 4;
 
 /**
  * The API gateway rejects URLs over 2048 chars with a 404 that carries no CORS
@@ -87,7 +97,6 @@ type DatasetCache = {
 
 type LookupCache = {
   fetchedAt: number;
-  accounts: LinbisAccountListRecord[];
   salesReps: LinbisSalesRepListRecord[];
 };
 
@@ -126,6 +135,8 @@ export class AnalysisFetchError extends Error {
 
 let datasetCache: DatasetCache | null = null;
 let lookupCache: LookupCache | null = null;
+/** searchTerm → accounts, so repeated ranges don't re-search the same bill-to. */
+const accountSearchCache = new Map<string, LinbisAccountListRecord[]>();
 const CACHE_TTL_MS = 5 * 60 * 1000;
 let cacheGeneration = 0;
 
@@ -690,40 +701,79 @@ async function fetchByModuleNumberChunks<T extends {
   return [...deduped.values()];
 }
 
-async function fetchLookups(
+async function fetchSalesReps(
   accessToken: string,
   refreshAccessToken: () => Promise<string>,
   force: boolean,
   signal?: AbortSignal,
-): Promise<LookupCache> {
+): Promise<LinbisSalesRepListRecord[]> {
   const now = Date.now();
-  if (
-    !force &&
-    lookupCache &&
-    now - lookupCache.fetchedAt < CACHE_TTL_MS
-  ) {
-    return lookupCache;
+  if (!force && lookupCache && now - lookupCache.fetchedAt < CACHE_TTL_MS) {
+    return lookupCache.salesReps;
   }
 
-  const timeoutSignal = createTimeoutSignal(CORE_FETCH_TIMEOUT_MS);
-  const [accounts, salesReps] = await Promise.all([
-    fetchJson<LinbisAccountListRecord>(
-      ACCOUNTS_LIST_URL,
-      accessToken,
-      refreshAccessToken,
-      timeoutSignal,
-    ),
-    fetchJson<LinbisSalesRepListRecord>(
-      SALESREPS_LIST_URL,
-      accessToken,
-      refreshAccessToken,
-      timeoutSignal,
-    ),
-  ]);
+  const salesReps = await fetchJson<LinbisSalesRepListRecord>(
+    SALESREPS_LIST_URL,
+    accessToken,
+    refreshAccessToken,
+    createTimeoutSignal(CORE_FETCH_TIMEOUT_MS),
+  );
   throwIfAborted(signal);
 
-  lookupCache = { fetchedAt: Date.now(), accounts, salesReps };
-  return lookupCache;
+  lookupCache = { fetchedAt: Date.now(), salesReps };
+  return salesReps;
+}
+
+/**
+ * Resolve accounts only for invoices that carry no salesRep, which is the single
+ * case where the bill-to index is consulted. Returns [] when every invoice
+ * already names its executive.
+ */
+async function fetchAccountsForInvoices(
+  invoices: LinbisInvoiceRecord[],
+  accessToken: string,
+  refreshAccessToken: () => Promise<string>,
+  force: boolean,
+  signal?: AbortSignal,
+): Promise<LinbisAccountListRecord[]> {
+  const searchTerms = new Set<string>();
+  for (const invoice of invoices) {
+    if ((invoice.salesRep || "").trim()) continue;
+    if (invoice.billToId == null) continue;
+    const billToName = (invoice.billToName || "").trim();
+    if (billToName) searchTerms.add(billToName);
+  }
+  if (searchTerms.size === 0) return [];
+
+  if (force) accountSearchCache.clear();
+
+  const pages = await mapWithConcurrency(
+    [...searchTerms],
+    MAX_PARALLEL_ACCOUNT_LOOKUPS,
+    async (searchTerm) => {
+      const cached = accountSearchCache.get(searchTerm);
+      if (cached) return cached;
+
+      const rows = await fetchJson<LinbisAccountListRecord>(
+        buildLinbisUrl(ACCOUNTS_LIST_URL, {
+          searchTerm,
+          take: ACCOUNTS_SEARCH_TAKE,
+        }),
+        accessToken,
+        refreshAccessToken,
+        createTimeoutSignal(CORE_FETCH_TIMEOUT_MS),
+      );
+      accountSearchCache.set(searchTerm, rows);
+      return rows;
+    },
+  );
+  throwIfAborted(signal);
+
+  const deduped = new Map<number, LinbisAccountListRecord>();
+  for (const account of pages.flat()) {
+    if (account.id != null) deduped.set(account.id, account);
+  }
+  return [...deduped.values()];
 }
 
 async function fetchCoreDataset(
@@ -789,7 +839,7 @@ async function fetchCoreDataset(
     const endDt = toLinbisDateTime(endDate, true);
 
     try {
-      const lookupsPromise = fetchLookups(
+      const salesRepsPromise = fetchSalesReps(
         accessToken,
         refreshAccessToken,
         force,
@@ -840,7 +890,16 @@ async function fetchCoreDataset(
         ]);
       }
 
-      const lookups = await lookupsPromise;
+      const [salesReps, accounts] = await Promise.all([
+        salesRepsPromise,
+        fetchAccountsForInvoices(
+          invoices,
+          accessToken,
+          refreshAccessToken,
+          force,
+          signal,
+        ),
+      ]);
       throwIfAborted(signal);
 
       const fetchedAt = Date.now();
@@ -866,8 +925,8 @@ async function fetchCoreDataset(
           shipments,
           airShipments,
           groundShipments,
-          accounts: lookups.accounts,
-          salesReps: lookups.salesReps,
+          accounts,
+          salesReps,
           charges: keepCharges,
         };
       }
@@ -878,8 +937,8 @@ async function fetchCoreDataset(
         shipments,
         airShipments,
         groundShipments,
-        accounts: lookups.accounts,
-        salesReps: lookups.salesReps,
+        accounts,
+        salesReps,
       };
     } catch (error) {
       const classified = classifyAnalysisError(error);
@@ -986,7 +1045,7 @@ async function ensureChargesLoaded(
             shipments: [],
             airShipments: [],
             groundShipments: [],
-            accounts: lookupCache?.accounts ?? [],
+            accounts: [],
             salesReps: lookupCache?.salesReps ?? [],
             charges,
           };
@@ -1373,6 +1432,7 @@ export function clearCommissionAnalysisCache(): void {
   cacheGeneration += 1;
   datasetCache = null;
   lookupCache = null;
+  accountSearchCache.clear();
   coreInflight = null;
   chargesInflight = null;
   clearCommissionAnalyticsDerivatives();
