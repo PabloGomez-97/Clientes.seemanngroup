@@ -299,7 +299,7 @@ async function fanOut(opts: {
 
       // Solo push en la primera emisión (evita doble push webhook+cron)
       if (isNew) {
-        void sendTrackingPushToClient({
+        await sendTrackingPushToClient({
           email: clientUser.email,
           mobilePushEnabled: clientUser.mobilePushEnabled,
           type: opts.type,

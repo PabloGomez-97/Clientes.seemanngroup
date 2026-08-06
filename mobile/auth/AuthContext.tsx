@@ -12,7 +12,10 @@ import {
   meRequest,
   MOBILE_API_BASE,
 } from "../../src/auth/authApi";
-import { unregisterPushToken } from "../services/pushNotifications";
+import {
+  resolveDevicePushToken,
+  unregisterPushToken,
+} from "../services/pushNotifications";
 
 export type User = AuthUser | null;
 
@@ -132,7 +135,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = async () => {
     const currentToken = token;
     if (currentToken) {
-      await unregisterPushToken(currentToken).catch(() => undefined);
+      // Resuelve el token del dispositivo (memoria / SecureStore / Expo)
+      // y borra SOLO ese — no otros dispositivos del mismo email.
+      const devicePushToken = await resolveDevicePushToken().catch(() => null);
+      await unregisterPushToken(currentToken, devicePushToken).catch(
+        () => undefined,
+      );
     }
     setUser(null);
     setToken(null);

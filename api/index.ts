@@ -1492,7 +1492,7 @@ async function emitTrackingNotification(opts: {
         },
       });
 
-      void sendTrackingPushToClient({
+      await sendTrackingPushToClient({
         email: clientUser.email,
         mobilePushEnabled: (clientUser as any).mobilePushEnabled,
         type: opts.type,
@@ -2506,17 +2506,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (path === '/api/mobile/push-token' && method === 'DELETE') {
       try {
         const currentUser = requireAuth(req);
-        const body = (req.body || {}) as { token?: unknown };
+        const body = (req.body || {}) as { token?: unknown; all?: unknown };
         const pushToken = String(body.token || '').trim();
+        const deleteAll = body.all === true;
         const DevicePushToken = getDevicePushTokenModel();
 
+        // Por defecto SOLO se borra un token concreto (este dispositivo).
+        // `all: true` es explícito y borra todos los del email (p. ej. admin/tools).
         if (pushToken) {
           await DevicePushToken.deleteOne({
             email: currentUser.sub,
             token: pushToken,
           });
-        } else {
+        } else if (deleteAll) {
           await DevicePushToken.deleteMany({ email: currentUser.sub });
+        } else {
+          return res.status(400).json({
+            error: 'token de push requerido (o all:true)',
+          });
         }
 
         return res.json({ success: true });
@@ -3907,9 +3914,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         console.log(`[shipsgo] Shipment created successfully:`, data.shipment);
 
-        // Notify ejecutivo + cliente + operaciones (best-effort)
+        // Notify ejecutivo + cliente + operaciones (await: en Vercel un void
+        // se congela al responder y el push de CREATED puede no salir).
         if (data.shipment) {
-          void emitTrackingNotification({
+          await emitTrackingNotification({
             type: 'TRACKING_CREATED',
             shipmentMode: 'AIR',
             shipmentId: String((data.shipment as any).id ?? ''),
@@ -4404,9 +4412,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         console.log(`[shipsgo-ocean] Ocean shipment created successfully:`, data.shipment);
 
-        // Notify ejecutivo + cliente + operaciones (best-effort)
+        // Notify ejecutivo + cliente + operaciones (await: evita corte en Vercel)
         if (data.shipment) {
-          void emitTrackingNotification({
+          await emitTrackingNotification({
             type: 'TRACKING_CREATED',
             shipmentMode: 'OCEAN',
             shipmentId: String((data.shipment as any).id ?? ''),

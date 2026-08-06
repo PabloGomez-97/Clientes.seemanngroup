@@ -1475,7 +1475,7 @@ async function emitTrackingNotification(opts: {
         },
       });
 
-      void sendTrackingPushToClient({
+      await sendTrackingPushToClient({
         email: clientUser.email,
         mobilePushEnabled: (clientUser as any).mobilePushEnabled,
         type: opts.type,
@@ -2520,16 +2520,24 @@ app.put('/api/mobile/push-token', auth, async (req, res) => {
 app.delete('/api/mobile/push-token', auth, async (req, res) => {
   try {
     const currentUser = (req as any).user as AuthPayload;
-    const pushToken = String((req.body as any)?.token || '').trim();
+    const body = (req.body || {}) as { token?: unknown; all?: unknown };
+    const pushToken = String(body.token || '').trim();
+    const deleteAll = body.all === true;
     const DevicePushToken = getDevicePushTokenModel();
 
+    // Por defecto SOLO se borra un token concreto (este dispositivo).
+    // `all: true` es explícito y borra todos los del email (p. ej. admin/tools).
     if (pushToken) {
       await DevicePushToken.deleteOne({
         email: currentUser.sub,
         token: pushToken,
       });
-    } else {
+    } else if (deleteAll) {
       await DevicePushToken.deleteMany({ email: currentUser.sub });
+    } else {
+      return res.status(400).json({
+        error: 'token de push requerido (o all:true)',
+      });
     }
 
     return res.json({ success: true });
@@ -3769,9 +3777,9 @@ app.post('/api/shipsgo/shipments', auth, async (req, res) => {
 
     console.log(`[shipsgo] Shipment created successfully:`, data.shipment);
 
-    // Notify ejecutivo + cliente + operaciones (best-effort)
+    // Notify ejecutivo + cliente + operaciones (await: evita corte prematuro del push)
     if (data.shipment) {
-      void emitTrackingNotification({
+      await emitTrackingNotification({
         type: 'TRACKING_CREATED',
         shipmentMode: 'AIR',
         shipmentId: String((data.shipment as any).id ?? ''),
@@ -4252,9 +4260,9 @@ app.post('/api/shipsgo/ocean/shipments', auth, async (req, res) => {
 
     console.log(`[shipsgo-ocean] Ocean shipment created successfully:`, data.shipment);
 
-    // Notify ejecutivo + cliente + operaciones (best-effort)
+    // Notify ejecutivo + cliente + operaciones (await: evita corte prematuro del push)
     if (data.shipment) {
-      void emitTrackingNotification({
+      await emitTrackingNotification({
         type: 'TRACKING_CREATED',
         shipmentMode: 'OCEAN',
         shipmentId: String((data.shipment as any).id ?? ''),

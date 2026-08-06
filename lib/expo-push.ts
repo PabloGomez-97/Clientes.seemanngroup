@@ -172,7 +172,10 @@ export async function sendTrackingPushToClient(opts: {
       .toLowerCase()
       .trim();
     if (!email) return;
-    if (opts.mobilePushEnabled === false) return;
+    if (opts.mobilePushEnabled === false) {
+      console.log(`[expo-push] skip ${email}: mobilePushEnabled=false`);
+      return;
+    }
 
     const DevicePushToken = getDevicePushTokenModel();
     const devices = await DevicePushToken.find({
@@ -182,14 +185,24 @@ export async function sendTrackingPushToClient(opts: {
       .select("token")
       .lean();
 
-    if (!devices.length) return;
+    if (!devices.length) {
+      console.log(`[expo-push] skip ${email}: sin dispositivos registrados`);
+      return;
+    }
 
     const message = buildTrackingPushMessage(opts);
     const tokens = devices
       .map((d) => d.token)
       .filter((t) => typeof t === "string" && t.startsWith("ExponentPushToken"));
 
-    if (!tokens.length) return;
+    if (!tokens.length) {
+      console.log(`[expo-push] skip ${email}: tokens inválidos`);
+      return;
+    }
+
+    console.log(
+      `[expo-push] enviando ${opts.type} a ${email} (${tokens.length} dispositivo/s)`,
+    );
 
     const chunks: string[][] = [];
     for (let i = 0; i < tokens.length; i += 100) {
@@ -229,6 +242,11 @@ export async function sendTrackingPushToClient(opts: {
       const tickets = Array.isArray(result?.data) ? result!.data! : [];
       for (let i = 0; i < tickets.length; i += 1) {
         const ticket = tickets[i];
+        if (ticket?.status === "error") {
+          console.error(
+            `[expo-push] ticket error para ${email}: ${ticket.details?.error ?? "desconocido"}`,
+          );
+        }
         if (
           ticket?.status === "error" &&
           (ticket.details?.error === "DeviceNotRegistered" ||
