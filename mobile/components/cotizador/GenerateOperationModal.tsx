@@ -19,6 +19,13 @@ import {
   type CrearOperacionPayload,
   type Proveedor,
 } from "../../services/crearOperacionApi";
+import {
+  DOCUMENT_FORMATS_HINT,
+  DOCUMENT_MAX_FILE_SIZE,
+  isAllowedDocumentUpload,
+  mimeFromDocumentFileName,
+  resolveDocumentMime,
+} from "@/utils/documentFileTypes";
 import { brand, radii, spacing } from "../../theme/brand";
 import { fonts } from "../../theme/typography";
 
@@ -26,23 +33,6 @@ type DocTipo = "Orden de compra" | "Invoice" | "Packing List";
 
 const DOC_TIPOS: DocTipo[] = ["Orden de compra", "Invoice", "Packing List"];
 
-const ALLOWED_MIME = [
-  "application/pdf",
-  "application/msword",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "application/vnd.ms-excel",
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-];
-
-const ALLOWED_EXT = new Set([
-  "pdf",
-  "xls",
-  "xlsx",
-  "doc",
-  "docx",
-]);
-
-const MAX_FILE_BYTES = 5 * 1024 * 1024;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type PickedDoc = {
@@ -82,29 +72,12 @@ const emptyForm: FormState = {
 
 type Step = "confirm" | "form" | "success";
 
-function mimeFromName(name: string): string {
-  const ext = name.split(".").pop()?.toLowerCase() || "";
-  switch (ext) {
-    case "pdf":
-      return "application/pdf";
-    case "doc":
-      return "application/msword";
-    case "docx":
-      return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-    case "xls":
-      return "application/vnd.ms-excel";
-    case "xlsx":
-      return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-    default:
-      return "application/octet-stream";
-  }
-}
-
-function isAllowedFile(name: string, mimeType?: string): boolean {
-  const ext = name.split(".").pop()?.toLowerCase() || "";
-  if (ALLOWED_EXT.has(ext)) return true;
-  if (mimeType && ALLOWED_MIME.includes(mimeType)) return true;
-  return false;
+function resolvePickedMime(name: string, mimeType?: string): string {
+  return (
+    resolveDocumentMime(name, mimeType) ||
+    mimeFromDocumentFileName(name) ||
+    "application/octet-stream"
+  );
 }
 
 export default function GenerateOperationModal({
@@ -183,20 +156,20 @@ export default function GenerateOperationModal({
   const pickFile = async (tipo: DocTipo) => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: ALLOWED_MIME,
+        type: "*/*",
         copyToCacheDirectory: true,
         multiple: false,
       });
       if (result.canceled || !result.assets?.[0]) return;
       const asset = result.assets[0];
-      if (!isAllowedFile(asset.name, asset.mimeType)) {
+      if (!isAllowedDocumentUpload(asset.name, asset.mimeType)) {
         setError(
-          `"${asset.name}" no es un formato válido. Usa PDF, Excel o Word.`,
+          `"${asset.name}" no es un formato válido. ${DOCUMENT_FORMATS_HINT}`,
         );
         return;
       }
-      if (asset.size != null && asset.size > MAX_FILE_BYTES) {
-        setError(`"${asset.name}" excede el tamaño máximo de 5MB.`);
+      if (asset.size != null && asset.size > DOCUMENT_MAX_FILE_SIZE) {
+        setError(`"${asset.name}" excede el tamaño máximo de 15MB.`);
         return;
       }
       setError(null);
@@ -205,7 +178,7 @@ export default function GenerateOperationModal({
         [tipo]: {
           name: asset.name,
           uri: asset.uri,
-          mimeType: asset.mimeType || mimeFromName(asset.name),
+          mimeType: resolvePickedMime(asset.name, asset.mimeType),
           size: asset.size,
         },
       }));
@@ -257,7 +230,7 @@ export default function GenerateOperationModal({
           const raw = await FileSystem.readAsStringAsync(file.uri, {
             encoding: "base64",
           });
-          const mime = file.mimeType || mimeFromName(file.name);
+          const mime = resolvePickedMime(file.name, file.mimeType);
           return {
             tipo,
             nombreArchivo: file.name,
@@ -479,8 +452,8 @@ export default function GenerateOperationModal({
 
                 <Text style={styles.sectionTitle}>Documentos de referencia</Text>
                 <Text style={styles.hint}>
-                  Puedes adjuntar uno, varios o ninguno. Formatos: PDF, Excel y
-                  Word. Máximo 5MB por archivo.
+                  Puedes adjuntar uno, varios o ninguno. Formatos:{" "}
+                  {DOCUMENT_FORMATS_HINT}
                 </Text>
 
                 {DOC_TIPOS.map((tipo) => {

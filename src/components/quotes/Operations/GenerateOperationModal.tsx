@@ -2,19 +2,22 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../../auth/AuthContext";
 import {
   crearOperacion,
-  fileToBase64,
   listarProveedores,
   type CrearOperacionPayload,
   type Proveedor,
 } from "../../../services/operaciones";
+import {
+  DOCUMENT_ACCEPT_ATTR,
+  DOCUMENT_FORMATS_HINT,
+  DOCUMENT_MAX_FILE_SIZE,
+  fileToDocumentDataUrl,
+  isAllowedDocumentUpload,
+} from "@/utils/documentFileTypes";
 import "./GenerateOperationModal.css";
 
 type DocTipo = "Orden de compra" | "Invoice" | "Packing List";
 
 const DOC_TIPOS: DocTipo[] = ["Orden de compra", "Invoice", "Packing List"];
-
-const ALLOWED_EXT = ".pdf,.xls,.xlsx,.doc,.docx";
-const MAX_FILE_BYTES = 5 * 1024 * 1024;
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -193,8 +196,12 @@ export default function GenerateOperationModal({
       });
       return;
     }
-    if (file.size > MAX_FILE_BYTES) {
-      setError(`"${file.name}" excede el tamaño máximo de 5MB.`);
+    if (file.size > DOCUMENT_MAX_FILE_SIZE) {
+      setError(`"${file.name}" excede el tamaño máximo de 15MB.`);
+      return;
+    }
+    if (!isAllowedDocumentUpload(file.name, file.type)) {
+      setError(`"${file.name}" no es un formato válido. ${DOCUMENT_FORMATS_HINT}`);
       return;
     }
     setError(null);
@@ -230,7 +237,7 @@ export default function GenerateOperationModal({
       const documentos = await Promise.all(
         tiposConArchivo.map(async (tipo) => {
           const file = files[tipo]!;
-          const contenidoBase64 = await fileToBase64(file);
+          const contenidoBase64 = await fileToDocumentDataUrl(file);
           return { tipo, nombreArchivo: file.name, contenidoBase64 };
         }),
       );
@@ -467,8 +474,8 @@ export default function GenerateOperationModal({
 
               <div className="go-section__title">Documentos de referencia</div>
               <p className="go-form__hint" style={{ marginBottom: 12 }}>
-                Puedes adjuntar uno, varios o ninguno. Formatos aceptados: PDF,
-                Excel y Word. Máximo 5MB por archivo.
+                Puedes adjuntar uno, varios o ninguno. Formatos:{" "}
+                {DOCUMENT_FORMATS_HINT}
               </p>
 
               {DOC_TIPOS.map((tipo) => {
@@ -485,7 +492,7 @@ export default function GenerateOperationModal({
                         <input
                           type="file"
                           className="go-doc__file-input"
-                          accept={ALLOWED_EXT}
+                          accept={DOCUMENT_ACCEPT_ATTR}
                           disabled={submitting}
                           onChange={(e) =>
                             handleFileChange(

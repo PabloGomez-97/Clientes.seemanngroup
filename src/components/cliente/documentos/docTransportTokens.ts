@@ -44,8 +44,19 @@ const FILE_BADGES: Array<{ match: string; label: string }> = [
   { match: "pdf", label: "PDF" },
   { match: "excel", label: "XLS" },
   { match: "spreadsheet", label: "XLS" },
+  { match: "csv", label: "CSV" },
   { match: "word", label: "DOC" },
   { match: "document", label: "DOC" },
+  { match: "rtf", label: "RTF" },
+  { match: "text/plain", label: "TXT" },
+  { match: "jpeg", label: "IMG" },
+  { match: "png", label: "IMG" },
+  { match: "webp", label: "IMG" },
+  { match: "tiff", label: "IMG" },
+  { match: "image/", label: "IMG" },
+  { match: "zip", label: "ZIP" },
+  { match: "rar", label: "RAR" },
+  { match: "7z", label: "7Z" },
 ];
 
 export function getFileBadge(tipoArchivo: string) {

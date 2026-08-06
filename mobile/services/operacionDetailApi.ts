@@ -78,6 +78,78 @@ export async function fetchGroundOperacionDocumentos(
   return list;
 }
 
+export async function uploadOperacionDocumento(
+  token: string,
+  ownerUsername: string,
+  payload: {
+    quoteNumber: string;
+    modo: OperacionModoDocs;
+    tipo: string;
+    nombreArchivo: string;
+    contenidoBase64: string;
+  },
+): Promise<void> {
+  const res = await fetch(
+    `${MOBILE_API_BASE}/api/documentos/operacionales/upload`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        quoteNumber: payload.quoteNumber,
+        modo: payload.modo,
+        tipo: payload.tipo,
+        nombreArchivo: payload.nombreArchivo,
+        contenidoBase64: payload.contenidoBase64,
+        ownerUsername,
+      }),
+    },
+  );
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(
+      (data as { error?: string }).error || "Error al subir documento",
+    );
+  }
+}
+
+export async function uploadGroundOperacionDocumento(
+  token: string,
+  ownerUsername: string,
+  payload: {
+    shipmentId: string | number;
+    tipo: string;
+    nombreArchivo: string;
+    contenidoBase64: string;
+  },
+): Promise<void> {
+  const res = await fetch(
+    `${MOBILE_API_BASE}/api/ground-shipments/documentos/upload`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        shipmentId: String(payload.shipmentId),
+        tipo: payload.tipo,
+        nombreArchivo: payload.nombreArchivo,
+        contenidoBase64: payload.contenidoBase64,
+        ownerUsername,
+      }),
+    },
+  );
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(
+      (data as { error?: string }).error || "Error al subir documento",
+    );
+  }
+}
+
 export function toUnifiedOperacionalDoc(
   doc: MobileDocItem,
   type: "air" | "ocean" | "ground",

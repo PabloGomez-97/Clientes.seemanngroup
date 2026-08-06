@@ -32,6 +32,12 @@ import {
   TIPOS_DOCUMENTO_OPERACIONAL_MARITIMO,
   type QuoteOperacionalModo,
 } from './constants/quoteDocuments.js';
+import {
+  DOCUMENT_FORMATS_HINT,
+  DOCUMENT_MAX_FILE_SIZE,
+  isAllowedDocumentUpload,
+  resolveDocumentMime,
+} from './constants/documentFileTypes.js';
 import { resolveEjecutivoForEmail, loadQuotePdfAttachment, loadQuotePdfAttachmentWithRetry, normalizeQuoteResendEmails } from './utils/operationEmailHelpers.js';
 import { authorizeBehaviorTrackingPost, clientBelongsToEjecutivo, resolveEjecutivoObjectId } from '../lib/behavior-tracking-auth.js';
 import {
@@ -1087,15 +1093,7 @@ const QuotePDF = (mongoose.models.QuotePDF ||
 // CONSTANTES Y FUNCIONES AUXILIARES PARA DOCUMENTOSs
 // ============================================================
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-
-const ALLOWED_MIME_TYPES = [
-  'application/pdf',
-  'application/vnd.ms-excel',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-];
+const MAX_FILE_SIZE = DOCUMENT_MAX_FILE_SIZE;
 
 function validateBase64(base64String: string): boolean {
   try {
@@ -4834,17 +4832,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           });
         }
 
-        const mimeType = getMimeTypeFromBase64(contenidoBase64);
-        if (!mimeType || !ALLOWED_MIME_TYPES.includes(mimeType)) {
+        const mimeFromData = getMimeTypeFromBase64(contenidoBase64);
+        if (!isAllowedDocumentUpload(String(nombreArchivo), mimeFromData)) {
           return res.status(400).json({
-            error: 'Tipo de archivo no permitido. Solo PDF, Excel y Word'
+            error: `Tipo de archivo no permitido. ${DOCUMENT_FORMATS_HINT}`,
+          });
+        }
+        const mimeType = resolveDocumentMime(String(nombreArchivo), mimeFromData);
+        if (!mimeType) {
+          return res.status(400).json({
+            error: `Tipo de archivo no permitido. ${DOCUMENT_FORMATS_HINT}`,
           });
         }
 
         const fileSize = getBase64Size(contenidoBase64);
         if (fileSize > MAX_FILE_SIZE) {
           return res.status(400).json({
-            error: `El archivo excede el tamaño máximo de 5MB. Tamaño: ${(fileSize / 1024 / 1024).toFixed(2)}MB`
+            error: `El archivo excede el tamaño máximo de 15MB. Tamaño: ${(fileSize / 1024 / 1024).toFixed(2)}MB`,
           });
         }
 
@@ -4947,14 +4951,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (!validateBase64(contenidoBase64)) {
           return res.status(400).json({ error: 'El archivo debe estar en formato base64 válido' });
         }
-        const mimeType = getMimeTypeFromBase64(contenidoBase64);
-        if (!mimeType || !ALLOWED_MIME_TYPES.includes(mimeType)) {
-          return res.status(400).json({ error: 'Tipo de archivo no permitido. Solo PDF, Excel y Word' });
+        const mimeFromData = getMimeTypeFromBase64(contenidoBase64);
+        if (!isAllowedDocumentUpload(String(nombreArchivo), mimeFromData)) {
+          return res.status(400).json({ error: `Tipo de archivo no permitido. ${DOCUMENT_FORMATS_HINT}` });
+        }
+        const mimeType = resolveDocumentMime(String(nombreArchivo), mimeFromData);
+        if (!mimeType) {
+          return res.status(400).json({ error: `Tipo de archivo no permitido. ${DOCUMENT_FORMATS_HINT}` });
         }
         const fileSize = getBase64Size(contenidoBase64);
         if (fileSize > MAX_FILE_SIZE) {
           return res.status(400).json({
-            error: `El archivo excede el tamaño máximo de 5MB. Tamaño: ${(fileSize / 1024 / 1024).toFixed(2)}MB`,
+            error: `El archivo excede el tamaño máximo de 15MB. Tamaño: ${(fileSize / 1024 / 1024).toFixed(2)}MB`,
           });
         }
 
@@ -5415,15 +5423,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           return res.status(400).json({ error: 'El archivo debe estar en formato base64 válido' });
         }
 
-        const mimeType = getMimeTypeFromBase64(contenidoBase64);
-        if (!mimeType || !ALLOWED_MIME_TYPES.includes(mimeType)) {
-          return res.status(400).json({ error: 'Tipo de archivo no permitido. Solo PDF, Excel y Word' });
+        const mimeFromData = getMimeTypeFromBase64(contenidoBase64);
+        if (!isAllowedDocumentUpload(String(nombreArchivo), mimeFromData)) {
+          return res.status(400).json({ error: `Tipo de archivo no permitido. ${DOCUMENT_FORMATS_HINT}` });
+        }
+        const mimeType = resolveDocumentMime(String(nombreArchivo), mimeFromData);
+        if (!mimeType) {
+          return res.status(400).json({ error: `Tipo de archivo no permitido. ${DOCUMENT_FORMATS_HINT}` });
         }
 
         const fileSize = getBase64Size(contenidoBase64);
         if (fileSize > MAX_FILE_SIZE) {
           return res.status(400).json({
-            error: `El archivo excede el tamaño máximo de 5MB. Tamaño: ${(fileSize / 1024 / 1024).toFixed(2)}MB`,
+            error: `El archivo excede el tamaño máximo de 15MB. Tamaño: ${(fileSize / 1024 / 1024).toFixed(2)}MB`,
           });
         }
 
@@ -6144,13 +6156,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           if (!validateBase64(d.contenidoBase64)) {
             return res.status(400).json({ error: `Documento "${d.nombreArchivo}" no es base64 válido` });
           }
-          const mimeType = getMimeTypeFromBase64(d.contenidoBase64);
-          if (!mimeType || !ALLOWED_MIME_TYPES.includes(mimeType)) {
-            return res.status(400).json({ error: `Tipo de archivo no permitido para "${d.nombreArchivo}"` });
+          const mimeFromData = getMimeTypeFromBase64(d.contenidoBase64);
+          if (!isAllowedDocumentUpload(String(d.nombreArchivo), mimeFromData)) {
+            return res.status(400).json({ error: `Tipo de archivo no permitido para "${d.nombreArchivo}". ${DOCUMENT_FORMATS_HINT}` });
+          }
+          const mimeType = resolveDocumentMime(String(d.nombreArchivo), mimeFromData);
+          if (!mimeType) {
+            return res.status(400).json({ error: `Tipo de archivo no permitido para "${d.nombreArchivo}". ${DOCUMENT_FORMATS_HINT}` });
           }
           const fileSize = getBase64Size(d.contenidoBase64);
           if (fileSize > MAX_FILE_SIZE) {
-            return res.status(400).json({ error: `"${d.nombreArchivo}" excede 5MB` });
+            return res.status(400).json({ error: `"${d.nombreArchivo}" excede 15MB` });
           }
         }
 
@@ -6160,7 +6176,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const quoteNumberStr = String(quoteNumber);
 
         for (const d of documentos) {
-          const mimeType = getMimeTypeFromBase64(d.contenidoBase64) as string;
+          const mimeType = resolveDocumentMime(String(d.nombreArchivo), getMimeTypeFromBase64(d.contenidoBase64)) as string;
           const fileSize = getBase64Size(d.contenidoBase64);
           const base64Content = d.contenidoBase64.includes('base64,')
             ? d.contenidoBase64.split('base64,')[1]

@@ -1,6 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/auth/AuthContext";
 import { useClientOverride } from "@/contexts/ClientOverrideContext";
+import {
+  DOCUMENT_ACCEPT_ATTR,
+  fileToDocumentDataUrl,
+  validateDocumentFile,
+} from "@/utils/documentFileTypes";
 import "./DocumentosSection.css";
 
 // ============================================================
@@ -135,26 +140,13 @@ export const DocumentosSection: React.FC<DocumentosSectionProps> = ({
   // ============================================================
 
   const processFiles = async (tipo: TipoDocumento, files: File[]) => {
-    const MAX_SIZE = 5 * 1024 * 1024;
-    const allowedTypes = [
-      "application/pdf",
-      "application/vnd.ms-excel",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "application/msword",
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    ];
-
     const validFiles: File[] = [];
     const rejected: string[] = [];
 
     for (const file of files) {
-      if (file.size > MAX_SIZE) {
-        rejected.push(`"${file.name}" excede 5MB`);
-      } else if (!allowedTypes.includes(file.type)) {
-        rejected.push(`"${file.name}" tipo no permitido`);
-      } else {
-        validFiles.push(file);
-      }
+      const err = validateDocumentFile(file);
+      if (err) rejected.push(err);
+      else validFiles.push(file);
     }
 
     if (validFiles.length === 0) {
@@ -171,7 +163,7 @@ export const DocumentosSection: React.FC<DocumentosSectionProps> = ({
 
     for (const file of validFiles) {
       try {
-        const base64 = await fileToBase64(file);
+        const base64 = await fileToDocumentDataUrl(file);
         const response = await fetch("/api/documentos/upload", {
           method: "POST",
           headers: {
@@ -351,15 +343,6 @@ export const DocumentosSection: React.FC<DocumentosSectionProps> = ({
   // UTILIDADES
   // ============================================================
 
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  };
-
   const getDocumentosPorTipo = (tipo: TipoDocumento): Documento[] => {
     return documentos.filter((doc) => doc.tipo === tipo);
   };
@@ -376,11 +359,15 @@ export const DocumentosSection: React.FC<DocumentosSectionProps> = ({
   };
 
   const getIconoPorTipo = (tipoArchivo: string): string => {
-    if (tipoArchivo.includes("pdf")) return "📄";
-    if (tipoArchivo.includes("excel") || tipoArchivo.includes("spreadsheet"))
+    const t = tipoArchivo.toLowerCase();
+    if (t.includes("pdf")) return "📄";
+    if (t.includes("excel") || t.includes("spreadsheet") || t.includes("csv"))
       return "📊";
-    if (tipoArchivo.includes("word") || tipoArchivo.includes("document"))
+    if (t.includes("word") || t.includes("rtf") || t.includes("text"))
       return "📝";
+    if (t.includes("image") || t.includes("jpeg") || t.includes("png") || t.includes("webp") || t.includes("tiff"))
+      return "🖼️";
+    if (t.includes("zip") || t.includes("rar") || t.includes("7z")) return "📦";
     return "📎";
   };
 
@@ -522,7 +509,7 @@ export const DocumentosSection: React.FC<DocumentosSectionProps> = ({
                       <input
                         ref={fileInputRefs[tipo]}
                         type="file"
-                        accept=".pdf,.xls,.xlsx,.doc,.docx"
+                        accept={DOCUMENT_ACCEPT_ATTR}
                         onChange={(e) => handleFileSelect(tipo, e)}
                         style={{ display: "none" }}
                         disabled={uploading}
