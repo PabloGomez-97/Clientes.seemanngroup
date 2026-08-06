@@ -50,6 +50,7 @@ import {
   type QuoteProfitIndex,
 } from "@/services/linbisQuoteLookup";
 import { mapLinbisOceanToShippingOrder } from "@/services/linbisShipmentMappers";
+import { sortOceanOperaciones } from "@/services/operacionesFiltersLogic";
 import {
   type ShipsgoEtaEntry,
   formatShipsgoDateLong,
@@ -1574,12 +1575,8 @@ function OceanShipmentsView({
         `${oceanOrders.length} ocean shipments para ${activeUsername}`,
       );
 
-      // Sort by departure date (newest first)
-      const sorted = oceanOrders.sort((a, b) => {
-        const da = a.departureDate ? new Date(a.departureDate) : new Date(0);
-        const db = b.departureDate ? new Date(b.departureDate) : new Date(0);
-        return db.getTime() - da.getTime();
-      });
+      // Sort by número de envío (mayor → menor)
+      const sorted = sortOceanOperaciones(oceanOrders) as OceanShippingOrder[];
 
       setOceanShipments(sorted);
       setDisplayedOceanShipments(sorted);
@@ -1622,11 +1619,9 @@ function OceanShipmentsView({
             volume: { userDisplay: s.totalCargo_VolumeDisplayValue || "" },
           },
         }));
-      const dummySorted = mapped.sort((a, b) => {
-        const da = a.departureDate ? new Date(a.departureDate) : new Date(0);
-        const db = b.departureDate ? new Date(b.departureDate) : new Date(0);
-        return db.getTime() - da.getTime();
-      });
+      const dummySorted = sortOceanOperaciones(
+        mapped,
+      ) as OceanShippingOrder[];
       setOceanShipments(dummySorted);
       setDisplayedOceanShipments(dummySorted);
       setLoading(false);
@@ -1660,7 +1655,9 @@ function OceanShipmentsView({
 
     appliedInitialFilterRef.current = incomingFilter;
     setFilterNumber(incomingFilter);
-    setDisplayedOceanShipments(filtered);
+    setDisplayedOceanShipments(
+      sortOceanOperaciones(filtered) as OceanShippingOrder[],
+    );
     setShowingAll(true);
     setSelectedShipmentId(filtered[0]?.id ?? filtered[0]?.number ?? null);
     setTablePage(1);
@@ -2197,7 +2194,9 @@ function OceanShipmentsView({
           .includes(filterCarrier.toLowerCase()),
       );
     }
-    setDisplayedOceanShipments(filtered);
+    setDisplayedOceanShipments(
+      sortOceanOperaciones(filtered) as OceanShippingOrder[],
+    );
     setShowingAll(true);
   };
 
@@ -2226,11 +2225,9 @@ function OceanShipmentsView({
             volume: { userDisplay: s.totalCargo_VolumeDisplayValue || "" },
           },
         }));
-      const dummySorted = mapped.sort((a, b) => {
-        const da = a.departureDate ? new Date(a.departureDate) : new Date(0);
-        const db = b.departureDate ? new Date(b.departureDate) : new Date(0);
-        return db.getTime() - da.getTime();
-      });
+      const dummySorted = sortOceanOperaciones(
+        mapped,
+      ) as OceanShippingOrder[];
       setOceanShipments(dummySorted);
       setDisplayedOceanShipments(dummySorted);
       setShowingAll(false);

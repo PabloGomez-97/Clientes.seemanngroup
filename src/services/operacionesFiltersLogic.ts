@@ -265,14 +265,28 @@ export function sortAirOperaciones(shipments: AirShipment[]): AirShipment[] {
   );
 }
 
+/** Número de envío mayor → menor (HBLI0002093 antes que HBLI0002092). */
+export function compareOperacionNumberDesc(
+  a?: string | null,
+  b?: string | null,
+): number {
+  const na = (a ?? "").trim().toUpperCase();
+  const nb = (b ?? "").trim().toUpperCase();
+  if (!na && !nb) return 0;
+  if (!na) return 1;
+  if (!nb) return -1;
+  return nb.localeCompare(na, undefined, {
+    numeric: true,
+    sensitivity: "base",
+  });
+}
+
 export function sortOceanOperaciones(
   shipments: OceanListItem[],
 ): OceanListItem[] {
   return [...shipments].sort((a, b) => {
-    const tb = parseDepartureTime(b as unknown as Record<string, unknown>);
-    const ta = parseDepartureTime(a as unknown as Record<string, unknown>);
-    if (tb !== ta) return tb - ta;
-    // Empate: id más alto = más reciente (refuerzo SortBy=newest).
+    const byNumber = compareOperacionNumberDesc(a.number, b.number);
+    if (byNumber !== 0) return byNumber;
     return (b.id ?? 0) - (a.id ?? 0);
   });
 }
