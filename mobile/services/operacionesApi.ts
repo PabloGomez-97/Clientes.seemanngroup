@@ -4,6 +4,7 @@ import {
   buildLinbisListParams,
   consigneeMatches,
   fetchAirShipmentRouteDetail,
+  fetchAllLinbisByConsignee,
   fetchShippingOrderTrackingIndex,
   LINBIS_CLIENT_CONCURRENCY,
   runWithConcurrency,
@@ -220,7 +221,7 @@ export async function fetchOceanOperacionesPage(
   return result;
 }
 
-/** /all + filtro local; cache 1h por consignatario. */
+/** /all + ConsigneeName (paginado); cache 1h por consignatario. */
 async function fetchOceanOperacionesCatalogFallback(
   consigneeName: string,
   options: LinbisOptions,
@@ -229,28 +230,15 @@ async function fetchOceanOperacionesCatalogFallback(
   const cached = await readOpsCache<OceanListItem[]>(cacheParts);
   if (cached) return cached;
 
-  const response = await linbisFetch(
+  const records = await fetchAllLinbisByConsignee(
     LINBIS_OCEAN_ALL_URL,
+    consigneeName,
     {
-      method: "GET",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
+      accessToken: options.accessToken,
+      refreshAccessToken: options.refreshAccessToken,
       signal: options.signal,
     },
-    options.accessToken,
-    options.refreshAccessToken,
   );
-
-  if (!response.ok) {
-    throw new Error(
-      `Error al obtener operaciones marítimas (${response.status})`,
-    );
-  }
-
-  const data = await response.json();
-  const records = Array.isArray(data) ? data : [];
   const mapped = records
     .filter((record) => {
       if (!record || typeof record !== "object") return false;

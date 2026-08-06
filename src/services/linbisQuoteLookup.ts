@@ -133,6 +133,75 @@ export function lookupTrackingFromQuoteIndex(
   return quoteTrackingIndex[normalizeLookupKey(normalized)] ?? null;
 }
 
+/**
+ * Busca el Tracking Number (CF 17) de una QUO concreta.
+ * Pagina /Quotes?ConsigneeName=… y corta al encontrar el número (sin bajar todo el catálogo).
+ */
+export async function fetchQuoteTrackingByNumber(
+  consigneeName: string,
+  quoteNumber: string,
+  options: LinbisFetchOptions & { maxPages?: number },
+): Promise<string | null> {
+  const { accessToken, refreshAccessToken, signal, maxPages = 40 } = options;
+  const name = consigneeName.trim();
+  const target = normalizeQuoteNumber(quoteNumber);
+  if (!name || !target) return null;
+
+  let page = 1;
+  const pageSize = 50;
+
+  while (page <= maxPages) {
+    if (signal?.aborted) return null;
+
+    const params = new URLSearchParams({
+      ConsigneeName: name,
+      Page: page.toString(),
+      ItemsPerPage: pageSize.toString(),
+      SortBy: "newest",
+    });
+    const response = await linbisFetch(
+      `https://api.linbis.com/Quotes?${params}`,
+      { method: "GET", headers: LINBIS_JSON_HEADERS, signal },
+      accessToken,
+      refreshAccessToken,
+    );
+
+    if (!response.ok) {
+      if (page === 1) return null;
+      break;
+    }
+
+    const data = await response.json();
+    const items: unknown[] = Array.isArray(data)
+      ? data
+      : data &&
+          typeof data === "object" &&
+          Array.isArray((data as { items?: unknown[] }).items)
+        ? (data as { items: unknown[] }).items
+        : [];
+
+    if (!items.length) break;
+
+    for (const item of items) {
+      if (!item || typeof item !== "object") continue;
+      const record = item as {
+        number?: unknown;
+        customFieldValues?: unknown;
+      };
+      const number = normalizeQuoteNumber(
+        typeof record.number === "string" ? record.number : null,
+      );
+      if (number !== target) continue;
+      return extractTrackingNumberFromQuoteFields(record.customFieldValues);
+    }
+
+    if (items.length < pageSize) break;
+    page++;
+  }
+
+  return null;
+}
+
 function normalizeLookupKey(value?: string | null): string {
   return (value ?? "").trim().toUpperCase();
 }
