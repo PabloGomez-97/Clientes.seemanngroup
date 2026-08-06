@@ -3,7 +3,10 @@ import { useOutletContext } from "react-router-dom";
 import { useAuth } from "@/auth/AuthContext";
 import LoadingTips from "@/components/cliente/embarques/LoadingTips";
 import { useTranslation } from "react-i18next";
-import { MUNDOGAMING_DUMMY_INVOICES } from "@/mocks/mundogaming";
+import {
+  getDemoInvoices,
+  isDemoAccount,
+} from "@/mocks/demoAccounts";
 import {
   AreaChart,
   Area,
@@ -372,9 +375,10 @@ function ReporteriaFinanciera() {
   useEffect(() => {
     if (!accessToken || !activeUsername) return;
 
-    if (activeUsername === "MundoGaming") {
-      setInvoices(MUNDOGAMING_DUMMY_INVOICES as Invoice[]);
-      setDisplayedInvoices(MUNDOGAMING_DUMMY_INVOICES as Invoice[]);
+    const demoInvoices = getDemoInvoices(activeUsername);
+    if (demoInvoices) {
+      setInvoices(demoInvoices as Invoice[]);
+      setDisplayedInvoices(demoInvoices as Invoice[]);
       setHasMoreInvoices(false);
       setLoading(false);
       return;
@@ -474,7 +478,7 @@ function ReporteriaFinanciera() {
   );
 
   useEffect(() => {
-    if (!accessToken || !activeUsername || activeUsername === "MundoGaming") {
+    if (!accessToken || !activeUsername || isDemoAccount(activeUsername)) {
       return;
     }
 
@@ -854,9 +858,10 @@ function ReporteriaFinanciera() {
   const refreshInvoices = () => {
     if (!activeUsername) return;
 
-    if (activeUsername === "MundoGaming") {
-      setInvoices(MUNDOGAMING_DUMMY_INVOICES as Invoice[]);
-      setDisplayedInvoices(MUNDOGAMING_DUMMY_INVOICES as Invoice[]);
+    const demoInvoices = getDemoInvoices(activeUsername);
+    if (demoInvoices) {
+      setInvoices(demoInvoices as Invoice[]);
+      setDisplayedInvoices(demoInvoices as Invoice[]);
       setHasMoreInvoices(false);
       setLoading(false);
       return;
@@ -1784,7 +1789,7 @@ function ReporteriaFinanciera() {
                   </div>
                 </div>
 
-                {activeUsername && activeUsername !== "MundoGaming" ? (
+                {activeUsername && !isDemoAccount(activeUsername) ? (
                   <PendingQuotesPanel
                     consigneeName={activeUsername}
                     period={periodFilter}
@@ -2432,7 +2437,7 @@ function ReporteriaFinanciera() {
                                               ),
                                             content:
                                               activeUsername &&
-                                              activeUsername !== "MundoGaming" ? (
+                                              !isDemoAccount(activeUsername) ? (
                                                 <InvoiceComplementPanel
                                                   invoiceKey={String(invoiceKey)}
                                                   invoice={invoice}

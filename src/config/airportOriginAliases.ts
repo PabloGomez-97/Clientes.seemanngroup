@@ -30,6 +30,7 @@ export const AIRPORT_ORIGIN_KEY_ALIASES: Readonly<Record<string, string>> = {
 
   // Brasil — São Paulo (GRU en Guarulhos)
   "sao paulo": "guarulhos",
+  campinas: "viracopos",
 
   // Brasil — Belo Horizonte (CNF)
   "belo horizonte": "belo_horizonte",

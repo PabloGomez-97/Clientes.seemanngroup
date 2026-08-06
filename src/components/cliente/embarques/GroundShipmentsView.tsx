@@ -13,7 +13,7 @@ import { useClientOverride } from "@/contexts/ClientOverrideContext";
 import PageBannerHeader from "@/components/shared/layout/PageBannerHeader";
 import { type GroundShipment } from "./Handlers/HandlerGroundShipments";
 import type { OutletContext } from "./Handlers/HandlerOceanShipments";
-import { MUNDOGAMING_DUMMY_GROUND_SHIPMENTS } from "@/mocks/mundogaming";
+import { getDemoGroundShipments } from "@/mocks/demoAccounts";
 import { DocumentosSectionGround } from "@/components/cliente/documentos/DocumentosSectionGround";
 import "./GroundShipmentsView.css";
 import { linbisFetch } from "@/services/linbisFetch";
@@ -698,25 +698,19 @@ function GroundShipmentsView({
   useEffect(() => {
     if (!accessToken || !filterConsignee) return;
 
-    // ── Cuenta dummy MundoGaming ──
-    if (filterConsignee === "MundoGaming") {
-      const dummySorted = [...MUNDOGAMING_DUMMY_GROUND_SHIPMENTS].sort(
-        (a, b) => {
-          const da = a.departure ? new Date(a.departure) : new Date(0);
-          const db = b.departure ? new Date(b.departure) : new Date(0);
-          return db.getTime() - da.getTime();
-        },
-      );
+    // ── Cuentas demo ──
+    const demoGround = getDemoGroundShipments(filterConsignee);
+    if (demoGround) {
+      const dummySorted = [...demoGround].sort((a, b) => {
+        const da = a.departure ? new Date(a.departure) : new Date(0);
+        const db = b.departure ? new Date(b.departure) : new Date(0);
+        return db.getTime() - da.getTime();
+      });
       setGroundShipments(dummySorted);
       setDisplayedShipments(dummySorted);
       setShowingAll(false);
       setTablePage(1);
       setLoading(false);
-      console.log(
-        "MundoGaming: cargando datos dummy ground (",
-        dummySorted.length,
-        "envíos)",
-      );
       return;
     }
 
@@ -932,19 +926,17 @@ function GroundShipmentsView({
   };
 
   const refreshShipments = () => {
-    if (filterConsignee === "MundoGaming") {
-      const dummySorted = [...MUNDOGAMING_DUMMY_GROUND_SHIPMENTS].sort(
-        (a, b) => {
-          const da = a.departure ? new Date(a.departure) : new Date(0);
-          const db = b.departure ? new Date(b.departure) : new Date(0);
-          return db.getTime() - da.getTime();
-        },
-      );
+    const demoGround = getDemoGroundShipments(filterConsignee);
+    if (demoGround) {
+      const dummySorted = [...demoGround].sort((a, b) => {
+        const da = a.departure ? new Date(a.departure) : new Date(0);
+        const db = b.departure ? new Date(b.departure) : new Date(0);
+        return db.getTime() - da.getTime();
+      });
       setGroundShipments(dummySorted);
       setDisplayedShipments(dummySorted);
       setShowingAll(false);
       setTablePage(1);
-      console.log("MundoGaming: datos dummy ground recargados");
       return;
     }
 

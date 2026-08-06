@@ -21,6 +21,7 @@ import OceanShipmentRoute from "./OceanShipmentRoute";
 import TrackingEmailSuggestions from "@/components/shared/tracking/TrackingEmailSuggestions";
 import ShipmentMetaStrip from "./ShipmentMetaStrip";
 import { getOceanDisplayTitle } from "@/services/shipsgoTrackingLogic";
+import { getDemoOceanTrackingDetail } from "@/mocks/demoAccounts";
 
 const API_BASE_URL =
   import.meta.env.MODE === "development"
@@ -59,6 +60,11 @@ function OceanShipmentDetail({
     async function fetchDetail() {
       setDetailLoading(true);
       try {
+        const demo = getDemoOceanTrackingDetail(shipment.reference, shipment.id);
+        if (demo) {
+          if (!cancelled) setDetail(demo);
+          return;
+        }
         const res = await fetch(
           `${API_BASE_URL}/api/shipsgo/ocean/shipments/${shipment.id}`,
         );
@@ -76,7 +82,7 @@ function OceanShipmentDetail({
     return () => {
       cancelled = true;
     };
-  }, [shipment.id]);
+  }, [shipment.id, shipment.reference]);
 
   const s = detail || shipment;
   const display = getOceanDisplayTitle(s);

@@ -29,6 +29,10 @@ import {
   fetchOceanShipments,
 } from "../services/shipsgoApi";
 import { useAuth } from "../auth/AuthContext";
+import {
+  getDemoAirTrackings,
+  getDemoOceanTrackings,
+} from "../../src/mocks/demoAccounts";
 
 export function useShipsgoTracking() {
   const { token, activeUsername } = useAuth();
@@ -98,6 +102,11 @@ export function useShipsgoTracking() {
     setAirLoading(true);
     setAirError(null);
     try {
+      const demo = getDemoAirTrackings(activeUsername);
+      if (demo) {
+        setAllAirShipments(demo);
+        return;
+      }
       const shipments = await fetchAirShipments();
       setAllAirShipments(shipments);
     } catch (error) {
@@ -107,12 +116,17 @@ export function useShipsgoTracking() {
     } finally {
       setAirLoading(false);
     }
-  }, []);
+  }, [activeUsername]);
 
   const fetchOcean = useCallback(async () => {
     setOceanLoading(true);
     setOceanError(null);
     try {
+      const demo = getDemoOceanTrackings(activeUsername);
+      if (demo) {
+        setAllOceanShipments(demo);
+        return;
+      }
       const shipments = await fetchOceanShipments();
       setAllOceanShipments(shipments);
     } catch (error) {
@@ -124,7 +138,7 @@ export function useShipsgoTracking() {
     } finally {
       setOceanLoading(false);
     }
-  }, []);
+  }, [activeUsername]);
 
   const refreshAll = useCallback(async () => {
     await Promise.all([fetchAir(), fetchOcean()]);

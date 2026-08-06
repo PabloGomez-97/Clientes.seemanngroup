@@ -20,6 +20,10 @@ import {
   mergeTrackingEmails,
   saveTrackingEmailPreference,
 } from "../../src/services/trackingEmailPreferences";
+import {
+  getDemoAirTrackingDetail,
+  getDemoOceanTrackingDetail,
+} from "../../src/mocks/demoAccounts";
 
 export {
   addUniqueEmail,
@@ -71,6 +75,8 @@ export async function fetchOceanShipments(): Promise<OceanShipment[]> {
 export async function fetchAirShipmentDetail(
   shipmentId: number,
 ): Promise<AirShipmentDetail | null> {
+  const demo = getDemoAirTrackingDetail(null, shipmentId);
+  if (demo) return demo;
   const { ok, data } = await apiFetch<{ shipment?: AirShipmentDetail }>(
     `/api/shipsgo/shipments/${shipmentId}`,
   );
@@ -81,6 +87,8 @@ export async function fetchAirShipmentDetail(
 export async function fetchOceanShipmentDetail(
   shipmentId: number,
 ): Promise<OceanShipmentDetail | null> {
+  const demo = getDemoOceanTrackingDetail(null, shipmentId);
+  if (demo) return demo;
   const { ok, data } = await apiFetch<{ shipment?: OceanShipmentDetail }>(
     `/api/shipsgo/ocean/shipments/${shipmentId}`,
   );

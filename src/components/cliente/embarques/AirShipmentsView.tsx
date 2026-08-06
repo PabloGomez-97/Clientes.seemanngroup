@@ -26,7 +26,10 @@ import {
   type OutletContext,
   type AirShipment,
 } from "@/components/cliente/embarques/Handlers/HandlerAirShipments";
-import { MUNDOGAMING_DUMMY_SHIPMENTS } from "@/mocks/mundogaming";
+import {
+  getDemoAirShipments,
+  getDemoAirTrackings,
+} from "@/mocks/demoAccounts";
 import { linbisFetch } from "@/services/linbisFetch";
 import {
   buildLinbisListParams,
@@ -1677,6 +1680,48 @@ function AirShipmentsView({
   // Fetch tracked air shipments from ShipsGo
   useEffect(() => {
     if (!activeUsername) return;
+
+    const applyTracked = (
+      shipments: Array<{
+        reference?: string | null;
+        awb_number?: string;
+        route?: {
+          destination?: {
+            date_of_rcf?: string;
+            date_of_rcf_initial?: string;
+          };
+        } | null;
+      }>,
+    ) => {
+      const awbs = new Set<string>();
+      const etaByAwb: Record<string, ShipsgoEtaEntry> = {};
+      for (const s of shipments) {
+        if (s.reference === activeUsername && s.awb_number) {
+          const key = s.awb_number.replace(/[\s-]/g, "");
+          awbs.add(key);
+          const current = s.route?.destination?.date_of_rcf;
+          const initial = s.route?.destination?.date_of_rcf_initial;
+          if (current) {
+            etaByAwb[key] = {
+              current,
+              initial:
+                typeof initial === "string" && initial !== current
+                  ? initial
+                  : undefined,
+            };
+          }
+        }
+      }
+      setTrackedAwbs(awbs);
+      setShipsgoArrivalByAwb(etaByAwb);
+    };
+
+    const demoTrackings = getDemoAirTrackings(activeUsername);
+    if (demoTrackings) {
+      applyTracked(demoTrackings);
+      return;
+    }
+
     const API =
       import.meta.env.MODE === "development"
         ? "http://localhost:4000"
@@ -1686,27 +1731,7 @@ function AirShipmentsView({
         const res = await fetch(`${API}/api/shipsgo/shipments`);
         if (!res.ok) return;
         const data = await res.json();
-        const awbs = new Set<string>();
-        const etaByAwb: Record<string, ShipsgoEtaEntry> = {};
-        for (const s of data.shipments ?? []) {
-          if (s.reference === activeUsername && s.awb_number) {
-            const key = s.awb_number.replace(/[\s-]/g, "");
-            awbs.add(key);
-            const current = s.route?.destination?.date_of_rcf;
-            const initial = s.route?.destination?.date_of_rcf_initial;
-            if (current) {
-              etaByAwb[key] = {
-                current,
-                initial:
-                  typeof initial === "string" && initial !== current
-                    ? initial
-                    : undefined,
-              };
-            }
-          }
-        }
-        setTrackedAwbs(awbs);
-        setShipsgoArrivalByAwb(etaByAwb);
+        applyTracked(data.shipments ?? []);
       } catch {
         /* ignore */
       }
@@ -1717,9 +1742,10 @@ function AirShipmentsView({
   useEffect(() => {
     if (!accessToken || !activeUsername) return;
 
-    // ── Cuenta dummy MundoGaming: carga datos hardcodeados ──
-    if (activeUsername === "MundoGaming") {
-      const dummySorted = [...MUNDOGAMING_DUMMY_SHIPMENTS].sort((a, b) => {
+    // ── Cuentas demo: carga datos hardcodeados ──
+    const demoAir = getDemoAirShipments(activeUsername);
+    if (demoAir) {
+      const dummySorted = [...demoAir].sort((a, b) => {
         const da = a.departure?.date ? new Date(a.departure.date) : new Date(0);
         const db = b.departure?.date ? new Date(b.departure.date) : new Date(0);
         return db.getTime() - da.getTime();
@@ -1727,11 +1753,6 @@ function AirShipmentsView({
       setShipments(dummySorted);
       setDisplayedShipments(dummySorted);
       setLoading(false);
-      console.log(
-        "MundoGaming: cargando datos dummy (",
-        dummySorted.length,
-        "envíos)",
-      );
       return;
     }
 
@@ -1877,9 +1898,10 @@ function AirShipmentsView({
   const refreshShipments = () => {
     if (!activeUsername) return;
 
-    // ── Cuenta dummy MundoGaming: reload datos hardcodeados ──
-    if (activeUsername === "MundoGaming") {
-      const dummySorted = [...MUNDOGAMING_DUMMY_SHIPMENTS].sort((a, b) => {
+    // ── Cuentas demo: reload datos hardcodeados ──
+    const demoAir = getDemoAirShipments(activeUsername);
+    if (demoAir) {
+      const dummySorted = [...demoAir].sort((a, b) => {
         const da = a.departure?.date ? new Date(a.departure.date) : new Date(0);
         const db = b.departure?.date ? new Date(b.departure.date) : new Date(0);
         return db.getTime() - da.getTime();
@@ -1887,7 +1909,6 @@ function AirShipmentsView({
       setShipments(dummySorted);
       setDisplayedShipments(dummySorted);
       setShowingAll(false);
-      console.log("MundoGaming: datos dummy recargados");
       return;
     }
 

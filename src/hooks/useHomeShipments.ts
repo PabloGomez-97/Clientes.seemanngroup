@@ -1,4 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
+import {
+  getDemoAirTrackings,
+  getDemoOceanTrackings,
+} from "@/mocks/demoAccounts";
 
 const HM_API_BASE =
   import.meta.env.MODE === "development"
@@ -30,10 +34,59 @@ export interface HmOceanItem {
 
 export type HmShipmentItem = HmAirItem | HmOceanItem;
 
+function mapDemoHomeShipments(username: string): {
+  air: HmAirItem[];
+  ocean: HmOceanItem[];
+} | null {
+  const airDemo = getDemoAirTrackings(username);
+  const oceanDemo = getDemoOceanTrackings(username);
+  if (!airDemo && !oceanDemo) return null;
+
+  const air: HmAirItem[] = (airDemo ?? [])
+    .filter(
+      (s) =>
+        s.status === "BOOKED" ||
+        s.status === "EN_ROUTE" ||
+        s.status === "LANDED" ||
+        s.status === "DELIVERED",
+    )
+    .map((s) => ({
+      kind: "air" as const,
+      id: s.id,
+      awb: s.awb_number || "—",
+      origin: s.route?.origin?.location?.iata || "—",
+      destination: s.route?.destination?.location?.iata || "—",
+      status: s.status as HmAirStatus,
+      delivered: s.status === "LANDED" || s.status === "DELIVERED",
+    }));
+
+  const ocean: HmOceanItem[] = (oceanDemo ?? [])
+    .filter(
+      (s) =>
+        s.status === "SAILING" ||
+        s.status === "ARRIVED" ||
+        s.status === "DISCHARGED",
+    )
+    .map((s) => ({
+      kind: "ocean" as const,
+      id: s.id,
+      container: s.container_number || s.booking_number || `#${s.id}`,
+      origin: s.route?.port_of_loading?.location?.code || "—",
+      destination: s.route?.port_of_discharge?.location?.code || "—",
+      status: s.status as HmOceanStatus,
+      delivered: s.status === "ARRIVED" || s.status === "DISCHARGED",
+    }));
+
+  return { air, ocean };
+}
+
 async function fetchShipments(username: string): Promise<{
   air: HmAirItem[];
   ocean: HmOceanItem[];
 }> {
+  const demo = mapDemoHomeShipments(username);
+  if (demo) return demo;
+
   let freshAir: HmAirItem[] = [];
   let freshOcean: HmOceanItem[] = [];
 

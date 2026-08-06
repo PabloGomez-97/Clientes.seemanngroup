@@ -15,7 +15,10 @@ import { useReporteriaClientesContext } from "@/contexts/ReporteriaClientesConte
 import { useAuditLog } from "@/hooks/useAuditLog";
 import { useTrackingEmailPreferences } from "@/hooks/useTrackingEmailPreferences";
 import { type OutletContext } from "@/components/cliente/embarques/Handlers/HandlerOceanShipments";
-import { MUNDOGAMING_DUMMY_OCEAN_SHIPMENTS } from "@/mocks/mundogaming";
+import {
+  getDemoOceanShipments,
+  getDemoOceanTrackings,
+} from "@/mocks/demoAccounts";
 import { QuoteOperationalDocumentsSection } from "@/components/cliente/documentos/QuoteOperationalDocumentsSection";
 import TrackingEmailSuggestions from "@/components/shared/tracking/TrackingEmailSuggestions";
 import TrackingTagSuggestions from "@/components/shared/tracking/TrackingTagSuggestions";
@@ -1565,11 +1568,12 @@ function OceanShipmentsView({
   useEffect(() => {
     if (!accessToken || !activeUsername) return;
 
-    // MundoGaming dummy account
-    if (activeUsername === "MundoGaming") {
+    // Cuentas demo: datos hardcodeados
+    const demoOcean = getDemoOceanShipments(activeUsername);
+    if (demoOcean) {
       const mapped: OceanShippingOrder[] =
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        MUNDOGAMING_DUMMY_OCEAN_SHIPMENTS.map((s: any) => ({
+        demoOcean.map((s: any) => ({
           id: s.id || 0,
           number: s.number || "",
           waybillNumber: s.waybillNumber || null,
@@ -1597,11 +1601,6 @@ function OceanShipmentsView({
       setOceanShipments(dummySorted);
       setDisplayedOceanShipments(dummySorted);
       setLoading(false);
-      console.log(
-        "MundoGaming: cargando datos dummy ocean (",
-        dummySorted.length,
-        "envíos)",
-      );
       return;
     }
 
@@ -1729,40 +1728,63 @@ function OceanShipmentsView({
   // Fetch tracked ocean shipments from ShipsGo
   useEffect(() => {
     if (!activeUsername) return;
+
+    const applyTracked = (
+      shipments: Array<{
+        reference?: string | null;
+        container_number?: string | null;
+        booking_number?: string | null;
+        route?: {
+          port_of_discharge?: {
+            date_of_discharge?: string;
+            date_of_discharge_initial?: string;
+          };
+        } | null;
+      }>,
+    ) => {
+      const nums = new Set<string>();
+      const etaByNumber: Record<string, ShipsgoEtaEntry> = {};
+      for (const s of shipments) {
+        if (s.reference !== activeUsername) continue;
+        const current = s.route?.port_of_discharge?.date_of_discharge;
+        const initial = s.route?.port_of_discharge?.date_of_discharge_initial;
+        const storeEta = (key: string) => {
+          if (!current) return;
+          etaByNumber[key] = {
+            current,
+            initial:
+              typeof initial === "string" && initial !== current
+                ? initial
+                : undefined,
+          };
+        };
+        if (s.container_number) {
+          const key = s.container_number.toUpperCase();
+          nums.add(key);
+          storeEta(key);
+        }
+        if (s.booking_number) {
+          const key = s.booking_number.toUpperCase();
+          nums.add(key);
+          storeEta(key);
+        }
+      }
+      setTrackedOceanNumbers(nums);
+      setShipsgoArrivalByNumber(etaByNumber);
+    };
+
+    const demoTrackings = getDemoOceanTrackings(activeUsername);
+    if (demoTrackings) {
+      applyTracked(demoTrackings);
+      return;
+    }
+
     (async () => {
       try {
         const res = await fetch(`${API_BASE_URL}/api/shipsgo/ocean/shipments`);
         if (!res.ok) return;
         const data = await res.json();
-        const nums = new Set<string>();
-        const etaByNumber: Record<string, ShipsgoEtaEntry> = {};
-        for (const s of data.shipments ?? []) {
-          if (s.reference !== activeUsername) continue;
-          const current = s.route?.port_of_discharge?.date_of_discharge;
-          const initial = s.route?.port_of_discharge?.date_of_discharge_initial;
-          const storeEta = (key: string) => {
-            if (!current) return;
-            etaByNumber[key] = {
-              current,
-              initial:
-                typeof initial === "string" && initial !== current
-                  ? initial
-                  : undefined,
-            };
-          };
-          if (s.container_number) {
-            const key = s.container_number.toUpperCase();
-            nums.add(key);
-            storeEta(key);
-          }
-          if (s.booking_number) {
-            const key = s.booking_number.toUpperCase();
-            nums.add(key);
-            storeEta(key);
-          }
-        }
-        setTrackedOceanNumbers(nums);
-        setShipsgoArrivalByNumber(etaByNumber);
+        applyTracked(data.shipments ?? []);
       } catch {
         /* ignore */
       }
@@ -2172,11 +2194,12 @@ function OceanShipmentsView({
   const refreshShipments = () => {
     if (!activeUsername) return;
 
-    // MundoGaming dummy
-    if (activeUsername === "MundoGaming") {
+    // Cuentas demo: reload
+    const demoOcean = getDemoOceanShipments(activeUsername);
+    if (demoOcean) {
       const mapped: OceanShippingOrder[] =
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        MUNDOGAMING_DUMMY_OCEAN_SHIPMENTS.map((s: any) => ({
+        demoOcean.map((s: any) => ({
           id: s.id || 0,
           number: s.number || "",
           waybillNumber: s.waybillNumber || null,
@@ -2201,7 +2224,6 @@ function OceanShipmentsView({
       setOceanShipments(dummySorted);
       setDisplayedOceanShipments(dummySorted);
       setShowingAll(false);
-      console.log("MundoGaming: datos dummy ocean recargados");
       return;
     }
 

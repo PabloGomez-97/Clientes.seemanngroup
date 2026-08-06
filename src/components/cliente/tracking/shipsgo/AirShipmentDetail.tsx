@@ -19,6 +19,7 @@ import AirShipmentRoute from "./AirShipmentRoute";
 import TrackingEmailSuggestions from "@/components/shared/tracking/TrackingEmailSuggestions";
 import ShipmentMetaStrip from "./ShipmentMetaStrip";
 import { getAirDisplayTitle } from "@/services/shipsgoTrackingLogic";
+import { getDemoAirTrackingDetail } from "@/mocks/demoAccounts";
 
 const API_BASE_URL =
   import.meta.env.MODE === "development"
@@ -57,6 +58,11 @@ function AirShipmentDetails({
     async function fetchDetail() {
       setDetailLoading(true);
       try {
+        const demo = getDemoAirTrackingDetail(shipment.reference, shipment.id);
+        if (demo) {
+          if (!cancelled) setDetail(demo);
+          return;
+        }
         const res = await fetch(
           `${API_BASE_URL}/api/shipsgo/shipments/${shipment.id}`,
         );
@@ -74,7 +80,7 @@ function AirShipmentDetails({
     return () => {
       cancelled = true;
     };
-  }, [shipment.id]);
+  }, [shipment.id, shipment.reference]);
 
   // Use detail data if available, otherwise fallback to basic shipment
   const s = detail || shipment;

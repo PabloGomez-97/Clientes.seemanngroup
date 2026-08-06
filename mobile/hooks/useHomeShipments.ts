@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { MOBILE_API_BASE } from "../../src/auth/authApi";
 import { useRequestGate } from "./useRequestGate";
+import {
+  getDemoAirTrackings,
+  getDemoOceanTrackings,
+} from "../../src/mocks/demoAccounts";
 
 export interface HmAirItem {
   kind: "air";
@@ -26,6 +30,43 @@ async function fetchShipments(username: string): Promise<{
   air: HmAirItem[];
   ocean: HmOceanItem[];
 }> {
+  const demoAir = getDemoAirTrackings(username);
+  const demoOcean = getDemoOceanTrackings(username);
+  if (demoAir || demoOcean) {
+    return {
+      air: (demoAir ?? [])
+        .filter(
+          (s) =>
+            s.status === "EN_ROUTE" ||
+            s.status === "LANDED" ||
+            s.status === "DELIVERED",
+        )
+        .map((s) => ({
+          kind: "air" as const,
+          id: s.id,
+          awb: s.awb_number || "—",
+          origin: s.route?.origin?.location?.iata || "—",
+          destination: s.route?.destination?.location?.iata || "—",
+          delivered: s.status === "LANDED" || s.status === "DELIVERED",
+        })),
+      ocean: (demoOcean ?? [])
+        .filter(
+          (s) =>
+            s.status === "SAILING" ||
+            s.status === "ARRIVED" ||
+            s.status === "DISCHARGED",
+        )
+        .map((s) => ({
+          kind: "ocean" as const,
+          id: s.id,
+          container: s.container_number || s.booking_number || `#${s.id}`,
+          origin: s.route?.port_of_loading?.location?.code || "—",
+          destination: s.route?.port_of_discharge?.location?.code || "—",
+          delivered: s.status === "ARRIVED" || s.status === "DISCHARGED",
+        })),
+    };
+  }
+
   let freshAir: HmAirItem[] = [];
   let freshOcean: HmOceanItem[] = [];
 

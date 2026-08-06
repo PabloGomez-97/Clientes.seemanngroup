@@ -9,6 +9,10 @@ import {
   type InvoiceRow,
   type OperationalDashboard,
 } from "../services/reporteriaApi";
+import {
+  getDemoInvoices,
+  getDemoOperationalShipments,
+} from "../../src/mocks/demoAccounts";
 
 export function useReporteriaFinanciera() {
   const { activeUsername } = useAuth();
@@ -31,6 +35,13 @@ export function useReporteriaFinanciera() {
       else setLoading(true);
       setError(null);
       try {
+        const demo = getDemoInvoices(activeUsername);
+        if (demo) {
+          setItems(demo as InvoiceRow[]);
+          setHasMore(false);
+          setPage(1);
+          return;
+        }
         const result = await fetchClientInvoices(activeUsername, nextPage, {
           accessToken,
           refreshAccessToken,
@@ -147,6 +158,14 @@ export function useReporteriaOperacional() {
     setLoading(true);
     setError(null);
     try {
+      const demoOps = getDemoOperationalShipments(activeUsername);
+      if (demoOps) {
+        if (controller.signal.aborted) return;
+        setSampleSize(demoOps.length);
+        setDashboard(computeOperationalDashboard(demoOps));
+        return;
+      }
+
       const shipments = await fetchAllClientShipments(activeUsername, {
         accessToken,
         refreshAccessToken,

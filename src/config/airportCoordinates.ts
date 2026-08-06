@@ -58,6 +58,20 @@ export const airportCoordinates: Record<string, AirportCoords> = {
     iata: "BCN",
     countryCode: "ES"
   },
+  hangzhou: {
+    lat: 30.2355,
+    lng: 120.4361,
+    name: "Hangzhou Xiaoshan International Airport",
+    iata: "HGH",
+    countryCode: "CN",
+  },
+  shenzhen: {
+    lat: 22.6392,
+    lng: 113.8255,
+    name: "Shenzhen Bao'an International Airport",
+    iata: "SZX",
+    countryCode: "CN",
+  },
   london: {
     lat: 51.4694,
     lng: -0.4535,

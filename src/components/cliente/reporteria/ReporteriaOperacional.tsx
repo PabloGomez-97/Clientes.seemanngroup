@@ -18,6 +18,7 @@ import {
   matchesConsigneeName,
   normalizeShipmentKey,
 } from "@/utils/linbisClientFilter";
+import { getDemoOperationalShipments } from "@/mocks/demoAccounts";
 
 /* ============================================================
    TYPES
@@ -435,6 +436,13 @@ function ShipmentsView() {
       clearLegacyCache(activeUsername);
 
       try {
+        const demoOps = getDemoOperationalShipments(activeUsername);
+        if (demoOps) {
+          setShipments(demoOps as Shipment[]);
+          setLoading(false);
+          return;
+        }
+
         if (!opts?.force) {
           const ck = cacheKey(activeUsername);
           const cached = localStorage.getItem(ck);

@@ -29,6 +29,10 @@ import {
   matchesOceanOpenTrackingTarget,
 } from "@/services/shipsgoTrackingNavigation";
 import { clearRouterLocationState } from "@/lib/notification-navigation";
+import {
+  getDemoAirTrackings,
+  getDemoOceanTrackings,
+} from "@/mocks/demoAccounts";
 
 type TabType = "air" | "ocean";
 
@@ -260,6 +264,17 @@ function ShipsGoTracking({
     setAirLoading(true);
     setAirError(null);
     try {
+      const demo = getDemoAirTrackings(effectiveUsername);
+      if (demo) {
+        setAllAirShipments(
+          [...demo].sort(
+            (a, b) =>
+              new Date(b.created_at).getTime() -
+              new Date(a.created_at).getTime(),
+          ),
+        );
+        return;
+      }
       const res = await fetch(`${API_BASE_URL}/api/shipsgo/shipments`);
       if (!res.ok) throw new Error("Error al obtener envíos aéreos");
       const data: AirResponse = await res.json();
@@ -274,12 +289,23 @@ function ShipsGoTracking({
     } finally {
       setAirLoading(false);
     }
-  }, []);
+  }, [effectiveUsername]);
 
   const fetchOcean = useCallback(async () => {
     setOceanLoading(true);
     setOceanError(null);
     try {
+      const demo = getDemoOceanTrackings(effectiveUsername);
+      if (demo) {
+        setAllOceanShipments(
+          [...demo].sort(
+            (a, b) =>
+              new Date(b.created_at).getTime() -
+              new Date(a.created_at).getTime(),
+          ),
+        );
+        return;
+      }
       const res = await fetch(`${API_BASE_URL}/api/shipsgo/ocean/shipments`);
       if (!res.ok) throw new Error("Error al obtener envíos marítimos");
       const data: OceanResponse = await res.json();
@@ -294,7 +320,7 @@ function ShipsGoTracking({
     } finally {
       setOceanLoading(false);
     }
-  }, []);
+  }, [effectiveUsername]);
 
   useEffect(() => {
     if (!effectiveUsername) {

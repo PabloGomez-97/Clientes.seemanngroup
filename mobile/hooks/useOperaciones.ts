@@ -9,7 +9,7 @@ import {
   type GroundOperacionesFilters,
   type OperacionesTab,
 } from "../../src/services/operacionesFiltersLogic";
-import { paginateList } from "../../src/services/operacionesPagination";
+import { OPERACIONES_PAGE_SIZE, paginateList } from "../../src/services/operacionesPagination";
 import {
   fetchQuoteProfitIndex,
   fetchQuoteTrackingIndex,
@@ -24,6 +24,13 @@ import {
   getOceanOperacionContainerNumber,
   resolveOceanOperacionTrackingNumber,
 } from "../../src/services/operacionesTrackingLink";
+import {
+  getDemoAirShipments,
+  getDemoAirTrackings,
+  getDemoGroundShipments,
+  getDemoOceanListItems,
+  getDemoOceanTrackings,
+} from "../../src/mocks/demoAccounts";
 import { useAuth } from "../auth/AuthContext";
 import { useLinbisToken } from "./useLinbisToken";
 import {
@@ -134,11 +141,13 @@ export function useOperaciones() {
   );
 
   const quoteOptionsForShipment = useCallback(
-    (shipment: { number?: string | null; id?: number | null }) => {
+    (shipment: { number?: string | null; id?: number | string | null }) => {
+      const shipmentId =
+        typeof shipment.id === "number" ? shipment.id : null;
       const quoteNumber = lookupQuoteFromProfitIndex(profitIndex, {
         hbli: shipment.number,
         sogNumber: shipment.number,
-        shipmentId: shipment.id ?? null,
+        shipmentId,
       });
       return {
         quoteNumber,
@@ -166,6 +175,25 @@ export function useOperaciones() {
 
     setTrackingLoading(true);
     try {
+      const demoAir = getDemoAirTrackings(activeUsername);
+      const demoOcean = getDemoOceanTrackings(activeUsername);
+      if (demoAir || demoOcean) {
+        setTrackingIndex({});
+        setQuoteTrackingIndex({});
+        setProfitIndex({
+          byHbli: {},
+          bySog: {},
+          byShipmentId: {},
+          byQuote: {},
+        });
+        setTrackedAwbs(buildTrackedAwbSet(demoAir ?? [], activeUsername));
+        setTrackedOceanKeys(
+          buildTrackedOceanKeySet(demoOcean ?? [], activeUsername),
+        );
+        trackingLoadedRef.current = true;
+        return;
+      }
+
       const [index, quoteIndex, profit, airTrackings, oceanTrackings] =
         await Promise.all([
           fetchOperacionesTrackingIndex(activeUsername, linbisOptions),
@@ -248,6 +276,19 @@ export function useOperaciones() {
       setAirError(null);
 
       try {
+        const demoAir = getDemoAirShipments(activeUsername);
+        if (demoAir) {
+          const start = (page - 1) * OPERACIONES_PAGE_SIZE;
+          const items = demoAir.slice(start, start + OPERACIONES_PAGE_SIZE);
+          airPageRef.current = page;
+          setAirPage(page);
+          setAirPageItems(items as AirShipment[]);
+          setAirHasMore(start + OPERACIONES_PAGE_SIZE < demoAir.length);
+          airLoadedRef.current = true;
+          setAirLoading(false);
+          return;
+        }
+
         const result = await fetchAirOperacionesPage(
           activeUsername,
           page,
@@ -352,6 +393,23 @@ export function useOperaciones() {
       setOceanError(null);
 
       try {
+        const demoOcean = getDemoOceanListItems(activeUsername);
+        if (demoOcean) {
+          const start = (page - 1) * OPERACIONES_PAGE_SIZE;
+          const items = demoOcean.slice(
+            start,
+            start + OPERACIONES_PAGE_SIZE,
+          ) as OceanListItem[];
+          oceanPageRef.current = page;
+          setOceanPage(page);
+          setOceanPageItems(items);
+          setOceanHasMore(start + OPERACIONES_PAGE_SIZE < demoOcean.length);
+          oceanLoadedRef.current = true;
+          setOceanLoaded(true);
+          setOceanLoading(false);
+          return;
+        }
+
         const result = await fetchOceanOperacionesPage(
           activeUsername,
           page,
@@ -404,6 +462,15 @@ export function useOperaciones() {
     setGroundError(null);
 
     try {
+      const demoGround = getDemoGroundShipments(activeUsername);
+      if (demoGround) {
+        setGroundCatalog(demoGround as GroundShipment[]);
+        setGroundPage(1);
+        groundLoadedRef.current = true;
+        setGroundLoaded(true);
+        return;
+      }
+
       const catalog = await fetchGroundOperacionesCatalog(
         activeUsername,
         linbisOptions,
