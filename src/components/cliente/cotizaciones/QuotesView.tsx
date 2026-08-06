@@ -1538,7 +1538,6 @@ function QuotesView({
 
       setHasMoreQuotes(quotesArray.length === ITEMS_PER_PAGE);
 
-      const cacheKey = `quotesCache_${activeUsername}`;
       if (append && page > 1) {
         const combined = [...quotes, ...sortedArr].sort((a, b) => {
           const nA = parseInt(String(a.number ?? "").replace(/\D/g, "") || "0", 10);
@@ -1547,22 +1546,10 @@ function QuotesView({
         });
         setQuotes(combined);
         setDisplayedQuotes(combined);
-        localStorage.setItem(cacheKey, JSON.stringify(combined));
-        localStorage.setItem(
-          `${cacheKey}_timestamp`,
-          new Date().getTime().toString(),
-        );
-        localStorage.setItem(`${cacheKey}_page`, page.toString());
       } else {
         setQuotes(sortedArr);
         setDisplayedQuotes(sortedArr);
         setShowingAll(false);
-        localStorage.setItem(cacheKey, JSON.stringify(sortedArr));
-        localStorage.setItem(
-          `${cacheKey}_timestamp`,
-          new Date().getTime().toString(),
-        );
-        localStorage.setItem(`${cacheKey}_page`, page.toString());
       }
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") return;
@@ -1577,32 +1564,14 @@ function QuotesView({
     }
   };
 
-  /* -- Initial load / cache --------------------------------- */
+  /* -- Initial load ----------------------------------------- */
   useEffect(() => {
     if (!accessToken || !activeUsername) return;
+    // One-time cleanup of legacy quotes list localStorage (no longer used).
     const cacheKey = `quotesCache_${activeUsername}`;
-    const cachedQuotes = localStorage.getItem(cacheKey);
-    const cacheTimestamp = localStorage.getItem(`${cacheKey}_timestamp`);
-    const cachedPage = localStorage.getItem(`${cacheKey}_page`);
-
-    if (cachedQuotes && cacheTimestamp) {
-      const oneHour = 60 * 60 * 1000;
-      const cacheAge = new Date().getTime() - parseInt(cacheTimestamp);
-      if (cacheAge < oneHour) {
-        const parsed = JSON.parse(cachedQuotes).map(normalizeQuote);
-        setQuotes(parsed);
-        setDisplayedQuotes(parsed);
-        if (cachedPage) setCurrentPage(parseInt(cachedPage));
-        const lastPageSize = parsed.length % ITEMS_PER_PAGE;
-        setHasMoreQuotes(lastPageSize === 0 && parsed.length >= ITEMS_PER_PAGE);
-        setLoading(false);
-        return;
-      } else {
-        localStorage.removeItem(cacheKey);
-        localStorage.removeItem(`${cacheKey}_timestamp`);
-        localStorage.removeItem(`${cacheKey}_page`);
-      }
-    }
+    localStorage.removeItem(cacheKey);
+    localStorage.removeItem(`${cacheKey}_timestamp`);
+    localStorage.removeItem(`${cacheKey}_page`);
     setCurrentPage(1);
     const controller = new AbortController();
     fetchQuotes(1, false, controller.signal);

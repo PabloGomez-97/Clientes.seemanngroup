@@ -19,10 +19,13 @@ import "./GroundShipmentsView.css";
 import { linbisFetch } from "@/services/linbisFetch";
 import { consigneeMatches } from "@/services/linbisListFetch";
 
-const GROUND_ALL_CACHE_KEY = "groundShipmentsAllCache_v1";
-const GROUND_ALL_CACHE_TS_KEY = "groundShipmentsAllCacheTimestamp_v1";
-
 const DEFAULT_ROWS_PER_PAGE = 10;
+
+/** One-time wipe of legacy ground list localStorage keys (no longer used). */
+function clearLegacyGroundCaches() {
+  localStorage.removeItem("groundShipmentsAllCache_v1");
+  localStorage.removeItem("groundShipmentsAllCacheTimestamp_v1");
+}
 
 function formatFieldValue(value: unknown): string {
   if (value === null || value === undefined || value === "") return "-";
@@ -606,32 +609,6 @@ function GroundShipmentsView({
       arr.filter((gs) => consigneeMatches(gs.consignee, filterConsignee)),
     );
 
-  const readGroundAllCache = (): GroundShipment[] | null => {
-    try {
-      const cached = localStorage.getItem(GROUND_ALL_CACHE_KEY);
-      const ts = localStorage.getItem(GROUND_ALL_CACHE_TS_KEY);
-      if (!cached || !ts) return null;
-      if (Date.now() - parseInt(ts, 10) > 3600000) {
-        localStorage.removeItem(GROUND_ALL_CACHE_KEY);
-        localStorage.removeItem(GROUND_ALL_CACHE_TS_KEY);
-        return null;
-      }
-      const parsed: GroundShipment[] = JSON.parse(cached);
-      return Array.isArray(parsed) ? parsed : null;
-    } catch {
-      return null;
-    }
-  };
-
-  const writeGroundAllCache = (arr: GroundShipment[]) => {
-    try {
-      localStorage.setItem(GROUND_ALL_CACHE_KEY, JSON.stringify(arr));
-      localStorage.setItem(GROUND_ALL_CACHE_TS_KEY, Date.now().toString());
-    } catch {
-      /* quota exceeded */
-    }
-  };
-
   /* -- API --------------------------------------------------- */
   const fetchGroundShipments = async () => {
     if (!accessToken) {
@@ -646,33 +623,25 @@ function GroundShipmentsView({
     setError(null);
 
     try {
-      const cachedAll = readGroundAllCache();
-      let arr: GroundShipment[];
-
-      if (cachedAll) {
-        arr = cachedAll;
-      } else {
-        const response = await linbisFetch(
-          "https://api.linbis.com/ground-shipments/all",
-          {
-            method: "GET",
-            headers: {
-              Accept: "application/json",
-              "Content-Type": "application/json",
-            },
+      const response = await linbisFetch(
+        "https://api.linbis.com/ground-shipments/all",
+        {
+          method: "GET",
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
           },
-          accessToken,
-          refreshAccessToken,
-        );
+        },
+        accessToken,
+        refreshAccessToken,
+      );
 
-        if (!response.ok) {
-          throw new Error(`Error ${response.status}: ${response.statusText}`);
-        }
-
-        const data = await response.json();
-        arr = Array.isArray(data) ? data : [];
-        writeGroundAllCache(arr);
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
       }
+
+      const data = await response.json();
+      const arr: GroundShipment[] = Array.isArray(data) ? data : [];
 
       const filtered = applyConsigneeFilter(arr);
       setGroundShipments(filtered);
@@ -714,20 +683,7 @@ function GroundShipmentsView({
       return;
     }
 
-    const cachedAll = readGroundAllCache();
-    if (cachedAll) {
-      const filtered = applyConsigneeFilter(cachedAll);
-      setGroundShipments(filtered);
-      setDisplayedShipments(filtered);
-      setShowingAll(false);
-      setTablePage(1);
-      setLoading(false);
-      console.log(
-        `Ground: ${filtered.length} envíos para ${filterConsignee} (caché global)`,
-      );
-      return;
-    }
-
+    clearLegacyGroundCaches();
     fetchGroundShipments();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accessToken, filterConsignee]);
@@ -940,8 +896,7 @@ function GroundShipmentsView({
       return;
     }
 
-    localStorage.removeItem(GROUND_ALL_CACHE_KEY);
-    localStorage.removeItem(GROUND_ALL_CACHE_TS_KEY);
+    clearLegacyGroundCaches();
     setGroundShipments([]);
     setDisplayedShipments([]);
     setTablePage(1);

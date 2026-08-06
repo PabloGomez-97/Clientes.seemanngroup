@@ -348,40 +348,6 @@ function linbisFetchBasic(url: string, accessToken: string): Promise<Response> {
   });
 }
 
-// ── Linbis localStorage cache (TTL: 4 horas) ─────────────────────────────
-const LINBIS_CACHE_TTL = 4 * 60 * 60 * 1000;
-
-interface LinbisCache {
-  air: LinbisAirShipment[];
-  ocean: LinbisOceanShipment[];
-  ground: LinbisGroundShipment[];
-  quotes: LinbisQuote[];
-  ts: number;
-}
-
-function readLinbisCache(username: string): LinbisCache | null {
-  try {
-    const raw = localStorage.getItem(`ej_linbis_v1_${username}`);
-    if (!raw) return null;
-    const data: LinbisCache = JSON.parse(raw);
-    if (Date.now() - data.ts > LINBIS_CACHE_TTL) return null;
-    return data;
-  } catch {
-    return null;
-  }
-}
-
-function writeLinbisCache(username: string, cache: Omit<LinbisCache, "ts">) {
-  try {
-    localStorage.setItem(
-      `ej_linbis_v1_${username}`,
-      JSON.stringify({ ...cache, ts: Date.now() }),
-    );
-  } catch {
-    /* quota exceeded */
-  }
-}
-
 /** Dispara `onTrigger` una vez cuando el nodo entra (casi) en viewport. */
 function useLazySectionTrigger(
   onTrigger: () => void,
@@ -410,14 +376,6 @@ function useLazySectionTrigger(
   }, [enabled, onTrigger]);
 
   return ref;
-}
-
-function clearLinbisCache(username: string) {
-  try {
-    localStorage.removeItem(`ej_linbis_v1_${username}`);
-  } catch {
-    /* */
-  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -838,20 +796,7 @@ export default function HomeEjecutivo() {
     void fetchTrackingData(clientes);
   }, [clientsLoading, clientes, fetchTrackingData]);
 
-  // Hidratar Linbis desde caché local al montar (sin red)
-  useEffect(() => {
-    const cacheKey = user?.username;
-    if (!cacheKey) return;
-    const cached = readLinbisCache(cacheKey);
-    if (!cached) return;
-    setLinbisAir(cached.air);
-    setLinbisOcean(cached.ocean);
-    setLinbisGround(cached.ground);
-    setLinbisQuotes(cached.quotes);
-    setLinbisLoading(false);
-  }, [user?.username]);
-
-  // ── fetchLinbisData: carga con cache localStorage (TTL 4 hrs) ─────────────
+  // ── fetchLinbisData: siempre fresco desde API (sin localStorage TTL) ─────
   const fetchLinbisData = useCallback(
     async (force = false, signal?: AbortSignal) => {
       if (!accessToken || !clientes.length) {
@@ -859,24 +804,18 @@ export default function HomeEjecutivo() {
         return;
       }
 
+      // One-time cleanup of legacy Linbis list cache key.
       const cacheKey = user?.username;
-
-      // Restaurar desde cache si no es forzado
-      if (!force && cacheKey) {
-        const cached = readLinbisCache(cacheKey);
-        if (cached) {
-          setLinbisAir(cached.air);
-          setLinbisOcean(cached.ocean);
-          setLinbisGround(cached.ground);
-          setLinbisQuotes(cached.quotes);
-          setLinbisLoading(false);
-          return;
+      if (cacheKey) {
+        try {
+          localStorage.removeItem(`ej_linbis_v1_${cacheKey}`);
+        } catch {
+          /* */
         }
       }
 
       if (force) {
         setLinbisRefreshing(true);
-        if (cacheKey) clearLinbisCache(cacheKey);
       } else {
         setLinbisLoading(true);
       }
@@ -952,15 +891,6 @@ export default function HomeEjecutivo() {
         setLinbisOcean(oceanAll);
         setLinbisGround(groundAll);
         setLinbisQuotes(allQuotes);
-
-        if (cacheKey) {
-          writeLinbisCache(cacheKey, {
-            air: allAirShipments,
-            ocean: oceanAll,
-            ground: groundAll,
-            quotes: allQuotes,
-          });
-        }
       } catch {
         /* silent */
       } finally {

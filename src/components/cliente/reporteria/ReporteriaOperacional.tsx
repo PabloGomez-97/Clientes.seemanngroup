@@ -88,10 +88,12 @@ interface ShippingOrdersPage {
    CONSTANTS
    ============================================================ */
 const SHIPPING_ORDERS_URL = "https://api.linbis.com/api/shipping-orders";
-/** v3: fuente = Shipping Orders (SOG) con ConsigneeName. */
-const CACHE_KEY_PREFIX = "shipmentsCache_v3_";
-const LEGACY_CACHE_PREFIXES = ["shipmentsCache_", "shipmentsCache_v2_"] as const;
-const CACHE_TTL_MS = 60 * 60 * 1000;
+/** Legacy localStorage prefixes for ops shipments list (no longer used). */
+const LEGACY_CACHE_PREFIXES = [
+  "shipmentsCache_",
+  "shipmentsCache_v2_",
+  "shipmentsCache_v3_",
+] as const;
 const PAGE_SIZE = 100;
 const MAX_PAGES = 50;
 const CHART_STROKE = "#374151";
@@ -196,26 +198,12 @@ function shortenLocation(loc: string): string {
   return s;
 }
 
-function cacheKey(username: string): string {
-  return `${CACHE_KEY_PREFIX}${username}`;
-}
-
 function clearLegacyCache(username: string) {
   for (const prefix of LEGACY_CACHE_PREFIXES) {
     const legacy = `${prefix}${username}`;
     localStorage.removeItem(legacy);
     localStorage.removeItem(`${legacy}_ts`);
     localStorage.removeItem(`${legacy}_page`);
-  }
-}
-
-function parseCachedShipments(raw: string): Shipment[] | null {
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return null;
-    return parsed as Shipment[];
-  } catch {
-    return null;
   }
 }
 
@@ -403,103 +391,50 @@ function ShipmentsView() {
 
   const abortRef = useRef<AbortController | null>(null);
 
-  const persistCache = useCallback(
-    (list: Shipment[], username: string) => {
-      const ck = cacheKey(username);
-      try {
-        localStorage.setItem(ck, JSON.stringify(list));
-        localStorage.setItem(`${ck}_ts`, Date.now().toString());
-      } catch {
-        // Quota / private mode: continue without cache.
+  const loadShipments = useCallback(async () => {
+    if (!accessToken || !activeUsername) return;
+
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    setLoading(true);
+    setError(null);
+    clearLegacyCache(activeUsername);
+
+    try {
+      const demoOps = getDemoOperationalShipments(activeUsername);
+      if (demoOps) {
+        setShipments(demoOps as Shipment[]);
+        setLoading(false);
+        return;
       }
-    },
-    [],
-  );
 
-  const clearCache = useCallback((username: string) => {
-    const ck = cacheKey(username);
-    localStorage.removeItem(ck);
-    localStorage.removeItem(`${ck}_ts`);
-    clearLegacyCache(username);
-  }, []);
-
-  const loadShipments = useCallback(
-    async (opts?: { force?: boolean }) => {
-      if (!accessToken || !activeUsername) return;
-
-      abortRef.current?.abort();
-      const controller = new AbortController();
-      abortRef.current = controller;
-
-      setLoading(true);
-      setError(null);
-      clearLegacyCache(activeUsername);
-
-      try {
-        const demoOps = getDemoOperationalShipments(activeUsername);
-        if (demoOps) {
-          setShipments(demoOps as Shipment[]);
-          setLoading(false);
-          return;
-        }
-
-        if (!opts?.force) {
-          const ck = cacheKey(activeUsername);
-          const cached = localStorage.getItem(ck);
-          const ts = localStorage.getItem(`${ck}_ts`);
-          if (cached && ts) {
-            const age = Date.now() - Number.parseInt(ts, 10);
-            if (!Number.isNaN(age) && age < CACHE_TTL_MS) {
-              const parsed = parseCachedShipments(cached);
-              if (parsed) {
-                const cleaned = normalizeShippingOrdersForConsignee(
-                  parsed,
-                  activeUsername,
-                );
-                setShipments(cleaned);
-                setLoading(false);
-                return;
-              }
-            }
-            clearCache(activeUsername);
-          }
-        }
-
-        const list = await fetchAllShipmentsByConsignee(
-          activeUsername,
-          accessToken,
-          refreshAccessToken,
-          controller.signal,
-        );
-        setShipments(list);
-        persistCache(list, activeUsername);
-      } catch (err) {
-        if (
-          (err instanceof DOMException && err.name === "AbortError") ||
-          (err instanceof Error && err.name === "AbortError")
-        ) {
-          return;
-        }
-        setError(
-          err instanceof Error
-            ? err.message
-            : t("reportOperational.unknownError"),
-        );
-      } finally {
-        if (abortRef.current === controller) {
-          setLoading(false);
-        }
+      const list = await fetchAllShipmentsByConsignee(
+        activeUsername,
+        accessToken,
+        refreshAccessToken,
+        controller.signal,
+      );
+      setShipments(list);
+    } catch (err) {
+      if (
+        (err instanceof DOMException && err.name === "AbortError") ||
+        (err instanceof Error && err.name === "AbortError")
+      ) {
+        return;
       }
-    },
-    [
-      accessToken,
-      activeUsername,
-      refreshAccessToken,
-      clearCache,
-      persistCache,
-      t,
-    ],
-  );
+      setError(
+        err instanceof Error
+          ? err.message
+          : t("reportOperational.unknownError"),
+      );
+    } finally {
+      if (abortRef.current === controller) {
+        setLoading(false);
+      }
+    }
+  }, [accessToken, activeUsername, refreshAccessToken, t]);
 
   useEffect(() => {
     void loadShipments();
@@ -510,8 +445,8 @@ function ShipmentsView() {
 
   const refresh = () => {
     if (!activeUsername) return;
-    clearCache(activeUsername);
-    void loadShipments({ force: true });
+    clearLegacyCache(activeUsername);
+    void loadShipments();
   };
 
   const onStartDateChange = (value: string) => {

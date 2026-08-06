@@ -70,12 +70,18 @@ const API_BASE_URL =
     ? "http://localhost:4000"
     : "https://portalclientes.seemanngroup.com";
 
-const OCEAN_ALL_CACHE_PREFIX = "oceanShipmentsAllCache_v2_";
-const OCEAN_ALL_CACHE_TS_SUFFIX = "_timestamp";
-/** Claves legacy globales (pre-filtro ConsigneeName); se limpian al recargar. */
-const OCEAN_ALL_CACHE_KEY_LEGACY = "oceanShipmentsAllCache_v1";
-const OCEAN_ALL_CACHE_TS_KEY_LEGACY = "oceanShipmentsAllCacheTimestamp_v1";
 const LINBIS_OCEAN_ALL_URL = "https://api.linbis.com/ocean-shipments/all";
+
+/** One-time wipe of legacy ocean list /all localStorage keys (no longer used). */
+function clearLegacyOceanCaches(username?: string) {
+  localStorage.removeItem("oceanShipmentsAllCache_v1");
+  localStorage.removeItem("oceanShipmentsAllCacheTimestamp_v1");
+  if (!username) return;
+  localStorage.removeItem(`oceanShipmentsCache_${username}`);
+  localStorage.removeItem(`oceanShipmentsCache_${username}_timestamp`);
+  localStorage.removeItem(`oceanShipmentsAllCache_v2_${username}`);
+  localStorage.removeItem(`oceanShipmentsAllCache_v2_${username}_timestamp`);
+}
 
 interface OceanShippingOrder {
   id: number;
@@ -1523,46 +1529,6 @@ function OceanShipmentsView({
   );
 
   /* -- API: Fetch ocean shipments via shipping-orders ------- */
-  const oceanAllCacheKey = (username: string) =>
-    `${OCEAN_ALL_CACHE_PREFIX}${username}`;
-  const oceanAllCacheTsKey = (username: string) =>
-    `${oceanAllCacheKey(username)}${OCEAN_ALL_CACHE_TS_SUFFIX}`;
-
-  const readOceanAllCache = (username: string): unknown[] | null => {
-    try {
-      const cached = localStorage.getItem(oceanAllCacheKey(username));
-      const ts = localStorage.getItem(oceanAllCacheTsKey(username));
-      if (!cached || !ts) return null;
-      if (Date.now() - parseInt(ts, 10) > 3600000) {
-        localStorage.removeItem(oceanAllCacheKey(username));
-        localStorage.removeItem(oceanAllCacheTsKey(username));
-        return null;
-      }
-      const parsed = JSON.parse(cached);
-      return Array.isArray(parsed) ? parsed : null;
-    } catch {
-      return null;
-    }
-  };
-
-  const writeOceanAllCache = (username: string, records: unknown[]) => {
-    try {
-      localStorage.setItem(oceanAllCacheKey(username), JSON.stringify(records));
-      localStorage.setItem(oceanAllCacheTsKey(username), Date.now().toString());
-    } catch {
-      /* quota exceeded */
-    }
-  };
-
-  const clearOceanAllCache = (username?: string) => {
-    localStorage.removeItem(OCEAN_ALL_CACHE_KEY_LEGACY);
-    localStorage.removeItem(OCEAN_ALL_CACHE_TS_KEY_LEGACY);
-    if (username) {
-      localStorage.removeItem(oceanAllCacheKey(username));
-      localStorage.removeItem(oceanAllCacheTsKey(username));
-    }
-  };
-
   const fetchOceanShipments = async (signal?: AbortSignal) => {
     if (!accessToken) {
       setError("Debes ingresar un token primero");
@@ -1577,23 +1543,16 @@ function OceanShipmentsView({
     setError(null);
 
     try {
-      const cacheKey = `oceanShipmentsCache_${activeUsername}`;
-
-      let allRecords: unknown[] = readOceanAllCache(activeUsername) ?? [];
-
-      if (!allRecords.length) {
-        // /all ahora acepta ConsigneeName (+ paginación). Misma lógica post-fetch.
-        allRecords = await fetchAllLinbisByConsignee(
-          LINBIS_OCEAN_ALL_URL,
-          activeUsername,
-          {
-            accessToken,
-            refreshAccessToken,
-            signal,
-          },
-        );
-        writeOceanAllCache(activeUsername, allRecords);
-      }
+      // /all acepta ConsigneeName (+ paginación). Siempre fresco desde API.
+      const allRecords = await fetchAllLinbisByConsignee(
+        LINBIS_OCEAN_ALL_URL,
+        activeUsername,
+        {
+          accessToken,
+          refreshAccessToken,
+          signal,
+        },
+      );
 
       if (signal?.aborted) return;
 
@@ -1625,11 +1584,6 @@ function OceanShipmentsView({
       setOceanShipments(sorted);
       setDisplayedOceanShipments(sorted);
       setShowingAll(false);
-      localStorage.setItem(cacheKey, JSON.stringify(sorted));
-      localStorage.setItem(
-        `${cacheKey}_timestamp`,
-        new Date().getTime().toString(),
-      );
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") return;
       setError(err instanceof Error ? err.message : "Error desconocido");
@@ -1679,58 +1633,7 @@ function OceanShipmentsView({
       return;
     }
 
-    const cacheKey = `oceanShipmentsCache_${activeUsername}`;
-    const cached = localStorage.getItem(cacheKey);
-    const ts = localStorage.getItem(`${cacheKey}_timestamp`);
-
-    if (cached && ts) {
-      const age = Date.now() - parseInt(ts);
-      if (age < 3600000) {
-        const parsed = JSON.parse(cached) as OceanShippingOrder[];
-        setOceanShipments(parsed);
-        setDisplayedOceanShipments(parsed);
-        setShowingAll(false);
-        setLoading(false);
-        console.log(
-          "Cargando desde caché - datos guardados hace",
-          Math.floor(age / 60000),
-          "minutos",
-        );
-        return;
-      }
-      localStorage.removeItem(cacheKey);
-      localStorage.removeItem(`${cacheKey}_timestamp`);
-    }
-
-    const cachedAll = readOceanAllCache(activeUsername);
-    if (cachedAll?.length) {
-      const filtered = cachedAll
-        .filter((record) => {
-          if (!record || typeof record !== "object") return false;
-          const raw = record as Record<string, unknown>;
-          return consigneeMatches(raw.consignee, activeUsername);
-        })
-        .map(
-          (record) =>
-            mapLinbisOceanToShippingOrder(
-              record as Record<string, unknown>,
-            ) as OceanShippingOrder,
-        )
-        .filter((order) => order.id && order.number)
-        .sort((a, b) => {
-          const da = a.departureDate ? new Date(a.departureDate) : new Date(0);
-          const db = b.departureDate ? new Date(b.departureDate) : new Date(0);
-          return db.getTime() - da.getTime();
-        });
-      setOceanShipments(filtered);
-      setDisplayedOceanShipments(filtered);
-      setShowingAll(false);
-      setLoading(false);
-      console.log(
-        `Ocean: ${filtered.length} envíos para ${activeUsername} (caché /all filtrado)`,
-      );
-      return;
-    }
+    clearLegacyOceanCaches(activeUsername);
 
     const controller = new AbortController();
     fetchOceanShipments(controller.signal);
@@ -2334,10 +2237,7 @@ function OceanShipmentsView({
       return;
     }
 
-    const cacheKey = `oceanShipmentsCache_${activeUsername}`;
-    localStorage.removeItem(cacheKey);
-    localStorage.removeItem(`${cacheKey}_timestamp`);
-    clearOceanAllCache(activeUsername);
+    clearLegacyOceanCaches(activeUsername);
     loadTrackingIndex();
     setQuoteTrackingIndex({ byQuote: {}, byShipment: {} });
     setOceanShipments([]);

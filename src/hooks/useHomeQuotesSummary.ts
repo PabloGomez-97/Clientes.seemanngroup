@@ -11,8 +11,6 @@ export interface HomeQuoteSummary {
   modeOfTransportation?: string;
 }
 
-const CACHE_TTL_MS = 60 * 60 * 1000;
-
 function getQuoteDate(quote: Record<string, unknown>): string {
   const candidates = [
     quote.date,
@@ -26,19 +24,6 @@ function getQuoteDate(quote: Record<string, unknown>): string {
   return "";
 }
 
-function readQuotesCache(username: string): HomeQuoteSummary[] | null {
-  try {
-    const raw = localStorage.getItem(`quotesCache_${username}`);
-    const ts = localStorage.getItem(`quotesCache_${username}_timestamp`);
-    if (!raw || !ts) return null;
-    if (Date.now() - parseInt(ts, 10) > CACHE_TTL_MS) return null;
-    const parsed = JSON.parse(raw) as HomeQuoteSummary[];
-    return Array.isArray(parsed) ? parsed : null;
-  } catch {
-    return null;
-  }
-}
-
 export function useHomeQuotesSummary(
   activeUsername: string | undefined,
   accessToken: string,
@@ -48,19 +33,8 @@ export function useHomeQuotesSummary(
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!activeUsername) {
-      setLoading(false);
-      return;
-    }
-
-    const cached = readQuotesCache(activeUsername);
-    if (cached?.length) {
-      setQuotes(cached.slice(0, 10));
-      setLoading(false);
-      if (cached.length >= 3) return;
-    }
-
-    if (!accessToken) {
+    if (!activeUsername || !accessToken) {
+      setQuotes([]);
       setLoading(false);
       return;
     }
@@ -85,7 +59,7 @@ export function useHomeQuotesSummary(
         );
 
         if (!response.ok) {
-          if (!cancelled) setQuotes(cached?.slice(0, 10) ?? []);
+          if (!cancelled) setQuotes([]);
           return;
         }
 
@@ -112,7 +86,7 @@ export function useHomeQuotesSummary(
 
         if (!cancelled) setQuotes(sorted);
       } catch {
-        if (!cancelled) setQuotes(cached?.slice(0, 10) ?? []);
+        if (!cancelled) setQuotes([]);
       } finally {
         if (!cancelled) setLoading(false);
       }

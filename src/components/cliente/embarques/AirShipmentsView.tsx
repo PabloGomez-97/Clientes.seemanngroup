@@ -64,7 +64,6 @@ import {
 
 const ITEMS_PER_PAGE = 10;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const AIR_SHIPMENTS_CACHE_PREFIX = "airShipmentsCache_v3_";
 
 interface CargoDetailCacheEntry {
   loading: boolean;
@@ -1415,8 +1414,6 @@ function AirShipmentsView({
     setError(null);
 
     try {
-      const cacheKey = `${AIR_SHIPMENTS_CACHE_PREFIX}${activeUsername}`;
-
       const rawRecords = await fetchAllLinbisByConsignee(
         "https://api.linbis.com/air-shipments",
         activeUsername,
@@ -1443,11 +1440,6 @@ function AirShipmentsView({
       setShipments(sorted);
       setDisplayedShipments(sorted);
       setShowingAll(false);
-      localStorage.setItem(cacheKey, JSON.stringify(sorted));
-      localStorage.setItem(
-        `${cacheKey}_timestamp`,
-        new Date().getTime().toString(),
-      );
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") return;
       setError(err instanceof Error ? err.message : "Error desconocido");
@@ -1842,33 +1834,15 @@ function AirShipmentsView({
       return;
     }
 
-    const cacheKey = `${AIR_SHIPMENTS_CACHE_PREFIX}${activeUsername}`;
-    for (const legacyPrefix of ["airShipmentsCache_", "airShipmentsCache_v2_"]) {
+    // One-time cleanup of legacy localStorage list caches (no longer used).
+    for (const legacyPrefix of [
+      "airShipmentsCache_",
+      "airShipmentsCache_v2_",
+      "airShipmentsCache_v3_",
+    ]) {
       const legacyCacheKey = `${legacyPrefix}${activeUsername}`;
       localStorage.removeItem(legacyCacheKey);
       localStorage.removeItem(`${legacyCacheKey}_timestamp`);
-    }
-
-    const cached = localStorage.getItem(cacheKey);
-    const ts = localStorage.getItem(`${cacheKey}_timestamp`);
-
-    if (cached && ts) {
-      const age = Date.now() - parseInt(ts);
-      if (age < 3600000) {
-        const parsed = JSON.parse(cached) as AirShipment[];
-        setShipments(parsed);
-        setDisplayedShipments(parsed);
-        setShowingAll(false);
-        setLoading(false);
-        console.log(
-          "Cargando desde caché - datos guardados hace",
-          Math.floor(age / 60000),
-          "minutos",
-        );
-        return;
-      }
-      localStorage.removeItem(cacheKey);
-      localStorage.removeItem(`${cacheKey}_timestamp`);
     }
 
     const controller = new AbortController();
@@ -1998,11 +1972,15 @@ function AirShipmentsView({
       return;
     }
 
-    const cacheKey = `${AIR_SHIPMENTS_CACHE_PREFIX}${activeUsername}`;
-    localStorage.removeItem(cacheKey);
-    localStorage.removeItem(`${cacheKey}_timestamp`);
-    localStorage.removeItem(`airShipmentsCache_${activeUsername}`);
-    localStorage.removeItem(`airShipmentsCache_${activeUsername}_timestamp`);
+    for (const legacyPrefix of [
+      "airShipmentsCache_",
+      "airShipmentsCache_v2_",
+      "airShipmentsCache_v3_",
+    ]) {
+      const legacyCacheKey = `${legacyPrefix}${activeUsername}`;
+      localStorage.removeItem(legacyCacheKey);
+      localStorage.removeItem(`${legacyCacheKey}_timestamp`);
+    }
     setRouteCache({});
     routeInFlightRef.current.clear();
     routeFetchedRef.current.clear();
