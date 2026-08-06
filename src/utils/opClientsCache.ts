@@ -1,6 +1,3 @@
-const OP_CLIENTS_RAW_CACHE_KEY = "op_admin_users_v2";
-const CACHE_TTL = 60 * 60 * 1000;
-
 export interface OpEjecutivoRef {
   id: string;
   nombre: string;
@@ -18,29 +15,12 @@ export interface OpCachedClient {
   ejecutivo?: OpEjecutivoRef | null;
 }
 
-export function getCachedOpClients(): OpCachedClient[] | null {
+/** Limpia la clave legacy de localStorage (caché TTL ya no se usa). */
+export function clearLegacyOpClientsCache() {
   try {
-    const raw = localStorage.getItem(OP_CLIENTS_RAW_CACHE_KEY);
-    if (!raw) return null;
-    const { data, ts } = JSON.parse(raw);
-    if (Date.now() - ts > CACHE_TTL) {
-      localStorage.removeItem(OP_CLIENTS_RAW_CACHE_KEY);
-      return null;
-    }
-    return Array.isArray(data) ? data : null;
+    localStorage.removeItem("op_admin_users_v2");
   } catch {
-    return null;
-  }
-}
-
-export function setCachedOpClients(data: OpCachedClient[]) {
-  try {
-    localStorage.setItem(
-      OP_CLIENTS_RAW_CACHE_KEY,
-      JSON.stringify({ data, ts: Date.now() }),
-    );
-  } catch {
-    /* quota exceeded */
+    /* ignore */
   }
 }
 

@@ -69,37 +69,6 @@ function expandClients(rawClients: Cliente[]): Cliente[] {
   return expanded;
 }
 
-// ── Cache helpers (1 hour TTL) ──
-const CACHE_TTL = 60 * 60 * 1000; // 1 hour in ms
-
-const CLIENTS_CACHE_KEY = "rc_clients_list_v3";
-
-function getCachedClients(): Cliente[] | null {
-  try {
-    const raw = localStorage.getItem(CLIENTS_CACHE_KEY);
-    if (!raw) return null;
-    const { data, ts } = JSON.parse(raw);
-    if (Date.now() - ts > CACHE_TTL) {
-      localStorage.removeItem(CLIENTS_CACHE_KEY);
-      return null;
-    }
-    return data;
-  } catch {
-    return null;
-  }
-}
-
-function setCachedClients(data: Cliente[]) {
-  try {
-    localStorage.setItem(
-      CLIENTS_CACHE_KEY,
-      JSON.stringify({ data, ts: Date.now() }),
-    );
-  } catch {
-    /* quota exceeded, ignore */
-  }
-}
-
 const FONT =
   'var(--portal-font)';
 
@@ -150,18 +119,16 @@ function ReporteriaClientes() {
   const [opsOpen, setOpsOpen] = useState(false);
   const [sortMode, setSortMode] = useState<ClientDirectorySortMode>("az");
 
-  // ── Fetch clients list (with cache) ──
+  // ── Fetch clients list ──
   useEffect(() => {
+    try {
+      localStorage.removeItem("rc_clients_list_v3");
+    } catch {
+      /* ignore */
+    }
+
     const fetchClientes = async () => {
       if (!token) return;
-
-      // Check cache first
-      const cached = getCachedClients();
-      if (cached) {
-        setClientes(cached);
-        setLoading(false);
-        return;
-      }
 
       setLoading(true);
       try {
@@ -178,7 +145,6 @@ function ReporteriaClientes() {
           a.username.localeCompare(b.username, "es", { sensitivity: "base" }),
         );
         setClientes(lista);
-        setCachedClients(lista);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Error desconocido");
       } finally {
@@ -910,15 +876,8 @@ function ReporteriaClientes() {
           {/* Botón actualizar */}
           <button
             type="button"
-            onClick={() => {
-              try {
-                localStorage.removeItem(CLIENTS_CACHE_KEY);
-              } catch {
-                /* ignore */
-              }
-              window.location.reload();
-            }}
-            title="Limpiar caché y recargar"
+            onClick={() => window.location.reload()}
+            title="Recargar lista de clientes"
             style={{
               display: "flex",
               alignItems: "center",
@@ -948,9 +907,6 @@ function ReporteriaClientes() {
               <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
             </svg>
             Actualizar
-            <span style={{ fontSize: 10, color: "#d1d5db" }}>
-              {getCachedClients() ? "· caché activo" : ""}
-            </span>
           </button>
         </div>
       </div>

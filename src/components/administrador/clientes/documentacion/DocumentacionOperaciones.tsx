@@ -10,9 +10,6 @@ import {
   ClientDirectorySortChips,
   type ClientDirectorySortMode,
 } from "@/components/administrador/shared/ClientDirectoryList";
-import {
-  setCachedOpClients,
-} from "@/utils/opClientsCache";
 
 interface OutletContext {
   accessToken: string;
@@ -32,8 +29,6 @@ interface Cliente {
 
 type DocumentCounts = Record<string, number>;
 
-const CACHE_TTL = 60 * 60 * 1000;
-const CLIENTS_CACHE_KEY = "op_doc_clients_list_v1";
 const DOCUMENT_COUNTS_CACHE_KEY = "op_doc_client_counts_v1";
 const DOCUMENT_COUNTS_TTL = 3 * 60 * 60 * 1000;
 const FONT =
@@ -76,32 +71,6 @@ function buildClientList(rawClients: Cliente[]): Cliente[] {
   }
 
   return expanded;
-}
-
-function getCachedClients(): Cliente[] | null {
-  try {
-    const raw = localStorage.getItem(CLIENTS_CACHE_KEY);
-    if (!raw) return null;
-    const { data, ts } = JSON.parse(raw);
-    if (Date.now() - ts > CACHE_TTL) {
-      localStorage.removeItem(CLIENTS_CACHE_KEY);
-      return null;
-    }
-    return data;
-  } catch {
-    return null;
-  }
-}
-
-function setCachedClients(data: Cliente[]) {
-  try {
-    localStorage.setItem(
-      CLIENTS_CACHE_KEY,
-      JSON.stringify({ data, ts: Date.now() }),
-    );
-  } catch {
-    /* quota exceeded */
-  }
 }
 
 function getCachedDocumentCounts(): DocumentCounts | null {
@@ -147,21 +116,15 @@ function OPDocumentacion() {
   useEffect(() => {
     const controller = new AbortController();
 
+    try {
+      localStorage.removeItem("op_doc_clients_list_v1");
+      localStorage.removeItem("op_admin_users_v2");
+    } catch {
+      /* ignore */
+    }
+
     const fetchClientes = async () => {
       if (!token) return;
-      const cached = getCachedClients();
-      if (cached) {
-        const normalizedCached = buildClientList(cached).sort(
-          (a: Cliente, b: Cliente) =>
-            a.username.localeCompare(b.username, "es", {
-              sensitivity: "base",
-            }),
-        );
-        setClientes(normalizedCached);
-        setCachedClients(normalizedCached);
-        setLoading(false);
-        return;
-      }
       setLoading(true);
       try {
         const resp = await fetch("/api/admin/users", {
@@ -183,13 +146,11 @@ function OPDocumentacion() {
             nombreuser: user.nombreuser,
             createdAt: user.createdAt,
           }));
-        setCachedOpClients(raw);
         const lista = buildClientList(raw).sort((a: Cliente, b: Cliente) =>
           a.username.localeCompare(b.username, "es", { sensitivity: "base" }),
         );
 
         setClientes(lista);
-        setCachedClients(lista);
       } catch (e) {
         if (controller.signal.aborted) return;
         setError(e instanceof Error ? e.message : "Error desconocido");
@@ -556,15 +517,8 @@ function OPDocumentacion() {
           </div>
           <button
             type="button"
-            onClick={() => {
-              try {
-                localStorage.removeItem(CLIENTS_CACHE_KEY);
-              } catch {
-                /* ignore */
-              }
-              window.location.reload();
-            }}
-            title="Limpiar caché y recargar"
+            onClick={() => window.location.reload()}
+            title="Recargar lista de clientes"
             style={{
               display: "flex",
               alignItems: "center",
@@ -594,9 +548,6 @@ function OPDocumentacion() {
               <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
             </svg>
             Actualizar
-            <span style={{ fontSize: 10, color: "#d1d5db" }}>
-              {getCachedClients() ? "· caché activo" : ""}
-            </span>
           </button>
         </div>
       </div>

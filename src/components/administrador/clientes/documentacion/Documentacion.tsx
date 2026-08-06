@@ -27,8 +27,6 @@ interface Cliente {
   parentUsername?: string;
 }
 
-const CACHE_TTL = 60 * 60 * 1000;
-const CLIENTS_CACHE_KEY = "rc_clients_list_v2";
 const DOCUMENT_COUNTS_CACHE_KEY = "doc_client_counts_v1";
 const DOCUMENT_COUNTS_TTL = 3 * 60 * 60 * 1000;
 const FONT =
@@ -75,36 +73,6 @@ function buildClientList(rawClients: Cliente[]): Cliente[] {
   return expanded;
 }
 
-function normalizeClients(rawClients: Cliente[]) {
-  return buildClientList(rawClients);
-}
-
-function getCachedClients(): Cliente[] | null {
-  try {
-    const raw = localStorage.getItem(CLIENTS_CACHE_KEY);
-    if (!raw) return null;
-    const { data, ts } = JSON.parse(raw);
-    if (Date.now() - ts > CACHE_TTL) {
-      localStorage.removeItem(CLIENTS_CACHE_KEY);
-      return null;
-    }
-    return data;
-  } catch {
-    return null;
-  }
-}
-
-function setCachedClients(data: Cliente[]) {
-  try {
-    localStorage.setItem(
-      CLIENTS_CACHE_KEY,
-      JSON.stringify({ data, ts: Date.now() }),
-    );
-  } catch {
-    /* quota exceeded */
-  }
-}
-
 function getCachedDocumentCounts(): DocumentCounts | null {
   try {
     const raw = localStorage.getItem(DOCUMENT_COUNTS_CACHE_KEY);
@@ -149,18 +117,14 @@ function Documentacion() {
   useEffect(() => {
     const controller = new AbortController();
 
+    try {
+      localStorage.removeItem("rc_clients_list_v2");
+    } catch {
+      /* ignore */
+    }
+
     const fetchClientes = async () => {
       if (!token) return;
-      const cached = getCachedClients();
-      if (cached) {
-        const normalizedCached = normalizeClients(cached).sort((a, b) =>
-          a.username.localeCompare(b.username, "es", { sensitivity: "base" }),
-        );
-        setClientes(normalizedCached);
-        setCachedClients(normalizedCached);
-        setLoading(false);
-        return;
-      }
       setLoading(true);
       try {
         const resp = await fetch("/api/ejecutivo/clientes", {
@@ -177,7 +141,6 @@ function Documentacion() {
           a.username.localeCompare(b.username, "es", { sensitivity: "base" }),
         );
         setClientes(lista);
-        setCachedClients(lista);
       } catch (e) {
         if (controller.signal.aborted) return;
         setError(e instanceof Error ? e.message : "Error desconocido");
@@ -549,15 +512,8 @@ function Documentacion() {
           </div>
           <button
             type="button"
-            onClick={() => {
-              try {
-                localStorage.removeItem(CLIENTS_CACHE_KEY);
-              } catch {
-                /* ignore */
-              }
-              window.location.reload();
-            }}
-            title="Limpiar caché y recargar"
+            onClick={() => window.location.reload()}
+            title="Recargar lista de clientes"
             style={{
               display: "flex",
               alignItems: "center",
@@ -587,9 +543,6 @@ function Documentacion() {
               <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
             </svg>
             Actualizar
-            <span style={{ fontSize: 10, color: "#d1d5db" }}>
-              {getCachedClients() ? "· caché activo" : ""}
-            </span>
           </button>
         </div>
       </div>

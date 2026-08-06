@@ -22,9 +22,8 @@ import "@/components/cliente/styles/Shipsgotracking.css";
 import "./HomeOperaciones.css";
 import { OperacionesQuickActions } from "./OperacionesQuickActions";
 import {
-  getCachedOpClients,
+  clearLegacyOpClientsCache,
   normalizeOpClientsFromApi,
-  setCachedOpClients,
   type OpCachedClient,
   type OpEjecutivoRef,
 } from "@/utils/opClientsCache";
@@ -620,12 +619,7 @@ export default function HomeOperaciones() {
       if (!silent) setLoading(true);
       else setRefreshing(true);
 
-      const cachedClients = getCachedOpClients();
-      if (cachedClients) {
-        setClients(cachedClients);
-      }
-
-      const shouldFetchClients = !cachedClients || silent;
+      clearLegacyOpClientsCache();
 
       try {
         const shipmentRequests: Promise<unknown>[] = [
@@ -637,27 +631,22 @@ export default function HomeOperaciones() {
             headers: { Authorization: `Bearer ${token}` },
             signal,
           }).then((r) => r.json() as Promise<OceanResponse>),
+          fetch("/api/admin/users", {
+            headers: { Authorization: `Bearer ${token}` },
+            signal,
+          }).then(async (r) => {
+            const data = await r.json();
+            if (!r.ok) {
+              throw new Error(data?.error || "Error al cargar clientes");
+            }
+            return data;
+          }),
         ];
-
-        if (shouldFetchClients) {
-          shipmentRequests.push(
-            fetch("/api/admin/users", {
-              headers: { Authorization: `Bearer ${token}` },
-              signal,
-            }).then(async (r) => {
-              const data = await r.json();
-              if (!r.ok) {
-                throw new Error(data?.error || "Error al cargar clientes");
-              }
-              return data;
-            }),
-          );
-        }
 
         const results = await Promise.allSettled(shipmentRequests);
         const airRes = results[0];
         const oceanRes = results[1];
-        const clientsRes = shouldFetchClients ? results[2] : null;
+        const clientsRes = results[2];
 
         if (
           airRes.status === "fulfilled" &&
@@ -682,23 +671,20 @@ export default function HomeOperaciones() {
           });
         }
 
-        let nextClients: ClientUser[] = cachedClients ?? [];
+        let nextClients: ClientUser[] = [];
 
-        if (clientsRes) {
-          if (clientsRes.status === "fulfilled") {
-            const arr = normalizeOpClientsFromApi(clientsRes.value);
-            setClients(arr);
-            setCachedOpClients(arr);
-            setClientsError(null);
-            nextClients = arr;
-          } else if (!cachedClients) {
-            const reason = clientsRes.reason;
-            setClientsError(
-              reason instanceof Error
-                ? reason.message
-                : "No se pudieron cargar los clientes",
-            );
-          }
+        if (clientsRes.status === "fulfilled") {
+          const arr = normalizeOpClientsFromApi(clientsRes.value);
+          setClients(arr);
+          setClientsError(null);
+          nextClients = arr;
+        } else {
+          const reason = clientsRes.reason;
+          setClientsError(
+            reason instanceof Error
+              ? reason.message
+              : "No se pudieron cargar los clientes",
+          );
         }
 
         if (!signal?.aborted && nextClients.length > 0) {
@@ -706,13 +692,11 @@ export default function HomeOperaciones() {
         }
       } catch (error) {
         if (signal?.aborted) return;
-        if (!cachedClients) {
-          setClientsError(
-            error instanceof Error
-              ? error.message
-              : "Error al cargar datos del panel",
-          );
-        }
+        setClientsError(
+          error instanceof Error
+            ? error.message
+            : "Error al cargar datos del panel",
+        );
       } finally {
         if (!signal?.aborted) {
           setLoading(false);
