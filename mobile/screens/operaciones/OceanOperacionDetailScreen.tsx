@@ -51,16 +51,22 @@ export default function OceanOperacionDetailScreen() {
   const route = useRoute<RouteProps>();
   const navigation = useNavigation<NavigationProp>();
   const { shipment } = route.params;
-  const { getOceanTrackingStatus, oceanContainerHints } = useOperaciones();
+  const { getOceanTrackingStatus, oceanContainerHints, ensureQuoteTracking } =
+    useOperaciones();
   const { accessToken, refreshAccessToken } = useLinbisToken();
   const trackingStatus = getOceanTrackingStatus(shipment);
   const { quoteNumber, loading: quoteLoading } = useOperacionQuoteNumber({
     sogNumber: shipment.number,
     shipmentId: shipment.id,
+    charges: shipment.charges,
   });
   const [localContainerHint, setLocalContainerHint] = useState<string | null>(
     null,
   );
+
+  useEffect(() => {
+    void ensureQuoteTracking(shipment);
+  }, [ensureQuoteTracking, shipment]);
 
   const commodities = useMemo(
     () => getOperacionCommodities(shipment),

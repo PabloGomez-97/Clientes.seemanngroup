@@ -1,12 +1,19 @@
 import { useEffect, useState } from "react";
+import { normalizeQuoteNumber } from "../../src/services/linbisQuoteLookup";
+import { useAuth } from "../auth/AuthContext";
+import {
+  ensureProfitIndex,
+  resolveShipmentQuoteNumber,
+} from "../services/operacionQuoteTrackingCache";
 import { useLinbisToken } from "./useLinbisToken";
-import { resolveOperacionQuoteNumber } from "../services/operacionDetailApi";
 
 export function useOperacionQuoteNumber(keys: {
   sogNumber?: string | null;
   shipmentId?: number | string | null;
   quoteNumberHint?: string | null;
+  charges?: unknown;
 }) {
+  const { activeUsername } = useAuth();
   const { accessToken, refreshAccessToken, loading: tokenLoading } =
     useLinbisToken();
   const [quoteNumber, setQuoteNumber] = useState<string | null>(
@@ -17,9 +24,9 @@ export function useOperacionQuoteNumber(keys: {
   useEffect(() => {
     let cancelled = false;
 
-    if (tokenLoading || !accessToken) return;
+    if (tokenLoading || !accessToken || !activeUsername) return;
 
-    const hinted = keys.quoteNumberHint?.trim();
+    const hinted = normalizeQuoteNumber(keys.quoteNumberHint);
     if (hinted) {
       setQuoteNumber(hinted);
       setLoading(false);
@@ -27,16 +34,22 @@ export function useOperacionQuoteNumber(keys: {
     }
 
     setLoading(true);
-    void resolveOperacionQuoteNumber(
-      { accessToken, refreshAccessToken },
-      {
-        sogNumber: keys.sogNumber,
-        shipmentId: keys.shipmentId,
-        quoteNumberHint: keys.quoteNumberHint,
-      },
-    )
-      .then((value) => {
-        if (!cancelled) setQuoteNumber(value);
+    void ensureProfitIndex(activeUsername, {
+      accessToken,
+      refreshAccessToken,
+    })
+      .then((index) => {
+        if (cancelled) return;
+        setQuoteNumber(
+          resolveShipmentQuoteNumber(
+            {
+              number: keys.sogNumber,
+              id: keys.shipmentId,
+              charges: keys.charges,
+            },
+            index,
+          ),
+        );
       })
       .catch(() => {
         if (!cancelled) setQuoteNumber(null);
@@ -50,6 +63,8 @@ export function useOperacionQuoteNumber(keys: {
     };
   }, [
     accessToken,
+    activeUsername,
+    keys.charges,
     keys.quoteNumberHint,
     keys.shipmentId,
     keys.sogNumber,

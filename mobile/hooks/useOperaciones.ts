@@ -11,9 +11,6 @@ import {
 } from "../../src/services/operacionesFiltersLogic";
 import { OPERACIONES_PAGE_SIZE, paginateList } from "../../src/services/operacionesPagination";
 import {
-  fetchQuoteProfitIndex,
-  fetchQuoteTrackingIndex,
-  lookupQuoteFromProfitIndex,
   type QuoteProfitIndex,
 } from "../../src/services/linbisQuoteLookup";
 import {
@@ -43,6 +40,14 @@ import {
   invalidateOperacionesCache,
   type OceanListItem,
 } from "../services/operacionesApi";
+import {
+  clearOperacionQuoteTrackingCache,
+  ensureQuoteTrackingForShipment,
+  getCachedProfitIndex,
+  getCachedQuoteTrackingIndex,
+  isProfitIndexFetched,
+  resolveShipmentQuoteNumber,
+} from "../services/operacionQuoteTrackingCache";
 import {
   fetchAirShipments,
   fetchOceanShipments,
@@ -112,12 +117,12 @@ export function useOperaciones() {
   const [quoteTrackingIndex, setQuoteTrackingIndex] = useState<
     Record<string, string>
   >({});
-  const [profitIndex, setProfitIndex] = useState<QuoteProfitIndex>({
-    byHbli: {},
-    bySog: {},
-    byShipmentId: {},
-    byQuote: {},
-  });
+  const [profitIndex, setProfitIndex] = useState<QuoteProfitIndex>(() =>
+    getCachedProfitIndex(),
+  );
+  const [profitFetched, setProfitFetched] = useState(() =>
+    isProfitIndexFetched(),
+  );
   const [trackedAwbs, setTrackedAwbs] = useState<Set<string>>(new Set());
   const [trackedOceanKeys, setTrackedOceanKeys] = useState<Set<string>>(
     new Set(),
@@ -141,20 +146,46 @@ export function useOperaciones() {
   );
 
   const quoteOptionsForShipment = useCallback(
-    (shipment: { number?: string | null; id?: number | string | null }) => {
-      const shipmentId =
-        typeof shipment.id === "number" ? shipment.id : null;
-      const quoteNumber = lookupQuoteFromProfitIndex(profitIndex, {
-        hbli: shipment.number,
-        sogNumber: shipment.number,
-        shipmentId,
-      });
+    (shipment: {
+      number?: string | null;
+      id?: number | string | null;
+      charges?: unknown;
+    }) => {
+      const quoteNumber = profitFetched
+        ? resolveShipmentQuoteNumber(shipment, profitIndex)
+        : null;
       return {
         quoteNumber,
         quoteTrackingIndex,
       };
     },
-    [profitIndex, quoteTrackingIndex],
+    [profitFetched, profitIndex, quoteTrackingIndex],
+  );
+
+  /** CF 17 + Profit bajo demanda (misma lógica que web ocean). */
+  const ensureQuoteTracking = useCallback(
+    async (shipment: {
+      number?: string | null;
+      id?: number | string | null;
+      charges?: unknown;
+    }) => {
+      if (!accessToken || !activeUsername) return null;
+      try {
+        const result = await ensureQuoteTrackingForShipment(
+          activeUsername,
+          shipment,
+          linbisOptions,
+        );
+        setProfitIndex(result.profitIndex);
+        setProfitFetched(true);
+        setQuoteTrackingIndex(result.quoteTrackingIndex);
+        return result;
+      } catch {
+        setProfitFetched(true);
+        return null;
+      }
+    },
+    [accessToken, activeUsername, linbisOptions],
   );
 
   const loadTrackingData = useCallback(async () => {
@@ -167,9 +198,11 @@ export function useOperaciones() {
         byShipmentId: {},
         byQuote: {},
       });
+      setProfitFetched(false);
       setTrackedAwbs(new Set());
       setTrackedOceanKeys(new Set());
       trackingLoadedRef.current = false;
+      clearOperacionQuoteTrackingCache();
       return;
     }
 
@@ -179,13 +212,9 @@ export function useOperaciones() {
       const demoOcean = getDemoOceanTrackings(activeUsername);
       if (demoAir || demoOcean) {
         setTrackingIndex({});
-        setQuoteTrackingIndex({});
-        setProfitIndex({
-          byHbli: {},
-          bySog: {},
-          byShipmentId: {},
-          byQuote: {},
-        });
+        setQuoteTrackingIndex(getCachedQuoteTrackingIndex());
+        setProfitIndex(getCachedProfitIndex());
+        setProfitFetched(isProfitIndexFetched());
         setTrackedAwbs(buildTrackedAwbSet(demoAir ?? [], activeUsername));
         setTrackedOceanKeys(
           buildTrackedOceanKeySet(demoOcean ?? [], activeUsername),
@@ -194,17 +223,16 @@ export function useOperaciones() {
         return;
       }
 
-      const [index, quoteIndex, profit, airTrackings, oceanTrackings] =
-        await Promise.all([
-          fetchOperacionesTrackingIndex(activeUsername, linbisOptions),
-          fetchQuoteTrackingIndex(activeUsername, linbisOptions),
-          fetchQuoteProfitIndex(linbisOptions),
-          fetchAirShipments(),
-          fetchOceanShipments(),
-        ]);
+      // Sin catálogo completo de Quotes (CF 17 bajo demanda al abrir operación).
+      const [index, airTrackings, oceanTrackings] = await Promise.all([
+        fetchOperacionesTrackingIndex(activeUsername, linbisOptions),
+        fetchAirShipments(),
+        fetchOceanShipments(),
+      ]);
       setTrackingIndex(index);
-      setQuoteTrackingIndex(quoteIndex);
-      setProfitIndex(profit);
+      setQuoteTrackingIndex(getCachedQuoteTrackingIndex());
+      setProfitIndex(getCachedProfitIndex());
+      setProfitFetched(isProfitIndexFetched());
       setTrackedAwbs(buildTrackedAwbSet(airTrackings, activeUsername));
       setTrackedOceanKeys(
         buildTrackedOceanKeySet(oceanTrackings, activeUsername),
@@ -212,13 +240,9 @@ export function useOperaciones() {
       trackingLoadedRef.current = true;
     } catch {
       setTrackingIndex({});
-      setQuoteTrackingIndex({});
-      setProfitIndex({
-        byHbli: {},
-        bySog: {},
-        byShipmentId: {},
-        byQuote: {},
-      });
+      setQuoteTrackingIndex(getCachedQuoteTrackingIndex());
+      setProfitIndex(getCachedProfitIndex());
+      setProfitFetched(isProfitIndexFetched());
       setTrackedAwbs(new Set());
       setTrackedOceanKeys(new Set());
     } finally {
@@ -539,6 +563,15 @@ export function useOperaciones() {
         if (activeUsername) {
           await invalidateOperacionesCache(activeUsername);
         }
+        clearOperacionQuoteTrackingCache();
+        setQuoteTrackingIndex({});
+        setProfitIndex({
+          byHbli: {},
+          bySog: {},
+          byShipmentId: {},
+          byQuote: {},
+        });
+        setProfitFetched(false);
       }
 
       trackingLoadedRef.current = false;
@@ -583,6 +616,15 @@ export function useOperaciones() {
     if (activeUsername) {
       await invalidateOperacionesCache(activeUsername);
     }
+    clearOperacionQuoteTrackingCache();
+    setQuoteTrackingIndex({});
+    setProfitIndex({
+      byHbli: {},
+      bySog: {},
+      byShipmentId: {},
+      byQuote: {},
+    });
+    setProfitFetched(false);
     airLoadedRef.current = false;
     oceanLoadedRef.current = false;
     groundLoadedRef.current = false;
@@ -659,8 +701,17 @@ export function useOperaciones() {
     setGroundLoaded(false);
     setOceanContainerHints({});
     setTrackingIndex({});
+    setQuoteTrackingIndex({});
+    setProfitIndex({
+      byHbli: {},
+      bySog: {},
+      byShipmentId: {},
+      byQuote: {},
+    });
+    setProfitFetched(false);
     setTrackedAwbs(new Set());
     setTrackedOceanKeys(new Set());
+    clearOperacionQuoteTrackingCache();
   }, [activeUsername]);
 
   const filteredAirPage = useMemo(
@@ -884,6 +935,7 @@ export function useOperaciones() {
     refreshAll,
     getAirTrackingStatus,
     getOceanTrackingStatus,
+    ensureQuoteTracking,
     oceanContainerHints,
     oceanCatalogLoaded: oceanLoaded,
     groundCatalogLoaded: groundLoaded,

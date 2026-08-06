@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { ScrollView, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
@@ -45,12 +45,17 @@ export default function AirOperacionDetailScreen() {
   const route = useRoute<RouteProps>();
   const navigation = useNavigation<NavigationProp>();
   const { shipment } = route.params;
-  const { getAirTrackingStatus } = useOperaciones();
+  const { getAirTrackingStatus, ensureQuoteTracking } = useOperaciones();
   const trackingStatus = getAirTrackingStatus(shipment);
   const { quoteNumber, loading: quoteLoading } = useOperacionQuoteNumber({
     sogNumber: shipment.number,
     shipmentId: shipment.id,
+    charges: (shipment as { charges?: unknown }).charges,
   });
+
+  useEffect(() => {
+    void ensureQuoteTracking(shipment);
+  }, [ensureQuoteTracking, shipment]);
 
   const commodities = useMemo(
     () => getOperacionCommodities(shipment),
