@@ -100,6 +100,7 @@ import {
   buildPolOptionsForCountryAndPod,
   buildPodOptionsForCountry,
   findCountryForOrigin,
+  findOriginsMissingGeo,
   getCountryLabel,
   getOriginsInCountry,
   getRatedOriginsInCountryForPod,
@@ -534,6 +535,43 @@ export default function QuoteLCL({
     : "X";
   const showPendingQuote = sinTarifa && !isSimulationMode;
 
+  const originGeoOptions = useMemo(
+    () => ({
+      getCountryCode: (normalized: string) =>
+        getPortByPOL(normalized)?.unlocode?.substring(0, 2).toUpperCase() ??
+        null,
+      getCoords: (normalized: string) => {
+        const port = getPortByPOL(normalized);
+        return port ? { lat: port.lat, lng: port.lng } : null;
+      },
+    }),
+    [],
+  );
+
+  const originsMissingGeo = useMemo(() => {
+    if (rutas.length === 0) return [];
+    const rows = Array.from(
+      new Map(
+        rutas.map((r) => [
+          r.polNormalized,
+          { normalized: r.polNormalized, label: r.pol },
+        ]),
+      ).values(),
+    );
+    return findOriginsMissingGeo(rows, originGeoOptions);
+  }, [rutas, originGeoOptions]);
+
+  const originsMissingGeoNR = useMemo(() => {
+    if (!expandedRoutes?.pols.length) return [];
+    return findOriginsMissingGeo(
+      expandedRoutes.pols.map((p) => ({
+        normalized: p.value,
+        label: p.label,
+      })),
+      originGeoOptions,
+    );
+  }, [expandedRoutes, originGeoOptions]);
+
   const originIndex = useMemo((): OriginIndex | null => {
     if (rutas.length === 0) return null;
     const polMap = new Map<string, string>();
@@ -547,17 +585,9 @@ export default function QuoteLCL({
         normalized,
         label,
       })),
-      {
-        getCountryCode: (normalized) =>
-          getPortByPOL(normalized)?.unlocode?.substring(0, 2).toUpperCase() ??
-          null,
-        getCoords: (normalized) => {
-          const port = getPortByPOL(normalized);
-          return port ? { lat: port.lat, lng: port.lng } : null;
-        },
-      },
+      originGeoOptions,
     );
-  }, [rutas]);
+  }, [rutas, originGeoOptions]);
 
   const originIndexNR = useMemo((): OriginIndex | null => {
     if (!expandedRoutes?.pols.length) return null;
@@ -566,17 +596,9 @@ export default function QuoteLCL({
         normalized: p.value,
         label: p.label,
       })),
-      {
-        getCountryCode: (normalized) =>
-          getPortByPOL(normalized)?.unlocode?.substring(0, 2).toUpperCase() ??
-          null,
-        getCoords: (normalized) => {
-          const port = getPortByPOL(normalized);
-          return port ? { lat: port.lat, lng: port.lng } : null;
-        },
-      },
+      originGeoOptions,
     );
-  }, [expandedRoutes]);
+  }, [expandedRoutes, originGeoOptions]);
 
   const activeOriginIndex =
     routeMode === "noRecurrente" ? originIndexNR : originIndex;
@@ -4298,6 +4320,35 @@ export default function QuoteLCL({
                     </div>
                   </div>
                 </div>
+
+                {originsMissingGeo.length > 0 && routeMode === "recurrente" && (
+                  <div
+                    className="alert alert-warning py-2 px-3 mb-3"
+                    style={{ fontSize: "0.85rem" }}
+                    role="status"
+                  >
+                    <i className="bi bi-exclamation-triangle-fill me-2"></i>
+                    <strong>Orígenes en tarifa sin geolocalizar:</strong>{" "}
+                    {originsMissingGeo.map((o) => o.label).join(", ")}. No
+                    aparecerán en el selector de país hasta agregar
+                    coordenadas en{" "}
+                    <code style={{ fontSize: "0.8rem" }}>portCoordinates</code>
+                    .
+                  </div>
+                )}
+
+                {originsMissingGeoNR.length > 0 &&
+                  routeMode === "noRecurrente" && (
+                    <div
+                      className="alert alert-warning py-2 px-3 mb-3"
+                      style={{ fontSize: "0.85rem" }}
+                      role="status"
+                    >
+                      <i className="bi bi-exclamation-triangle-fill me-2"></i>
+                      <strong>Orígenes expandidos sin geolocalizar:</strong>{" "}
+                      {originsMissingGeoNR.map((o) => o.label).join(", ")}.
+                    </div>
+                  )}
 
                 {/* ======== RUTAS CON TARIFA ======== */}
                 {!isSimulationMode && routeMode === "recurrente" && (
