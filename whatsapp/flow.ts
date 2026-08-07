@@ -44,6 +44,8 @@ const SESSION_TTL_MS = 5 * 60 * 1000;
 
 export type FlowReply = {
   text?: string;
+  /** Ruta a un .webp para enviar como sticker (relativa al cwd o absoluta). */
+  stickerPath?: string;
   silent?: boolean;
 };
 
@@ -233,8 +235,15 @@ export async function handleAdminMessage(
   // Menú
   if (!session || session.step === 'menu') {
     if (text === '4') {
-      await clearSession(db, sessionId);
-      return { silent: true };
+      await saveSession(db, {
+        _id: sessionId,
+        step: 'menu',
+        updatedAt: new Date(),
+      });
+      return {
+        text: '¿Para qué presionas salir?',
+        stickerPath: 'whatsapp/assets/salir.webp',
+      };
     }
     if (text === '1') {
       await saveSession(db, {

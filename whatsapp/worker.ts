@@ -4,6 +4,8 @@ import makeWASocket, {
   jidNormalizedUser,
   type WAMessage,
 } from '@whiskeysockets/baileys';
+import { readFile } from 'fs/promises';
+import path from 'path';
 import qrcode from 'qrcode-terminal';
 import pino from 'pino';
 
@@ -208,12 +210,26 @@ async function main() {
           if (!text) continue;
 
           const reply = await handleAdminMessage(db, digits, text);
-          if (reply.silent || !reply.text) continue;
+          if (reply.silent || (!reply.text && !reply.stickerPath)) continue;
 
           // Responder al chat (puede ser @lid o @s.whatsapp.net)
           const jid = jidNormalizedUser(remoteJid);
-          await s.sendMessage(jid, { text: reply.text });
-        } catch (err) {
+
+          if (reply.stickerPath) {
+            try {
+              const stickerAbs = path.isAbsolute(reply.stickerPath)
+                ? reply.stickerPath
+                : path.join(process.cwd(), reply.stickerPath);
+              const stickerBuf = await readFile(stickerAbs);
+              await s.sendMessage(jid, { sticker: stickerBuf });
+            } catch (stickerErr) {
+              logger.warn({ stickerErr, path: reply.stickerPath }, 'No pude enviar sticker');
+            }
+          }
+
+          if (reply.text) {
+            await s.sendMessage(jid, { text: reply.text });
+          }        } catch (err) {
           logger.error({ err }, 'Error procesando mensaje entrante');
         }
       }
