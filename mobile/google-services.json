@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "671828301615",
+    "project_id": "seemann-connect",
+    "storage_bucket": "seemann-connect.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:671828301615:android:331b6c13feb91ab9c233da",
+        "android_client_info": {
+          "package_name": "com.seemanngroup.portalclientes"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDfe8LRZ1AIG1IXr8Yyd8NVINp03saNQ8U"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

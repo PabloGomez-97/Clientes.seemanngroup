@@ -6,6 +6,7 @@ import {
 import { NavigationContainer } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { Platform, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import DashboardScreen from "../screens/DashboardScreen";
 import CotizacionesStack from "./CotizacionesStack";
 import type { CotizacionesStackParamList } from "./CotizacionesStack";
@@ -50,6 +51,13 @@ const TAB_LABEL: Record<keyof ClientTabParamList, string> = {
 };
 
 export default function ClientTabs() {
+  const insets = useSafeAreaInsets();
+  // Android 3-button nav reports insets.bottom (~48); gesture nav is ~0–24.
+  const bottomPad =
+    Platform.OS === "ios"
+      ? Math.max(insets.bottom, 22)
+      : Math.max(insets.bottom, 8);
+
   return (
     <View style={styles.root}>
       <NavigationContainer ref={navigationRef}>
@@ -86,7 +94,13 @@ export default function ClientTabs() {
                 color={color}
               />
             ),
-            tabBarStyle: styles.tabBar,
+            tabBarStyle: [
+              styles.tabBar,
+              {
+                height: 56 + bottomPad,
+                paddingBottom: bottomPad,
+              },
+            ],
             tabBarItemStyle: styles.tabBarItem,
           })}
         >
@@ -131,9 +145,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffffff",
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: "#d5dde8",
-    height: Platform.OS === "ios" ? 82 : 64,
     paddingTop: 6,
-    paddingBottom: Platform.OS === "ios" ? 22 : 8,
     elevation: 0,
     shadowOpacity: 0,
     shadowRadius: 0,

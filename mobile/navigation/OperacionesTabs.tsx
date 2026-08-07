@@ -52,7 +52,11 @@ const TAB_LABEL: Record<keyof OperacionesTabParamList, string> = {
 
 export default function OperacionesTabs() {
   const insets = useSafeAreaInsets();
-  const bottomPad = Platform.OS === "ios" ? Math.max(insets.bottom - 4, 8) : 8;
+  // Android 3-button nav reports insets.bottom (~48); gesture nav is ~0–24.
+  const bottomPad =
+    Platform.OS === "ios"
+      ? Math.max(insets.bottom - 4, 8)
+      : Math.max(insets.bottom, 8);
 
   return (
     <StaffPortalProvider value="operaciones">
