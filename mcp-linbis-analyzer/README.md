@@ -6,14 +6,14 @@ Servidor MCP en TypeScript que analiza la API de Linbis y la compara con los end
 
 | Tool | Descripción |
 |------|-------------|
-| `get_linbis_endpoints` | Descarga `https://api.linbis.com/swagger.json` y devuelve todos los endpoints agrupados por módulo/tag. |
+| `get_linbis_endpoints` | Descarga `https://api.linbis.com/swagger/v1/swagger.json` y devuelve todos los endpoints agrupados por módulo/tag. |
 | `get_portal_endpoints` | Escanea el código del portal buscando llamadas a `api.linbis.com`. |
 | `analyze_endpoint_gaps` | Cruza ambas fuentes y devuelve endpoints no usados, notas de valor y un top 10 priorizado. |
 
 ## Requisitos
 
 - Node.js 20+
-- Acceso de red a `https://api.linbis.com/swagger.json` (si no está disponible, usa fallback local)
+- Acceso de red a `https://api.linbis.com/swagger/v1/swagger.json` (si no está disponible, usa fallback local)
 
 ## Instalación
 
@@ -49,7 +49,7 @@ Ejemplo de configuración:
       ],
       "env": {
         "PORTAL_SRC_PATH": "C:/Users/elxpa/OneDrive/Documentos/GitHub/Clientes.seemanngroup/src",
-        "LINBIS_SWAGGER_FALLBACK_PATH": "C:/Users/elxpa/OneDrive/Documentos/GitHub/Clientes.seemanngroup/swagger.md"
+        "LINBIS_SWAGGER_FALLBACK_PATH": "C:/Users/elxpa/OneDrive/Documentos/GitHub/Clientes.seemanngroup/mcp-linbis-analyzer/swagger.json"
       }
     }
   }
@@ -61,7 +61,7 @@ Ejemplo de configuración:
 | Variable | Descripción |
 |----------|-------------|
 | `PORTAL_SRC_PATH` | Ruta absoluta a `src/` del portal. Por defecto: `../src` relativo a este paquete. |
-| `LINBIS_SWAGGER_FALLBACK_PATH` | OpenAPI local si el fetch remoto falla. Por defecto: `../swagger.md` del repo. |
+| `LINBIS_SWAGGER_FALLBACK_PATH` | OpenAPI local si el fetch remoto falla. Por defecto: `swagger.json` de este paquete. |
 
 ## Uso en el chat de Cursor
 

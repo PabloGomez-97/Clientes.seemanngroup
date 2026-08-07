@@ -2,7 +2,8 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-export const LINBIS_SWAGGER_URL = "https://api.linbis.com/swagger.json";
+export const LINBIS_SWAGGER_URL =
+  "https://api.linbis.com/swagger/v1/swagger.json";
 
 export interface LinbisParameter {
   name: string;
@@ -118,7 +119,8 @@ export function parseSwaggerSpec(spec: OpenApiSpec): LinbisEndpoint[] {
 
 function defaultFallbackSwaggerPath(): string {
   const moduleDir = path.dirname(fileURLToPath(import.meta.url));
-  return path.resolve(moduleDir, "../../../swagger.md");
+  // dist/tools → package root swagger.json
+  return path.resolve(moduleDir, "../../swagger.json");
 }
 
 function resolveFallbackSwaggerPath(): string {
@@ -135,19 +137,27 @@ async function loadFallbackSwagger(): Promise<OpenApiSpec> {
 }
 
 export async function getLinbisEndpoints(): Promise<LinbisEndpointsResult> {
-  const response = await fetch(LINBIS_SWAGGER_URL);
+  let remoteError = "remote fetch not attempted";
 
-  if (response.ok) {
-    const spec = (await response.json()) as OpenApiSpec;
-    const endpoints = parseSwaggerSpec(spec);
+  try {
+    const response = await fetch(LINBIS_SWAGGER_URL);
 
-    return {
-      source: LINBIS_SWAGGER_URL,
-      sourceType: "remote",
-      fetchedAt: new Date().toISOString(),
-      totalEndpoints: endpoints.length,
-      modules: groupByModule(endpoints),
-    };
+    if (response.ok) {
+      const spec = (await response.json()) as OpenApiSpec;
+      const endpoints = parseSwaggerSpec(spec);
+
+      return {
+        source: LINBIS_SWAGGER_URL,
+        sourceType: "remote",
+        fetchedAt: new Date().toISOString(),
+        totalEndpoints: endpoints.length,
+        modules: groupByModule(endpoints),
+      };
+    }
+
+    remoteError = `${response.status} ${response.statusText}`;
+  } catch (error) {
+    remoteError = error instanceof Error ? error.message : String(error);
   }
 
   try {
@@ -166,7 +176,7 @@ export async function getLinbisEndpoints(): Promise<LinbisEndpointsResult> {
     const reason =
       fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
     throw new Error(
-      `Failed to fetch Linbis swagger (${response.status} ${response.statusText}) and fallback also failed: ${reason}`,
+      `Failed to fetch Linbis swagger (${remoteError}) and fallback also failed: ${reason}`,
     );
   }
 }

@@ -7,7 +7,7 @@
       ],
       "env": {
         "PORTAL_SRC_PATH": "/Users/pablogomez/Documents/GitHub/Clientes.seemanngroup/src",
-        "LINBIS_SWAGGER_FALLBACK_PATH": "/Users/pablogomez/Documents/GitHub/Clientes.seemanngroup/mcp-linbis-analyzer/swaggerv2.json"
+        "LINBIS_SWAGGER_FALLBACK_PATH": "/Users/pablogomez/Documents/GitHub/Clientes.seemanngroup/mcp-linbis-analyzer/swagger.json"
       }
     }
   }
