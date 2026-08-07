@@ -22,7 +22,8 @@ export type FlowStep =
   | 'awaiting_reset_choice'
   | 'awaiting_reset_identity_confirm'
   | 'awaiting_reset_password_confirm'
-  | 'awaiting_create_offer';
+  | 'awaiting_create_offer'
+  | 'awaiting_lookup_company_name';
 
 export type SessionDoc = {
   _id: string;
@@ -51,7 +52,8 @@ function menuText(): string {
     'Dime que necesitas',
     '1. Agregar empresa',
     '2. Recuperar contraseña',
-    '3. Salir',
+    '3. Buscar cuenta, ¿existe?',
+    '4. Salir',
   ].join('\n');
 }
 
@@ -86,6 +88,20 @@ function formatPortalMatches(matches: PortalClientMatch[]): string {
     '',
     ...lines,
   ].join('\n');
+}
+
+/** Solo búsqueda: lista o ficha, sin pedir elección. */
+function formatLookupResults(matches: PortalClientMatch[]): string {
+  if (matches.length === 1) {
+    return [
+      `Empresa: ${matches[0].company}`,
+      `Account: ${matches[0].email}`,
+    ].join('\n');
+  }
+  const lines = matches.map(
+    (m, i) => `${i + 1}. ${m.company}\n   Account: ${m.email}`,
+  );
+  return ['Encontré estas:', '', ...lines].join('\n');
 }
 
 function formatResetIdentity(match: PortalClientMatch): string {
@@ -216,7 +232,7 @@ export async function handleAdminMessage(
 
   // Menú
   if (!session || session.step === 'menu') {
-    if (text === '3') {
+    if (text === '4') {
       await clearSession(db, sessionId);
       return { silent: true };
     }
@@ -232,6 +248,14 @@ export async function handleAdminMessage(
       await saveSession(db, {
         _id: sessionId,
         step: 'awaiting_reset_company_name',
+        updatedAt: new Date(),
+      });
+      return { text: 'Dime el nombre de la empresa o parte de ella' };
+    }
+    if (text === '3') {
+      await saveSession(db, {
+        _id: sessionId,
+        step: 'awaiting_lookup_company_name',
         updatedAt: new Date(),
       });
       return { text: 'Dime el nombre de la empresa o parte de ella' };
@@ -514,6 +538,23 @@ export async function handleAdminMessage(
       return { text: 'Oka, dime el nombre de la empresa o parte de ella:' };
     }
     return startLinbisCreateFromTerm(db, sessionId, term);
+  }
+
+  // ——— Buscar cuenta (opción 3) ———
+  if (session.step === 'awaiting_lookup_company_name') {
+    const matches = await searchPortalClients(db, text);
+    if (!matches.length) {
+      return {
+        text: 'No encontré esa cuenta. Dime otro nombre o parte de la empresa',
+      };
+    }
+    // Fin de la consulta: vuelve a menú para que arranque el TTL en paz
+    await saveSession(db, {
+      _id: sessionId,
+      step: 'menu',
+      updatedAt: new Date(),
+    });
+    return { text: formatLookupResults(matches) };
   }
 
   await saveSession(db, { _id: sessionId, step: 'menu', updatedAt: new Date() });
