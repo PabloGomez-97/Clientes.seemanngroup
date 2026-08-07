@@ -2335,5 +2335,13 @@
       "close": "Cerrar",
       "loading": "Cargando facturas…"
     }
+  },
+  "forceUpdate": {
+    "title": "Una nueva versión te espera",
+    "message": "Tenemos una actualización lista para ti, con mejoras y una experiencia más fluida. Solo toma unos segundos y podrás seguir usando Seemann Group con normalidad.",
+    "versionLine": "Tu versión: {{current}} · Mínima: {{minimum}}",
+    "openAppStore": "Actualizar en App Store",
+    "openPlayStore": "Actualizar en Play Store",
+    "hint": "Cuando termines, vuelve a abrir la app. ¡Gracias por acompañarnos!"
   }
 }

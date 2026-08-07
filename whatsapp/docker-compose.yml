@@ -1,0 +1,12 @@
+services:
+  whatsapp-worker:
+    build:
+      context: ..
+      dockerfile: whatsapp/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    environment:
+      - NODE_ENV=production
+      - LOG_LEVEL=info
+    # Sin puertos públicos: solo sale a WhatsApp / Mongo / Linbis

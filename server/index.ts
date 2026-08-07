@@ -33,6 +33,7 @@ import {
   type TenantId,
 } from '../api/services/crossTenantDb.ts';
 import { handleUnifiedLogin } from '../api/services/unifiedLoginHandler.ts';
+import { MOBILE_APP_VERSION_CONFIG } from '../api/config/mobileAppVersion.ts';
 import {
   TIPOS_DOCUMENTO_COTIZACION,
   TIPOS_DOCUMENTO_OPERACIONAL_AEREO,
@@ -279,6 +280,11 @@ app.use((req, res, next) => {
 });
 
 app.all('/api/chat', (req, res) => chatHandler(req as any, res as any));
+
+app.get('/api/mobile/app-version', (_req, res) => {
+  res.setHeader('Cache-Control', 'public, max-age=60');
+  return res.status(200).json(MOBILE_APP_VERSION_CONFIG);
+});
 
 /** =========================
  *  Mongoose / Modelos tipados

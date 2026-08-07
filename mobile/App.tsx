@@ -14,6 +14,7 @@ import { resolveMobilePortal } from "./auth/portalRouting";
 import Login from "./auth/Login";
 import { LinbisTokenProvider } from "./hooks/useLinbisToken";
 import { usePushNotifications } from "./hooks/usePushNotifications";
+import { useForceUpdateGate } from "./hooks/useForceUpdateGate";
 import ClientTabs from "./navigation/ClientTabs";
 import ExecutiveTabs from "./navigation/ExecutiveTabs";
 import OperacionesTabs from "./navigation/OperacionesTabs";
@@ -21,6 +22,7 @@ import PricingTabs from "./navigation/PricingTabs";
 import ProveedorTabs from "./navigation/ProveedorTabs";
 import AdminTabs from "./navigation/AdminTabs";
 import StaffEmptyHomeScreen from "./screens/executive/StaffEmptyHomeScreen";
+import ForceUpdateScreen from "./screens/ForceUpdateScreen";
 import { brand } from "./theme/brand";
 import { applyGlobalFonts } from "./theme/typography";
 
@@ -82,6 +84,19 @@ function AdminAuthenticatedApp() {
 
 function RootApp() {
   const { user, loading } = useAuth();
+  const { checking: checkingForceUpdate, requirement } = useForceUpdateGate();
+
+  if (checkingForceUpdate) {
+    return (
+      <View style={styles.loading}>
+        <ActivityIndicator size="large" color={brand.primary} />
+      </View>
+    );
+  }
+
+  if (requirement) {
+    return <ForceUpdateScreen requirement={requirement} />;
+  }
 
   if (loading) {
     return (

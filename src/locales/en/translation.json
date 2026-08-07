@@ -2334,5 +2334,13 @@
       "close": "Close",
       "loading": "Loading invoices…"
     }
+  },
+  "forceUpdate": {
+    "title": "A new version is ready",
+    "message": "We've prepared an update with improvements and a smoother experience. It only takes a moment, then you can keep using Seemann Group as usual.",
+    "versionLine": "Your version: {{current}} · Minimum: {{minimum}}",
+    "openAppStore": "Update on the App Store",
+    "openPlayStore": "Update on Play Store",
+    "hint": "When you're done, open the app again. Thank you for being with us!"
   }
 }

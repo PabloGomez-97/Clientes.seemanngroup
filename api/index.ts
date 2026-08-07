@@ -68,6 +68,7 @@ import {
   TENANT_META,
 } from './services/crossTenantDb.js';
 import { handleUnifiedLogin } from './services/unifiedLoginHandler.js';
+import { MOBILE_APP_VERSION_CONFIG } from './config/mobileAppVersion.js';
 
 /** =========================
  *  Entorno + JWT
@@ -2219,6 +2220,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') {
     res.status(200).end();
     return;
+  }
+
+  const requestPath = req.url?.split('?')[0] || '';
+
+  // Público, sin DB: force update de la app móvil (iOS / Android)
+  if (requestPath === '/api/mobile/app-version' && req.method === 'GET') {
+    res.setHeader('Cache-Control', 'public, max-age=60');
+    return res.status(200).json(MOBILE_APP_VERSION_CONFIG);
   }
 
   try {
