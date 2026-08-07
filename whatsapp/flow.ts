@@ -23,7 +23,8 @@ export type SessionDoc = {
 };
 
 const SESSIONS_COLLECTION = 'whatsapp_admin_sessions';
-const SESSION_TTL_MS = 60 * 60 * 1000; // 1h
+/** Sin actividad → sesión muerta en silencio; el próximo mensaje vuelve al menú. */
+const SESSION_TTL_MS = 5 * 60 * 1000; // 5 minutos
 
 export type FlowReply = {
   text?: string;
@@ -88,14 +89,28 @@ async function clearSession(db: Db, sessionId: string): Promise<void> {
 }
 
 export async function ensureSessionIndexes(db: Db): Promise<void> {
-  await db
-    .collection(SESSIONS_COLLECTION)
-    .createIndex({ updatedAt: 1 }, { expireAfterSeconds: 60 * 60 * 2 });
+  const col = db.collection(SESSIONS_COLLECTION);
+  // Alinear TTL de Mongo con el de la app (5 min). Si el índice viejo existe, recrearlo.
+  try {
+    await col.dropIndex('updatedAt_1');
+  } catch {
+    // no existía
+  }
+  await col.createIndex(
+    { updatedAt: 1 },
+    { expireAfterSeconds: Math.ceil(SESSION_TTL_MS / 1000) },
+  );
 }
 
-function isCancel(text: string): boolean {
+function isBackToMenu(text: string): boolean {
   const t = text.trim().toLowerCase();
-  return t === 'cancelar' || t === 'cancel' || t === 'menu' || t === 'menú';
+  return (
+    t === 'volver' ||
+    t === 'cancelar' ||
+    t === 'cancel' ||
+    t === 'menu' ||
+    t === 'menú'
+  );
 }
 
 function isYes(text: string): boolean {
@@ -144,7 +159,7 @@ export async function handleAdminMessage(
     return { text: menuText() };
   }
 
-  if (isCancel(text) && session.step !== 'awaiting_confirm') {
+  if (isBackToMenu(text)) {
     await saveSession(db, { _id: sessionId, step: 'menu', updatedAt: new Date() });
     return { text: menuText() };
   }
