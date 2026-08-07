@@ -1231,7 +1231,7 @@ const QuoteTrackingEvent = (mongoose.models.QuoteTrackingEvent || mongoose.model
 
 // ============================================================
 // MODELO EXECUTIVE NOTIFICATION (alertas en navbar para ejecutivos)
-// TTL: 72h auto-expire via MongoDB index on createdAt
+// TTL: 24h auto-expire via MongoDB index on createdAt
 // ============================================================
 
 type PortalNotificationAudience = 'EJECUTIVO' | 'CLIENTE' | 'OPERACIONES';
@@ -1268,7 +1268,7 @@ interface IPortalNotification {
   payload?: Record<string, unknown>;
   read: boolean;
   readAt?: Date;
-  expiresAt?: Date; // optional per-document TTL (overrides 72h default when set)
+  expiresAt?: Date; // optional per-document TTL (overrides 24h default when set)
 }
 
 interface IPortalNotificationDoc extends IPortalNotification, mongoose.Document {
@@ -1321,7 +1321,7 @@ const PortalNotificationSchema = new mongoose.Schema<IPortalNotificationDoc>(
 
 PortalNotificationSchema.index({ recipientEmail: 1, dedupKey: 1 }, { unique: true });
 PortalNotificationSchema.index({ recipientEmail: 1, createdAt: -1 });
-PortalNotificationSchema.index({ createdAt: 1 }, { expireAfterSeconds: 60 * 60 * 72 });
+PortalNotificationSchema.index({ createdAt: 1 }, { expireAfterSeconds: 60 * 60 * 24 });
 PortalNotificationSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 const PortalNotification = (mongoose.models.PortalNotification ||

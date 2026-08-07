@@ -1230,7 +1230,7 @@ const QuoteTrackingEvent = (mongoose.models.QuoteTrackingEvent || mongoose.model
 // ============================================================
 // MODELO PORTAL NOTIFICATION (alertas en navbar — multi-rol)
 // audience: EJECUTIVO | CLIENTE | OPERACIONES
-// TTL: 72h auto-expire vía índice TTL sobre createdAt
+// TTL: 24h auto-expire vía índice TTL sobre createdAt
 // ============================================================
 
 type PortalNotificationAudience = 'EJECUTIVO' | 'CLIENTE' | 'OPERACIONES';
@@ -1271,7 +1271,7 @@ interface IPortalNotification {
   payload?: Record<string, unknown>;
   read: boolean;
   readAt?: Date;
-  expiresAt?: Date; // optional per-document TTL (overrides 72h default when set)
+  expiresAt?: Date; // optional per-document TTL (overrides 24h default when set)
 }
 
 interface IPortalNotificationDoc extends IPortalNotification, mongoose.Document {
@@ -1325,8 +1325,8 @@ const PortalNotificationSchema = new mongoose.Schema<IPortalNotificationDoc>(
 // Dedup: one notification per (recipient, dedupKey)
 PortalNotificationSchema.index({ recipientEmail: 1, dedupKey: 1 }, { unique: true });
 PortalNotificationSchema.index({ recipientEmail: 1, createdAt: -1 });
-// TTL: auto-expire after 72h on createdAt (default for most notifications)
-PortalNotificationSchema.index({ createdAt: 1 }, { expireAfterSeconds: 60 * 60 * 72 });
+// TTL: auto-expire after 24h on createdAt (default for most notifications)
+PortalNotificationSchema.index({ createdAt: 1 }, { expireAfterSeconds: 60 * 60 * 24 });
 // TTL: per-document custom expiry (e.g. cold-client = 12h). Null docs are ignored by Mongo TTL.
 PortalNotificationSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
